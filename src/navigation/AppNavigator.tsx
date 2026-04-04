@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
-import { useNavigationState } from '@react-navigation/native';
 import HomeScreen from '../screens/app/HomeScreen';
 import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
@@ -26,6 +25,7 @@ const AppNavigator = () => {
   const insets = useSafeAreaInsets();
   const [movementModalVisible, setMovementModalVisible] = useState(false);
   const [recurringModalVisible, setRecurringModalVisible] = useState(false);
+  const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('HomeTab');
 
   const tabBarBg = isDark ? colors.surfaceDark : '#FFFFFF';
@@ -35,8 +35,8 @@ const AppNavigator = () => {
 
   const handleFabPress = () => {
     if (activeTab === 'Reminders') {
-      // No FAB para reminders desde aquí
-    } else if (activeTab === 'Recurring') {
+      setReminderModalVisible(true);
+    } else if (activeTab === 'Recurring' || activeTab === 'RecurringTab') {
       setRecurringModalVisible(true);
     } else {
       setMovementModalVisible(true);
@@ -138,7 +138,11 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Reminders"
           component={(props: any) => (
-            <RemindersScreen {...props} />
+            <RemindersScreen
+              {...props}
+              modalVisible={reminderModalVisible}
+              onModalDismiss={() => setReminderModalVisible(false)}
+            />
           )}
           options={{
             tabBarButton: () => null,
