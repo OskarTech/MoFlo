@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, 
-  StyleSheet, 
-  Modal, 
-  ScrollView, 
+  View,
+  StyleSheet,
+  Modal,
+  ScrollView,
   TouchableOpacity,
-  KeyboardAvoidingView, // <--- Añadido
-  Platform,             // <--- Añadido
+  Keyboard,
+  Animated,
+  Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -51,9 +52,39 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const [description, setDescription] = useState('');
   const [recurringDay, setRecurringDay] = useState('1');
 
+  // ─── Keyboard fix ────────────────────────────────────────────────────────────
+  const sheetOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const show = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: -e.endCoordinates.height,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hide = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 200) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [sheetOffset]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-  
+
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -81,13 +112,13 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
-      type, 
-      amount: parsedAmount, 
+      type,
+      amount: parsedAmount,
       category,
       description: description.trim() || t(`movements.categories.${category}`),
-      recurringDay: day, 
+      recurringDay: day,
       currency: 'EUR',
-      isActive: true, 
+      isActive: true,
       createdAt: new Date().toISOString(),
     };
 
@@ -102,20 +133,20 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+      {/* Animated.View reemplaza a KeyboardAvoidingView */}
+      <Animated.View
+        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
-        
+
         <View style={[styles.sheet, {
           backgroundColor: sheetBg,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
@@ -245,7 +276,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 };

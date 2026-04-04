@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, 
-  StyleSheet, 
-  Modal, 
-  ScrollView, 
+  View,
+  StyleSheet,
+  Modal,
+  ScrollView,
   TouchableOpacity,
-  KeyboardAvoidingView,
+  Keyboard,
+  Animated,
   Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
@@ -51,10 +52,42 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<MovementCategory>('housing');
 
+  // ─── Keyboard fix ────────────────────────────────────────────────────────────
+  const sheetOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // En iOS usar Will para que la animación sea sincronizada con el teclado.
+    // En Android usar Did porque Will no siempre dispara.
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const show = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: -e.endCoordinates.height,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hide = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 200) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [sheetOffset]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const currencySymbol = getCurrencySymbol();
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-  
+
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -95,29 +128,29 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
 
   return (
-    <Modal 
-      visible={visible} 
-      animationType="slide" 
-      transparent 
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
       onRequestClose={handleDismiss}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+      {/* Animated.View reemplaza a KeyboardAvoidingView */}
+      <Animated.View
+        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
       >
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={handleDismiss} 
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={handleDismiss}
         />
         <View style={[styles.sheet, {
           backgroundColor: sheetBg,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
@@ -221,7 +254,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 };

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
-  KeyboardAvoidingView, // <--- Añadido
+  Keyboard, Animated,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -115,6 +115,36 @@ const AddReminderModal = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // ─── Keyboard fix ────────────────────────────────────────────────────────────
+  const sheetOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const show = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: -e.endCoordinates.height,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hide = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(sheetOffset, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 200) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [sheetOffset]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const handleDismiss = () => {
     setDescription('');
     setSelectedDate(getDefaultDate());
@@ -138,9 +168,9 @@ const AddReminderModal = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+      {/* Animated.View reemplaza a KeyboardAvoidingView */}
+      <Animated.View
+        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.modalSheet, {
@@ -148,7 +178,7 @@ const AddReminderModal = ({
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          
+
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
               {t('reminders.add')}
@@ -249,7 +279,7 @@ const AddReminderModal = ({
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 };
