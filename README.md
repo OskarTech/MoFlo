@@ -90,29 +90,6 @@ This project requires a `google-services.json` file from Firebase. You need to:
 
 ---
 
-## 📁 Project Structure
-
-MoFlo/
-├── src/
-│   ├── components/       # Reusable components
-│   │   ├── common/       # AppHeader, AddTabButton
-│   │   └── movements/    # Movement modals
-│   ├── navigation/       # React Navigation setup
-│   ├── screens/
-│   │   ├── auth/         # Login, Register, ForgotPassword
-│   │   └── app/          # Home, Historial, Annual, Recurring...
-│   ├── services/
-│   │   └── firebase/     # Auth, Firestore services
-│   ├── store/            # Zustand stores
-│   ├── theme/            # Colors and themes
-│   ├── i18n/             # Translations (en, es, pl)
-│   └── types/            # TypeScript types
-├── assets/               # Icons, splash screen
-├── app.json              # Expo config
-└── eas.json              # EAS Build config
-
----
-
 ## 🌍 Internationalization
 
 MoFlo supports 3 languages:
