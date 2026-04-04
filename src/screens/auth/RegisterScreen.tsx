@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity,
+  View, StyleSheet, ScrollView, TouchableOpacity, Image,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +48,7 @@ const RegisterScreen = ({ navigation }: Props) => {
         case 'auth/weak-password':
           setError(t('auth.errorWeakPassword')); break;
         default:
-          setError(e.message);
+          setError(t('auth.errorGeneral'));
       }
     } finally {
       setLoading(false);
@@ -64,9 +64,11 @@ const RegisterScreen = ({ navigation }: Props) => {
       >
         {/* HEADER */}
         <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: '#A3E635' + '30' }]}>
-            <Text style={styles.logoEmoji}>📈</Text>
-          </View>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
         </View>
 
@@ -162,15 +164,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 28,
     marginBottom: 16,
   },
-  logoEmoji: { fontSize: 44 },
   appName: {
     fontSize: 32,
     fontFamily: 'Poppins_700Bold',

@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import {
-  View, StyleSheet, ScrollView, TouchableOpacity,
-} from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,7 +6,7 @@ import { AuthStackParamList } from '../../types/navigation.types';
 import { loginWithEmail, loginWithGoogle } from '../../services/firebase/auth.service';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -74,9 +71,11 @@ const LoginScreen = ({ navigation }: Props) => {
       >
         {/* LOGO */}
         <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
-            <Ionicons name="wallet" size={48} color="#FFFFFF" />
-          </View>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
           <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
             {t('auth.subtitle')}
@@ -179,9 +178,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
-  logoContainer: {
-    width: 96, height: 96, borderRadius: 28,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 28,
+    marginBottom: 16,
   },
   appName: { fontSize: 32, fontFamily: 'Poppins_700Bold', letterSpacing: 1, marginBottom: 4 },
   subtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
