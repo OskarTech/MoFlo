@@ -40,7 +40,7 @@ yarn-error.*
 /ios
 /android
 
-
+google-services.json
 
 # Keys
 *.keystore
