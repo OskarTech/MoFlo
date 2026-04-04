@@ -40,8 +40,11 @@ yarn-error.*
 /ios
 /android
 
+# Firebase
 google-services.json
+google-service-info.plist
 
-# Keys
+# Credentials
+credentials.json
 *.keystore
 *.jks
