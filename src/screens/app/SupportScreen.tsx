@@ -8,7 +8,6 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import { useSettingsStore } from '../../store/settingsStore';
-import emailjs from '@emailjs/browser';
 import Constants from 'expo-constants';
 
 const EMAILJS_SERVICE_ID = 'service_2vvr2ea';
@@ -49,23 +48,37 @@ const SupportScreen = () => {
     }
     setSending(true);
     try {
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
+      const response = await fetch(
+        'https://api.emailjs.com/api/v1.0/email/send',
         {
-          name: name.trim(),
-          email: email.trim(),
-          title: `Soporte MoFlo`,
-          message: message.trim(),
-          app_version: appVersion,
-        },
-        EMAILJS_PUBLIC_KEY
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            service_id: 'service_2vvr2ea',
+            template_id: 'template_3upiouj',
+            user_id: 'bHJges8U4t2BLb61h',
+            template_params: {
+              name: name.trim(),
+              email: email.trim(),
+              title: 'Soporte MoFlo',
+              message: message.trim(),
+              app_version: appVersion,
+            },
+          }),
+        }
       );
-      Alert.alert(
-        t('settings.supportSuccess'),
-        t('settings.supportSuccessMessage'),
-        [{ text: 'OK', onPress: () => setMessage('') }]
-      );
+
+      if (response.ok) {
+        Alert.alert(
+          t('settings.supportSuccess'),
+          t('settings.supportSuccessMessage'),
+          [{ text: 'OK', onPress: () => setMessage('') }]
+        );
+      } else {
+        throw new Error('Email send failed');
+      }
     } catch (e) {
       Alert.alert(
         t('settings.supportError'),

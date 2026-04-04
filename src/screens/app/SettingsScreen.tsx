@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Linking, Share, Switch,
+  TouchableOpacity, Alert, Linking, Share,
+  Switch, Modal, FlatList,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Modal, FlatList } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,13 +12,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as StoreReview from 'expo-store-review';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode } from '../../store/settingsStore';
+import { useMovementStore } from '../../store/movementStore';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import { logout } from '../../services/firebase/auth.service';
 import Constants from 'expo-constants';
-import auth from '@react-native-firebase/auth';
 
 const NOTIF_KEY = '@moflo_daily_notif';
 
@@ -44,17 +46,26 @@ const OptionRow = ({
         <Ionicons name={icon} size={20} color={iconColor} />
       </View>
       <View style={styles.optionContent}>
-        <Text style={[styles.optionLabel, { color: dangerous ? colors.expense : dc.textPrimary }]}>
+        <Text style={[
+          styles.optionLabel,
+          { color: dangerous ? colors.expense : dc.textPrimary },
+        ]}>
           {label}
         </Text>
         {subtitle && (
-          <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>{subtitle}</Text>
+          <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
+            {subtitle}
+          </Text>
         )}
       </View>
       {right ?? (
         <>
-          {value && <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{value}</Text>}
-          {showArrow && onPress && <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />}
+          {value && (
+            <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{value}</Text>
+          )}
+          {showArrow && onPress && (
+            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+          )}
         </>
       )}
     </TouchableOpacity>
@@ -72,10 +83,12 @@ const SelectModal = ({
 }) => {
   const { isDark, colors: dc } = useTheme();
   return (
-    <Modal visible={visible} transparent animationType="slide" onDismiss={onDismiss}>
+    <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.modalSheet, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}>
+        <View style={[styles.modalSheet, {
+          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+        }]}>
           <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{title}</Text>
           <FlatList
@@ -89,7 +102,10 @@ const SelectModal = ({
                 <Text style={[
                   styles.modalOptionText,
                   { color: dc.textPrimary },
-                  item.code === selectedValue && { color: colors.primary, fontFamily: 'Poppins_600SemiBold' },
+                  item.code === selectedValue && {
+                    color: colors.primary,
+                    fontFamily: 'Poppins_600SemiBold',
+                  },
                 ]}>
                   {item.label}
                 </Text>
@@ -107,11 +123,10 @@ const SelectModal = ({
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc, isDark } = useTheme();
+  const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const {
-    displayName, currencyCode, language, themeMode,
-    saveSettings,
+    displayName, currencyCode, language, themeMode, saveSettings,
   } = useSettingsStore();
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -120,12 +135,10 @@ const SettingsScreen = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
-  const [nameInput, setNameInput] = useState(displayName ?? '');
 
   useEffect(() => {
     loadNotifSettings();
-    setNameInput(displayName ?? '');
-  }, [displayName]);
+  }, []);
 
   const loadNotifSettings = async () => {
     const val = await AsyncStorage.getItem(NOTIF_KEY);
@@ -141,13 +154,16 @@ const SettingsScreen = () => {
       if (status !== 'granted') {
         setDailyNotifEnabled(false);
         await AsyncStorage.setItem(NOTIF_KEY, 'false');
-        Alert.alert('Sin permisos', 'Activa las notificaciones en los ajustes del dispositivo.');
+        Alert.alert(
+          t('reminders.permissionDenied'),
+          t('reminders.permissionDeniedMessage')
+        );
         return;
       }
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '💰 MoFlo',
-          body: '¡No olvides añadir tus movimientos de hoy!',
+          body: t('settings.notifMovementsSubtitle'),
           sound: true,
         },
         trigger: {
@@ -166,7 +182,9 @@ const SettingsScreen = () => {
     if (await StoreReview.hasAction()) {
       await StoreReview.requestReview();
     } else {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.oskartech.moflo');
+      Linking.openURL(
+        'https://play.google.com/store/apps/details?id=com.oskartech.moflo'
+      );
     }
   };
 
@@ -179,6 +197,54 @@ const SettingsScreen = () => {
     } catch (e) {
       console.error('Share error:', e);
     }
+  };
+
+  const handleDeleteData = () => {
+    Alert.alert(
+      t('settings.deleteData'),
+      t('settings.deleteDataConfirm'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteDataButton'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Limpia AsyncStorage
+              await AsyncStorage.multiRemove([
+                '@moflo_movements',
+                '@moflo_recurring',
+              ]);
+
+              // Resetea el store
+              useMovementStore.getState().resetStore();
+
+              // Elimina de Firestore
+              const uid = auth().currentUser?.uid;
+              if (uid) {
+                const batch = firestore().batch();
+
+                const movementsSnap = await firestore()
+                  .collection('users').doc(uid)
+                  .collection('movements').get();
+                movementsSnap.docs.forEach((doc) => batch.delete(doc.ref));
+
+                const recurringSnap = await firestore()
+                  .collection('users').doc(uid)
+                  .collection('recurring').get();
+                recurringSnap.docs.forEach((doc) => batch.delete(doc.ref));
+
+                await batch.commit();
+              }
+
+              Alert.alert('✅', t('settings.deleteDataSuccess'));
+            } catch (e) {
+              Alert.alert('Error', 'No se pudieron eliminar los datos.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleLogout = () => {
@@ -198,9 +264,12 @@ const SettingsScreen = () => {
     { code: 'dark', label: t('settings.themeDark') },
   ];
 
-  const selectedCurrencyLabel = CURRENCIES.find((c) => c.code === currencyCode)?.label ?? 'Euro (€)';
-  const selectedLanguageLabel = LANGUAGES.find((l) => l.code === language)?.label ?? 'English';
-  const selectedThemeLabel = THEME_OPTIONS.find((o) => o.code === themeMode)?.label ?? t('settings.themeAuto');
+  const selectedCurrencyLabel =
+    CURRENCIES.find((c) => c.code === currencyCode)?.label ?? 'Euro (€)';
+  const selectedLanguageLabel =
+    LANGUAGES.find((l) => l.code === language)?.label ?? 'English';
+  const selectedThemeLabel =
+    THEME_OPTIONS.find((o) => o.code === themeMode)?.label ?? t('settings.themeAuto');
 
   const initials = displayName
     ? displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -209,10 +278,14 @@ const SettingsScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.settings_screen')} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* PERFIL */}
-        <View style={[styles.profileCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+        <View style={[styles.profileCard, {
+          backgroundColor: dc.surface, borderColor: dc.border,
+        }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
@@ -269,13 +342,6 @@ const SettingsScreen = () => {
               />
             }
           />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="alarm-outline" iconColor={colors.savings}
-            label={t('tabs.reminders') ?? 'Recordatorios'}
-            subtitle="Gestiona tus recordatorios personalizados"
-            onPress={() => navigation.navigate('Reminders')}
-          />
         </View>
 
         {/* APLICACIÓN */}
@@ -310,6 +376,14 @@ const SettingsScreen = () => {
           Cuenta
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <OptionRow
+            icon="trash-outline" iconColor={colors.expense}
+            label={t('settings.deleteData')}
+            subtitle={t('settings.deleteDataSubtitle')}
+            onPress={handleDeleteData}
+            dangerous
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
             icon="log-out-outline" iconColor={colors.expense}
             label={t('settings.logout')}
@@ -366,13 +440,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 0.5,
-    gap: 16,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, padding: 16, marginBottom: 20,
+    borderWidth: 0.5, gap: 16,
   },
   avatar: {
     width: 56, height: 56, borderRadius: 28,
@@ -392,18 +462,36 @@ const styles = StyleSheet.create({
   card: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
   divider: { height: 0.5, marginLeft: 68 },
   optionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  optionIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  optionIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
   optionContent: { flex: 1 },
   optionLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   optionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   optionValue: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginRight: 4 },
-  footer: { textAlign: 'center', fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8, marginBottom: 16 },
+  footer: {
+    textAlign: 'center', fontSize: 13,
+    fontFamily: 'Poppins_400Regular', marginTop: 8, marginBottom: 16,
+  },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 40, maxHeight: '60%',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    alignSelf: 'center', marginBottom: 20,
+  },
   modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
-  modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
+  modalOption: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5,
+  },
   modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
 });
 

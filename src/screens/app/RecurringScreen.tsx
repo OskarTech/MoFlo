@@ -7,10 +7,23 @@ import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useMovementStore } from '../../store/movementStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+
+const TYPE_COLORS = {
+  income: colors.income,
+  saving: colors.savings,
+  expense: colors.expense,
+};
+
+const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  income: 'arrow-down-circle',
+  saving: 'save',
+  expense: 'arrow-up-circle',
+};
 
 const RecurringCard = ({
   item, onDelete,
@@ -18,12 +31,11 @@ const RecurringCard = ({
   item: RecurringMovement; onDelete: (id: string) => void;
 }) => {
   const { t } = useTranslation();
+  const { getCurrencySymbol } = useSettingsStore();
   const { colors: dc } = useTheme();
-  const color = item.type === 'income'
-    ? colors.income : item.type === 'saving'
-    ? colors.savings : colors.expense;
-  const icon: keyof typeof Ionicons.glyphMap = item.type === 'income'
-    ? 'arrow-down-circle' : item.type === 'saving' ? 'save' : 'arrow-up-circle';
+  const color = TYPE_COLORS[item.type];
+  const icon = TYPE_ICONS[item.type];
+  const currencySymbol = getCurrencySymbol();
 
   const handleDelete = () => {
     Alert.alert(
@@ -31,27 +43,39 @@ const RecurringCard = ({
       item.description,
       [
         { text: t('movements.cancel'), style: 'cancel' },
-        { text: 'OK', style: 'destructive', onPress: () => onDelete(item.id) },
+        {
+          text: 'OK',
+          style: 'destructive',
+          onPress: () => onDelete(item.id),
+        },
       ]
     );
   };
 
   return (
     <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <View style={[styles.dayBadge, { backgroundColor: colors.primary + '20' }]}>
+        <Text style={[styles.dayNumber, { color: colors.primary }]}>
+          {item.recurringDay}
+        </Text>
+        <Text style={[styles.dayLabel, { color: colors.primary }]}>
+          {t('recurring.dayShort') ?? 'día'}
+        </Text>
+      </View>
       <View style={[styles.cardIcon, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={24} color={color} />
+        <Ionicons name={icon} size={22} color={color} />
       </View>
       <View style={styles.cardInfo}>
         <Text style={[styles.cardDescription, { color: dc.textPrimary }]}>
           {item.description}
         </Text>
-        <Text style={[styles.cardDay, { color: dc.textSecondary }]}>
-          {t('recurring.dayOfMonth', { day: item.recurringDay })}
+        <Text style={[styles.cardCategory, { color: dc.textSecondary }]}>
+          {t(`movements.categories.${item.category}`)}
         </Text>
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>
-          {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} €
+          {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
         </Text>
         <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
           <Ionicons name="trash-outline" size={18} color={colors.expense} />
@@ -73,7 +97,11 @@ const RecurringScreen = ({
   const { t } = useTranslation();
   const { recurringMovements, deleteRecurringMovement } = useMovementStore();
   const { colors: dc } = useTheme();
-  const [internalModalVisible, setInternalModalVisible] = useState(false);
+
+  // Ordenados por día del mes
+  const sortedRecurring = [...recurringMovements].sort(
+    (a, b) => a.recurringDay - b.recurringDay
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -82,7 +110,7 @@ const RecurringScreen = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {recurringMovements.length === 0 ? (
+        {sortedRecurring.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🔄</Text>
             <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
@@ -93,7 +121,7 @@ const RecurringScreen = ({
             </Text>
           </View>
         ) : (
-          recurringMovements.map((item) => (
+          sortedRecurring.map((item) => (
             <RecurringCard
               key={item.id}
               item={item}
@@ -102,7 +130,6 @@ const RecurringScreen = ({
           ))
         )}
       </ScrollView>
-
     </View>
   );
 };
@@ -114,49 +141,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 10,
     borderWidth: 0.5,
+    gap: 10,
+  },
+  dayBadge: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  dayNumber: {
+    fontSize: 14, fontFamily: 'Poppins_700Bold', lineHeight: 16,
+  },
+  dayLabel: {
+    fontSize: 9, fontFamily: 'Poppins_400Regular',
   },
   cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
   },
   cardInfo: { flex: 1 },
   cardDescription: {
-    fontSize: 15,
-    fontFamily: 'Poppins_500Medium',
+    fontSize: 14, fontFamily: 'Poppins_500Medium',
   },
-  cardDay: {
-    fontSize: 12,
-    fontFamily: 'Poppins_400Regular',
-    marginTop: 2,
+  cardCategory: {
+    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2,
   },
   cardRight: { alignItems: 'flex-end', gap: 6 },
-  cardAmount: {
-    fontSize: 15,
-    fontFamily: 'Poppins_600SemiBold',
-  },
+  cardAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
   deleteButton: { padding: 4 },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 8,
-  },
+  emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
   emptySubtext: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    paddingHorizontal: 32,
+    fontSize: 13, fontFamily: 'Poppins_400Regular',
+    textAlign: 'center', paddingHorizontal: 32,
   },
 });
 
