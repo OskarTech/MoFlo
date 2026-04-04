@@ -97,8 +97,9 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
             <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {t('movements.addMovement')}
+              {t('movements.add')}
             </Text>
 
             {/* TIPO */}
@@ -144,7 +145,11 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
               {t('movements.category')}
             </Text>
-            <View style={styles.categoryGrid}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryScroll}
+            >
               {CATEGORIES[type].map((cat) => (
                 <TouchableOpacity
                   key={cat}
@@ -169,7 +174,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {/* BOTONES */}
             <View style={styles.buttons}>
@@ -202,19 +207,27 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
-  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    maxHeight: '90%',
+  },
+  handleBar: {
+    width: 40, height: 4, borderRadius: 2,
+    alignSelf: 'center', marginBottom: 20,
+  },
   title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   typeButtonText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   input: { marginBottom: 16 },
   sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  categoryScroll: { marginBottom: 20 },
   categoryChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1,
+    borderRadius: 20, borderWidth: 1, marginRight: 8,
   },
   categoryChipText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },

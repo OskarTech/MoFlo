@@ -69,13 +69,13 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount.replace(',', '.'));
     const day = parseInt(recurringDay);
-    if (!parsedAmount || parsedAmount <= 0 || !description.trim()) return;
+    if (!parsedAmount || parsedAmount <= 0) return;
     if (!day || day < 1 || day > 31) return;
 
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
       type, amount: parsedAmount, category,
-      description: description.trim(),
+      description: description.trim() || t(`movements.categories.${category}`),
       recurringDay: day, currency: 'EUR',
       isActive: true, createdAt: new Date().toISOString(),
     };
@@ -86,7 +86,6 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const isValid = !!amount &&
     parseFloat(amount.replace(',', '.')) > 0 &&
-    !!description.trim() &&
     parseInt(recurringDay) >= 1 &&
     parseInt(recurringDay) <= 31;
 
@@ -100,6 +99,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('recurring.add')}
             </Text>
@@ -143,18 +143,6 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               left={<TextInput.Affix text="€" />}
             />
 
-            {/* DESCRIPCIÓN */}
-            <TextInput
-              label={t('movements.description')}
-              value={description}
-              onChangeText={setDescription}
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={typeColor}
-              activeOutlineColor={typeColor}
-              placeholder={t('movements.descriptionPlaceholder')}
-            />
-
             {/* DÍA DEL MES */}
             <TextInput
               label={
@@ -185,7 +173,11 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
               {t('movements.category')}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryScroll}
+            >
               {CATEGORIES[type].map((cat) => (
                 <TouchableOpacity
                   key={cat}
