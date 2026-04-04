@@ -41,7 +41,6 @@ yarn-error.*
 /android
 
 # Firebase
-google-services.json
 google-service-info.plist
 
 # Credentials
