@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { 
+  View, StyleSheet, ScrollView, TouchableOpacity, Alert, 
+  KeyboardAvoidingView, Platform 
+} from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -42,82 +45,95 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
 
-        {/* BACK */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={dc.textPrimary} />
-        </TouchableOpacity>
+          {/* BACK */}
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={dc.textPrimary} />
+          </TouchableOpacity>
 
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="lock-open-outline" size={48} color={colors.primary} />
-          </View>
-          <Text style={[styles.title, { color: dc.textPrimary }]}>
-            {t('auth.forgotPassword')}
-          </Text>
-          <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
-            {t('auth.forgotPasswordSubtitle')}
-          </Text>
-        </View>
-
-        {!sent ? (
-          <>
-            <TextInput
-              label={t('auth.email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-            />
-
-            <Button
-              mode="contained"
-              onPress={handleSend}
-              loading={loading}
-              disabled={!email.trim() || loading}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.sendResetEmail')}
-            </Button>
-          </>
-        ) : (
-          <View style={[styles.successCard, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
-            <Text style={[styles.successText, { color: dc.textPrimary }]}>
-              {t('auth.resetEmailSent')}
+          {/* HEADER */}
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="lock-open-outline" size={48} color={colors.primary} />
+            </View>
+            <Text style={[styles.title, { color: dc.textPrimary }]}>
+              {t('auth.forgotPassword')}
             </Text>
-            <Text style={[styles.successSubtext, { color: dc.textSecondary }]}>
-              {t('auth.resetEmailSentSubtitle')}
+            <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
+              {t('auth.forgotPasswordSubtitle')}
             </Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.goBack()}
-              style={[styles.button, { marginTop: 16 }]}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.backToLogin')}
-            </Button>
           </View>
-        )}
-      </ScrollView>
+
+          {!sent ? (
+            <>
+              <TextInput
+                label={t('auth.email')}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                mode="outlined"
+                style={[styles.input, { backgroundColor: inputBg }]}
+                outlineColor={dc.border}
+                activeOutlineColor={colors.primary}
+              />
+
+              <Button
+                mode="contained"
+                onPress={handleSend}
+                loading={loading}
+                disabled={!email.trim() || loading}
+                style={styles.button}
+                contentStyle={styles.buttonContent}
+                buttonColor={colors.primary}
+                textColor="#FFFFFF"
+              >
+                {t('auth.sendResetEmail')}
+              </Button>
+            </>
+          ) : (
+            <View style={[styles.successCard, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+              <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
+              <Text style={[styles.successText, { color: dc.textPrimary }]}>
+                {t('auth.resetEmailSent')}
+              </Text>
+              <Text style={[styles.successSubtext, { color: dc.textSecondary }]}>
+                {t('auth.resetEmailSentSubtitle')}
+              </Text>
+              <Button
+                mode="contained"
+                onPress={() => navigation.goBack()}
+                style={[styles.button, { marginTop: 16 }]}
+                contentStyle={styles.buttonContent}
+                buttonColor={colors.primary}
+                textColor="#FFFFFF"
+              >
+                {t('auth.backToLogin')}
+              </Button>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { flexGrow: 1, padding: 24 },
+  scrollContent: { 
+    flexGrow: 1, 
+    padding: 24,
+    paddingBottom: 40 
+  },
   backButton: { marginBottom: 24, alignSelf: 'flex-start' },
   header: { alignItems: 'center', marginBottom: 32 },
   iconContainer: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },

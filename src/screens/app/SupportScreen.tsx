@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, StyleSheet, ScrollView, Alert,
+  KeyboardAvoidingView, Platform, // <--- Añadido
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -60,8 +61,7 @@ const SupportScreen = () => {
           message: message.trim(),
         },
       };
-      console.log('Payload:', JSON.stringify(payload));
-
+      
       const response = await fetch(
         'https://api.emailjs.com/api/v1.0/email/send',
         {
@@ -74,10 +74,6 @@ const SupportScreen = () => {
         }
       );
 
-      console.log('Status:', response.status);
-      const responseText = await response.text();
-      console.log('Response:', responseText);
-
       if (response.ok) {
         Alert.alert(
           t('settings.supportSuccess'),
@@ -85,6 +81,7 @@ const SupportScreen = () => {
           [{ text: 'OK', onPress: () => { setMessage(''); setEmail(''); } }]
         );
       } else {
+        const responseText = await response.text();
         throw new Error(`${response.status}: ${responseText}`);
       }
     } catch (e: any) {
@@ -101,72 +98,78 @@ const SupportScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('settings.supportTitle')} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        style={{ backgroundColor: dc.background }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // Compensación para el Header
       >
-        <View style={[styles.infoCard, {
-          backgroundColor: colors.primary + '15',
-          borderColor: colors.primary + '30',
-        }]}>
-          <Text style={[styles.infoText, { color: colors.primary }]}>
-            💬 {t('settings.supportInfo')}
-          </Text>
-        </View>
-
-        <TextInput
-          label={t('auth.name')}
-          value={name}
-          onChangeText={setName}
-          mode="outlined"
-          style={[styles.input, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
-        />
-
-        <TextInput
-          label={t('auth.email')}
-          value={email}
-          onChangeText={handleEmailChange}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          mode="outlined"
-          style={[styles.input, { backgroundColor: dc.surface }]}
-          outlineColor={emailError ? colors.expense : dc.border}
-          activeOutlineColor={emailError ? colors.expense : colors.primary}
-          error={!!emailError}
-        />
-        {emailError ? (
-          <Text style={styles.errorText}>{emailError}</Text>
-        ) : null}
-
-        <TextInput
-          label={t('settings.supportMessagePlaceholder')}
-          value={message}
-          onChangeText={setMessage}
-          mode="outlined"
-          multiline
-          numberOfLines={6}
-          style={[styles.input, styles.messageInput, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleSend}
-          loading={sending}
-          disabled={!isValid || sending}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          buttonColor={colors.primary}
-          textColor="#FFFFFF"
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ backgroundColor: dc.background }}
         >
-          {t('settings.supportSend')}
-        </Button>
-      </ScrollView>
+          <View style={[styles.infoCard, {
+            backgroundColor: colors.primary + '15',
+            borderColor: colors.primary + '30',
+          }]}>
+            <Text style={[styles.infoText, { color: colors.primary }]}>
+              💬 {t('settings.supportInfo')}
+            </Text>
+          </View>
+
+          <TextInput
+            label={t('auth.name')}
+            value={name}
+            onChangeText={setName}
+            mode="outlined"
+            style={[styles.input, { backgroundColor: dc.surface }]}
+            outlineColor={dc.border}
+            activeOutlineColor={colors.primary}
+          />
+
+          <TextInput
+            label={t('auth.email')}
+            value={email}
+            onChangeText={handleEmailChange}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            mode="outlined"
+            style={[styles.input, { backgroundColor: dc.surface }]}
+            outlineColor={emailError ? colors.expense : dc.border}
+            activeOutlineColor={emailError ? colors.expense : colors.primary}
+            error={!!emailError}
+          />
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
+
+          <TextInput
+            label={t('settings.supportMessagePlaceholder')}
+            value={message}
+            onChangeText={setMessage}
+            mode="outlined"
+            multiline
+            numberOfLines={6}
+            style={[styles.input, styles.messageInput, { backgroundColor: dc.surface }]}
+            outlineColor={dc.border}
+            activeOutlineColor={colors.primary}
+          />
+
+          <Button
+            mode="contained"
+            onPress={handleSend}
+            loading={sending}
+            disabled={!isValid || sending}
+            style={styles.button}
+            contentStyle={styles.buttonContent}
+            buttonColor={colors.primary}
+            textColor="#FFFFFF"
+          >
+            {t('settings.supportSend')}
+          </Button>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };

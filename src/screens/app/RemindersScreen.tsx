@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
+  KeyboardAvoidingView, // <--- Añadido
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -137,112 +138,118 @@ const AddReminderModal = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.modalSheet, {
           backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-            {t('reminders.add')}
-          </Text>
-
-          <TextInput
-            label={t('reminders.reminderDescription')}
-            value={description}
-            onChangeText={setDescription}
-            mode="outlined"
-            style={[styles.input, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-          />
-
-          <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
-            {t('reminders.reminderDate')}
-          </Text>
-          <TouchableOpacity
-            style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-            <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
-              {formatDate(selectedDate)}
+          
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
+              {t('reminders.add')}
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-          </TouchableOpacity>
 
-          <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
-            {t('reminders.reminderTime')}
-          </Text>
-          <TouchableOpacity
-            style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
-              {formatTime(selectedDate)}
-            </Text>
-            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              minimumDate={new Date()}
-              onChange={(_, date) => {
-                setShowDatePicker(false);
-                if (date) {
-                  const updated = new Date(selectedDate);
-                  updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                  setSelectedDate(updated);
-                }
-              }}
-            />
-          )}
-
-          {showTimePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              is24Hour={i18n.language !== 'en'}
-              onChange={(_, time) => {
-                setShowTimePicker(false);
-                if (time) {
-                  const updated = new Date(selectedDate);
-                  updated.setHours(time.getHours(), time.getMinutes());
-                  setSelectedDate(updated);
-                }
-              }}
-            />
-          )}
-
-          <View style={styles.modalButtons}>
-            <Button
+            <TextInput
+              label={t('reminders.reminderDescription')}
+              value={description}
+              onChangeText={setDescription}
               mode="outlined"
-              onPress={handleDismiss}
-              style={styles.cancelButton}
-              textColor={dc.textSecondary}
+              style={[styles.input, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+            />
+
+            <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
+              {t('reminders.reminderDate')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
+              onPress={() => setShowDatePicker(true)}
             >
-              {t('reminders.cancel')}
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleSave}
-              loading={saving}
-              disabled={!description.trim() || saving}
-              style={styles.saveButton}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
+                {formatDate(selectedDate)}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+            </TouchableOpacity>
+
+            <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
+              {t('reminders.reminderTime')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
+              onPress={() => setShowTimePicker(true)}
             >
-              {t('reminders.save')}
-            </Button>
-          </View>
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
+              <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
+                {formatTime(selectedDate)}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowDatePicker(false);
+                  if (date) {
+                    const updated = new Date(selectedDate);
+                    updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                    setSelectedDate(updated);
+                  }
+                }}
+              />
+            )}
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                is24Hour={i18n.language !== 'en'}
+                onChange={(_, time) => {
+                  setShowTimePicker(false);
+                  if (time) {
+                    const updated = new Date(selectedDate);
+                    updated.setHours(time.getHours(), time.getMinutes());
+                    setSelectedDate(updated);
+                  }
+                }}
+              />
+            )}
+
+            <View style={styles.modalButtons}>
+              <Button
+                mode="outlined"
+                onPress={handleDismiss}
+                style={styles.cancelButton}
+                textColor={dc.textSecondary}
+              >
+                {t('reminders.cancel')}
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleSave}
+                loading={saving}
+                disabled={!description.trim() || saving}
+                style={styles.saveButton}
+                buttonColor={colors.primary}
+                textColor="#FFFFFF"
+              >
+                {t('reminders.save')}
+              </Button>
+            </View>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, Modal, ScrollView, TouchableOpacity,
+  View, 
+  StyleSheet, 
+  Modal, 
+  ScrollView, 
+  TouchableOpacity,
+  KeyboardAvoidingView, // <--- Añadido
+  Platform,             // <--- Añadido
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +53,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
+  
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -74,10 +81,14 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
-      type, amount: parsedAmount, category,
+      type, 
+      amount: parsedAmount, 
+      category,
       description: description.trim() || t(`movements.categories.${category}`),
-      recurringDay: day, currency: 'EUR',
-      isActive: true, createdAt: new Date().toISOString(),
+      recurringDay: day, 
+      currency: 'EUR',
+      isActive: true, 
+      createdAt: new Date().toISOString(),
     };
 
     await addRecurringMovement(newRecurring);
@@ -91,15 +102,22 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
+        
         <View style={[styles.sheet, {
           backgroundColor: sheetBg,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
+          
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('recurring.add')}
             </Text>
@@ -227,7 +245,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

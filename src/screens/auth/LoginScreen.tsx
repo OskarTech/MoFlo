@@ -1,4 +1,13 @@
 import React, { useState } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Image, 
+  KeyboardAvoidingView, 
+  Platform 
+} from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -6,7 +15,6 @@ import { AuthStackParamList } from '../../types/navigation.types';
 import { loginWithEmail, loginWithGoogle } from '../../services/firebase/auth.service';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -64,119 +72,132 @@ const LoginScreen = ({ navigation }: Props) => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        // En iOS usamos padding, en Android el sistema suele manejarlo mejor con 'height' o nada
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        // Si tienes una cabecera de Stack activa, este offset suele ser de unos 60-80
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* LOGO */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../../assets/icon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
-          <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
-            {t('auth.subtitle')}
-          </Text>
-        </View>
-
-        {/* FORMULARIO */}
-        <View style={styles.form}>
-          <TextInput
-            label={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            mode="outlined"
-            style={[styles.input, { backgroundColor: inputBg }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-          />
-
-          <TextInput
-            label={t('auth.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            mode="outlined"
-            style={[styles.input, { backgroundColor: inputBg }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? 'eye-off' : 'eye'}
-                onPress={() => setShowPassword(!showPassword)}
-                color={dc.textSecondary}
-              />
-            }
-          />
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => navigation.navigate('ForgotPassword')}
-          >
-            <Text style={[styles.forgotText, { color: colors.primary }]}>
-              {t('auth.forgotPassword')}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* LOGO */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
+            <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
+              {t('auth.subtitle')}
             </Text>
-          </TouchableOpacity>
-
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            buttonColor={colors.primary}
-            textColor="#FFFFFF"
-          >
-            {t('auth.login')}
-          </Button>
-
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
-            <Text style={[styles.dividerText, { color: dc.textSecondary }]}>o</Text>
-            <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
           </View>
 
-          <Button
-            mode="outlined"
-            onPress={handleGoogleLogin}
-            loading={googleLoading}
-            disabled={googleLoading}
-            style={[styles.googleButton, { borderColor: dc.border }]}
-            contentStyle={styles.buttonContent}
-            icon="google"
-            textColor={dc.textPrimary}
-          >
-            {t('auth.googleLogin')}
-          </Button>
+          {/* FORMULARIO */}
+          <View style={styles.form}>
+            <TextInput
+              label={t('auth.email')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              mode="outlined"
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+            />
 
-          <View style={styles.registerLink}>
-            <Text style={[styles.linkText, { color: dc.textSecondary }]}>
-              {t('auth.noAccount')}{' '}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={[styles.linkAction, { color: colors.primary }]}>
-                {t('auth.register')}
+            <TextInput
+              label={t('auth.password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              mode="outlined"
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowPassword(!showPassword)}
+                  color={dc.textSecondary}
+                />
+              }
+            />
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={[styles.forgotText, { color: colors.primary }]}>
+                {t('auth.forgotPassword')}
               </Text>
             </TouchableOpacity>
+
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+              style={styles.button}
+              contentStyle={styles.buttonContent}
+              buttonColor={colors.primary}
+              textColor="#FFFFFF"
+            >
+              {t('auth.login')}
+            </Button>
+
+            <View style={styles.divider}>
+              <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
+              <Text style={[styles.dividerText, { color: dc.textSecondary }]}>o</Text>
+              <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
+            </View>
+
+            <Button
+              mode="outlined"
+              onPress={handleGoogleLogin}
+              loading={googleLoading}
+              disabled={googleLoading}
+              style={[styles.googleButton, { borderColor: dc.border }]}
+              contentStyle={styles.buttonContent}
+              icon="google"
+              textColor={dc.textPrimary}
+            >
+              {t('auth.googleLogin')}
+            </Button>
+
+            <View style={styles.registerLink}>
+              <Text style={[styles.linkText, { color: dc.textSecondary }]}>
+                {t('auth.noAccount')}{' '}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={[styles.linkAction, { color: colors.primary }]}>
+                  {t('auth.register')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  scrollContent: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    padding: 24,
+    paddingBottom: 40 // Espacio extra inferior para que el último elemento no pegue al teclado
+  },
   header: { alignItems: 'center', marginBottom: 40 },
   logoImage: {
     width: 120,

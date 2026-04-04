@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, Modal, ScrollView, TouchableOpacity,
+  View, 
+  StyleSheet, 
+  Modal, 
+  ScrollView, 
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +54,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const currencySymbol = getCurrencySymbol();
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
+  
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -88,16 +95,31 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      transparent 
+      onRequestClose={handleDismiss}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
+        <TouchableOpacity 
+          style={styles.backdrop} 
+          activeOpacity={1} 
+          onPress={handleDismiss} 
+        />
         <View style={[styles.sheet, {
           backgroundColor: sheetBg,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
+          
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('movements.add')}
             </Text>
@@ -199,7 +221,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -57,98 +58,103 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../../assets/icon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
-        </View>
-
-        {/* FORMULARIO */}
-        <View style={styles.form}>
-          <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-            {t('auth.register')}
-          </Text>
-
-          <TextInput
-            label={t('auth.name')}
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            mode="outlined"
-            style={[styles.input, { backgroundColor: inputBg }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-          />
-
-          <TextInput
-            label={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            mode="outlined"
-            style={[styles.input, { backgroundColor: inputBg }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-          />
-
-          <TextInput
-            label={t('auth.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            mode="outlined"
-            style={[styles.input, { backgroundColor: inputBg }]}
-            outlineColor={dc.border}
-            activeOutlineColor={colors.primary}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? 'eye-off' : 'eye'}
-                onPress={() => setShowPassword(!showPassword)}
-                color={dc.textSecondary}
-              />
-            }
-          />
-
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
-
-          <Button
-            mode="contained"
-            onPress={handleRegister}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            buttonColor={colors.primary}
-            textColor="#FFFFFF"
-          >
-            {t('auth.register')}
-          </Button>
-
-          <View style={styles.loginLink}>
-            <Text style={[styles.linkText, { color: dc.textSecondary }]}>
-              {t('auth.hasAccount')}{' '}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={[styles.linkAction, { color: colors.primary }]}>
-                {t('auth.login')}
-              </Text>
-            </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* HEADER */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
           </View>
-        </View>
-      </ScrollView>
+
+          {/* FORMULARIO */}
+          <View style={styles.form}>
+            <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
+              {t('auth.register')}
+            </Text>
+
+            <TextInput
+              label={t('auth.name')}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              mode="outlined"
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+            />
+
+            <TextInput
+              label={t('auth.email')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              mode="outlined"
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+            />
+
+            <TextInput
+              label={t('auth.password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              mode="outlined"
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={colors.primary}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowPassword(!showPassword)}
+                  color={dc.textSecondary}
+                />
+              }
+            />
+
+            {error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+
+            <Button
+              mode="contained"
+              onPress={handleRegister}
+              loading={loading}
+              disabled={loading}
+              style={styles.button}
+              contentStyle={styles.buttonContent}
+              buttonColor={colors.primary}
+              textColor="#FFFFFF"
+            >
+              {t('auth.register')}
+            </Button>
+
+            <View style={styles.loginLink}>
+              <Text style={[styles.linkText, { color: dc.textSecondary }]}>
+                {t('auth.hasAccount')}{' '}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Text style={[styles.linkAction, { color: colors.primary }]}>
+                  {t('auth.login')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -159,6 +165,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
