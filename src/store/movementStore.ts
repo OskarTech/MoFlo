@@ -215,12 +215,16 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   applyRecurringMovements: async () => {
     const { recurringMovements, movements } = get();
     const now = new Date();
+    const currentDay = now.getDate();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
     const newMovements: Movement[] = [];
 
     for (const recurring of recurringMovements) {
       if (!recurring.isActive) continue;
+
+      // ✅ Solo aplica si hoy es igual o posterior al día configurado
+      if (currentDay < recurring.recurringDay) continue;
 
       const alreadyExists = movements.some(
         (m) =>

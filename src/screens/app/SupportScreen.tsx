@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Alert,
+  View, StyleSheet, ScrollView, Alert,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +15,9 @@ const EMAILJS_SERVICE_ID = 'service_2vvr2ea';
 const EMAILJS_TEMPLATE_ID = 'template_3upiouj';
 const EMAILJS_PUBLIC_KEY = 'bHJges8U4t2BLb61h';
 
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 const SupportScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
@@ -25,15 +25,28 @@ const SupportScreen = () => {
 
   const [name, setName] = useState(displayName ?? '');
   const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
-  const isValid = !!name.trim() && !!email.trim() && !!message.trim();
+  const isValid = !!name.trim() && !!email.trim() && !emailError && !!message.trim();
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (value && !isValidEmail(value)) {
+      setEmailError(t('auth.invalidEmail'));
+    } else {
+      setEmailError('');
+    }
+  };
 
   const handleSend = async () => {
     if (!isValid) return;
+    if (!isValidEmail(email)) {
+      setEmailError(t('auth.invalidEmail'));
+      return;
+    }
     setSending(true);
     try {
       await emailjs.send(
@@ -42,20 +55,16 @@ const SupportScreen = () => {
         {
           name: name.trim(),
           email: email.trim(),
-          title: subject.trim() || t('settings.supportSubjectPlaceholder'),
+          title: `Soporte MoFlo`,
           message: message.trim(),
           app_version: appVersion,
         },
         EMAILJS_PUBLIC_KEY
       );
-
       Alert.alert(
         t('settings.supportSuccess'),
         t('settings.supportSuccessMessage'),
-        [{ text: 'OK', onPress: () => {
-          setSubject('');
-          setMessage('');
-        }}]
+        [{ text: 'OK', onPress: () => setMessage('') }]
       );
     } catch (e) {
       Alert.alert(
@@ -76,7 +85,6 @@ const SupportScreen = () => {
         keyboardShouldPersistTaps="handled"
         style={{ backgroundColor: dc.background }}
       >
-        {/* INFO */}
         <View style={[styles.infoCard, {
           backgroundColor: colors.primary + '15',
           borderColor: colors.primary + '30',
@@ -86,7 +94,6 @@ const SupportScreen = () => {
           </Text>
         </View>
 
-        {/* FORMULARIO */}
         <TextInput
           label={t('auth.name')}
           value={name}
@@ -100,24 +107,18 @@ const SupportScreen = () => {
         <TextInput
           label={t('auth.email')}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
           keyboardType="email-address"
           autoCapitalize="none"
           mode="outlined"
           style={[styles.input, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
+          outlineColor={emailError ? colors.expense : dc.border}
+          activeOutlineColor={emailError ? colors.expense : colors.primary}
+          error={!!emailError}
         />
-
-        <TextInput
-          label={t('settings.supportSubjectPlaceholder')}
-          value={subject}
-          onChangeText={setSubject}
-          mode="outlined"
-          style={[styles.input, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
-        />
+        {emailError ? (
+          <Text style={styles.errorText}>{emailError}</Text>
+        ) : null}
 
         <TextInput
           label={t('settings.supportMessagePlaceholder')}
@@ -150,10 +151,7 @@ const SupportScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  scrollContent: { padding: 16, paddingBottom: 40 },
   infoCard: {
     borderRadius: 16,
     padding: 16,
@@ -165,19 +163,18 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     lineHeight: 22,
   },
-  input: {
+  input: { marginBottom: 12 },
+  messageInput: { minHeight: 120 },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    marginTop: -8,
     marginBottom: 12,
+    marginLeft: 4,
   },
-  messageInput: {
-    minHeight: 120,
-  },
-  button: {
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  buttonContent: {
-    height: 52,
-  },
+  button: { borderRadius: 12, marginTop: 8 },
+  buttonContent: { height: 52 },
 });
 
 export default SupportScreen;

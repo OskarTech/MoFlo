@@ -16,7 +16,6 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { lightTheme, darkTheme } from './src/theme';
 import { useMovementStore } from './src/store/movementStore';
 import { useSettingsStore } from './src/store/settingsStore';
-import { usePinStore } from './src/store/pinStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,7 +23,6 @@ export default function App() {
   const colorScheme = useColorScheme();
   const { loadData, applyRecurringMovements } = useMovementStore();
   const { loadSettings, themeMode } = useSettingsStore();
-  const { loadPin } = usePinStore();
 
   const isDark =
     themeMode === 'dark'
@@ -45,7 +43,6 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       await loadSettings();
-      await loadPin();
       await loadData();
       await applyRecurringMovements();
       if (fontsLoaded) {

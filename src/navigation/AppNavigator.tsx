@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import PinSetupScreen from '../screens/app/PinSetupScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -128,15 +127,6 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="PinSetup"
-          component={PinSetupScreen}
           options={{
             tabBarButton: () => null,
             tabBarLabel: '',

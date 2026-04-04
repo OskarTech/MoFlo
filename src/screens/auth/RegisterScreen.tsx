@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, TouchableOpacity,
+  View, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -57,10 +56,7 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: dc.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={[styles.container, { backgroundColor: dc.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -151,7 +147,7 @@ const RegisterScreen = ({ navigation }: Props) => {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
