@@ -16,7 +16,14 @@
     "errorWeakPassword": "Password must be at least 6 characters",
     "errorUserNotFound": "No account found with this email",
     "errorWrongPassword": "Incorrect password",
-    "errorEmailInUse": "This email is already registered"
+    "errorEmailInUse": "This email is already registered",
+    "errorTooManyRequests": "Too many attempts. Try again later.",
+    "errorGeneral": "An error occurred. Please try again.",
+    "forgotPasswordSubtitle": "Enter your email and we'll send you a reset link.",
+    "sendResetEmail": "Send reset email",
+    "resetEmailSent": "Email sent!",
+    "resetEmailSentSubtitle": "Check your inbox and follow the instructions to reset your password.",
+    "backToLogin": "Back to login"    
   },
   "home": {
     "balance": "Current Balance",
@@ -150,6 +157,10 @@
   "shareAppSubtitle": "Invite friends to MoFlo",
   "support": "Contact support",
   "supportSubtitle": "Questions or suggestions?",
+  "notifMovements": "Movement reminders",  
+  "notifications": "Notifications",   
+  "notifMovementsSubtitle": "Daily reminder to add your movements",
+  "notifEmail": "Email notifications",
   "version": "Version",
   "madeWith": "Developed by OskarTech",
   "supportTitle": "Contact support",
@@ -192,17 +203,18 @@
     }
   },
   "tabs": {
-  "profile": "Profile",
   "home": "Home",
-  "movements": "Movements",
+  "historial": "History",
   "annual": "Annual",
-  "settings": "Settings"
+  "recurring": "Fixed",
+  "reminders": "Reminders"
   },
   "header": {
   "reminders": "Reminders",
   "settings": "Settings",
   "home": "Home",
   "movements": "Movements",
+  "historial": "History",   
   "annual": "Annual",
   "profile": "Profile",
   "settings_screen": "Settings"

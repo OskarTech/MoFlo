@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, StyleSheet, Modal, ScrollView,
-  TouchableOpacity, Platform,
+  View, StyleSheet, Modal, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +44,6 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const [type, setType] = useState<MovementType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<MovementCategory>('housing');
-  const [description, setDescription] = useState('');
 
   const currencySymbol = getCurrencySymbol();
   const typeColor = type === 'income' ? colors.income
@@ -59,7 +57,6 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
     setType('expense');
     setAmount('');
     setCategory('housing');
-    setDescription('');
     onDismiss();
   };
 
@@ -70,17 +67,17 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount.replace(',', '.'));
-    if (!parsedAmount || parsedAmount <= 0 || !description.trim()) return;
+    if (!parsedAmount || parsedAmount <= 0) return;
 
     const movement: Movement = {
       id: Date.now().toString(),
       type,
       amount: parsedAmount,
       category,
-      description: description.trim(),
+      description: t(`movements.categories.${category}`),
       date: new Date().toISOString(),
       isRecurring: false,
-      currency: getCurrencySymbol(),
+      currency: currencySymbol,
       createdAt: new Date().toISOString(),
     };
 
@@ -88,17 +85,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
     handleDismiss();
   };
 
-  const isValid = !!amount &&
-    parseFloat(amount.replace(',', '.')) > 0 &&
-    !!description.trim();
+  const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleDismiss}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.sheet, {
@@ -150,23 +140,11 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
               left={<TextInput.Affix text={currencySymbol} />}
             />
 
-            {/* DESCRIPCIÓN */}
-            <TextInput
-              label={t('movements.description')}
-              value={description}
-              onChangeText={setDescription}
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={typeColor}
-              activeOutlineColor={typeColor}
-              placeholder={t('movements.descriptionPlaceholder')}
-            />
-
             {/* CATEGORÍAS */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
               {t('movements.category')}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            <View style={styles.categoryGrid}>
               {CATEGORIES[type].map((cat) => (
                 <TouchableOpacity
                   key={cat}
@@ -191,7 +169,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
 
             {/* BOTONES */}
             <View style={styles.buttons}>
@@ -224,36 +202,19 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    maxHeight: '90%',
-  },
-  handleBar: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: 'Poppins_700Bold',
-    marginBottom: 20,
-  },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
+  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  typeButton: {
-    flex: 1, paddingVertical: 10,
-    borderRadius: 12, alignItems: 'center',
-  },
+  typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   typeButtonText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   input: { marginBottom: 16 },
-  sectionLabel: {
-    fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10,
-  },
-  categoryScroll: { marginBottom: 20 },
+  sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   categoryChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, marginRight: 8,
+    borderRadius: 20, borderWidth: 1,
   },
   categoryChipText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },

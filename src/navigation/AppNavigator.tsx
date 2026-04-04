@@ -6,12 +6,12 @@ import { useNavigationState } from '@react-navigation/native';
 import HomeScreen from '../screens/app/HomeScreen';
 import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
-import ProfileScreen from '../screens/app/ProfileScreen';
-import SettingsScreen from '../screens/app/SettingsScreen';
 import RecurringScreen from '../screens/app/RecurringScreen';
+import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
+import AddRecurringModal from '../components/movements/AddRecurringModal';
 import AddTabButton from '../components/common/AddTabButton';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
@@ -23,22 +23,19 @@ const Tab = createBottomTabNavigator();
 const AppNavigator = () => {
   const { t } = useTranslation();
   const { isDark } = useTheme();
-  const [movementModalVisible, setMovementModalVisible] = useState(false);
-  const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
-
-  // Detecta la tab activa
+  const [movementModalVisible, setMovementModalVisible] = useState(false);
+  const [recurringModalVisible, setRecurringModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('HomeTab');
 
   const tabBarBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const tabBarBorder = isDark ? colors.borderDark : '#E5E7EB';
   const activeColor = isDark ? colors.primaryLight : colors.primary;
   const inactiveColor = isDark ? '#FFFFFF' : '#9CA3AF';
-  const [recurringModalVisible, setRecurringModalVisible] = useState(false);
 
   const handleFabPress = () => {
     if (activeTab === 'Reminders') {
-      setReminderModalVisible(true);
+      // No FAB para reminders desde aquí
     } else if (activeTab === 'Recurring') {
       setRecurringModalVisible(true);
     } else {
@@ -69,12 +66,12 @@ const AppNavigator = () => {
             let iconName: keyof typeof Ionicons.glyphMap;
             if (route.name === 'HomeTab') {
               iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'MovementsTab') {
-              iconName = focused ? 'list' : 'list-outline';
+            } else if (route.name === 'HistorialTab') {
+              iconName = focused ? 'time' : 'time-outline';
             } else if (route.name === 'AnnualTab') {
               iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-            } else if (route.name === 'ProfileTab') {
-              iconName = focused ? 'person' : 'person-outline';
+            } else if (route.name === 'RecurringTab') {
+              iconName = focused ? 'repeat' : 'repeat-outline';
             } else {
               iconName = 'add';
             }
@@ -91,16 +88,15 @@ const AppNavigator = () => {
           },
         }}
       >
-        {/* TABS VISIBLES */}
         <Tab.Screen
           name="HomeTab"
           component={HomeScreen}
           options={{ tabBarLabel: t('tabs.home') }}
         />
         <Tab.Screen
-          name="MovementsTab"
+          name="HistorialTab"
           component={MovementsScreen}
-          options={{ tabBarLabel: t('tabs.movements') }}
+          options={{ tabBarLabel: t('tabs.historial') }}
         />
         <Tab.Screen
           name="AddMovement"
@@ -118,9 +114,15 @@ const AppNavigator = () => {
           options={{ tabBarLabel: t('tabs.annual') }}
         />
         <Tab.Screen
-          name="ProfileTab"
-          component={ProfileScreen}
-          options={{ tabBarLabel: t('tabs.profile') }}
+          name="RecurringTab"
+          component={(props: any) => (
+            <RecurringScreen
+              {...props}
+              modalVisible={recurringModalVisible}
+              onModalDismiss={() => setRecurringModalVisible(false)}
+            />
+          )}
+          options={{ tabBarLabel: t('tabs.recurring') }}
         />
 
         {/* TABS OCULTOS */}
@@ -134,28 +136,9 @@ const AppNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="Recurring"
-          component={(props: any) => (
-            <RecurringScreen
-              {...props}
-              modalVisible={recurringModalVisible}
-              onModalDismiss={() => setRecurringModalVisible(false)}
-            />
-          )}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
           name="Reminders"
           component={(props: any) => (
-            <RemindersScreen
-              {...props}
-              modalVisible={reminderModalVisible}
-              onModalDismiss={() => setReminderModalVisible(false)}
-            />
+            <RemindersScreen {...props} />
           )}
           options={{
             tabBarButton: () => null,
@@ -174,14 +157,14 @@ const AppNavigator = () => {
         />
       </Tab.Navigator>
 
-      {/* Modal de movimientos — todas las pantallas excepto Recordatorios */}
       <AddMovementModal
         visible={movementModalVisible}
         onDismiss={() => setMovementModalVisible(false)}
       />
-
-      {/* Modal de recordatorios — solo en pantalla Recordatorios */}
-      {/* Importamos el modal directamente desde RemindersScreen */}
+      <AddRecurringModal
+        visible={recurringModalVisible}
+        onDismiss={() => setRecurringModalVisible(false)}
+      />
     </>
   );
 };

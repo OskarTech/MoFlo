@@ -16,7 +16,14 @@
     "errorWeakPassword": "Hasło musi mieć co najmniej 6 znaków",
     "errorUserNotFound": "Nie znaleziono konta z tym adresem e-mail",
     "errorWrongPassword": "Nieprawidłowe hasło",
-    "errorEmailInUse": "Ten adres e-mail jest już zarejestrowany"
+    "errorEmailInUse": "Ten adres e-mail jest już zarejestrowany",
+    "errorTooManyRequests": "Zbyt wiele prób. Spróbuj później.",
+    "errorGeneral": "Wystąpił błąd. Spróbuj ponownie.",
+    "forgotPasswordSubtitle": "Podaj swój e-mail, a wyślemy link do resetowania hasła.",
+    "sendResetEmail": "Wyślij e-mail resetujący",
+    "resetEmailSent": "E-mail wysłany!",
+    "resetEmailSentSubtitle": "Sprawdź swoją skrzynkę i postępuj zgodnie z instrukcjami, aby zresetować hasło.",
+    "backToLogin": "Powrót do logowania"
   },
   "home": {
     "balance": "Aktualny Bilans",
@@ -164,6 +171,10 @@
   "profile": "Profil",
   "theme": "Wygląd",
   "themeAuto": "Automatyczny",
+  "notifications": "Powiadomienia",   
+  "notifMovements": "Przypomnienia o ruchach", 
+  "notifMovementsSubtitle": "Codzienne przypomnienie o dodaniu ruchów",
+  "notifEmail": "Powiadomienia email", 
   "themeLight": "Zawsze jasny",
   "themeDark": "Zawsze ciemny",
   "selectTheme": "Wybierz wygląd",
@@ -193,10 +204,10 @@
   },
   "tabs": {
   "home": "Główna",
-  "profile": "Profil",
-  "movements": "Transakcje",
+  "historial": "Historia",
   "annual": "Roczne",
-  "settings": "Ustawienia"
+  "recurring": "Stałe",
+  "reminders": "Przypomnienia"
   },
   "header": {
   "reminders": "Przypomnienia",
@@ -205,6 +216,7 @@
   "movements": "Transakcje",
   "annual": "Roczne",
   "profile": "Profil",
+  "historial": "Historia",
   "settings_screen": "Ustawienia"
   },
   "reminders": {

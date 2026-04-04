@@ -9,6 +9,7 @@ import { AuthStackParamList } from '../../types/navigation.types';
 import { loginWithEmail, loginWithGoogle } from '../../services/firebase/auth.service';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -36,13 +37,16 @@ const LoginScreen = ({ navigation }: Props) => {
     } catch (e: any) {
       switch (e.code) {
         case 'auth/user-not-found':
+        case 'auth/invalid-credential':
           setError(t('auth.errorUserNotFound')); break;
         case 'auth/wrong-password':
           setError(t('auth.errorWrongPassword')); break;
         case 'auth/invalid-email':
           setError(t('auth.errorInvalidEmail')); break;
+        case 'auth/too-many-requests':
+          setError(t('auth.errorTooManyRequests')); break;
         default:
-          setError(e.message);
+          setError(t('auth.errorGeneral'));
       }
     } finally {
       setLoading(false);
@@ -55,7 +59,7 @@ const LoginScreen = ({ navigation }: Props) => {
     try {
       await loginWithGoogle();
     } catch (e: any) {
-      setError(e.message);
+      setError(t('auth.errorGeneral'));
     } finally {
       setGoogleLoading(false);
     }
@@ -68,10 +72,10 @@ const LoginScreen = ({ navigation }: Props) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER */}
+        {/* LOGO */}
         <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: '#A3E635' + '30' }]}>
-            <Text style={styles.logoEmoji}>📈</Text>
+          <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
+            <Ionicons name="wallet" size={48} color="#FFFFFF" />
           </View>
           <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
           <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
@@ -112,11 +116,12 @@ const LoginScreen = ({ navigation }: Props) => {
             }
           />
 
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
             <Text style={[styles.forgotText, { color: colors.primary }]}>
               {t('auth.forgotPassword')}
             </Text>
@@ -172,80 +177,28 @@ const LoginScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  header: { alignItems: 'center', marginBottom: 40 },
   logoContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    width: 96, height: 96, borderRadius: 28,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  logoEmoji: { fontSize: 44 },
-  appName: {
-    fontSize: 32,
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-  },
+  appName: { fontSize: 32, fontFamily: 'Poppins_700Bold', letterSpacing: 1, marginBottom: 4 },
+  subtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
   form: { gap: 8 },
   input: { marginBottom: 4 },
-  errorText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    color: colors.expense,
-    marginBottom: 4,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 8,
-  },
-  forgotText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_500Medium',
-  },
-  button: {
-    borderRadius: 12,
-    marginTop: 4,
-  },
+  errorText: { fontSize: 13, fontFamily: 'Poppins_400Regular', color: colors.expense, marginBottom: 4 },
+  forgotPassword: { alignSelf: 'flex-end', marginBottom: 8 },
+  forgotText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  button: { borderRadius: 12, marginTop: 4 },
   buttonContent: { height: 52 },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
   dividerLine: { flex: 1, height: 0.5 },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-  },
+  dividerText: { marginHorizontal: 12, fontSize: 13, fontFamily: 'Poppins_400Regular' },
   googleButton: { borderRadius: 12 },
-  registerLink: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  linkText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-  },
-  linkAction: {
-    fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
-  },
+  registerLink: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  linkText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
+  linkAction: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default LoginScreen;

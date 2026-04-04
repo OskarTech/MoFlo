@@ -1,6 +1,7 @@
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 export type AppTabParamList = {
@@ -17,3 +18,4 @@ export type RootStackParamList = {
   Settings: undefined;
   Recurring: undefined;
 };
+

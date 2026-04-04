@@ -16,7 +16,14 @@
     "errorWeakPassword": "La contraseña debe tener al menos 6 caracteres",
     "errorUserNotFound": "No existe cuenta con este correo",
     "errorWrongPassword": "Contraseña incorrecta",
-    "errorEmailInUse": "Este correo ya está registrado"
+    "errorEmailInUse": "Este correo ya está registrado",
+    "errorTooManyRequests": "Demasiados intentos. Prueba más tarde.",
+    "errorGeneral": "Ha ocurrido un error. Inténtalo de nuevo.",
+    "forgotPasswordSubtitle": "Introduce tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+    "sendResetEmail": "Enviar correo de recuperación",
+    "resetEmailSent": "¡Correo enviado!",
+    "resetEmailSentSubtitle": "Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "home": {
     "balance": "Balance Actual",
@@ -118,6 +125,10 @@
   "email": "Correo electrónico",
   "memberSince": "Miembro desde",
   "preferences": "Preferencias",
+  "notifications": "Notificaciones",  
+  "notifMovements": "Recordatorios de movimientos",
+  "notifMovementsSubtitle": "Recordatorio diario para añadir tus movimientos",
+  "notifEmail": "Notificaciones por email",
   "account": "Cuenta",
   "changePassword": "Cambiar contraseña",
   "deleteAccount": "Eliminar cuenta",
@@ -193,16 +204,17 @@
   },
   "tabs": {
   "home": "Inicio",
-  "profile": "Perfil",
-  "movements": "Movimientos",
+  "historial": "Historial",
   "annual": "Anual",
-  "settings": "Ajustes"
+  "recurring": "Fijos",
+  "reminders": "Recordatorios"
   },
   "header": {
   "reminders": "Recordatorios",
   "settings": "Ajustes",
   "home": "Inicio",
   "movements": "Movimientos",
+  "historial": "Historial",
   "annual": "Anual",
   "profile": "Perfil",
   "settings_screen": "Ajustes"
