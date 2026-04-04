@@ -48,41 +48,50 @@ const SupportScreen = () => {
     }
     setSending(true);
     try {
+      console.log('Enviando email...');
+      const payload = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+          name: name.trim(),
+          email: email.trim(),
+          title: 'Soporte MoFlo',
+          message: message.trim(),
+        },
+      };
+      console.log('Payload:', JSON.stringify(payload));
+
       const response = await fetch(
         'https://api.emailjs.com/api/v1.0/email/send',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'origin': 'http://localhost',
           },
-          body: JSON.stringify({
-            service_id: 'service_2vvr2ea',
-            template_id: 'template_3upiouj',
-            user_id: 'bHJges8U4t2BLb61h',
-            template_params: {
-              name: name.trim(),
-              email: email.trim(),
-              title: 'Soporte MoFlo',
-              message: message.trim(),
-              app_version: appVersion,
-            },
-          }),
+          body: JSON.stringify(payload),
         }
       );
+
+      console.log('Status:', response.status);
+      const responseText = await response.text();
+      console.log('Response:', responseText);
 
       if (response.ok) {
         Alert.alert(
           t('settings.supportSuccess'),
           t('settings.supportSuccessMessage'),
-          [{ text: 'OK', onPress: () => setMessage('') }]
+          [{ text: 'OK', onPress: () => { setMessage(''); setEmail(''); } }]
         );
       } else {
-        throw new Error('Email send failed');
+        throw new Error(`${response.status}: ${responseText}`);
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error('Email error:', e.message);
       Alert.alert(
         t('settings.supportError'),
-        t('settings.supportErrorMessage')
+        e.message
       );
     } finally {
       setSending(false);
