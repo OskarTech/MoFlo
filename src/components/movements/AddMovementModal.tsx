@@ -108,7 +108,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {t('movements.add')}
+              {t('movements.addMovement')}
             </Text>
 
             {/* TIPO */}
