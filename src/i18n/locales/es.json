@@ -47,7 +47,7 @@
     "month_11": "Diciembre"
   },
   "movements": {
-  "addMovement": "Añadir Movimiento",
+  "add": "Añadir Movimiento",
   "type": "Tipo",
   "income": "Ingreso",
   "expense": "Gasto",

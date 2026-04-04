@@ -10,7 +10,6 @@ import { useMovementStore } from '../../store/movementStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { RecurringMovement } from '../../types';
-import AddRecurringModal from '../../components/movements/AddRecurringModal';
 import AppHeader from '../../components/common/AppHeader';
 
 const RecurringCard = ({
@@ -104,13 +103,6 @@ const RecurringScreen = ({
         )}
       </ScrollView>
 
-      <AddRecurringModal
-        visible={modalVisible || internalModalVisible}
-        onDismiss={() => {
-          setInternalModalVisible(false);
-          onModalDismiss?.();
-        }}
-      />
     </View>
   );
 };

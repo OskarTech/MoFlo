@@ -47,7 +47,7 @@
     "month_11": "Grudzień"
   },
   "movements": {
-  "addMovement": "Dodaj Transakcję",
+  "add": "Dodaj Transakcję",
   "type": "Typ",
   "income": "Przychód",
   "expense": "Wydatek",

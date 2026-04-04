@@ -15,8 +15,7 @@ import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import { Reminder } from '../../types';
 import i18n from '../../i18n';
-
-const STORAGE_KEY = '@moflo_reminders';
+import auth from '@react-native-firebase/auth';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -258,6 +257,8 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   const { colors: dc } = useTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [internalModalVisible, setInternalModalVisible] = useState(false);
+  const uid = auth().currentUser?.uid ?? 'guest';
+  const STORAGE_KEY = `@moflo_reminders_${uid}`;
 
   useEffect(() => {
     loadReminders();
