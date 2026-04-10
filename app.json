@@ -59,7 +59,8 @@
         }
       ],
       "expo-mail-composer",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./withModularHeaders"
     ],
     "extra": {
       "eas": {
