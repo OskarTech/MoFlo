@@ -47,4 +47,4 @@ google-services.json
 # Credentials
 credentials.json
 *.keystore
-*.jks
+*.jksGoogleService-Info.plist
