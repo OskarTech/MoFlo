@@ -53,14 +53,16 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static"
+          },
           "android": {
             "googleServicesFile": "./google-services.json"
           }
         }
       ],
       "expo-mail-composer",
-      "@react-native-community/datetimepicker",
-      "./withModularHeaders"
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
