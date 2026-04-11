@@ -18,12 +18,11 @@ const BalanceCard = ({
   const { t } = useTranslation();
   const { isDark } = useTheme();
 
-  // Color dinámico según el balance
   const bgColor = balance > 0
-    ? isDark ? '#065F46' : '#166534'  // Verde — positivo
+    ? isDark ? '#065F46' : '#166534'
     : balance < 0
-    ? isDark ? '#7F1D1D' : '#991B1B'  // Rojo — negativo
-    : isDark ? '#1F2937' : '#1F2937'; // Gris — cero
+    ? isDark ? '#7F1D1D' : '#991B1B'
+    : isDark ? '#1F2937' : '#1F2937';
 
   return (
     <View style={[styles.balanceCard, { backgroundColor: bgColor }]}>
@@ -61,6 +60,7 @@ const SummaryCard = ({
 };
 
 const MovementRow = ({ movement }: { movement: Movement }) => {
+  const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
@@ -77,7 +77,7 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
       </View>
       <View style={styles.movementInfo}>
         <Text style={[styles.movementDescription, { color: dc.textPrimary }]} numberOfLines={1}>
-          {movement.description}
+          {t(`movements.categories.${movement.category}`)}
         </Text>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
           {new Date(movement.date).toLocaleDateString()}
@@ -167,128 +167,74 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   balanceCard: {
-    margin: 16,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
+    margin: 16, borderRadius: 24, padding: 28,
+    alignItems: 'center', overflow: 'hidden',
+    elevation: 8, shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.3, shadowRadius: 8,
   },
   balanceAccent: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(22,101,52,0.2)',
-    top: -80,
-    right: -60,
+    position: 'absolute', width: 200, height: 200,
+    borderRadius: 100, backgroundColor: 'rgba(22,101,52,0.2)',
+    top: -80, right: -60,
   },
   balanceMonth: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 8,
+    color: 'rgba(255,255,255,0.6)', fontSize: 12,
+    fontFamily: 'Poppins_500Medium', textTransform: 'uppercase',
+    letterSpacing: 1.5, marginBottom: 8,
   },
   balanceLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    marginBottom: 4,
+    color: 'rgba(255,255,255,0.6)', fontSize: 13,
+    fontFamily: 'Poppins_400Regular', marginBottom: 4,
   },
   balanceAmount: {
-    color: '#FFFFFF',
-    fontSize: 40,
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: -1,
+    color: '#FFFFFF', fontSize: 40,
+    fontFamily: 'Poppins_700Bold', letterSpacing: -1,
   },
   summaryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 24,
+    flexDirection: 'row', paddingHorizontal: 16,
+    gap: 10, marginBottom: 24,
   },
   summaryCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 0.5,
+    flex: 1, borderRadius: 16, padding: 14,
+    alignItems: 'center', borderWidth: 0.5,
   },
   summaryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
   },
   summaryAmount: {
-    fontSize: 13,
-    fontFamily: 'Poppins_600SemiBold',
-    textAlign: 'center',
+    fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center',
   },
   summaryLabel: {
-    fontSize: 10,
-    fontFamily: 'Poppins_400Regular',
-    marginTop: 2,
-    textAlign: 'center',
+    fontSize: 10, fontFamily: 'Poppins_400Regular',
+    marginTop: 2, textAlign: 'center',
   },
   recentSection: { paddingHorizontal: 16 },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 16,
+    fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16,
   },
   movementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 0.5,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
   },
   movementIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    width: 42, height: 42, borderRadius: 21,
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
   movementInfo: { flex: 1 },
   movementDescription: {
-    fontSize: 14,
-    fontFamily: 'Poppins_500Medium',
+    fontSize: 14, fontFamily: 'Poppins_500Medium',
   },
   movementDate: {
-    fontSize: 11,
-    fontFamily: 'Poppins_400Regular',
-    marginTop: 2,
+    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2,
   },
-  movementAmount: {
-    fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
+  movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  emptyState: { alignItems: 'center', paddingVertical: 48 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 8,
-  },
+  emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
   emptySubtext: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
+    fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center',
   },
 });
 

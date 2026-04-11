@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Alert, Linking, Share,
   Switch, Modal, FlatList,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -85,7 +85,11 @@ const SelectModal = ({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={onDismiss}
+        />
         <View style={[styles.modalSheet, {
           backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
         }]}>
@@ -135,14 +139,23 @@ const SettingsScreen = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(displayName ?? '');
 
   useEffect(() => {
     loadNotifSettings();
-  }, []);
+    setNameInput(displayName ?? '');
+  }, [displayName]);
 
   const loadNotifSettings = async () => {
     const val = await AsyncStorage.getItem(NOTIF_KEY);
     setDailyNotifEnabled(val === 'true');
+  };
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) return;
+    await saveSettings({ displayName: nameInput.trim() });
+    setEditingName(false);
   };
 
   const handleDailyNotif = async (enabled: boolean) => {
@@ -210,33 +223,24 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Limpia AsyncStorage
               await AsyncStorage.multiRemove([
                 '@moflo_movements',
                 '@moflo_recurring',
               ]);
-
-              // Resetea el store
               useMovementStore.getState().resetStore();
-
-              // Elimina de Firestore
               const uid = auth().currentUser?.uid;
               if (uid) {
                 const batch = firestore().batch();
-
                 const movementsSnap = await firestore()
                   .collection('users').doc(uid)
                   .collection('movements').get();
                 movementsSnap.docs.forEach((doc) => batch.delete(doc.ref));
-
                 const recurringSnap = await firestore()
                   .collection('users').doc(uid)
                   .collection('recurring').get();
                 recurringSnap.docs.forEach((doc) => batch.delete(doc.ref));
-
                 await batch.commit();
               }
-
               Alert.alert('✅', t('settings.deleteDataSuccess'));
             } catch (e) {
               Alert.alert('Error', 'No se pudieron eliminar los datos.');
@@ -290,9 +294,34 @@ const SettingsScreen = () => {
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: dc.textPrimary }]}>
-              {displayName || t('settings.displayName')}
-            </Text>
+            {editingName ? (
+              <View style={styles.nameEditRow}>
+                <TextInput
+                  value={nameInput}
+                  onChangeText={setNameInput}
+                  mode="flat"
+                  style={[styles.nameEditInput, { backgroundColor: 'transparent' }]}
+                  textColor={dc.textPrimary}
+                  underlineColor={colors.primary}
+                  activeUnderlineColor={colors.primary}
+                  autoFocus
+                  onSubmitEditing={handleSaveName}
+                />
+                <TouchableOpacity onPress={handleSaveName} style={styles.saveNameButton}>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.nameRow}
+                onPress={() => setEditingName(true)}
+              >
+                <Text style={[styles.profileName, { color: dc.textPrimary }]}>
+                  {displayName || t('settings.displayName')}
+                </Text>
+                <Ionicons name="pencil-outline" size={16} color={dc.textSecondary} />
+              </TouchableOpacity>
+            )}
             <Text style={[styles.profileEmail, { color: dc.textSecondary }]}>
               {user?.email ?? '—'}
             </Text>
@@ -452,6 +481,17 @@ const styles = StyleSheet.create({
     fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF',
   },
   profileInfo: { flex: 1 },
+  nameEditRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  nameEditInput: {
+    flex: 1, fontSize: 16,
+    fontFamily: 'Poppins_600SemiBold', height: 40,
+  },
+  saveNameButton: { padding: 4 },
+  nameRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
   profileName: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
   profileEmail: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   sectionLabel: {

@@ -109,6 +109,8 @@
   "title": "Podsumowanie Roczne",
   "year": "Rok",
   "totalIncome": "Łączne Przychody",
+  "tapMonthHint": "Dotknij miesiąc, aby zobaczyć szczegóły",
+  "allYear": "Cały rok",
   "totalExpenses": "Łączne Wydatki",
   "totalSavings": "Łączne Oszczędności",
   "netBalance": "Bilans Netto",
