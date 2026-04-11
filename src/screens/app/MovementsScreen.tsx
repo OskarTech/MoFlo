@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View, StyleSheet, FlatList, TouchableOpacity, Alert,
+  View, StyleSheet, FlatList, TouchableOpacity,
+  Alert, ScrollView,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -13,32 +14,6 @@ import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 type FilterType = 'all' | MovementType;
-
-const FilterChip = ({
-  label, active, color, onPress,
-}: {
-  label: string; active: boolean; color: string; onPress: () => void;
-}) => {
-  const { colors: dc } = useTheme();
-  return (
-    <TouchableOpacity
-      style={[
-        styles.filterChip,
-        { backgroundColor: dc.surface, borderColor: dc.border },
-        active && { backgroundColor: color, borderColor: color },
-      ]}
-      onPress={onPress}
-    >
-      <Text style={[
-        styles.filterChipText,
-        { color: dc.textSecondary },
-        active && styles.filterChipTextActive,
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-};
 
 const MovementRow = ({
   movement, onDelete,
@@ -101,6 +76,8 @@ const MovementsScreen = () => {
   const { movements, deleteMovement } = useMovementStore();
   const { colors: dc } = useTheme();
   const [filter, setFilter] = useState<FilterType>('all');
+  const scrollRef = useRef<ScrollView>(null);
+  const filterPositions = useRef<{ [key: string]: number }>({});
 
   const filteredMovements = [...movements]
     .filter((m) => filter === 'all' || m.type === filter)
@@ -113,6 +90,12 @@ const MovementsScreen = () => {
     { key: 'saving', label: t('movementsList.savings'), color: colors.savings },
   ];
 
+  const handleFilterPress = (key: FilterType) => {
+    setFilter(key);
+    const x = filterPositions.current[key] ?? 0;
+    scrollRef.current?.scrollTo({ x: x - 16, animated: true });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.historial')} />
@@ -122,17 +105,38 @@ const MovementsScreen = () => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View style={styles.filtersRow}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
+          >
             {filters.map((f) => (
-              <FilterChip
+              <TouchableOpacity
                 key={f.key}
-                label={f.label}
-                active={filter === f.key}
-                color={f.color}
-                onPress={() => setFilter(f.key)}
-              />
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: dc.surface, borderColor: dc.border },
+                  filter === f.key && {
+                    backgroundColor: f.color,
+                    borderColor: f.color,
+                  },
+                ]}
+                onLayout={(e) => {
+                  filterPositions.current[f.key] = e.nativeEvent.layout.x;
+                }}
+                onPress={() => handleFilterPress(f.key)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  { color: dc.textSecondary },
+                  filter === f.key && styles.filterChipTextActive,
+                ]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         }
         renderItem={({ item }) => (
           <MovementRow movement={item} onDelete={deleteMovement} />
@@ -153,27 +157,49 @@ const MovementsScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   filtersRow: {
-    flexDirection: 'row', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 12, flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    flexDirection: 'row',
   },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5 },
-  filterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  filterChipTextActive: { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 0.5,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+  },
   listContent: { paddingHorizontal: 16, paddingBottom: 100 },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
   },
-  movementIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  movementIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+  },
   movementInfo: { flex: 1 },
   movementTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  movementCategory: { fontSize: 14, fontFamily: 'Poppins_500Medium', flexShrink: 1 },
-  recurringBadge: {
-    backgroundColor: colors.primary + '15', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 2,
+  movementCategory: {
+    fontSize: 14, fontFamily: 'Poppins_500Medium', flexShrink: 1,
   },
-  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 3 },
-  movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8 },
+  recurringBadge: {
+    backgroundColor: colors.primary + '15',
+    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  movementDate: {
+    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 3,
+  },
+  movementAmount: {
+    fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8,
+  },
   emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },
