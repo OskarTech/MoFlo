@@ -54,6 +54,7 @@
         "expo-build-properties",
         {
           "ios": {
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage"],
             "useFrameworks": "static"
           },
           "android": {
@@ -62,7 +63,7 @@
         }
       ],
       "expo-mail-composer",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
     ],
     "extra": {
       "eas": {
