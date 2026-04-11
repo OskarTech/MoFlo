@@ -110,7 +110,7 @@
   "title": "Annual Summary",
   "year": "Year",
   "totalIncome": "Total Income",
-  "tapMonthHint": "Tap a month to see details",
+  "tapMonthHint": "Use the arrows above to filter by month",
   "allYear": "Full year",
   "totalExpenses": "Total Expenses",
   "totalSavings": "Total Savings",

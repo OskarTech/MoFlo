@@ -52,7 +52,9 @@ const AnnualScreen = () => {
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
 
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(
+    new Date().getMonth() + 1
+  );
 
   const annualData = getAnnualSummary();
 
@@ -110,12 +112,12 @@ const AnnualScreen = () => {
     {
       value: m.income,
       label: SHORT_MONTHS[i],
-      frontColor: selectedMonth === i + 1 ? colors.primary : colors.income,
+      frontColor: colors.income,
       spacing: 2,
     },
     {
       value: m.expense,
-      frontColor: selectedMonth === i + 1 ? colors.primaryDark : colors.expense,
+      frontColor: colors.expense,
       spacing: 12,
     },
   ]);

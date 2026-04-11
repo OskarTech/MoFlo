@@ -108,7 +108,7 @@
   },
   "annual": {
   "title": "Resumen Anual",
-  "tapMonthHint": "Toca un mes para ver el detalle",
+  "tapMonthHint": "Usa las flechas de arriba para filtrar por mes",
   "allYear": "Todo el año",
   "year": "Año",
   "totalIncome": "Ingresos Totales",
