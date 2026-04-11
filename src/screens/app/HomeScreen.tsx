@@ -26,7 +26,6 @@ const BalanceCard = ({
 
   return (
     <View style={[styles.balanceCard, { backgroundColor: bgColor }]}>
-      <View style={styles.balanceAccent} />
       <Text style={styles.balanceMonth}>
         {t(`home.month_${month - 1}`)} {year}
       </Text>
@@ -172,11 +171,6 @@ const styles = StyleSheet.create({
     elevation: 8, shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8,
-  },
-  balanceAccent: {
-    position: 'absolute', width: 200, height: 200,
-    borderRadius: 100, backgroundColor: 'rgba(22,101,52,0.2)',
-    top: -80, right: -60,
   },
   balanceMonth: {
     color: 'rgba(255,255,255,0.6)', fontSize: 12,
