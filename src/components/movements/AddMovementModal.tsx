@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  TouchableOpacity,
-  Keyboard,
-  Animated,
-  Platform,
+  View, StyleSheet, Modal, ScrollView,
+  TouchableOpacity, Keyboard, Animated, Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -52,12 +46,11 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<MovementCategory>('housing');
 
-  // ─── Keyboard fix ────────────────────────────────────────────────────────────
   const sheetOffset = useRef(new Animated.Value(0)).current;
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const categoryPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
-    // En iOS usar Will para que la animación sea sincronizada con el teclado.
-    // En Android usar Did porque Will no siempre dispara.
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
@@ -77,17 +70,12 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
       }).start();
     });
 
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => { show.remove(); hide.remove(); };
   }, [sheetOffset]);
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const currencySymbol = getCurrencySymbol();
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -102,7 +90,15 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    setCategory(CATEGORIES[newType][0]);
+    const firstCat = CATEGORIES[newType][0];
+    setCategory(firstCat);
+    categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+  };
+
+  const handleCategoryPress = (cat: MovementCategory) => {
+    setCategory(cat);
+    const x = categoryPositions.current[cat] ?? 0;
+    categoryScrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
 
   const handleSave = async () => {
@@ -128,31 +124,17 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleDismiss}
-    >
-      {/* Animated.View reemplaza a KeyboardAvoidingView */}
-      <Animated.View
-        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
-      >
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={handleDismiss}
-        />
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
+      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
+
         <View style={[styles.sheet, {
           backgroundColor: sheetBg,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('movements.add')}
             </Text>
@@ -201,6 +183,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
               {t('movements.category')}
             </Text>
             <ScrollView
+              ref={categoryScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.categoryScroll}
@@ -213,7 +196,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
                     { backgroundColor: chipBg, borderColor: chipBorder },
                     category === cat && { backgroundColor: typeColor, borderColor: typeColor },
                   ]}
-                  onPress={() => setCategory(cat)}
+                  onLayout={(e) => {
+                    categoryPositions.current[cat] = e.nativeEvent.layout.x;
+                  }}
+                  onPress={() => handleCategoryPress(cat)}
                 >
                   <Ionicons
                     name={CATEGORY_ICONS[cat]}
@@ -263,10 +249,8 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    maxHeight: '90%',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, maxHeight: '90%',
   },
   handleBar: {
     width: 40, height: 4, borderRadius: 2,

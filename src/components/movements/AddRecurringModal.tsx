@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  TouchableOpacity,
-  Keyboard,
-  Animated,
-  Platform,
+  View, StyleSheet, Modal, ScrollView,
+  TouchableOpacity, Keyboard, Animated, Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -52,8 +46,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const [description, setDescription] = useState('');
   const [recurringDay, setRecurringDay] = useState('1');
 
-  // ─── Keyboard fix ────────────────────────────────────────────────────────────
   const sheetOffset = useRef(new Animated.Value(0)).current;
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const categoryPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -75,16 +70,11 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       }).start();
     });
 
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => { show.remove(); hide.remove(); };
   }, [sheetOffset]);
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
@@ -101,7 +91,16 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    setCategory(CATEGORIES[newType][0]);
+    const firstCat = CATEGORIES[newType][0];
+    setCategory(firstCat);
+    // Reset scroll al cambiar tipo
+    categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+  };
+
+  const handleCategoryPress = (cat: MovementCategory) => {
+    setCategory(cat);
+    const x = categoryPositions.current[cat] ?? 0;
+    categoryScrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
 
   const handleSave = async () => {
@@ -112,14 +111,10 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
-      type,
-      amount: parsedAmount,
-      category,
+      type, amount: parsedAmount, category,
       description: description.trim() || t(`movements.categories.${category}`),
-      recurringDay: day,
-      currency: 'EUR',
-      isActive: true,
-      createdAt: new Date().toISOString(),
+      recurringDay: day, currency: 'EUR',
+      isActive: true, createdAt: new Date().toISOString(),
     };
 
     await addRecurringMovement(newRecurring);
@@ -133,10 +128,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      {/* Animated.View reemplaza a KeyboardAvoidingView */}
-      <Animated.View
-        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
-      >
+      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
 
         <View style={[styles.sheet, {
@@ -145,10 +137,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('recurring.add')}
             </Text>
@@ -223,6 +212,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               {t('movements.category')}
             </Text>
             <ScrollView
+              ref={categoryScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.categoryScroll}
@@ -235,7 +225,10 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
                     { backgroundColor: chipBg, borderColor: chipBorder },
                     category === cat && { backgroundColor: typeColor, borderColor: typeColor },
                   ]}
-                  onPress={() => setCategory(cat)}
+                  onLayout={(e) => {
+                    categoryPositions.current[cat] = e.nativeEvent.layout.x;
+                  }}
+                  onPress={() => handleCategoryPress(cat)}
                 >
                   <Ionicons
                     name={CATEGORY_ICONS[cat]}
@@ -285,10 +278,8 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    maxHeight: '90%',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, maxHeight: '90%',
   },
   handleBar: {
     width: 40, height: 4, borderRadius: 2,
@@ -304,8 +295,7 @@ const styles = StyleSheet.create({
     gap: 8, borderRadius: 12, padding: 12, marginBottom: 20,
   },
   infoText: {
-    flex: 1, fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
+    flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular',
     color: colors.primary, lineHeight: 18,
   },
   sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
