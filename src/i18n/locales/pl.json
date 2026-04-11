@@ -213,7 +213,7 @@
   "tabs": {
   "home": "Główna",
   "historial": "Historia",
-  "annual": "Roczne",
+  "annual": "Raport",
   "recurring": "Stałe",
   "reminders": "Przypomnienia"
   },
@@ -222,7 +222,7 @@
   "settings": "Ustawienia",
   "home": "Główna",
   "movements": "Transakcje",
-  "annual": "Roczne",
+  "annual": "Raport",
   "profile": "Profil",
   "historial": "Historia",
   "settings_screen": "Ustawienia"

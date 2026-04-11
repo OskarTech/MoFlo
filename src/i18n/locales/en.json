@@ -213,7 +213,7 @@
   "tabs": {
   "home": "Home",
   "historial": "History",
-  "annual": "Annual",
+  "annual": "Summary",
   "recurring": "Fixed",
   "reminders": "Reminders"
   },
@@ -223,7 +223,7 @@
   "home": "Home",
   "movements": "Movements",
   "historial": "History",   
-  "annual": "Annual",
+  "annual": "Summary",
   "profile": "Profile",
   "settings_screen": "Settings"
   },
