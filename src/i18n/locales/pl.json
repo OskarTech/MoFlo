@@ -243,5 +243,17 @@
   "permissionDeniedMessage": "Włącz powiadomienia w ustawieniach urządzenia, aby korzystać z przypomnień.",
   "scheduled": "Przypomnienie zaplanowane!",
   "scheduledMessage": "Otrzymasz powiadomienie {{date}} o {{time}}"
+  },
+  "premium": {
+  "title": "MoFlo Premium",
+  "price": "Tylko 2,99€ na zawsze",
+  "includes": "Co zawiera",
+  "featureSharedAccount": "Wspólne konto z partnerem",
+  "featureCustomCategories": "Niestandardowe kategorie",
+  "featureExportCSV": "Eksport danych do CSV",
+  "featureCategoryFilter": "Filtruj według kategorii w Podsumowaniu",
+  "purchase": "Kup Premium — 2,99€",
+  "maybeLater": "Może później",
+  "badge": "PREMIUM"
   }
 }
