@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, StyleSheet, Modal,
-  TouchableOpacity,
+  TouchableOpacity, Alert,
 } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import Purchases, { PurchasesOffering } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
+import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
+
+const REVENUECAT_API_KEY = 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
 
 interface Props {
   visible: boolean;
@@ -25,6 +29,57 @@ const FEATURES = [
 const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
+  const { setPremium } = usePremiumStore();
+  const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  const handlePurchase = async () => {
+    setLoading(true);
+    try {
+      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      const offerings = await Purchases.getOfferings();
+      const offering: PurchasesOffering | null = offerings.current;
+
+      if (!offering || !offering.lifetime) {
+        Alert.alert('Error', t('premium.errorNoProduct'));
+        return;
+      }
+
+      const { customerInfo } = await Purchases.purchasePackage(offering.lifetime);
+
+      if (customerInfo.entitlements.active['premium']) {
+        await setPremium(true);
+        onPurchase();
+        Alert.alert('✅', t('premium.successMessage'));
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        Alert.alert('Error', t('premium.errorPurchase'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      const customerInfo = await Purchases.restorePurchases();
+
+      if (customerInfo.entitlements.active['premium']) {
+        await setPremium(true);
+        onPurchase();
+        Alert.alert('✅', t('premium.restoreSuccess'));
+      } else {
+        Alert.alert('', t('premium.restoreNotFound'));
+      }
+    } catch (e) {
+      Alert.alert('Error', t('premium.errorRestore'));
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
@@ -54,10 +109,12 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
             ))}
           </View>
 
-          {/* BOTONES */}
+          {/* BOTÓN COMPRAR */}
           <Button
             mode="contained"
-            onPress={onPurchase}
+            onPress={handlePurchase}
+            loading={loading}
+            disabled={loading || restoring}
             style={styles.purchaseButton}
             contentStyle={styles.purchaseButtonContent}
             buttonColor={colors.primary}
@@ -66,7 +123,28 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
             {t('premium.purchase')}
           </Button>
 
-          <TouchableOpacity onPress={onDismiss} style={styles.dismissButton}>
+          {/* RESTAURAR COMPRA */}
+          <TouchableOpacity
+            onPress={handleRestore}
+            disabled={loading || restoring}
+            style={styles.restoreButton}
+          >
+            {restoring
+              ? <ActivityIndicator size={16} color={dc.textSecondary} />
+              : (
+                <Text style={[styles.restoreText, { color: dc.textSecondary }]}>
+                  {t('premium.restore')}
+                </Text>
+              )
+            }
+          </TouchableOpacity>
+
+          {/* QUIZÁS MÁS TARDE */}
+          <TouchableOpacity
+            onPress={onDismiss}
+            disabled={loading || restoring}
+            style={styles.dismissButton}
+          >
             <Text style={[styles.dismissText, { color: dc.textSecondary }]}>
               {t('premium.maybeLater')}
             </Text>
@@ -89,9 +167,7 @@ const styles = StyleSheet.create({
     width: '100%', borderRadius: 24,
     overflow: 'hidden', elevation: 8,
   },
-  header: {
-    padding: 24, alignItems: 'center',
-  },
+  header: { padding: 24, alignItems: 'center' },
   headerEmoji: { fontSize: 40, marginBottom: 8 },
   headerTitle: {
     fontSize: 24, fontFamily: 'Poppins_700Bold',
@@ -111,19 +187,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: 12, marginBottom: 12,
   },
-  featureText: {
-    fontSize: 15, fontFamily: 'Poppins_500Medium',
-  },
-  purchaseButton: {
-    marginHorizontal: 24, borderRadius: 12,
-  },
+  featureText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  purchaseButton: { marginHorizontal: 24, borderRadius: 12 },
   purchaseButtonContent: { height: 52 },
-  dismissButton: {
-    padding: 16, alignItems: 'center',
-  },
-  dismissText: {
-    fontSize: 14, fontFamily: 'Poppins_500Medium',
-  },
+  restoreButton: { padding: 12, alignItems: 'center' },
+  restoreText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+  dismissButton: { paddingBottom: 16, alignItems: 'center' },
+  dismissText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
 });
 
 export default PremiumModal;

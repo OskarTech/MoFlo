@@ -260,7 +260,14 @@
   "featureCategoryFilter": "Filtruj według kategorii w Podsumowaniu",
   "purchase": "Kup Premium — 2,99€",
   "maybeLater": "Może później",
-  "badge": "PREMIUM"
+  "badge": "PREMIUM",
+  "restore": "Przywróć zakup",
+  "restoreSuccess": "Zakup przywrócony pomyślnie",
+  "restoreNotFound": "Nie znaleziono poprzedniego zakupu",
+  "successMessage": "Witaj w MoFlo Premium!",
+  "errorNoProduct": "Produkt niedostępny, spróbuj później",
+  "errorPurchase": "Błąd zakupu, spróbuj ponownie",
+  "errorRestore": "Nie można przywrócić zakupu"
   },
   "categories": {
   "title": "Kategorie",
