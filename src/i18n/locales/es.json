@@ -108,6 +108,7 @@
   },
   "annual": {
   "title": "Resumen Anual",
+  "filterByCategory": "Filtrar por categoría",
   "tapMonthHint": "Usa las flechas de arriba para filtrar por mes",
   "allYear": "Todo el año",
   "year": "Año",

@@ -107,6 +107,7 @@
   },
   "annual": {
   "title": "Podsumowanie Roczne",
+  "filterByCategory": "Filtruj według kategorii",
   "year": "Rok",
   "totalIncome": "Łączne Przychody",
   "tapMonthHint": "Użyj strzałek powyżej, aby filtrować według miesiąca",

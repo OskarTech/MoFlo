@@ -108,6 +108,7 @@
   },
   "annual": {
   "title": "Annual Summary",
+  "filterByCategory": "Filter by category",
   "year": "Year",
   "totalIncome": "Total Income",
   "tapMonthHint": "Use the arrows above to filter by month",

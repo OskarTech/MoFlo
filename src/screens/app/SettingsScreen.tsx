@@ -17,8 +17,10 @@ import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode } from '../../store/settingsStore';
 import { useMovementStore } from '../../store/movementStore';
+import { usePremium } from '../../hooks/usePremium';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
+import PremiumModal from '../../components/common/PremiumModal';
 import { logout } from '../../services/firebase/auth.service';
 import Constants from 'expo-constants';
 
@@ -132,6 +134,7 @@ const SettingsScreen = () => {
   const {
     displayName, currencyCode, language, themeMode, saveSettings,
   } = useSettingsStore();
+  const { isPremium, showModal, setShowModal } = usePremium();
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -161,7 +164,6 @@ const SettingsScreen = () => {
   const handleDailyNotif = async (enabled: boolean) => {
     setDailyNotifEnabled(enabled);
     await AsyncStorage.setItem(NOTIF_KEY, String(enabled));
-
     if (enabled) {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -328,6 +330,28 @@ const SettingsScreen = () => {
           </View>
         </View>
 
+        {/* UPGRADE — solo si no es Premium */}
+        {!isPremium && (
+          <TouchableOpacity
+            style={[styles.upgradeCard, { borderColor: colors.savings }]}
+            onPress={() => setShowModal(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.upgradeLeft}>
+              <Text style={styles.upgradeEmoji}>⭐</Text>
+              <View>
+                <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>
+                  {t('premium.title')}
+                </Text>
+                <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>
+                  {t('premium.price')}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.savings} />
+          </TouchableOpacity>
+        )}
+
         {/* PREFERENCIAS */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('settings.preferences')}
@@ -437,6 +461,7 @@ const SettingsScreen = () => {
         </Text>
       </ScrollView>
 
+      {/* MODALES DE SELECCIÓN */}
       <SelectModal
         visible={showCurrencyModal}
         title={t('settings.selectCurrency')}
@@ -461,6 +486,13 @@ const SettingsScreen = () => {
         onSelect={(code) => saveSettings({ themeMode: code as ThemeMode })}
         onDismiss={() => setShowThemeModal(false)}
       />
+
+      {/* MODAL PREMIUM */}
+      <PremiumModal
+        visible={showModal}
+        onDismiss={() => setShowModal(false)}
+        onPurchase={() => setShowModal(false)}
+      />
     </View>
   );
 };
@@ -481,19 +513,23 @@ const styles = StyleSheet.create({
     fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF',
   },
   profileInfo: { flex: 1 },
-  nameEditRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
-  nameEditInput: {
-    flex: 1, fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold', height: 40,
-  },
+  nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nameEditInput: { flex: 1, fontSize: 16, fontFamily: 'Poppins_600SemiBold', height: 40 },
   saveNameButton: { padding: 4 },
-  nameRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   profileName: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
   profileEmail: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  upgradeCard: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16, padding: 16,
+    marginBottom: 20, borderWidth: 1.5,
+    backgroundColor: colors.savings + '10',
+  },
+  upgradeLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  upgradeEmoji: { fontSize: 28 },
+  upgradeTitle: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
+  upgradeSubtitle: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   sectionLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8,
@@ -515,18 +551,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular', marginTop: 8, marginBottom: 16,
   },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: {
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24, paddingBottom: 40, maxHeight: '60%',
   },
-  modalHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
-  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
   modalOption: {
     flexDirection: 'row', alignItems: 'center',
