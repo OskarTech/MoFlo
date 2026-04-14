@@ -225,7 +225,12 @@
   "historial": "History",   
   "annual": "Summary",
   "profile": "Profile",
-  "settings_screen": "Settings"
+  "settings_screen": "Settings",
+  "individualAccount": "Individual Account",
+  "sharedAccount": "Shared Account",
+  "selectAccount": "Select account",
+  "individualAccountSubtitle": "Your personal finances",
+  "sharedAccountSubtitle": "Share finances with your partner"
   },
   "reminders": {
   "title": "Reminders",

@@ -101,7 +101,10 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('header.home')} />
+      <AppHeader
+  title={t('header.home')}
+  showAccountSelector={true}
+/>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

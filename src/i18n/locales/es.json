@@ -225,7 +225,12 @@
   "historial": "Historial",
   "annual": "Resumen",
   "profile": "Perfil",
-  "settings_screen": "Ajustes"
+  "settings_screen": "Ajustes",
+  "individualAccount": "Cuenta Individual",
+  "sharedAccount": "Cuenta Compartida",
+  "selectAccount": "Seleccionar cuenta",
+  "individualAccountSubtitle": "Tus finanzas personales",
+  "sharedAccountSubtitle": "Comparte finanzas con tu pareja"
   },
   "reminders": {
   "title": "Recordatorios",

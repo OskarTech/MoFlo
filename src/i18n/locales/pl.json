@@ -225,7 +225,12 @@
   "annual": "Raport",
   "profile": "Profil",
   "historial": "Historia",
-  "settings_screen": "Ustawienia"
+  "settings_screen": "Ustawienia",
+  "individualAccount": "Konto Indywidualne",
+  "sharedAccount": "Konto Współdzielone",
+  "selectAccount": "Wybierz konto",
+  "individualAccountSubtitle": "Twoje osobiste finanse",
+  "sharedAccountSubtitle": "Udostępnij finanse partnerowi"
   },
   "reminders": {
   "title": "Przypomnienia",
