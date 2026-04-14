@@ -75,3 +75,12 @@ export interface Reminder {
   notificationId: string;
   createdAt: string;
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  type: MovementType;
+  icon: string;
+  isCustom: boolean;
+  createdAt: string;
+}

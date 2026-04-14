@@ -9,26 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { MovementType, MovementCategory, Movement } from '../../types';
-
-const CATEGORIES: Record<MovementType, MovementCategory[]> = {
-  income: ['salary', 'freelance', 'investment', 'gift', 'other'],
-  expense: [
-    'housing', 'food', 'transport', 'health',
-    'entertainment', 'shopping', 'education', 'bills', 'other',
-  ],
-  saving: ['emergency', 'retirement', 'travel', 'other'],
-};
-
-const CATEGORY_ICONS: Record<MovementCategory, keyof typeof Ionicons.glyphMap> = {
-  salary: 'briefcase', freelance: 'laptop', investment: 'trending-up',
-  gift: 'gift', housing: 'home', food: 'restaurant', transport: 'car',
-  health: 'medical', entertainment: 'game-controller', shopping: 'bag',
-  education: 'school', bills: 'receipt', emergency: 'shield',
-  retirement: 'umbrella', travel: 'airplane', other: 'ellipsis-horizontal',
-};
+import { MovementType, Movement } from '../../types';
 
 interface Props {
   visible: boolean;
@@ -40,11 +24,12 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const { isDark, colors: dc } = useTheme();
   const { addMovement } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
+  const { getCategoriesForType, getCategoryName } = useCategoryStore();
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>('expense');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<MovementCategory>('housing');
+  const [categoryId, setCategoryId] = useState('housing');
 
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const categoryScrollRef = useRef<ScrollView>(null);
@@ -62,10 +47,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
       }).start();
     });
 
-    const hide = Keyboard.addListener(hideEvent, (e) => {
+    const hide = Keyboard.addListener(hideEvent, () => {
       Animated.timing(sheetOffset, {
         toValue: 0,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 200) : 200,
+        duration: 200,
         useNativeDriver: true,
       }).start();
     });
@@ -81,23 +66,25 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
   const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
 
+  const categoryList = getCategoriesForType(type);
+
   const handleDismiss = () => {
     setType('expense');
     setAmount('');
-    setCategory('housing');
+    setCategoryId('housing');
     onDismiss();
   };
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    const firstCat = CATEGORIES[newType][0];
-    setCategory(firstCat);
+    const cats = getCategoriesForType(newType);
+    setCategoryId(cats[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
   };
 
-  const handleCategoryPress = (cat: MovementCategory) => {
-    setCategory(cat);
-    const x = categoryPositions.current[cat] ?? 0;
+  const handleCategoryPress = (id: string) => {
+    setCategoryId(id);
+    const x = categoryPositions.current[id] ?? 0;
     categoryScrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
 
@@ -109,8 +96,8 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
       id: Date.now().toString(),
       type,
       amount: parsedAmount,
-      category,
-      description: t(`movements.categories.${category}`),
+      category: categoryId as any,
+      description: getCategoryName(categoryId, type, t),
       date: new Date().toISOString(),
       isRecurring: false,
       currency: currencySymbol,
@@ -188,30 +175,34 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
               showsHorizontalScrollIndicator={false}
               style={styles.categoryScroll}
             >
-              {CATEGORIES[type].map((cat) => (
+              {categoryList.map((cat) => (
                 <TouchableOpacity
-                  key={cat}
+                  key={cat.id}
                   style={[
                     styles.categoryChip,
                     { backgroundColor: chipBg, borderColor: chipBorder },
-                    category === cat && { backgroundColor: typeColor, borderColor: typeColor },
+                    categoryId === cat.id && {
+                      backgroundColor: typeColor, borderColor: typeColor,
+                    },
                   ]}
                   onLayout={(e) => {
-                    categoryPositions.current[cat] = e.nativeEvent.layout.x;
+                    categoryPositions.current[cat.id] = e.nativeEvent.layout.x;
                   }}
-                  onPress={() => handleCategoryPress(cat)}
+                  onPress={() => handleCategoryPress(cat.id)}
                 >
                   <Ionicons
-                    name={CATEGORY_ICONS[cat]}
+                    name={cat.icon as any}
                     size={16}
-                    color={category === cat ? '#FFF' : dc.textSecondary}
+                    color={categoryId === cat.id ? '#FFF' : dc.textSecondary}
                   />
                   <Text style={[
                     styles.categoryChipText,
                     { color: dc.textSecondary },
-                    category === cat && { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
+                    categoryId === cat.id && {
+                      color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold',
+                    },
                   ]}>
-                    {t(`movements.categories.${cat}`)}
+                    {cat.isCustom ? cat.name : t(`movements.categories.${cat.id}`)}
                   </Text>
                 </TouchableOpacity>
               ))}

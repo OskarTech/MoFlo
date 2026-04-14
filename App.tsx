@@ -17,6 +17,7 @@ import { lightTheme, darkTheme } from './src/theme';
 import { useMovementStore } from './src/store/movementStore';
 import { useSettingsStore } from './src/store/settingsStore';
 import { usePremiumStore } from './src/store/premiumStore';
+import { useCategoryStore } from './src/store/categoryStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,13 +26,12 @@ export default function App() {
   const { loadData, applyRecurringMovements } = useMovementStore();
   const { loadSettings, themeMode } = useSettingsStore();
   const { loadPremium } = usePremiumStore();
+  const { loadCategories } = useCategoryStore();
 
   const isDark =
-    themeMode === 'dark'
-      ? true
-      : themeMode === 'light'
-      ? false
-      : colorScheme === 'dark';
+    themeMode === 'dark' ? true
+    : themeMode === 'light' ? false
+    : colorScheme === 'dark';
 
   const theme = isDark ? darkTheme : lightTheme;
 
@@ -46,6 +46,7 @@ export default function App() {
     const init = async () => {
       await loadSettings();
       await loadPremium();
+      await loadCategories();
       await loadData();
       await applyRecurringMovements();
       if (fontsLoaded) {
