@@ -134,7 +134,7 @@ const SettingsScreen = () => {
   const {
     displayName, currencyCode, language, themeMode, saveSettings,
   } = useSettingsStore();
-  const { isPremium, showModal, setShowModal } = usePremium();
+  const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -374,6 +374,14 @@ const SettingsScreen = () => {
             label={t('settings.theme')} value={selectedThemeLabel}
             onPress={() => setShowThemeModal(true)}
           />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="pricetag-outline"
+            iconColor={colors.savings}
+            label={t('categories.title')}
+            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('categories.custom')}
+            onPress={() => requirePremium(() => navigation.navigate('Categories'))}
+          />
         </View>
 
         {/* NOTIFICACIONES */}
@@ -426,7 +434,7 @@ const SettingsScreen = () => {
 
         {/* CUENTA */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          Cuenta
+          {t('settings.accountSection') ?? 'Cuenta'}
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <OptionRow
@@ -461,7 +469,6 @@ const SettingsScreen = () => {
         </Text>
       </ScrollView>
 
-      {/* MODALES DE SELECCIÓN */}
       <SelectModal
         visible={showCurrencyModal}
         title={t('settings.selectCurrency')}
@@ -487,7 +494,6 @@ const SettingsScreen = () => {
         onDismiss={() => setShowThemeModal(false)}
       />
 
-      {/* MODAL PREMIUM */}
       <PremiumModal
         visible={showModal}
         onDismiss={() => setShowModal(false)}
@@ -509,9 +515,7 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28,
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitials: {
-    fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF',
-  },
+  avatarInitials: { fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF' },
   profileInfo: { flex: 1 },
   nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   nameEditInput: { flex: 1, fontSize: 16, fontFamily: 'Poppins_600SemiBold', height: 40 },

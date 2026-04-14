@@ -261,5 +261,18 @@
   "purchase": "Obtener Premium — 2,99€",
   "maybeLater": "Quizás más tarde",
   "badge": "PREMIUM"
+  },
+  "categories": {
+  "title": "Categorías",
+  "default": "Categorías predeterminadas",
+  "custom": "Mis categorías",
+  "noCustom": "Aún no tienes categorías personalizadas",
+  "addCategory": "Añadir categoría",
+  "type": "Tipo",
+  "name": "Nombre",
+  "namePlaceholder": "Ej. Gimnasio, Netflix...",
+  "icon": "Icono",
+  "deleteConfirm": "¿Eliminar esta categoría?",
+  "delete": "Eliminar"
   } 
 }
