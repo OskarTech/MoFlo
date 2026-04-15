@@ -10,6 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { Movement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { formatDate } from '../../utils/dateFormat';
 
 const BalanceCard = ({
   balance, month, year, currencySymbol,
@@ -81,7 +82,7 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
           {getCategoryName(movement.category, movement.type, t)}
         </Text>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-          {new Date(movement.date).toLocaleDateString()}
+          {formatDate(movement.date)}
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color }]}>

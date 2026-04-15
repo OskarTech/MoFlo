@@ -13,6 +13,7 @@ import { colors } from '../../theme';
 import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
+
 const TYPE_COLORS = {
   income: colors.income,
   saving: colors.savings,

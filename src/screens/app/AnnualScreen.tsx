@@ -15,6 +15,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
+import { formatDate } from '../../utils/dateFormat';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SHORT_MONTHS = ['E','F','M','A','M','J','J','A','S','O','N','D'];
@@ -347,7 +348,7 @@ const AnnualScreen = () => {
                               {getCategoryName(m.category, m.type, t)}
                             </Text>
                             <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-                              {new Date(m.date).toLocaleDateString()}
+                              {formatDate(m.date)}
                             </Text>
                           </View>
                           <Text style={[styles.movementAmount, { color }]}>

@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { formatDate } from '../../utils/dateFormat';
 
 type FilterType = 'all' | MovementType;
 
@@ -63,7 +64,7 @@ const MovementRow = ({
           )}
         </View>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-          {new Date(movement.date).toLocaleDateString()}
+          {formatDate(movement.date)}
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color }]}>

@@ -11,7 +11,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
 
-const REVENUECAT_API_KEY = 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
+const REVENUECAT_API_KEY = 'TU_API_KEY_AQUI';
 
 interface Props {
   visible: boolean;
@@ -85,13 +85,16 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.card, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}>
+        <View style={[styles.card, {
+          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+        }]}>
 
           {/* HEADER */}
           <View style={[styles.header, { backgroundColor: colors.primary }]}>
             <Text style={styles.headerEmoji}>⭐</Text>
             <Text style={styles.headerTitle}>{t('premium.title')}</Text>
-            <Text style={styles.headerPrice}>{t('premium.price')}</Text>
+            <Text style={styles.headerPrice}>2,99€</Text>
+            <Text style={styles.headerTax}>{t('premium.taxNote')}</Text>
           </View>
 
           {/* FEATURES */}
@@ -123,7 +126,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
             {t('premium.purchase')}
           </Button>
 
-          {/* RESTAURAR COMPRA */}
+          {/* RESTAURAR */}
           <TouchableOpacity
             onPress={handleRestore}
             disabled={loading || restoring}
@@ -174,8 +177,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', marginBottom: 4,
   },
   headerPrice: {
-    fontSize: 16, fontFamily: 'Poppins_500Medium',
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 28, fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
+  },
+  headerTax: {
+    fontSize: 11, fontFamily: 'Poppins_400Regular',
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 4, textAlign: 'center',
   },
   features: { padding: 24 },
   featuresTitle: {

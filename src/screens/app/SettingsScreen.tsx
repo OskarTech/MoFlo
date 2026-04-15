@@ -15,7 +15,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
-import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode } from '../../store/settingsStore';
+import {
+  useSettingsStore, CURRENCIES, LANGUAGES,
+  ThemeMode, DateFormat,
+} from '../../store/settingsStore';
 import { useMovementStore } from '../../store/movementStore';
 import { usePremium } from '../../hooks/usePremium';
 import { colors } from '../../theme';
@@ -133,7 +136,8 @@ const SettingsScreen = () => {
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const {
-    displayName, currencyCode, language, themeMode, saveSettings,
+    displayName, currencyCode, language, themeMode,
+    dateFormat, saveSettings,
   } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { movements } = useMovementStore();
@@ -144,6 +148,7 @@ const SettingsScreen = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showDateFormatModal, setShowDateFormatModal] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(displayName ?? '');
 
@@ -282,12 +287,19 @@ const SettingsScreen = () => {
     { code: 'dark', label: t('settings.themeDark') },
   ];
 
+  const DATE_FORMAT_OPTIONS: { code: DateFormat; label: string }[] = [
+    { code: 'DD/MM/YYYY', label: t('settings.dateFormatDMY') },
+    { code: 'MM/DD/YYYY', label: t('settings.dateFormatMDY') },
+  ];
+
   const selectedCurrencyLabel =
     CURRENCIES.find((c) => c.code === currencyCode)?.label ?? 'Euro (€)';
   const selectedLanguageLabel =
     LANGUAGES.find((l) => l.code === language)?.label ?? 'English';
   const selectedThemeLabel =
     THEME_OPTIONS.find((o) => o.code === themeMode)?.label ?? t('settings.themeAuto');
+  const selectedDateFormatLabel =
+    DATE_FORMAT_OPTIONS.find((o) => o.code === dateFormat)?.label ?? 'DD/MM/YYYY';
 
   const initials = displayName
     ? displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -356,7 +368,7 @@ const SettingsScreen = () => {
                   {t('premium.title')}
                 </Text>
                 <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>
-                  {t('premium.price')}
+                  2,99€
                 </Text>
               </View>
             </View>
@@ -385,6 +397,12 @@ const SettingsScreen = () => {
             icon="moon-outline" iconColor={colors.primaryDark}
             label={t('settings.theme')} value={selectedThemeLabel}
             onPress={() => setShowThemeModal(true)}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="calendar-outline" iconColor={colors.primary}
+            label={t('settings.dateFormat')} value={selectedDateFormatLabel}
+            onPress={() => setShowDateFormatModal(true)}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
@@ -512,6 +530,14 @@ const SettingsScreen = () => {
         selectedValue={themeMode}
         onSelect={(code) => saveSettings({ themeMode: code as ThemeMode })}
         onDismiss={() => setShowThemeModal(false)}
+      />
+      <SelectModal
+        visible={showDateFormatModal}
+        title={t('settings.selectDateFormat')}
+        options={DATE_FORMAT_OPTIONS}
+        selectedValue={dateFormat}
+        onSelect={(code) => saveSettings({ dateFormat: code as DateFormat })}
+        onDismiss={() => setShowDateFormatModal(false)}
       />
 
       <PremiumModal

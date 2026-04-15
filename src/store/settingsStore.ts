@@ -30,12 +30,14 @@ export const LANGUAGES = [
 ];
 
 export type ThemeMode = 'auto' | 'light' | 'dark';
+export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY';
 
 interface SettingsStore {
   displayName: string;
   currencyCode: string;
   language: string;
   themeMode: ThemeMode;
+  dateFormat: DateFormat;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
@@ -44,32 +46,31 @@ interface SettingsStore {
     currencyCode: string;
     language: string;
     themeMode: ThemeMode;
+    dateFormat: DateFormat;
   }>) => Promise<void>;
   getCurrencySymbol: () => string;
   resetStore: () => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  // ── ESTADO INICIAL ─────────────────────────────────────────────
   displayName: '',
   currencyCode: 'EUR',
   language: i18n.language ?? 'en',
   themeMode: 'auto',
+  dateFormat: 'DD/MM/YYYY',
   isLoading: false,
 
-  // ── RESET ──────────────────────────────────────────────────────
   resetStore: () => set({
     displayName: '',
     currencyCode: 'EUR',
     language: i18n.language ?? 'en',
     themeMode: 'auto',
+    dateFormat: 'DD/MM/YYYY',
   }),
 
-  // ── CARGAR AJUSTES ─────────────────────────────────────────────
   loadSettings: async () => {
     set({ isLoading: true });
     try {
-      // 1. Carga local primero
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -77,12 +78,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         if (parsed.language) await i18n.changeLanguage(parsed.language);
       }
 
-      // 2. Sincroniza con Firestore
       const firestoreSettings = await fetchSettingsFromFirestore();
       if (firestoreSettings) {
         const typedSettings = {
           ...firestoreSettings,
           themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
+          dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
         };
         set(typedSettings);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -97,13 +98,13 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
 
-  // ── GUARDAR AJUSTES ────────────────────────────────────────────
   saveSettings: async (newSettings) => {
     const current = {
       displayName: get().displayName,
       currencyCode: get().currencyCode,
       language: get().language,
       themeMode: get().themeMode,
+      dateFormat: get().dateFormat,
     };
     const updated = { ...current, ...newSettings };
     set(updated);
@@ -120,7 +121,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
 
-  // ── SÍMBOLO DE MONEDA ──────────────────────────────────────────
   getCurrencySymbol: () => {
     const { currencyCode } = get();
     return CURRENCIES.find((c) => c.code === currencyCode)?.symbol ?? '€';

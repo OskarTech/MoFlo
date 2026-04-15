@@ -83,22 +83,22 @@ export const fetchRecurringFromFirestore = async (): Promise<RecurringMovement[]
 
 // ── SETTINGS ───────────────────────────────────────────────────
 
-export const saveSettingsToFirestore = async (settings: {
+interface UserSettings {
   displayName: string;
   currencyCode: string;
   language: string;
   themeMode: string;
-}): Promise<void> => {
+  dateFormat?: string;
+}
+
+export const saveSettingsToFirestore = async (
+  settings: UserSettings
+): Promise<void> => {
   const { settings: doc } = getUserCollections();
   await doc.set({ settings }, { merge: true });
 };
 
-export const fetchSettingsFromFirestore = async (): Promise<{
-  displayName: string;
-  currencyCode: string;
-  language: string;
-  themeMode: string;
-} | null> => {
+export const fetchSettingsFromFirestore = async (): Promise<UserSettings | null> => {
   const { settings: doc } = getUserCollections();
   const snapshot = await doc.get();
   const data = snapshot.data();
@@ -119,6 +119,7 @@ export const initializeNewUser = async (displayName: string): Promise<void> => {
         currencyCode: 'EUR',
         language: 'auto',
         themeMode: 'auto',
+        dateFormat: 'DD/MM/YYYY',
       },
       createdAt: new Date().toISOString(),
     });
