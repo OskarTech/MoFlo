@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { Movement } from '../../types';
@@ -61,6 +62,7 @@ const SummaryCard = ({
 const MovementRow = ({ movement }: { movement: Movement }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
+  const { getCategoryName } = useCategoryStore();
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
   const isIncome = movement.type === 'income';
@@ -76,7 +78,7 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
       </View>
       <View style={styles.movementInfo}>
         <Text style={[styles.movementDescription, { color: dc.textPrimary }]} numberOfLines={1}>
-          {t(`movements.categories.${movement.category}`)}
+          {getCategoryName(movement.category, movement.type, t)}
         </Text>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
           {new Date(movement.date).toLocaleDateString()}
@@ -101,10 +103,7 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader
-  title={t('header.home')}
-  showAccountSelector={true}
-/>
+      <AppHeader title={t('header.home')} showAccountSelector={true} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

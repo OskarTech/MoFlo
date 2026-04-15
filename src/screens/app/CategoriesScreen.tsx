@@ -55,22 +55,23 @@ interface AddCategoryModalProps {
   visible: boolean;
   onDismiss: () => void;
   onSave: (name: string, icon: string, type: MovementType) => void;
+  defaultType: MovementType;
 }
 
-const AddCategoryModal = ({ visible, onDismiss, onSave }: AddCategoryModalProps) => {
+const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCategoryModalProps) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('ellipsis-horizontal');
-  const [selectedType, setSelectedType] = useState<MovementType>('expense');
+  const [selectedType, setSelectedType] = useState<MovementType>(defaultType);
 
   const handleSave = () => {
     if (!name.trim()) return;
     onSave(name.trim(), selectedIcon, selectedType);
     setName('');
     setSelectedIcon('ellipsis-horizontal');
-    setSelectedType('expense');
+    setSelectedType(defaultType);
     onDismiss();
   };
 
@@ -192,13 +193,35 @@ const AddCategoryModal = ({ visible, onDismiss, onSave }: AddCategoryModalProps)
 const CategoriesScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const { customCategories, addCategory, deleteCategory, getCategoriesForType } = useCategoryStore();
+  const {
+    customCategories,
+    addCategory,
+    deleteCategory,
+    hideBaseCategory,
+    getCategoriesForType,
+  } = useCategoryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeType, setActiveType] = useState<MovementType>('expense');
 
-  const filteredCategories = customCategories.filter(c => c.type === activeType);
+  const baseCats = getCategoriesForType(activeType).filter(c => !c.isCustom);
+  const customCats = getCategoriesForType(activeType).filter(c => c.isCustom);
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDeleteBase = (id: string, name: string) => {
+    Alert.alert(
+      t('categories.deleteConfirm'),
+      name,
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('categories.delete'),
+          style: 'destructive',
+          onPress: () => hideBaseCategory(id, activeType),
+        },
+      ]
+    );
+  };
+
+  const handleDeleteCustom = (id: string, name: string) => {
     Alert.alert(
       t('categories.deleteConfirm'),
       name,
@@ -222,7 +245,9 @@ const CategoriesScreen = () => {
       <AppHeader title={t('categories.title')} showBell={false} />
 
       {/* TABS DE TIPO */}
-      <View style={[styles.typeTabs, { backgroundColor: dc.surface, borderBottomColor: dc.border }]}>
+      <View style={[styles.typeTabs, {
+        backgroundColor: dc.surface, borderBottomColor: dc.border,
+      }]}>
         {(['expense', 'income', 'saving'] as MovementType[]).map((tp) => (
           <TouchableOpacity
             key={tp}
@@ -238,7 +263,10 @@ const CategoriesScreen = () => {
             <Text style={[
               styles.typeTabText,
               { color: dc.textSecondary },
-              activeType === tp && { color: TYPE_COLORS[tp], fontFamily: 'Poppins_600SemiBold' },
+              activeType === tp && {
+                color: TYPE_COLORS[tp],
+                fontFamily: 'Poppins_600SemiBold',
+              },
             ]}>
               {t(`movements.${tp}`)}
             </Text>
@@ -246,48 +274,60 @@ const CategoriesScreen = () => {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* CATEGORÍAS BASE */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('categories.default')}
-        </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          {getCategoriesForType(activeType)
-            .filter(c => !c.isCustom)
-            .map((cat, index, arr) => (
-              <View key={cat.id}>
-                <View style={styles.categoryRow}>
-                  <View style={[styles.categoryIcon, {
-                    backgroundColor: TYPE_COLORS[activeType] + '20',
-                  }]}>
-                    <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+        {baseCats.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('categories.default')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              {baseCats.map((cat, index) => (
+                <View key={cat.id}>
+                  <View style={styles.categoryRow}>
+                    <View style={[styles.categoryIcon, {
+                      backgroundColor: TYPE_COLORS[activeType] + '20',
+                    }]}>
+                      <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+                    </View>
+                    <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
+                      {t(`movements.categories.${cat.id}`)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteBase(cat.id, t(`movements.categories.${cat.id}`))}
+                      style={styles.deleteButton}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={colors.expense} />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
-                    {t(`movements.categories.${cat.id}`)}
-                  </Text>
+                  {index < baseCats.length - 1 && (
+                    <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                  )}
                 </View>
-                {index < arr.length - 1 && (
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                )}
-              </View>
-            ))}
-        </View>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* CATEGORÍAS PERSONALIZADAS */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('categories.custom')}
         </Text>
 
-        {filteredCategories.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+        {customCats.length === 0 ? (
+          <View style={[styles.emptyCard, {
+            backgroundColor: dc.surface, borderColor: dc.border,
+          }]}>
             <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
               {t('categories.noCustom')}
             </Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-            {filteredCategories.map((cat, index) => (
+            {customCats.map((cat, index) => (
               <View key={cat.id}>
                 <View style={styles.categoryRow}>
                   <View style={[styles.categoryIcon, {
@@ -299,13 +339,13 @@ const CategoriesScreen = () => {
                     {cat.name}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => handleDelete(cat.id, cat.name)}
+                    onPress={() => handleDeleteCustom(cat.id, cat.name)}
                     style={styles.deleteButton}
                   >
                     <Ionicons name="trash-outline" size={18} color={colors.expense} />
                   </TouchableOpacity>
                 </View>
-                {index < filteredCategories.length - 1 && (
+                {index < customCats.length - 1 && (
                   <View style={[styles.divider, { backgroundColor: dc.border }]} />
                 )}
               </View>
@@ -331,6 +371,7 @@ const CategoriesScreen = () => {
         visible={showAddModal}
         onDismiss={() => setShowAddModal(false)}
         onSave={handleSave}
+        defaultType={activeType}
       />
     </View>
   );
@@ -338,52 +379,31 @@ const CategoriesScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  typeTabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 0.5,
-  },
-  typeTab: {
-    flex: 1, paddingVertical: 14,
-    alignItems: 'center',
-  },
-  typeTabText: {
-    fontSize: 13, fontFamily: 'Poppins_500Medium',
-  },
+  typeTabs: { flexDirection: 'row', borderBottomWidth: 0.5 },
+  typeTab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  typeTabText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   scrollContent: { padding: 16, paddingBottom: 40 },
   sectionLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginBottom: 8, marginLeft: 4,
   },
-  card: {
-    borderRadius: 16, marginBottom: 20,
-    overflow: 'hidden', borderWidth: 0.5,
-  },
+  card: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
   emptyCard: {
     borderRadius: 16, padding: 24,
-    alignItems: 'center', marginBottom: 20,
-    borderWidth: 0.5,
+    alignItems: 'center', marginBottom: 20, borderWidth: 0.5,
   },
-  emptyText: {
-    fontSize: 14, fontFamily: 'Poppins_400Regular',
-  },
-  categoryRow: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 14, gap: 12,
-  },
+  emptyText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
+  categoryRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   categoryIcon: {
     width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
-    flexShrink: 0,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  categoryName: {
-    flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium',
-  },
+  categoryName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   deleteButton: { padding: 4 },
   divider: { height: 0.5, marginLeft: 66 },
   addButton: { borderRadius: 12 },
   addButtonContent: { height: 52 },
-  // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -397,9 +417,7 @@ const styles = StyleSheet.create({
     width: 40, height: 4, borderRadius: 2,
     alignSelf: 'center', marginBottom: 20,
   },
-  modalTitle: {
-    fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20,
-  },
+  modalTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   fieldLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8,
@@ -412,14 +430,10 @@ const styles = StyleSheet.create({
   },
   typeChipText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   nameInput: { marginBottom: 20 },
-  iconsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    gap: 10, marginBottom: 24,
-  },
+  iconsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   iconOption: {
     width: 48, height: 48, borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 0.5,
   },
   buttons: { flexDirection: 'row', gap: 12 },
   cancelButton: { flex: 1 },

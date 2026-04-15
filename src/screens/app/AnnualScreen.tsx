@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
@@ -51,6 +52,7 @@ const AnnualScreen = () => {
     getAnnualSummary, movements,
   } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
+  const { getCategoryName } = useCategoryStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
@@ -252,7 +254,7 @@ const AnnualScreen = () => {
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
                       <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
-                        {t('annual.filterByCategory') ?? 'Filtrar por categoría'}
+                        {t('annual.filterByCategory')}
                       </Text>
                       {!isPremium && (
                         <View style={styles.premiumBadge}>
@@ -262,32 +264,36 @@ const AnnualScreen = () => {
                     </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.categoryChips}>
-                        {monthCategories.map((cat) => (
-                          <TouchableOpacity
-                            key={cat}
-                            style={[
-                              styles.categoryChip,
-                              { backgroundColor: dc.surface, borderColor: dc.border },
-                              selectedCategory === cat && {
-                                backgroundColor: colors.primary,
-                                borderColor: colors.primary,
-                              },
-                              !isPremium && styles.categoryChipLocked,
-                            ]}
-                            onPress={() => handleCategoryFilter(cat)}
-                          >
-                            {!isPremium && (
-                              <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
-                            )}
-                            <Text style={[
-                              styles.categoryChipText,
-                              { color: dc.textSecondary },
-                              selectedCategory === cat && { color: '#FFFFFF' },
-                            ]}>
-                              {t(`movements.categories.${cat}`)}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                        {monthCategories.map((cat) => {
+                          const catMovement = monthMovements.find(m => m.category === cat);
+                          const catType = catMovement?.type ?? 'expense';
+                          return (
+                            <TouchableOpacity
+                              key={cat}
+                              style={[
+                                styles.categoryChip,
+                                { backgroundColor: dc.surface, borderColor: dc.border },
+                                selectedCategory === cat && {
+                                  backgroundColor: colors.primary,
+                                  borderColor: colors.primary,
+                                },
+                                !isPremium && styles.categoryChipLocked,
+                              ]}
+                              onPress={() => handleCategoryFilter(cat)}
+                            >
+                              {!isPremium && (
+                                <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
+                              )}
+                              <Text style={[
+                                styles.categoryChipText,
+                                { color: dc.textSecondary },
+                                selectedCategory === cat && { color: '#FFFFFF' },
+                              ]}>
+                                {getCategoryName(cat, catType, t)}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </ScrollView>
                   </View>
@@ -338,7 +344,7 @@ const AnnualScreen = () => {
                           </View>
                           <View style={styles.movementInfo}>
                             <Text style={[styles.movementDesc, { color: dc.textPrimary }]}>
-                              {t(`movements.categories.${m.category}`)}
+                              {getCategoryName(m.category, m.type, t)}
                             </Text>
                             <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
                               {new Date(m.date).toLocaleDateString()}

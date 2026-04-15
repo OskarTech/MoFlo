@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { Movement, MovementType } from '../../types';
@@ -22,6 +23,7 @@ const MovementRow = ({
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
+  const { getCategoryName } = useCategoryStore();
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
   const isIncome = movement.type === 'income';
@@ -52,7 +54,7 @@ const MovementRow = ({
       <View style={styles.movementInfo}>
         <View style={styles.movementTitleRow}>
           <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
-            {t(`movements.categories.${movement.category}`)}
+            {getCategoryName(movement.category, movement.type, t)}
           </Text>
           {movement.isRecurring && (
             <View style={styles.recurringBadge}>

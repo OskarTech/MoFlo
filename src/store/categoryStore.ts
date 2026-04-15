@@ -6,15 +6,18 @@ import auth from '@react-native-firebase/auth';
 import { Category, MovementType } from '../types';
 import { BASE_CATEGORIES } from '../constants/categories';
 
-const STORAGE_KEY = '@moflo_custom_categories';
+const CUSTOM_KEY = '@moflo_custom_categories';
+const HIDDEN_KEY = '@moflo_hidden_base';
 
 interface CategoryStore {
   customCategories: Category[];
+  hiddenBaseCategories: string[];
   isLoading: boolean;
 
   loadCategories: () => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  hideBaseCategory: (id: string, type: MovementType) => Promise<void>;
   getCategoriesForType: (type: MovementType) => {
     id: string;
     name: string;
@@ -27,29 +30,39 @@ interface CategoryStore {
 
 export const useCategoryStore = create<CategoryStore>((set, get) => ({
   customCategories: [],
+  hiddenBaseCategories: [],
   isLoading: false,
 
-  resetStore: () => set({ customCategories: [] }),
+  resetStore: () => set({
+    customCategories: [],
+    hiddenBaseCategories: [],
+  }),
 
   loadCategories: async () => {
     set({ isLoading: true });
     try {
-      // Carga local primero
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) set({ customCategories: JSON.parse(raw) });
-
-      // Sincroniza con Firestore
       const uid = auth().currentUser?.uid;
+
+      // Carga local primero
+      const customRaw = await AsyncStorage.getItem(CUSTOM_KEY);
+      if (customRaw) set({ customCategories: JSON.parse(customRaw) });
+
+      const hiddenRaw = await AsyncStorage.getItem(`${HIDDEN_KEY}_${uid}`);
+      if (hiddenRaw) set({ hiddenBaseCategories: JSON.parse(hiddenRaw) });
+
       if (!uid) return;
 
+      // Sincroniza custom con Firestore
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         const snap = await firestore()
           .collection('users').doc(uid)
           .collection('categories').get();
         const firestoreCategories = snap.docs.map(d => d.data() as Category);
-        set({ customCategories: firestoreCategories });
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(firestoreCategories));
+        if (firestoreCategories.length > 0) {
+          set({ customCategories: firestoreCategories });
+          await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(firestoreCategories));
+        }
       }
     } catch (e) {
       console.error('Error loading categories:', e);
@@ -70,7 +83,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
 
     const updated = [...get().customCategories, newCategory];
     set({ customCategories: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
 
     try {
       await firestore()
@@ -86,7 +99,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     const uid = auth().currentUser?.uid;
     const updated = get().customCategories.filter(c => c.id !== id);
     set({ customCategories: updated });
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
 
     if (uid) {
       try {
@@ -100,10 +113,23 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     }
   },
 
-  // Devuelve base + custom para un tipo
+  hideBaseCategory: async (id, type) => {
+    const uid = auth().currentUser?.uid;
+    const key = `${id}_${type}`;
+    const updated = [...get().hiddenBaseCategories, key];
+    set({ hiddenBaseCategories: updated });
+    await AsyncStorage.setItem(
+      `${HIDDEN_KEY}_${uid}`,
+      JSON.stringify(updated)
+    );
+  },
+
   getCategoriesForType: (type) => {
+    const { hiddenBaseCategories } = get();
+
     const base = BASE_CATEGORIES
       .filter(c => c.type === type)
+      .filter(c => !hiddenBaseCategories.includes(`${c.id}_${type}`))
       .map(c => ({ id: c.id, name: c.id, icon: c.icon, isCustom: false }));
 
     const custom = get().customCategories
@@ -113,12 +139,9 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     return [...base, ...custom];
   },
 
-  // Resuelve el nombre de una categoría
   getCategoryName: (id, type, t) => {
-    // Si es custom, busca en el store
     const custom = get().customCategories.find(c => c.id === id);
     if (custom) return custom.name;
-    // Si es base, usa i18n
     return t(`movements.categories.${id}`);
   },
 }));

@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Movement } from '../types';
+import { useCategoryStore } from '../store/categoryStore';
 
 const escapeCSV = (value: string) => {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -13,6 +14,8 @@ export const exportMovementsToCSV = async (
   movements: Movement[],
   t: (key: string) => string
 ): Promise<void> => {
+  const { getCategoryName } = useCategoryStore.getState();
+
   const headers = [
     t('export.date'),
     t('export.type'),
@@ -27,7 +30,7 @@ export const exportMovementsToCSV = async (
     .map((m) => {
       const date = new Date(m.date).toLocaleDateString();
       const type = t(`movements.${m.type}`);
-      const category = t(`movements.categories.${m.category}`);
+      const category = getCategoryName(m.category, m.type, t);
       const amount = m.type === 'income'
         ? `+${m.amount.toFixed(2)}`
         : `-${m.amount.toFixed(2)}`;

@@ -17,8 +17,11 @@ export const usePremiumStore = create<PremiumStore>((set) => ({
   loadPremium: async () => {
     set({ isLoading: true });
     try {
-      const value = await AsyncStorage.getItem(PREMIUM_KEY);
-      set({ isPremium: value === 'true' });
+      // TEMPORAL — fuerza premium para testing
+      set({ isPremium: true });
+      
+      // const value = await AsyncStorage.getItem(PREMIUM_KEY);
+      // set({ isPremium: value === 'true' });
     } catch (e) {
       console.error('Error loading premium:', e);
     } finally {
