@@ -381,7 +381,6 @@ const SettingsScreen = () => {
           <OptionRow
             icon="pricetag-outline" iconColor={colors.savings}
             label={t('categories.title')}
-            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('categories.custom')}
             onPress={() => requirePremium(() => navigation.navigate('Categories'))}
           />
         </View>

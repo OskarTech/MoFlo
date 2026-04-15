@@ -124,6 +124,7 @@
   },
   "settings": {
   "title": "Ajustes",
+  "accountSection": "Cuenta",
   "theme": "Apariencia",
   "editPhoto": "Editar foto",
   "email": "Correo electrónico",
