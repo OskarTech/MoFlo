@@ -6,6 +6,7 @@ import { SharedAccount, Movement, RecurringMovement } from '../types';
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
+const NOTIF_KEY = '@moflo_shared_notif';
 
 const generateInviteCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -14,7 +15,7 @@ const generateInviteCode = (): string => {
   ).join('');
 };
 
-const generateInviteLink = (code: string, name: string): string => {
+export const generateInviteLink = (code: string, name: string): string => {
   const encoded = encodeURIComponent(name);
   return `https://oskartech.github.io/join.html?code=${code}&name=${encoded}`;
 };
@@ -22,6 +23,7 @@ const generateInviteLink = (code: string, name: string): string => {
 interface SharedAccountStore {
   sharedAccount: SharedAccount | null;
   isSharedMode: boolean;
+  notificationsEnabled: boolean;
   isLoading: boolean;
 
   loadSharedAccount: () => Promise<void>;
@@ -30,22 +32,15 @@ interface SharedAccountStore {
   leaveSharedAccount: () => Promise<void>;
   deleteSharedAccount: () => Promise<void>;
   setSharedMode: (enabled: boolean) => Promise<void>;
+  setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   getInviteLink: () => string;
-
-  addSharedMovement: (movement: Movement) => Promise<void>;
-  deleteSharedMovement: (id: string) => Promise<void>;
-  fetchSharedMovements: () => Promise<Movement[]>;
-
-  addSharedRecurring: (recurring: RecurringMovement) => Promise<void>;
-  deleteSharedRecurring: (id: string) => Promise<void>;
-  fetchSharedRecurring: () => Promise<RecurringMovement[]>;
-
   resetStore: () => void;
 }
 
 export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   sharedAccount: null,
   isSharedMode: false,
+  notificationsEnabled: true,
   isLoading: false,
 
   resetStore: () => set({
@@ -59,11 +54,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       const uid = auth().currentUser?.uid;
       if (!uid) return;
 
-      // Carga modo activo
       const activeMode = await AsyncStorage.getItem(ACTIVE_KEY);
+      const notifPref = await AsyncStorage.getItem(`${NOTIF_KEY}_${uid}`);
+      if (notifPref !== null) set({ notificationsEnabled: notifPref === 'true' });
       if (activeMode === 'shared') set({ isSharedMode: true });
 
-      // Busca cuenta compartida donde el usuario es miembro
       const snap = await firestore()
         .collection('sharedAccounts')
         .where('members', 'array-contains', uid)
@@ -71,17 +66,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         .get();
 
       if (!snap.empty) {
-        const account = snap.docs[0].data() as SharedAccount;
+        const account = { id: snap.docs[0].id, ...snap.docs[0].data() } as SharedAccount;
         set({ sharedAccount: account });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
       } else {
-        // Limpia si ya no es miembro
         set({ sharedAccount: null, isSharedMode: false });
         await AsyncStorage.removeItem(STORAGE_KEY);
         await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
       }
     } catch (e) {
-      // Carga desde cache si falla Firestore
       const cached = await AsyncStorage.getItem(STORAGE_KEY);
       if (cached) set({ sharedAccount: JSON.parse(cached) });
     } finally {
@@ -95,7 +88,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     if (!uid) return;
 
     const inviteCode = generateInviteCode();
-    const accountId = `shared_${Date.now()}`;
+    const accountId = `shared_${uid}_${Date.now()}`;
 
     const newAccount: SharedAccount = {
       id: accountId,
@@ -124,22 +117,21 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     try {
       const snap = await firestore()
         .collection('sharedAccounts')
-        .where('inviteCode', '==', code.toUpperCase())
+        .where('inviteCode', '==', code.toUpperCase().trim())
         .limit(1)
         .get();
 
       if (snap.empty) return false;
 
       const doc = snap.docs[0];
-      const account = doc.data() as SharedAccount;
+      const account = { id: doc.id, ...doc.data() } as SharedAccount;
 
-      // Ya es miembro
       if (account.members.includes(uid)) {
         set({ sharedAccount: account });
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
         return true;
       }
 
-      // Añade como miembro
       const updatedMembers = [...account.members, uid];
       const updatedNames = { ...account.memberNames, [uid]: displayName };
 
@@ -148,7 +140,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         memberNames: updatedNames,
       });
 
-      const updatedAccount = {
+      const updatedAccount: SharedAccount = {
         ...account,
         members: updatedMembers,
         memberNames: updatedNames,
@@ -175,10 +167,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     await firestore()
       .collection('sharedAccounts')
       .doc(sharedAccount.id)
-      .update({
-        members: updatedMembers,
-        memberNames: updatedNames,
-      });
+      .update({ members: updatedMembers, memberNames: updatedNames });
 
     set({ sharedAccount: null, isSharedMode: false });
     await AsyncStorage.removeItem(STORAGE_KEY);
@@ -189,7 +178,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { sharedAccount } = get();
     if (!sharedAccount) return;
 
-    // Elimina movimientos y recurrentes
     const batch = firestore().batch();
 
     const movementsSnap = await firestore()
@@ -219,78 +207,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     await AsyncStorage.setItem(ACTIVE_KEY, enabled ? 'shared' : 'individual');
   },
 
+  setNotificationsEnabled: async (enabled) => {
+    const uid = auth().currentUser?.uid;
+    set({ notificationsEnabled: enabled });
+    await AsyncStorage.setItem(`${NOTIF_KEY}_${uid}`, String(enabled));
+  },
+
   getInviteLink: () => {
     const { sharedAccount } = get();
     if (!sharedAccount) return '';
     return generateInviteLink(sharedAccount.inviteCode, sharedAccount.name);
-  },
-
-  // ── MOVIMIENTOS COMPARTIDOS ──────────────────────────────────
-
-  addSharedMovement: async (movement) => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return;
-
-    const uid = auth().currentUser?.uid ?? '';
-    const movementWithAuthor = { ...movement, addedBy: uid };
-
-    await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('movements').doc(movement.id)
-      .set(movementWithAuthor);
-  },
-
-  deleteSharedMovement: async (id) => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return;
-
-    await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('movements').doc(id)
-      .delete();
-  },
-
-  fetchSharedMovements: async () => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return [];
-
-    const snap = await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('movements').get();
-
-    return snap.docs.map(d => d.data() as Movement);
-  },
-
-  // ── RECURRENTES COMPARTIDOS ──────────────────────────────────
-
-  addSharedRecurring: async (recurring) => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return;
-
-    await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('recurring').doc(recurring.id)
-      .set(recurring);
-  },
-
-  deleteSharedRecurring: async (id) => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return;
-
-    await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('recurring').doc(id)
-      .delete();
-  },
-
-  fetchSharedRecurring: async () => {
-    const { sharedAccount } = get();
-    if (!sharedAccount) return [];
-
-    const snap = await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('recurring').get();
-
-    return snap.docs.map(d => d.data() as RecurringMovement);
   },
 }));

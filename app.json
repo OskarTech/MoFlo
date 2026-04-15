@@ -3,6 +3,7 @@
     "name": "MoFlo",
     "slug": "moflo",
     "version": "1.1.9",
+    "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

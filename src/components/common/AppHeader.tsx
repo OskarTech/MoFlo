@@ -10,6 +10,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useMovementStore } from '../../store/movementStore';
 import { colors } from '../../theme';
 import PremiumModal from './PremiumModal';
 
@@ -31,6 +33,11 @@ const AppHeader = ({
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute();
   const { isPremium } = usePremiumStore();
+  const {
+    sharedAccount, isSharedMode,
+    setSharedMode,
+  } = useSharedAccountStore();
+  const { loadData, loadSharedData } = useMovementStore();
 
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -42,7 +49,6 @@ const AppHeader = ({
   const iconColor = isDark ? dc.textPrimary : '#FFFFFF';
   const titleColor = isDark ? dc.textPrimary : '#FFFFFF';
   const iconBg = isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)';
-
   const bellIconColor = isInReminders ? colors.primaryLight : iconColor;
   const bellIconBg = isInReminders ? colors.primaryLight + '30' : iconBg;
   const settingsIconColor = isInSettings ? colors.primaryLight : iconColor;
@@ -53,18 +59,27 @@ const AppHeader = ({
     if (onBellPress) onBellPress();
   };
 
-  const handleSettingsPress = () => {
-    if (!isInSettings) navigation.navigate('Settings');
+  const handleSelectIndividual = async () => {
+    setShowAccountModal(false);
+    if (isSharedMode) {
+      await setSharedMode(false);
+      await loadData();
+      navigation.navigate('HomeTab');
+    }
   };
 
-  const handleAccountPress = () => {
-    setShowAccountModal(true);
-  };
-
-  const handleSelectShared = () => {
+  const handleSelectShared = async () => {
     setShowAccountModal(false);
     if (!isPremium) {
       setTimeout(() => setShowPremiumModal(true), 300);
+      return;
+    }
+    if (sharedAccount) {
+      await loadSharedData(sharedAccount.id);
+      await setSharedMode(true);
+      navigation.navigate('HomeTab');
+    } else {
+      setTimeout(() => navigation.navigate('SharedAccount'), 300);
     }
   };
 
@@ -84,16 +99,22 @@ const AppHeader = ({
           <View style={styles.iconPlaceholder} />
         )}
 
-        {/* CENTRO — título o selector de cuenta */}
+        {/* CENTRO */}
         {showAccountSelector ? (
           <TouchableOpacity
             style={styles.accountSelector}
-            onPress={handleAccountPress}
+            onPress={() => setShowAccountModal(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="person-circle-outline" size={18} color={titleColor} />
+            <Ionicons
+              name={isSharedMode ? 'people' : 'person-circle-outline'}
+              size={18}
+              color={titleColor}
+            />
             <Text style={[styles.accountText, { color: titleColor }]}>
-              {t('header.individualAccount')}
+              {isSharedMode
+                ? (sharedAccount?.name ?? t('sharedAccount.switchToShared'))
+                : t('header.individualAccount')}
             </Text>
             <Ionicons name="chevron-down" size={16} color={titleColor} />
           </TouchableOpacity>
@@ -104,7 +125,7 @@ const AppHeader = ({
         {/* TUERCA */}
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: settingsIconBg }]}
-          onPress={handleSettingsPress}
+          onPress={() => { if (!isInSettings) navigation.navigate('Settings'); }}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={20} color={settingsIconColor} />
@@ -131,10 +152,10 @@ const AppHeader = ({
               {t('header.selectAccount')}
             </Text>
 
-            {/* CUENTA INDIVIDUAL */}
+            {/* INDIVIDUAL */}
             <TouchableOpacity
               style={[styles.accountOption, { borderBottomColor: dc.border }]}
-              onPress={() => setShowAccountModal(false)}
+              onPress={handleSelectIndividual}
             >
               <View style={[styles.accountOptionIcon, { backgroundColor: colors.primary + '20' }]}>
                 <Ionicons name="person" size={20} color={colors.primary} />
@@ -147,10 +168,12 @@ const AppHeader = ({
                   {t('header.individualAccountSubtitle')}
                 </Text>
               </View>
-              <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+              {!isSharedMode && (
+                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+              )}
             </TouchableOpacity>
 
-            {/* CUENTA COMPARTIDA */}
+            {/* COMPARTIDA */}
             <TouchableOpacity
               style={styles.accountOption}
               onPress={handleSelectShared}
@@ -161,16 +184,23 @@ const AppHeader = ({
               <View style={styles.accountOptionInfo}>
                 <View style={styles.accountOptionTitleRow}>
                   <Text style={[styles.accountOptionTitle, { color: dc.textPrimary }]}>
-                    {t('header.sharedAccount')}
+                    {sharedAccount?.name ?? t('sharedAccount.switchToShared')}
                   </Text>
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
-                  </View>
+                  {!isPremium && (
+                    <View style={styles.premiumBadge}>
+                      <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={[styles.accountOptionSubtitle, { color: dc.textSecondary }]}>
-                  {t('header.sharedAccountSubtitle')}
+                  {sharedAccount
+                    ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
+                    : t('header.sharedAccountSubtitle')}
                 </Text>
               </View>
+              {isSharedMode && (
+                <Ionicons name="checkmark-circle" size={22} color={colors.savings} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -180,10 +210,7 @@ const AppHeader = ({
       <PremiumModal
         visible={showPremiumModal}
         onDismiss={() => setShowPremiumModal(false)}
-        onPurchase={() => {
-          setShowPremiumModal(false);
-          // RevenueCat se conecta aquí cuando esté listo
-        }}
+        onPurchase={() => setShowPremiumModal(false)}
       />
     </>
   );
@@ -195,9 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android'
-      ? (StatusBar.currentHeight ?? 0) + 12
-      : 12,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
     paddingBottom: 12,
   },
   iconButton: {
@@ -213,22 +238,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: 6, flex: 1, justifyContent: 'center',
   },
-  accountText: {
-    fontSize: 15, fontFamily: 'Poppins_600SemiBold',
-  },
+  accountText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   modalOverlay: {
     flex: 1, justifyContent: 'flex-start',
-    paddingTop: Platform.OS === 'android'
-      ? (StatusBar.currentHeight ?? 0) + 60
-      : 80,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 60 : 80,
     paddingHorizontal: 16,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalBackdrop: { ...StyleSheet.absoluteFillObject },
-  accountModal: {
-    borderRadius: 20, overflow: 'hidden',
-    elevation: 8,
-  },
+  accountModal: { borderRadius: 20, overflow: 'hidden', elevation: 8 },
   accountModalTitle: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8,
@@ -236,31 +254,22 @@ const styles = StyleSheet.create({
   },
   accountOption: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 16, gap: 12,
-    borderBottomWidth: 0.5,
+    padding: 16, gap: 12, borderBottomWidth: 0.5,
   },
   accountOptionIcon: {
     width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
-    flexShrink: 0,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   accountOptionInfo: { flex: 1 },
-  accountOptionTitleRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
-  accountOptionTitle: {
-    fontSize: 15, fontFamily: 'Poppins_600SemiBold',
-  },
-  accountOptionSubtitle: {
-    fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2,
-  },
+  accountOptionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  accountOptionTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  accountOptionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   premiumBadge: {
     backgroundColor: colors.savings + '20',
     borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
   },
   premiumBadgeText: {
-    fontSize: 10, fontFamily: 'Poppins_600SemiBold',
-    color: colors.savings,
+    fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings,
   },
 });
 

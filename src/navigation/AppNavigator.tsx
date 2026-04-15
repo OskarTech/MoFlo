@@ -9,6 +9,9 @@ import RecurringScreen from '../screens/app/RecurringScreen';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
+import CategoriesScreen from '../screens/app/CategoriesScreen';
+import SharedAccountScreen from '../screens/app/SharedAccountScreen';
+import SharedAccountSettingsScreen from '../screens/app/SharedAccountSettingsScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddRecurringModal from '../components/movements/AddRecurringModal';
 import AddTabButton from '../components/common/AddTabButton';
@@ -16,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CategoriesScreen from '../screens/app/CategoriesScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -104,9 +106,7 @@ const AppNavigator = () => {
           component={View as any}
           options={{
             tabBarLabel: '',
-            tabBarButton: () => (
-              <AddTabButton onPress={handleFabPress} />
-            ),
+            tabBarButton: () => <AddTabButton onPress={handleFabPress} />,
           }}
         />
         <Tab.Screen
@@ -130,11 +130,7 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
         />
         <Tab.Screen
           name="Reminders"
@@ -145,29 +141,27 @@ const AppNavigator = () => {
               onModalDismiss={() => setReminderModalVisible(false)}
             />
           )}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
         />
         <Tab.Screen
           name="Support"
           component={SupportScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
         />
         <Tab.Screen
           name="Categories"
           component={CategoriesScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tab.Screen
+          name="SharedAccount"
+          component={SharedAccountScreen}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+        />
+        <Tab.Screen
+          name="SharedAccountSettings"
+          component={SharedAccountSettingsScreen}
+          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
         />
       </Tab.Navigator>
 

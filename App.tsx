@@ -4,13 +4,11 @@ import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
+  useFonts, Poppins_400Regular, Poppins_500Medium,
+  Poppins_600SemiBold, Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
+import { Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { lightTheme, darkTheme } from './src/theme';
@@ -18,28 +16,23 @@ import { useMovementStore } from './src/store/movementStore';
 import { useSettingsStore } from './src/store/settingsStore';
 import { usePremiumStore } from './src/store/premiumStore';
 import { useCategoryStore } from './src/store/categoryStore';
+import { useSharedAccountStore } from './src/store/sharedAccountStore';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const colorScheme = useColorScheme();
-  const { loadData, applyRecurringMovements } = useMovementStore();
+  const { loadData, applyRecurringMovements, loadSharedData } = useMovementStore();
   const { loadSettings, themeMode } = useSettingsStore();
   const { loadPremium } = usePremiumStore();
   const { loadCategories } = useCategoryStore();
+  const { loadSharedAccount, isSharedMode, sharedAccount } = useSharedAccountStore();
 
-  const isDark =
-    themeMode === 'dark' ? true
-    : themeMode === 'light' ? false
-    : colorScheme === 'dark';
-
+  const isDark = themeMode === 'dark' ? true : themeMode === 'light' ? false : colorScheme === 'dark';
   const theme = isDark ? darkTheme : lightTheme;
 
   const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
+    Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold,
   });
 
   useEffect(() => {
@@ -47,14 +40,32 @@ export default function App() {
       await loadSettings();
       await loadPremium();
       await loadCategories();
-      await loadData();
-      await applyRecurringMovements();
+      await loadSharedAccount();
+
+      // Carga datos según el modo activo
+      const { isSharedMode: shared, sharedAccount: account } = useSharedAccountStore.getState();
+      if (shared && account) {
+        await loadSharedData(account.id);
+      } else {
+        await loadData();
+        await applyRecurringMovements();
+      }
+
       if (fontsLoaded) {
         await SplashScreen.hideAsync();
       }
     };
     init();
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    const handleUrl = (event: { url: string }) => {
+      console.log('Deep link received:', event.url);
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+    return () => subscription.remove();
+  }, []);
 
   if (!fontsLoaded) return null;
 
