@@ -281,5 +281,19 @@
   "icon": "Icono",
   "deleteConfirm": "¿Eliminar esta categoría?",
   "delete": "Eliminar"
+  },
+  "export": {
+  "title": "Exportar CSV",
+  "subtitle": "Descarga todos tus movimientos",
+  "date": "Fecha",
+  "type": "Tipo",
+  "category": "Categoría",
+  "amount": "Importe",
+  "currency": "Moneda",
+  "recurring": "Recurrente",
+  "yes": "Sí",
+  "no": "No",
+  "success": "Archivo exportado correctamente",
+  "error": "Error al exportar el archivo"
   } 
 }

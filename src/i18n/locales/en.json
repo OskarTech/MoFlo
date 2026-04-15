@@ -281,5 +281,19 @@
   "icon": "Icon",
   "deleteConfirm": "Delete this category?",
   "delete": "Delete"
-  }  
+  },
+  "export": {
+  "title": "Export CSV",
+  "subtitle": "Download all your movements",
+  "date": "Date",
+  "type": "Type",
+  "category": "Category",
+  "amount": "Amount",
+  "currency": "Currency",
+  "recurring": "Recurring",
+  "yes": "Yes",
+  "no": "No",
+  "success": "File exported successfully",
+  "error": "Error exporting file"
+  } 
 }

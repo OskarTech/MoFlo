@@ -22,6 +22,7 @@ import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import { logout } from '../../services/firebase/auth.service';
+import { exportMovementsToCSV } from '../../services/export.service';
 import Constants from 'expo-constants';
 
 const NOTIF_KEY = '@moflo_daily_notif';
@@ -135,6 +136,7 @@ const SettingsScreen = () => {
     displayName, currencyCode, language, themeMode, saveSettings,
   } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
+  const { movements } = useMovementStore();
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -212,6 +214,16 @@ const SettingsScreen = () => {
     } catch (e) {
       console.error('Share error:', e);
     }
+  };
+
+  const handleExportCSV = () => {
+    requirePremium(async () => {
+      try {
+        await exportMovementsToCSV(movements, t);
+      } catch (e) {
+        Alert.alert('Error', t('export.error'));
+      }
+    });
   };
 
   const handleDeleteData = () => {
@@ -422,6 +434,14 @@ const SettingsScreen = () => {
             label={t('settings.shareApp')}
             subtitle={t('settings.shareAppSubtitle')}
             onPress={handleShare}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="download-outline"
+            iconColor={colors.savings}
+            label={t('export.title')}
+            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('export.subtitle')}
+            onPress={handleExportCSV}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow

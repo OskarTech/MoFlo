@@ -281,5 +281,19 @@
   "icon": "Ikona",
   "deleteConfirm": "Usunąć tę kategorię?",
   "delete": "Usuń"
+  },
+  "export": {
+  "title": "Eksport CSV",
+  "subtitle": "Pobierz wszystkie swoje ruchy",
+  "date": "Data",
+  "type": "Typ",
+  "category": "Kategoria",
+  "amount": "Kwota",
+  "currency": "Waluta",
+  "recurring": "Cykliczny",
+  "yes": "Tak",
+  "no": "Nie",
+  "success": "Plik wyeksportowany pomyślnie",
+  "error": "Błąd podczas eksportu pliku"
   }
 }
