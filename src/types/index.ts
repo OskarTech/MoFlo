@@ -84,3 +84,13 @@ export interface Category {
   isCustom: boolean;
   createdAt: string;
 }
+
+export interface SharedAccount {
+  id: string;
+  name: string;
+  createdBy: string;
+  members: string[];
+  memberNames: { [uid: string]: string };
+  inviteCode: string;
+  createdAt: string;
+}
