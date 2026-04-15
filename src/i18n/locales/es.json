@@ -108,6 +108,8 @@
   },
   "annual": {
   "title": "Resumen Anual",
+  "summary": "Resumen",
+  "movements": "Movimientos",
   "filterByCategory": "Filtrar por categoría",
   "tapMonthHint": "Usa las flechas de arriba para filtrar por mes",
   "allYear": "Todo el año",
@@ -221,10 +223,10 @@
   "historial": "Historial",
   "annual": "Resumen",
   "recurring": "Fijos",
-  "reminders": "Recordatorios"
+  "reminders": "Notificaciones"
   },
   "header": {
-  "reminders": "Recordatorios",
+  "reminders": "Notificaciones",
   "settings": "Ajustes",
   "home": "Inicio",
   "movements": "Movimientos",
@@ -339,6 +341,9 @@
   "orJoin": "o únete con un código",
   "orCreate": "o crea una nueva",
   "openShared": "Ir a cuenta compartida",
-  "code": "Código"
+  "code": "Código",
+  "renameAccount": "Cambiar nombre",
+  "renameSuccess": "Nombre cambiado correctamente",
+  "renameError": "No se pudo cambiar el nombre"
   } 
 }

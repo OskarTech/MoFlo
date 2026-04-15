@@ -3,15 +3,15 @@ import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share, Clipboard, Switch,
 } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
-import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
@@ -19,7 +19,7 @@ import { exportMovementsToCSV } from '../../services/export.service';
 
 const SharedAccountSettingsScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, isDark } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const uid = auth().currentUser?.uid;
 
@@ -31,6 +31,8 @@ const SharedAccountSettingsScreen = () => {
   const { loadData, movements } = useMovementStore();
 
   const [linkCopied, setLinkCopied] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState(sharedAccount?.name ?? '');
 
   if (!sharedAccount) {
     navigation.goBack();
@@ -38,6 +40,24 @@ const SharedAccountSettingsScreen = () => {
   }
 
   const isCreator = sharedAccount.createdBy === uid;
+
+  const handleRenameAccount = async () => {
+    if (!newName.trim()) return;
+    try {
+      await firestore()
+        .collection('sharedAccounts')
+        .doc(sharedAccount.id)
+        .update({ name: newName.trim() });
+
+      useSharedAccountStore.setState({
+        sharedAccount: { ...sharedAccount, name: newName.trim() },
+      });
+      setEditingName(false);
+      Alert.alert('✅', t('sharedAccount.renameSuccess'));
+    } catch (e) {
+      Alert.alert('Error', t('sharedAccount.renameError'));
+    }
+  };
 
   const handleCopyLink = () => {
     Clipboard.setString(getInviteLink());
@@ -81,9 +101,7 @@ const SharedAccountSettingsScreen = () => {
         {
           text: t('sharedAccount.exportFirst'),
           onPress: async () => {
-            try {
-              await exportMovementsToCSV(movements, t);
-            } catch (e) {}
+            try { await exportMovementsToCSV(movements, t); } catch (e) {}
             confirmDelete();
           },
         },
@@ -122,11 +140,43 @@ const SharedAccountSettingsScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* NOMBRE */}
+        {/* NOMBRE DE LA CUENTA */}
         <View style={[styles.accountCard, { backgroundColor: colors.primary }]}>
           <Text style={styles.accountEmoji}>👥</Text>
-          <Text style={styles.accountName}>{sharedAccount.name}</Text>
+          {editingName && isCreator ? (
+            <View style={styles.renameRow}>
+              <TextInput
+                value={newName}
+                onChangeText={setNewName}
+                mode="flat"
+                style={[styles.renameInput, { backgroundColor: 'transparent' }]}
+                textColor="#FFFFFF"
+                underlineColor="rgba(255,255,255,0.5)"
+                activeUnderlineColor="#FFFFFF"
+                autoFocus
+                onSubmitEditing={handleRenameAccount}
+              />
+              <TouchableOpacity onPress={handleRenameAccount} style={styles.renameConfirm}>
+                <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setEditingName(false); setNewName(sharedAccount.name); }}>
+                <Ionicons name="close-circle" size={28} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.nameRow}
+              onPress={() => isCreator && setEditingName(true)}
+              activeOpacity={isCreator ? 0.7 : 1}
+            >
+              <Text style={styles.accountName}>{sharedAccount.name}</Text>
+              {isCreator && (
+                <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.7)" />
+              )}
+            </TouchableOpacity>
+          )}
           <Text style={styles.accountCode}>
             {t('sharedAccount.code')}: {sharedAccount.inviteCode}
           </Text>
@@ -145,7 +195,9 @@ const SharedAccountSettingsScreen = () => {
           </Text>
           <View style={styles.linkButtons}>
             <TouchableOpacity
-              style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
+              style={[styles.linkBtn, {
+                backgroundColor: linkCopied ? colors.income + '20' : dc.background,
+              }]}
               onPress={handleCopyLink}
             >
               <Ionicons
@@ -153,7 +205,9 @@ const SharedAccountSettingsScreen = () => {
                 size={16}
                 color={linkCopied ? colors.income : colors.primary}
               />
-              <Text style={[styles.linkBtnText, { color: linkCopied ? colors.income : colors.primary }]}>
+              <Text style={[styles.linkBtnText, {
+                color: linkCopied ? colors.income : colors.primary,
+              }]}>
                 {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
               </Text>
             </TouchableOpacity>
@@ -173,7 +227,7 @@ const SharedAccountSettingsScreen = () => {
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('sharedAccount.members')} ({sharedAccount.members.length})
         </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+        <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           {sharedAccount.members.map((memberId, index) => {
             const name = sharedAccount.memberNames[memberId] ?? 'Usuario';
             const isMe = memberId === uid;
@@ -231,27 +285,48 @@ const SharedAccountSettingsScreen = () => {
           </View>
         </View>
 
-        {/* PELIGRO */}
+        {/* GESTIÓN */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('settings.accountSection') ?? 'Cuenta'}
         </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          {!isCreator && (
-            <TouchableOpacity style={styles.dangerRow} onPress={handleLeave}>
-              <View style={[styles.dangerIcon, { backgroundColor: colors.expense + '20' }]}>
-                <Ionicons name="exit-outline" size={20} color={colors.expense} />
-              </View>
-              <Text style={[styles.dangerText, { color: colors.expense }]}>
-                {t('sharedAccount.leaveAccount')}
-              </Text>
-            </TouchableOpacity>
-          )}
+        <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           {isCreator && (
-            <TouchableOpacity style={styles.dangerRow} onPress={handleDelete}>
-              <View style={[styles.dangerIcon, { backgroundColor: colors.expense + '20' }]}>
+            <>
+              <TouchableOpacity
+                style={styles.actionRow}
+                onPress={() => setEditingName(true)}
+              >
+                <View style={[styles.actionIcon, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="pencil-outline" size={20} color={colors.primary} />
+                </View>
+                <Text style={[styles.actionText, { color: dc.textPrimary }]}>
+                  {t('sharedAccount.renameAccount')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              </TouchableOpacity>
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+            </>
+          )}
+
+          {!isCreator && (
+            <>
+              <TouchableOpacity style={styles.actionRow} onPress={handleLeave}>
+                <View style={[styles.actionIcon, { backgroundColor: colors.expense + '20' }]}>
+                  <Ionicons name="exit-outline" size={20} color={colors.expense} />
+                </View>
+                <Text style={[styles.actionText, { color: colors.expense }]}>
+                  {t('sharedAccount.leaveAccount')}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {isCreator && (
+            <TouchableOpacity style={styles.actionRow} onPress={handleDelete}>
+              <View style={[styles.actionIcon, { backgroundColor: colors.expense + '20' }]}>
                 <Ionicons name="trash-outline" size={20} color={colors.expense} />
               </View>
-              <Text style={[styles.dangerText, { color: colors.expense }]}>
+              <Text style={[styles.actionText, { color: colors.expense }]}>
                 {t('sharedAccount.deleteAccount')}
               </Text>
             </TouchableOpacity>
@@ -270,14 +345,34 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: 24, elevation: 4,
   },
   accountEmoji: { fontSize: 36, marginBottom: 8 },
-  accountName: { fontSize: 20, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', marginBottom: 4 },
-  accountCode: { fontSize: 12, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  accountName: {
+    fontSize: 20, fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF', textAlign: 'center',
+  },
+  accountCode: {
+    fontSize: 12, fontFamily: 'Poppins_500Medium',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  renameRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 8, width: '100%', marginBottom: 4,
+  },
+  renameInput: { flex: 1, fontSize: 18 },
+  renameConfirm: { padding: 4 },
   sectionLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8,
     marginBottom: 8, marginLeft: 4,
   },
-  card: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5, padding: 16 },
+  card: {
+    borderRadius: 16, marginBottom: 20,
+    borderWidth: 0.5, padding: 16,
+  },
+  membersCard: {
+    borderRadius: 16, marginBottom: 20,
+    overflow: 'hidden', borderWidth: 0.5,
+  },
   inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 8 },
   linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
   linkButtons: { flexDirection: 'row', gap: 8 },
@@ -286,7 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
   },
   linkBtnText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
-  memberRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, gap: 12 },
+  memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   memberAvatar: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
@@ -295,7 +390,7 @@ const styles = StyleSheet.create({
   memberInfo: { flex: 1 },
   memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  divider: { height: 0.5, marginLeft: 52 },
+  divider: { height: 0.5, marginLeft: 66 },
   notifRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   notifIcon: {
     width: 40, height: 40, borderRadius: 20,
@@ -304,12 +399,15 @@ const styles = StyleSheet.create({
   notifInfo: { flex: 1 },
   notifTitle: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   notifSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
-  dangerIcon: {
+  actionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 14, gap: 12,
+  },
+  actionIcon: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
   },
-  dangerText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  actionText: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
 });
 
 export default SharedAccountSettingsScreen;

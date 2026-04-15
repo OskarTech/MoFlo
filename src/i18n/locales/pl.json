@@ -107,6 +107,8 @@
   },
   "annual": {
   "title": "Podsumowanie Roczne",
+  "movements": "Ruchy",
+  "summary": "Podsumowanie",
   "filterByCategory": "Filtruj według kategorii",
   "year": "Rok",
   "totalIncome": "Łączne Przychody",
@@ -221,10 +223,10 @@
   "historial": "Historia",
   "annual": "Raport",
   "recurring": "Stałe",
-  "reminders": "Przypomnienia"
+  "reminders": "Powiadomienia"
   },
   "header": {
-  "reminders": "Przypomnienia",
+  "reminders": "Powiadomienia",
   "settings": "Ustawienia",
   "home": "Główna",
   "movements": "Transakcje",
@@ -339,6 +341,9 @@
   "orJoin": "lub dołącz z kodem",
   "orCreate": "lub utwórz nowe",
   "openShared": "Przejdź do konta",
-  "code": "Kod"
+  "code": "Kod",
+  "renameAccount": "Zmień nazwę",
+  "renameSuccess": "Nazwa zmieniona pomyślnie",
+  "renameError": "Nie można zmienić nazwy"
   }
 }

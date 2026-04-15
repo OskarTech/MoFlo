@@ -220,7 +220,7 @@ const AnnualScreen = () => {
                 yAxisTextStyle={{ color: dc.textSecondary, fontSize: 10 }}
                 noOfSections={4}
                 maxValue={
-                  Math.max(...annualData.map((m) => Math.max(m.income, m.expense))) * 1.2 || 100
+                  Math.max(...annualData.map(m => Math.max(m.income, m.expense))) * 1.2 || 100
                 }
                 width={SCREEN_WIDTH - 80}
                 height={180}
@@ -300,34 +300,13 @@ const AnnualScreen = () => {
                   </View>
                 )}
 
-                <AnnualCard
-                  label={t('annual.totalIncome')} amount={monthSummary.income}
-                  color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalExpenses')} amount={monthSummary.expense}
-                  color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalSavings')} amount={monthSummary.saving}
-                  color={colors.savings} icon="save" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.netBalance')}
-                  amount={monthSummary.income - monthSummary.expense - monthSummary.saving}
-                  color={
-                    (monthSummary.income - monthSummary.expense - monthSummary.saving) >= 0
-                      ? colors.income : colors.expense
-                  }
-                  icon="wallet" currencySymbol={currencySymbol}
-                />
-
+                {/* MOVIMIENTOS — justo debajo del filtro */}
                 {filteredMonthMovements.length > 0 && (
                   <>
                     <Text style={[styles.sectionTitle, {
-                      color: dc.textPrimary, marginTop: 8, marginBottom: 12,
+                      color: dc.textPrimary, marginBottom: 12,
                     }]}>
-                      {t('home.recentMovements')}
+                      {t('annual.movements')}
                     </Text>
                     {filteredMonthMovements.map((m) => {
                       const isIncome = m.type === 'income';
@@ -359,9 +338,38 @@ const AnnualScreen = () => {
                     })}
                   </>
                 )}
+
+                {/* TOTALES DEL MES */}
+                <Text style={[styles.sectionTitle, {
+                  color: dc.textPrimary, marginTop: 8, marginBottom: 12,
+                }]}>
+                  {t('annual.summary')}
+                </Text>
+                <AnnualCard
+                  label={t('annual.totalIncome')} amount={monthSummary.income}
+                  color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol}
+                />
+                <AnnualCard
+                  label={t('annual.totalExpenses')} amount={monthSummary.expense}
+                  color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol}
+                />
+                <AnnualCard
+                  label={t('annual.totalSavings')} amount={monthSummary.saving}
+                  color={colors.savings} icon="save" currencySymbol={currencySymbol}
+                />
+                <AnnualCard
+                  label={t('annual.netBalance')}
+                  amount={monthSummary.income - monthSummary.expense - monthSummary.saving}
+                  color={
+                    (monthSummary.income - monthSummary.expense - monthSummary.saving) >= 0
+                      ? colors.income : colors.expense
+                  }
+                  icon="wallet" currencySymbol={currencySymbol}
+                />
               </>
             ) : (
               <>
+                {/* TOTALES ANUALES */}
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {t('annual.year')} {selectedAnnualYear}
                 </Text>
@@ -383,6 +391,8 @@ const AnnualScreen = () => {
                   color={totals.balance >= 0 ? colors.income : colors.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
+
+                {/* MEJOR / PEOR MES */}
                 <View style={styles.highlightsRow}>
                   <View style={[styles.highlightCard, {
                     backgroundColor: dc.surface, borderColor: colors.income,

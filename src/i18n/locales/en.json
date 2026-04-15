@@ -108,6 +108,8 @@
   },
   "annual": {
   "title": "Annual Summary",
+  "summary": "Summary",
+  "movements": "Movements",
   "filterByCategory": "Filter by category",
   "year": "Year",
   "totalIncome": "Total Income",
@@ -221,10 +223,10 @@
   "historial": "History",
   "annual": "Summary",
   "recurring": "Fixed",
-  "reminders": "Reminders"
+  "reminders": "Notifications"
   },
   "header": {
-  "reminders": "Reminders",
+  "reminders": "Notifications",
   "settings": "Settings",
   "home": "Home",
   "movements": "Movements",
@@ -321,6 +323,9 @@
   "members": "Members",
   "you": "(You)",
   "creator": "Creator",
+  "renameAccount": "Rename account",
+  "renameSuccess": "Account renamed successfully",
+  "renameError": "Could not rename account",
   "settings": "Shared account settings",
   "notifTitle": "Partner notifications",
   "notifSubtitle": "Get notified when someone adds a movement",
