@@ -40,14 +40,17 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
   const uid = auth().currentUser?.uid;
 
-  // 1. Resetea todos los stores en memoria
+  // 1. Cancela listeners PRIMERO antes de todo
+  useSharedAccountStore.getState().unsubscribeAll();
+
+  // 2. Resetea todos los stores
   useMovementStore.getState().resetStore();
   useSettingsStore.getState().resetStore();
   usePremiumStore.getState().setPremium(false);
   useCategoryStore.getState().resetStore();
   useSharedAccountStore.getState().resetStore();
 
-  // 2. Limpia AsyncStorage — individual
+  // 3. Limpia AsyncStorage
   const keysToRemove = [
     '@moflo_movements',
     '@moflo_recurring',
@@ -61,7 +64,6 @@ export const logout = async () => {
     '@moflo_shared_recurring',
   ];
 
-  // Claves con uid
   if (uid) {
     keysToRemove.push(
       `@moflo_hidden_base_${uid}`,
@@ -72,6 +74,6 @@ export const logout = async () => {
 
   await AsyncStorage.multiRemove(keysToRemove);
 
-  // 3. Cierra sesión en Firebase
+  // 4. Cierra sesión en Firebase
   await auth().signOut();
 };

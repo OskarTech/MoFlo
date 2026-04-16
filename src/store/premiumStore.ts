@@ -17,6 +17,7 @@ export const usePremiumStore = create<PremiumStore>((set) => ({
   loadPremium: async () => {
     set({ isLoading: true });
     try {
+      // TODO: ⚠️ CAMBIAR ANTES DEL BUILD DE PRODUCCIÓN
       set({ isPremium: true });
     } catch (e) {
       console.error('Error loading premium:', e);
