@@ -76,32 +76,29 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
   // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────
   subscribeToSharedMovements: (accountId) => {
-    // Cancela listeners anteriores
     if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
     if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
 
-    // Listener movimientos
+    const { useMovementStore } = require('./movementStore');
+
     movementsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('movements')
       .onSnapshot((snap) => {
-        const movements = snap.docs.map(d => d.data() as Movement)
+        const movements = snap.docs
+          .map(d => d.data() as Movement)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        set({ sharedMovements: movements });
-      }, (e) => {
-        console.error('Error listening to shared movements:', e);
+        useMovementStore.setState({ movements: [...movements] });
       });
 
-    // Listener recurrentes
     recurringUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('recurring')
       .onSnapshot((snap) => {
-        const recurring = snap.docs.map(d => d.data() as RecurringMovement)
+        const recurring = snap.docs
+          .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
-        set({ sharedRecurring: recurring });
-      }, (e) => {
-        console.error('Error listening to shared recurring:', e);
+        useMovementStore.setState({ recurringMovements: [...recurring] });
       });
   },
 

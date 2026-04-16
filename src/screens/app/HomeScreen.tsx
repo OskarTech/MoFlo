@@ -94,9 +94,15 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
 
 const HomeScreen = () => {
   const { t } = useTranslation();
-  const { getMonthlySummary, getRecentMovements } = useMovementStore();
-  const { getCurrencySymbol } = useSettingsStore();
   const { colors: dc } = useTheme();
+  const { getCurrencySymbol } = useSettingsStore();
+
+  // Suscripción a movements para forzar re-render cuando cambia
+  const {
+    getMonthlySummary,
+    getRecentMovements,
+    movements, // ← clave para re-render en tiempo real
+  } = useMovementStore();
 
   const summary = getMonthlySummary();
   const recentMovements = getRecentMovements(5);
@@ -220,12 +226,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
   movementInfo: { flex: 1 },
-  movementDescription: {
-    fontSize: 14, fontFamily: 'Poppins_500Medium',
-  },
-  movementDate: {
-    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2,
-  },
+  movementDescription: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
   emptyState: { alignItems: 'center', paddingVertical: 48 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },

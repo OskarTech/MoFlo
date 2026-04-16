@@ -69,20 +69,6 @@ const getSharedMovementsCol = (accountId: string) =>
 const getSharedRecurringCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('recurring');
 
-const getActiveMovements = () => {
-  const { useSharedAccountStore } = require('./sharedAccountStore');
-  const { isSharedMode, sharedMovements } = useSharedAccountStore.getState();
-  const { movements } = useMovementStore.getState();
-  return isSharedMode ? sharedMovements : movements;
-};
-
-const getActiveRecurring = () => {
-  const { useSharedAccountStore } = require('./sharedAccountStore');
-  const { isSharedMode, sharedRecurring } = useSharedAccountStore.getState();
-  const { recurringMovements } = useMovementStore.getState();
-  return isSharedMode ? sharedRecurring : recurringMovements;
-};
-
 export const useMovementStore = create<MovementStore>((set, get) => ({
   movements: [],
   recurringMovements: [],
@@ -161,10 +147,14 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           getSharedRecurringCol(accountId).get(),
         ]);
 
-        const movements = movementsSnap.docs.map(d => d.data() as Movement);
-        const recurring = recurringSnap.docs.map(d => d.data() as RecurringMovement);
+        const movements = movementsSnap.docs
+          .map(d => d.data() as Movement)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const recurring = recurringSnap.docs
+          .map(d => d.data() as RecurringMovement)
+          .sort((a, b) => a.recurringDay - b.recurringDay);
 
-        set({ movements, recurringMovements: recurring });
+        set({ movements: [...movements], recurringMovements: [...recurring] });
         await Promise.all([
           AsyncStorage.setItem(STORAGE_KEYS.SHARED_MOVEMENTS, JSON.stringify(movements)),
           AsyncStorage.setItem(STORAGE_KEYS.SHARED_RECURRING, JSON.stringify(recurring)),
@@ -195,12 +185,10 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      // Optimistic update inmediato
-      const { useSharedAccountStore } = require('./sharedAccountStore');
-      const current = useSharedAccountStore.getState().sharedMovements;
-      useSharedAccountStore.setState({ sharedMovements: [movement, ...current] });
+      // Optimistic update directo en movements
+      const newMovements = [movement, ...get().movements];
+      set({ movements: [...newMovements] });
 
-      // Escribe en Firestore — el listener confirmará
       try {
         const uid = auth().currentUser?.uid ?? '';
         await getSharedMovementsCol(sharedAccountId)
@@ -208,63 +196,50 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           .set({ ...movement, addedBy: uid });
       } catch (e) {
         // Revierte si falla
-        useSharedAccountStore.setState({ sharedMovements: current });
+        set({ movements: get().movements.filter(m => m.id !== movement.id) });
         console.error('Error saving shared movement:', e);
       }
       return;
     }
 
-    // Cuenta individual — lógica original
     const newMovements = [movement, ...get().movements];
     set({ movements: newMovements });
     await get().saveMovements(newMovements);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
-      try {
-        await addMovementToFirestore(movement);
-      } catch (e) {
-        await enqueue({ type: 'ADD_MOVEMENT', payload: movement });
-      }
+      try { await addMovementToFirestore(movement); }
+      catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: movement }); }
     } else {
       await enqueue({ type: 'ADD_MOVEMENT', payload: movement });
     }
   },
 
+  // ── ELIMINAR MOVIMIENTO ────────────────────────────────────────
   deleteMovement: async (id) => {
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      // Optimistic update inmediato
-      const { useSharedAccountStore } = require('./sharedAccountStore');
-      const current = useSharedAccountStore.getState().sharedMovements;
-      useSharedAccountStore.setState({
-        sharedMovements: current.filter((m: Movement) => m.id !== id),
-      });
+      const previous = get().movements;
+      set({ movements: [...previous.filter(m => m.id !== id)] });
 
-      // Elimina en Firestore — el listener confirmará
       try {
         await getSharedMovementsCol(sharedAccountId).doc(id).delete();
       } catch (e) {
-        // Revierte si falla
-        useSharedAccountStore.setState({ sharedMovements: current });
+        set({ movements: previous });
         console.error('Error deleting shared movement:', e);
       }
       return;
     }
 
-    // Cuenta individual — lógica original
-    const newMovements = get().movements.filter((m) => m.id !== id);
+    const newMovements = get().movements.filter(m => m.id !== id);
     set({ movements: newMovements });
     await get().saveMovements(newMovements);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
-      try {
-        await deleteMovementFromFirestore(id);
-      } catch (e) {
-        await enqueue({ type: 'DELETE_MOVEMENT', payload: id });
-      }
+      try { await deleteMovementFromFirestore(id); }
+      catch (e) { await enqueue({ type: 'DELETE_MOVEMENT', payload: id }); }
     } else {
       await enqueue({ type: 'DELETE_MOVEMENT', payload: id });
     }
@@ -275,16 +250,14 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      const { useSharedAccountStore } = require('./sharedAccountStore');
-      const current = useSharedAccountStore.getState().sharedRecurring;
-      useSharedAccountStore.setState({
-        sharedRecurring: [...current, movement].sort((a, b) => a.recurringDay - b.recurringDay),
-      });
+      const newRecurring = [...get().recurringMovements, movement]
+        .sort((a, b) => a.recurringDay - b.recurringDay);
+      set({ recurringMovements: [...newRecurring] });
 
       try {
         await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
       } catch (e) {
-        useSharedAccountStore.setState({ sharedRecurring: current });
+        set({ recurringMovements: get().recurringMovements.filter(m => m.id !== movement.id) });
         console.error('Error saving shared recurring:', e);
       }
       return;
@@ -296,46 +269,38 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
-      try {
-        await addRecurringToFirestore(movement);
-      } catch (e) {
-        await enqueue({ type: 'ADD_RECURRING', payload: movement });
-      }
+      try { await addRecurringToFirestore(movement); }
+      catch (e) { await enqueue({ type: 'ADD_RECURRING', payload: movement }); }
     } else {
       await enqueue({ type: 'ADD_RECURRING', payload: movement });
     }
   },
 
+  // ── ELIMINAR RECURRENTE ────────────────────────────────────────
   deleteRecurringMovement: async (id) => {
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      const { useSharedAccountStore } = require('./sharedAccountStore');
-      const current = useSharedAccountStore.getState().sharedRecurring;
-      useSharedAccountStore.setState({
-        sharedRecurring: current.filter((m: RecurringMovement) => m.id !== id),
-      });
+      const previous = get().recurringMovements;
+      set({ recurringMovements: [...previous.filter(m => m.id !== id)] });
 
       try {
         await getSharedRecurringCol(sharedAccountId).doc(id).delete();
       } catch (e) {
-        useSharedAccountStore.setState({ sharedRecurring: current });
+        set({ recurringMovements: previous });
         console.error('Error deleting shared recurring:', e);
       }
       return;
     }
 
-    const newRecurring = get().recurringMovements.filter((m) => m.id !== id);
+    const newRecurring = get().recurringMovements.filter(m => m.id !== id);
     set({ recurringMovements: newRecurring });
     await get().saveRecurring(newRecurring);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
-      try {
-        await deleteRecurringFromFirestore(id);
-      } catch (e) {
-        await enqueue({ type: 'DELETE_RECURRING', payload: id });
-      }
+      try { await deleteRecurringFromFirestore(id); }
+      catch (e) { await enqueue({ type: 'DELETE_RECURRING', payload: id }); }
     } else {
       await enqueue({ type: 'DELETE_RECURRING', payload: id });
     }
@@ -356,22 +321,17 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (!recurring.isActive) continue;
       if (currentDay < recurring.recurringDay) continue;
 
-      const alreadyExists = movements.some(
-        (m) =>
-          m.isRecurring &&
-          m.description === recurring.description &&
-          m.amount === recurring.amount &&
-          new Date(m.date).getMonth() + 1 === currentMonth &&
-          new Date(m.date).getFullYear() === currentYear
+      const alreadyExists = movements.some(m =>
+        m.isRecurring &&
+        m.description === recurring.description &&
+        m.amount === recurring.amount &&
+        new Date(m.date).getMonth() + 1 === currentMonth &&
+        new Date(m.date).getFullYear() === currentYear
       );
 
       if (!alreadyExists) {
-        const day = Math.min(
-          recurring.recurringDay,
-          new Date(currentYear, currentMonth, 0).getDate()
-        );
+        const day = Math.min(recurring.recurringDay, new Date(currentYear, currentMonth, 0).getDate());
         const date = new Date(currentYear, currentMonth - 1, day);
-
         newMovements.push({
           id: `recurring_${recurring.id}_${currentMonth}_${currentYear}`,
           type: recurring.type,
@@ -395,11 +355,8 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       for (const m of newMovements) {
         if (netState.isConnected) {
-          try {
-            await addMovementToFirestore(m);
-          } catch (e) {
-            await enqueue({ type: 'ADD_MOVEMENT', payload: m });
-          }
+          try { await addMovementToFirestore(m); }
+          catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: m }); }
         } else {
           await enqueue({ type: 'ADD_MOVEMENT', payload: m });
         }
@@ -410,14 +367,10 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   setSelectedMonth: (month, year) => set({ selectedMonth: month, selectedYear: year }),
   setSelectedAnnualYear: (year) => set({ selectedAnnualYear: year }),
 
-  // ── SELECTORES ─────────────────────────────────────────────────
+  // ── SELECTORES — usan movements directamente ───────────────────
   getMovementsForSelectedMonth: () => {
-    const { selectedMonth, selectedYear, movements, sharedAccountId } = get();
-    const source: Movement[] = sharedAccountId
-      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
-      : movements;
-
-    return source.filter((m: Movement) => {
+    const { selectedMonth, selectedYear, movements } = get();
+    return movements.filter(m => {
       const date = new Date(m.date);
       return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
     });
@@ -426,9 +379,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   getMonthlySummary: () => {
     const { selectedMonth, selectedYear } = get();
     const monthMovements = get().getMovementsForSelectedMonth();
-    const totalIncome = monthMovements.filter((m: Movement) => m.type === 'income').reduce((s: number, m: Movement) => s + m.amount, 0);
-    const totalExpense = monthMovements.filter((m: Movement) => m.type === 'expense').reduce((s: number, m: Movement) => s + m.amount, 0);
-    const totalSavings = monthMovements.filter((m: Movement) => m.type === 'saving').reduce((s: number, m: Movement) => s + m.amount, 0);
+    const totalIncome = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+    const totalExpense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+    const totalSavings = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
     return {
       totalIncome, totalExpense, totalSavings,
       balance: totalIncome - totalExpense - totalSavings,
@@ -437,30 +390,23 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   },
 
   getRecentMovements: (limit = 5) => {
-    const { movements, sharedAccountId } = get();
-    const source: Movement[] = sharedAccountId
-      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
-      : movements;
-    return [...source]
-      .sort((a: Movement, b: Movement) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const { movements } = get();
+    return [...movements]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
   },
 
   getAnnualSummary: (): AnnualMonthData[] => {
-    const { selectedAnnualYear, movements, sharedAccountId } = get();
-    const source: Movement[] = sharedAccountId
-      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
-      : movements;
-
+    const { selectedAnnualYear, movements } = get();
     return Array.from({ length: 12 }, (_, i): AnnualMonthData => {
       const month = i + 1;
-      const monthMovements = source.filter((m: Movement) => {
+      const monthMovements = movements.filter(m => {
         const date = new Date(m.date);
         return date.getMonth() + 1 === month && date.getFullYear() === selectedAnnualYear;
       });
-      const income = monthMovements.filter((m: Movement) => m.type === 'income').reduce((s: number, m: Movement) => s + m.amount, 0);
-      const expense = monthMovements.filter((m: Movement) => m.type === 'expense').reduce((s: number, m: Movement) => s + m.amount, 0);
-      const saving = monthMovements.filter((m: Movement) => m.type === 'saving').reduce((s: number, m: Movement) => s + m.amount, 0);
+      const income = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+      const expense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+      const saving = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
       return { month, income, expense, saving, balance: income - expense - saving };
     });
   },

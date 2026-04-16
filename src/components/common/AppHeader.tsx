@@ -74,6 +74,8 @@ const AppHeader = ({
     if (isSharedMode) {
       setSharedAccountId(null);
       await setSharedMode(false);
+      // Limpia movimientos compartidos del store
+      useMovementStore.getState().resetStore();
       await loadData();
       navigation.navigate('HomeTab');
     }
@@ -88,6 +90,8 @@ const AppHeader = ({
     if (sharedAccount) {
       setSharedAccountId(sharedAccount.id);
       await setSharedMode(true);
+      // Activa el listener de movimientos
+      useSharedAccountStore.getState().subscribeToSharedMovements(sharedAccount.id);
       navigation.navigate('HomeTab');
     } else {
       setTimeout(() => navigation.navigate('SharedAccount'), 300);
