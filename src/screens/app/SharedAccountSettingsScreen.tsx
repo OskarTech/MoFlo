@@ -3,7 +3,7 @@ import {
   View, StyleSheet, ScrollView, TouchableOpacity,
   Alert, Share, Clipboard, Switch, Modal, FlatList,
 } from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +14,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { CURRENCIES as CURRENCY_LIST } from '../../store/settingsStore';
+import { CURRENCIES } from '../../store/settingsStore';
 import AppHeader from '../../components/common/AppHeader';
 import { exportMovementsToCSV } from '../../services/export.service';
 
@@ -32,7 +32,9 @@ const SelectModal = ({
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.modalSheet, { backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }]}>
+        <View style={[styles.modalSheet, {
+          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+        }]}>
           <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{title}</Text>
           <FlatList
@@ -45,7 +47,10 @@ const SelectModal = ({
               >
                 <Text style={[
                   styles.modalOptionText, { color: dc.textPrimary },
-                  item.code === selectedValue && { color: colors.primary, fontFamily: 'Poppins_600SemiBold' },
+                  item.code === selectedValue && {
+                    color: colors.primary,
+                    fontFamily: 'Poppins_600SemiBold',
+                  },
                 ]}>
                   {item.label}
                 </Text>
@@ -89,9 +94,8 @@ const SharedAccountSettingsScreen = () => {
   if (!sharedAccount) return null;
 
   const isCreator = sharedAccount.createdBy === uid;
-
   const selectedCurrencyLabel =
-    CURRENCY_LIST.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
+    CURRENCIES.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
 
   const handleRenameAccount = async () => {
     if (!newName.trim()) return;
@@ -220,7 +224,10 @@ const SharedAccountSettingsScreen = () => {
               <TouchableOpacity onPress={handleRenameAccount} style={styles.renameConfirm}>
                 <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setEditingName(false); setNewName(sharedAccount.name); }}>
+              <TouchableOpacity onPress={() => {
+                setEditingName(false);
+                setNewName(sharedAccount.name);
+              }}>
                 <Ionicons name="close-circle" size={28} color="rgba(255,255,255,0.6)" />
               </TouchableOpacity>
             </View>
@@ -324,57 +331,65 @@ const SharedAccountSettingsScreen = () => {
         </Text>
         <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <TouchableOpacity
-            style={styles.actionRow}
+            style={styles.optionRow}
             onPress={() => setShowCurrencyModal(true)}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.income + '20' }]}>
+            <View style={[styles.optionIcon, { backgroundColor: colors.income + '20' }]}>
               <Ionicons name="cash-outline" size={20} color={colors.income} />
             </View>
-            <Text style={[styles.actionText, { color: dc.textPrimary }]}>
-              {t('settings.currency')}
-            </Text>
-            <Text style={[styles.actionValue, { color: dc.textSecondary }]}>
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
+                {t('settings.currency')}
+              </Text>
+            </View>
+            <Text style={[styles.optionValue, { color: dc.textSecondary }]}>
               {selectedCurrencyLabel}
             </Text>
             <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        {/* CATEGORÍAS COMPARTIDAS */}
+        {/* CATEGORÍAS Y EXPORTAR */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('categories.title')}
         </Text>
         <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <TouchableOpacity
-            style={styles.actionRow}
+            style={styles.optionRow}
             onPress={() => navigation.navigate('SharedCategories', { accountId: sharedAccount.id })}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.savings + '20' }]}>
+            <View style={[styles.optionIcon, { backgroundColor: colors.savings + '20' }]}>
               <Ionicons name="pricetag-outline" size={20} color={colors.savings} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.actionText, { color: dc.textPrimary }]}>
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
                 {t('categories.title')}
               </Text>
-              <Text style={[styles.actionSubtitle, { color: dc.textSecondary }]}>
+              <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
                 {t('sharedAccount.sharedCategoriesSubtitle')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
           </TouchableOpacity>
+
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <TouchableOpacity style={styles.actionRow} onPress={handleExportCSV}>
-            <View style={[styles.actionIcon, { backgroundColor: colors.savings + '20' }]}>
+
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={handleExportCSV}
+          >
+            <View style={[styles.optionIcon, { backgroundColor: colors.savings + '20' }]}>
               <Ionicons name="download-outline" size={20} color={colors.savings} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.actionText, { color: dc.textPrimary }]}>
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
                 {t('export.title')}
               </Text>
-              <Text style={[styles.actionSubtitle, { color: dc.textSecondary }]}>
+              <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
                 {t('sharedAccount.exportSubtitle')}
               </Text>
             </View>
+            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -383,15 +398,15 @@ const SharedAccountSettingsScreen = () => {
           {t('settings.notifications')}
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <View style={styles.notifRow}>
-            <View style={[styles.notifIcon, { backgroundColor: colors.primary + '20' }]}>
+          <View style={styles.optionRow}>
+            <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="notifications-outline" size={20} color={colors.primary} />
             </View>
-            <View style={styles.notifInfo}>
-              <Text style={[styles.notifTitle, { color: dc.textPrimary }]}>
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
                 {t('sharedAccount.notifTitle')}
               </Text>
-              <Text style={[styles.notifSubtitle, { color: dc.textSecondary }]}>
+              <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
                 {t('sharedAccount.notifSubtitle')}
               </Text>
             </View>
@@ -412,15 +427,17 @@ const SharedAccountSettingsScreen = () => {
           {isCreator && (
             <>
               <TouchableOpacity
-                style={styles.actionRow}
+                style={styles.optionRow}
                 onPress={() => setEditingName(true)}
               >
-                <View style={[styles.actionIcon, { backgroundColor: colors.primary + '20' }]}>
+                <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
                   <Ionicons name="pencil-outline" size={20} color={colors.primary} />
                 </View>
-                <Text style={[styles.actionText, { color: dc.textPrimary }]}>
-                  {t('sharedAccount.renameAccount')}
-                </Text>
+                <View style={styles.optionContent}>
+                  <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
+                    {t('sharedAccount.renameAccount')}
+                  </Text>
+                </View>
                 <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
               </TouchableOpacity>
               <View style={[styles.divider, { backgroundColor: dc.border }]} />
@@ -428,24 +445,28 @@ const SharedAccountSettingsScreen = () => {
           )}
 
           {!isCreator && (
-            <TouchableOpacity style={styles.actionRow} onPress={handleLeave}>
-              <View style={[styles.actionIcon, { backgroundColor: colors.expense + '20' }]}>
+            <TouchableOpacity style={styles.optionRow} onPress={handleLeave}>
+              <View style={[styles.optionIcon, { backgroundColor: colors.expense + '20' }]}>
                 <Ionicons name="exit-outline" size={20} color={colors.expense} />
               </View>
-              <Text style={[styles.actionText, { color: colors.expense }]}>
-                {t('sharedAccount.leaveAccount')}
-              </Text>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionLabel, { color: colors.expense }]}>
+                  {t('sharedAccount.leaveAccount')}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
 
           {isCreator && (
-            <TouchableOpacity style={styles.actionRow} onPress={handleDelete}>
-              <View style={[styles.actionIcon, { backgroundColor: colors.expense + '20' }]}>
+            <TouchableOpacity style={styles.optionRow} onPress={handleDelete}>
+              <View style={[styles.optionIcon, { backgroundColor: colors.expense + '20' }]}>
                 <Ionicons name="trash-outline" size={20} color={colors.expense} />
               </View>
-              <Text style={[styles.actionText, { color: colors.expense }]}>
-                {t('sharedAccount.deleteAccount')}
-              </Text>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionLabel, { color: colors.expense }]}>
+                  {t('sharedAccount.deleteAccount')}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -454,7 +475,7 @@ const SharedAccountSettingsScreen = () => {
       <SelectModal
         visible={showCurrencyModal}
         title={t('settings.selectCurrency')}
-        options={CURRENCY_LIST.map(c => ({ code: c.code, label: c.label }))}
+        options={CURRENCIES.map(c => ({ code: c.code, label: c.label }))}
         selectedValue={sharedCurrencyCode}
         onSelect={(code) => saveSharedSettings(sharedAccount.id, { currencyCode: code })}
         onDismiss={() => setShowCurrencyModal(false)}
@@ -466,48 +487,85 @@ const SharedAccountSettingsScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  accountCard: { borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 24, elevation: 4 },
+  accountCard: {
+    borderRadius: 20, padding: 24,
+    alignItems: 'center', marginBottom: 24, elevation: 4,
+  },
   accountEmoji: { fontSize: 36, marginBottom: 8 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  accountName: { fontSize: 20, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', textAlign: 'center' },
-  accountCode: { fontSize: 12, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
-  renameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', marginBottom: 4 },
+  accountName: {
+    fontSize: 20, fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF', textAlign: 'center',
+  },
+  accountCode: {
+    fontSize: 12, fontFamily: 'Poppins_500Medium',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  renameRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 8, width: '100%', marginBottom: 4,
+  },
   renameInput: { flex: 1, fontSize: 18 },
   renameConfirm: { padding: 4 },
   sectionLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginLeft: 4,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 8, marginLeft: 4,
   },
-  card: { borderRadius: 16, marginBottom: 20, borderWidth: 0.5, padding: 16 },
-  membersCard: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
+  card: {
+    borderRadius: 16, marginBottom: 20,
+    borderWidth: 0.5, padding: 16,
+  },
+  membersCard: {
+    borderRadius: 16, marginBottom: 20,
+    overflow: 'hidden', borderWidth: 0.5,
+  },
   inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 8 },
   linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
   linkButtons: { flexDirection: 'row', gap: 8 },
-  linkBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10 },
+  linkBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+  },
   linkBtnText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
   memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  memberAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  memberAvatar: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
+  },
   memberInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
   memberInfo: { flex: 1 },
   memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   divider: { height: 0.5, marginLeft: 66 },
-  notifRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  notifIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  notifInfo: { flex: 1 },
-  notifTitle: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  notifSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  actionIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  actionText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  actionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  actionValue: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginRight: 4 },
+  optionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 16, gap: 12,
+  },
+  optionIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  optionContent: { flex: 1 },
+  optionLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  optionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  optionValue: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginRight: 4 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 40, maxHeight: '60%',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    alignSelf: 'center', marginBottom: 20,
+  },
   modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
-  modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
+  modalOption: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16, borderBottomWidth: 0.5,
+  },
   modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
 });
 
