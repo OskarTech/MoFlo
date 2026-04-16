@@ -44,25 +44,33 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       const uid = auth().currentUser?.uid;
       if (!uid) return;
 
-      // Carga local primero para respuesta inmediata
+      // Carga local primero
       const customRaw = await AsyncStorage.getItem(CUSTOM_KEY);
       if (customRaw) set({ customCategories: JSON.parse(customRaw) });
 
       const hiddenRaw = await AsyncStorage.getItem(`${HIDDEN_KEY}_${uid}`);
       if (hiddenRaw) set({ hiddenBaseCategories: JSON.parse(hiddenRaw) });
 
-      // SIEMPRE sincroniza con Firestore cuando hay conexión
+      // SIEMPRE sincroniza con Firestore
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
+        // Carga categorías custom
         const snap = await firestore()
           .collection('users').doc(uid)
           .collection('categories').get();
-
         const firestoreCategories = snap.docs.map(d => d.data() as Category);
-
-        // Actualiza siempre con los datos de Firestore
         set({ customCategories: firestoreCategories });
         await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(firestoreCategories));
+
+        // Carga categorías ocultas desde Firestore
+        const userDoc = await firestore()
+          .collection('users').doc(uid).get();
+        const hiddenFromFirestore: string[] = userDoc.data()?.hiddenCategories ?? [];
+        set({ hiddenBaseCategories: hiddenFromFirestore });
+        await AsyncStorage.setItem(
+          `${HIDDEN_KEY}_${uid}`,
+          JSON.stringify(hiddenFromFirestore)
+        );
       }
     } catch (e) {
       console.error('Error loading categories:', e);
@@ -115,13 +123,26 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
 
   hideBaseCategory: async (id, type) => {
     const uid = auth().currentUser?.uid;
+    if (!uid) return;
+
     const key = `${id}_${type}`;
     const updated = [...get().hiddenBaseCategories, key];
     set({ hiddenBaseCategories: updated });
-    await AsyncStorage.setItem(
-      `${HIDDEN_KEY}_${uid}`,
-      JSON.stringify(updated)
-    );
+
+    // Guarda en AsyncStorage
+    await AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(updated));
+
+    // Guarda en Firestore para sincronización entre dispositivos
+    try {
+      await firestore()
+        .collection('users').doc(uid)
+        .update({ hiddenCategories: updated });
+    } catch (e) {
+      // Si el doc no existe, usa set con merge
+      await firestore()
+        .collection('users').doc(uid)
+        .set({ hiddenCategories: updated }, { merge: true });
+    }
   },
 
   getCategoriesForType: (type) => {
