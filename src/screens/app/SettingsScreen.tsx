@@ -379,8 +379,12 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="pricetag-outline" iconColor={colors.savings}
+            icon="pricetag-outline"
+            iconColor={colors.savings}
             label={t('categories.title')}
+            subtitle={!isPremium
+              ? `⭐ ${t('premium.badge')}`
+              : t('settings.individualCategoriesSubtitle')}
             onPress={() => requirePremium(() => navigation.navigate('Categories'))}
           />
         </View>
@@ -424,9 +428,12 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="download-outline" iconColor={colors.savings}
+            icon="download-outline"
+            iconColor={colors.savings}
             label={t('export.title')}
-            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('export.subtitle')}
+            subtitle={!isPremium
+              ? `⭐ ${t('premium.badge')}`
+              : t('settings.individualExportSubtitle')}
             onPress={handleExportCSV}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />

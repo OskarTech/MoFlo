@@ -6,9 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { Movement } from '../../types';
+import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatDate } from '../../utils/dateFormat';
 
@@ -64,6 +66,8 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
   const { getCategoryName } = useCategoryStore();
+  const { isSharedMode } = useSharedAccountStore();
+  const { getSharedCategoryName } = useSharedCategoryStore();
   const { colors: dc } = useTheme();
   const currencySymbol = getCurrencySymbol();
   const isIncome = movement.type === 'income';
@@ -72,6 +76,11 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
   const icon: keyof typeof Ionicons.glyphMap = isIncome
     ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
 
+  const getCatName = (id: string, type: MovementType) =>
+    isSharedMode
+      ? getSharedCategoryName(id, type, t)
+      : getCategoryName(id, type, t);
+
   return (
     <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
       <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
@@ -79,7 +88,7 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
       </View>
       <View style={styles.movementInfo}>
         <Text style={[styles.movementDescription, { color: dc.textPrimary }]} numberOfLines={1}>
-          {getCategoryName(movement.category, movement.type, t)}
+          {getCatName(movement.category, movement.type)}
         </Text>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
           {formatDate(movement.date)}
@@ -96,17 +105,19 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
 
-  // Suscripción a movements para forzar re-render cuando cambia
   const {
     getMonthlySummary,
     getRecentMovements,
-    movements, // ← clave para re-render en tiempo real
+    movements,
   } = useMovementStore();
 
   const summary = getMonthlySummary();
   const recentMovements = getRecentMovements(5);
-  const currencySymbol = getCurrencySymbol();
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -206,17 +217,10 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     justifyContent: 'center', alignItems: 'center', marginBottom: 8,
   },
-  summaryAmount: {
-    fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center',
-  },
-  summaryLabel: {
-    fontSize: 10, fontFamily: 'Poppins_400Regular',
-    marginTop: 2, textAlign: 'center',
-  },
+  summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
+  summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
   recentSection: { paddingHorizontal: 16 },
-  sectionTitle: {
-    fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16,
-  },
+  sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
@@ -232,9 +236,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
-  emptySubtext: {
-    fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center',
-  },
+  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center' },
 });
 
 export default HomeScreen;

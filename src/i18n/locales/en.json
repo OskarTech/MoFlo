@@ -127,6 +127,8 @@
   "settings": {
   "title": "Settings",
   "editPhoto": "Edit photo",
+  "individualCategoriesSubtitle": "Customize your individual account categories",
+  "individualExportSubtitle": "Export your individual account movements",
   "accountSection": "Account",
   "email": "Email",
   "memberSince": "Member since",
@@ -326,6 +328,9 @@
   "renameAccount": "Rename account",
   "renameSuccess": "Account renamed successfully",
   "renameError": "Could not rename account",
+  "sharedCategoriesSubtitle": "Manage shared account categories",
+  "exportSubtitle": "Export shared account movements",
+  "currency": "Shared currency",
   "settings": "Shared account settings",
   "notifTitle": "Partner notifications",
   "notifSubtitle": "Get notified when someone adds a movement",

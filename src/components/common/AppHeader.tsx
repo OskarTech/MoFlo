@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useMovementStore } from '../../store/movementStore';
 import { colors } from '../../theme';
 import PremiumModal from './PremiumModal';
@@ -37,8 +38,10 @@ const AppHeader = ({
   const { isPremium } = usePremiumStore();
   const {
     sharedAccount, isSharedMode,
-    setSharedMode,
+    setSharedMode, subscribeToSharedMovements,
+    loadSharedSettings,
   } = useSharedAccountStore();
+  const { loadSharedCategories } = useSharedCategoryStore();
   const { loadData, loadSharedData, setSharedAccountId } = useMovementStore();
 
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -74,8 +77,6 @@ const AppHeader = ({
     if (isSharedMode) {
       setSharedAccountId(null);
       await setSharedMode(false);
-      // Limpia movimientos compartidos del store
-      useMovementStore.getState().resetStore();
       await loadData();
       navigation.navigate('HomeTab');
     }
@@ -90,8 +91,9 @@ const AppHeader = ({
     if (sharedAccount) {
       setSharedAccountId(sharedAccount.id);
       await setSharedMode(true);
-      // Activa el listener de movimientos
-      useSharedAccountStore.getState().subscribeToSharedMovements(sharedAccount.id);
+      subscribeToSharedMovements(sharedAccount.id);
+      await loadSharedCategories(sharedAccount.id);
+      await loadSharedSettings(sharedAccount.id);
       navigation.navigate('HomeTab');
     } else {
       setTimeout(() => navigation.navigate('SharedAccount'), 300);
@@ -101,7 +103,6 @@ const AppHeader = ({
   return (
     <>
       <View style={[styles.container, { backgroundColor: headerBg, paddingTop }]}>
-        {/* CAMPANA */}
         {showBell ? (
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: bellIconBg }]}
@@ -114,7 +115,6 @@ const AppHeader = ({
           <View style={styles.iconPlaceholder} />
         )}
 
-        {/* CENTRO */}
         {showAccountSelector ? (
           <TouchableOpacity
             style={styles.accountSelector}
@@ -137,7 +137,6 @@ const AppHeader = ({
           <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
         )}
 
-        {/* TUERCA */}
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: settingsIconBg }]}
           onPress={() => { if (!isInSettings) navigation.navigate('Settings'); }}
@@ -167,7 +166,6 @@ const AppHeader = ({
               {t('header.selectAccount')}
             </Text>
 
-            {/* INDIVIDUAL */}
             <TouchableOpacity
               style={[styles.accountOption, { borderBottomColor: dc.border }]}
               onPress={handleSelectIndividual}
@@ -188,7 +186,6 @@ const AppHeader = ({
               )}
             </TouchableOpacity>
 
-            {/* COMPARTIDA */}
             <TouchableOpacity
               style={styles.accountOption}
               onPress={handleSelectShared}
@@ -221,7 +218,6 @@ const AppHeader = ({
         </View>
       </Modal>
 
-      {/* MODAL PREMIUM */}
       <PremiumModal
         visible={showPremiumModal}
         onDismiss={() => setShowPremiumModal(false)}
@@ -233,57 +229,30 @@ const AppHeader = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 16, paddingBottom: 12,
   },
   iconButton: {
     width: 38, height: 38, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center',
   },
   iconPlaceholder: { width: 38, height: 38 },
-  title: {
-    fontSize: 16, fontFamily: 'Poppins_600SemiBold',
-    flex: 1, textAlign: 'center',
-  },
-  accountSelector: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 6, flex: 1, justifyContent: 'center',
-  },
+  title: { fontSize: 16, fontFamily: 'Poppins_600SemiBold', flex: 1, textAlign: 'center' },
+  accountSelector: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' },
   accountText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
-  modalOverlay: {
-    flex: 1, justifyContent: 'flex-start',
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
+  modalOverlay: { flex: 1, justifyContent: 'flex-start', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject },
   accountModal: { borderRadius: 20, overflow: 'hidden', elevation: 8 },
-  accountModalTitle: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    padding: 16, paddingBottom: 8,
-  },
-  accountOption: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 16, gap: 12, borderBottomWidth: 0.5,
-  },
-  accountOptionIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-  },
+  accountModalTitle: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8, padding: 16, paddingBottom: 8 },
+  accountOption: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, borderBottomWidth: 0.5 },
+  accountOptionIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   accountOptionInfo: { flex: 1 },
   accountOptionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accountOptionTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   accountOptionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  premiumBadge: {
-    backgroundColor: colors.savings + '20',
-    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
-  },
-  premiumBadgeText: {
-    fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings,
-  },
+  premiumBadge: { backgroundColor: colors.savings + '20', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  premiumBadgeText: { fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings },
 });
 
 export default AppHeader;

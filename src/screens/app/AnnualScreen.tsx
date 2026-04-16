@@ -10,9 +10,12 @@ import { BarChart } from 'react-native-gifted-charts';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
+import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import { formatDate } from '../../utils/dateFormat';
@@ -29,9 +32,7 @@ const AnnualCard = ({
   const { colors: dc } = useTheme();
   return (
     <View style={[styles.annualCard, {
-      backgroundColor: dc.surface,
-      borderLeftColor: color,
-      borderColor: dc.border,
+      backgroundColor: dc.surface, borderLeftColor: color, borderColor: dc.border,
     }]}>
       <View style={[styles.annualCardIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={20} color={color} />
@@ -54,9 +55,19 @@ const AnnualScreen = () => {
   } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { getCategoryName } = useCategoryStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { getSharedCategoryName } = useSharedCategoryStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { colors: dc } = useTheme();
-  const currencySymbol = getCurrencySymbol();
+
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
+
+  const getCatName = (id: string, type: MovementType) =>
+    isSharedMode
+      ? getSharedCategoryName(id, type, t)
+      : getCategoryName(id, type, t);
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
     new Date().getMonth() + 1
@@ -76,8 +87,7 @@ const AnnualScreen = () => {
     if (!selectedMonth) return [];
     return movements.filter((m) => {
       const d = new Date(m.date);
-      return d.getMonth() + 1 === selectedMonth &&
-        d.getFullYear() === selectedAnnualYear;
+      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedAnnualYear;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedMonth, movements, selectedAnnualYear]);
 
@@ -147,10 +157,8 @@ const AnnualScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.annual')} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
         {/* SELECTORES AÑO Y MES */}
         <View style={styles.filtersRow}>
           <View style={styles.selectorRow}>
@@ -250,7 +258,7 @@ const AnnualScreen = () => {
                   {MONTH_NAMES[selectedMonth - 1]} {selectedAnnualYear}
                 </Text>
 
-                {/* FILTRO POR CATEGORÍA — Premium */}
+                {/* FILTRO POR CATEGORÍA */}
                 {monthCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
@@ -286,11 +294,10 @@ const AnnualScreen = () => {
                                 <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
                               )}
                               <Text style={[
-                                styles.categoryChipText,
-                                { color: dc.textSecondary },
+                                styles.categoryChipText, { color: dc.textSecondary },
                                 selectedCategory === cat && { color: '#FFFFFF' },
                               ]}>
-                                {getCategoryName(cat, catType, t)}
+                                {getCatName(cat, catType as MovementType)}
                               </Text>
                             </TouchableOpacity>
                           );
@@ -300,19 +307,16 @@ const AnnualScreen = () => {
                   </View>
                 )}
 
-                {/* MOVIMIENTOS — justo debajo del filtro */}
+                {/* MOVIMIENTOS */}
                 {filteredMonthMovements.length > 0 && (
                   <>
-                    <Text style={[styles.sectionTitle, {
-                      color: dc.textPrimary, marginBottom: 12,
-                    }]}>
+                    <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                       {t('annual.movements')}
                     </Text>
                     {filteredMonthMovements.map((m) => {
                       const isIncome = m.type === 'income';
                       const isSaving = m.type === 'saving';
-                      const color = isIncome ? colors.income
-                        : isSaving ? colors.savings : colors.expense;
+                      const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
                       const icon: keyof typeof Ionicons.glyphMap = isIncome
                         ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
                       return (
@@ -324,7 +328,7 @@ const AnnualScreen = () => {
                           </View>
                           <View style={styles.movementInfo}>
                             <Text style={[styles.movementDesc, { color: dc.textPrimary }]}>
-                              {getCategoryName(m.category, m.type, t)}
+                              {getCatName(m.category, m.type)}
                             </Text>
                             <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
                               {formatDate(m.date)}
@@ -340,87 +344,45 @@ const AnnualScreen = () => {
                 )}
 
                 {/* TOTALES DEL MES */}
-                <Text style={[styles.sectionTitle, {
-                  color: dc.textPrimary, marginTop: 8, marginBottom: 12,
-                }]}>
+                <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginTop: 8, marginBottom: 12 }]}>
                   {t('annual.summary')}
                 </Text>
-                <AnnualCard
-                  label={t('annual.totalIncome')} amount={monthSummary.income}
-                  color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalExpenses')} amount={monthSummary.expense}
-                  color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalSavings')} amount={monthSummary.saving}
-                  color={colors.savings} icon="save" currencySymbol={currencySymbol}
-                />
+                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalSavings')} amount={monthSummary.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
                 <AnnualCard
                   label={t('annual.netBalance')}
                   amount={monthSummary.income - monthSummary.expense - monthSummary.saving}
-                  color={
-                    (monthSummary.income - monthSummary.expense - monthSummary.saving) >= 0
-                      ? colors.income : colors.expense
-                  }
+                  color={(monthSummary.income - monthSummary.expense - monthSummary.saving) >= 0 ? colors.income : colors.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
               </>
             ) : (
               <>
-                {/* TOTALES ANUALES */}
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {t('annual.year')} {selectedAnnualYear}
                 </Text>
-                <AnnualCard
-                  label={t('annual.totalIncome')} amount={totals.income}
-                  color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalExpenses')} amount={totals.expense}
-                  color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol}
-                />
-                <AnnualCard
-                  label={t('annual.totalSavings')} amount={totals.saving}
-                  color={colors.savings} icon="save" currencySymbol={currencySymbol}
-                />
+                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalSavings')} amount={totals.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
                 <AnnualCard
                   label={t('annual.netBalance')}
                   amount={totals.balance}
                   color={totals.balance >= 0 ? colors.income : colors.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
-
-                {/* MEJOR / PEOR MES */}
                 <View style={styles.highlightsRow}>
-                  <View style={[styles.highlightCard, {
-                    backgroundColor: dc.surface, borderColor: colors.income,
-                  }]}>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.income }]}>
                     <Text style={styles.highlightEmoji}>🏆</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>
-                      {t('annual.bestMonth')}
-                    </Text>
-                    <Text style={[styles.highlightMonth, { color: colors.income }]}>
-                      {t(`home.month_${bestMonth.month - 1}`)}
-                    </Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>
-                      +{bestMonth.balance.toFixed(0)} {currencySymbol}
-                    </Text>
+                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.bestMonth')}</Text>
+                    <Text style={[styles.highlightMonth, { color: colors.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>+{bestMonth.balance.toFixed(0)} {currencySymbol}</Text>
                   </View>
-                  <View style={[styles.highlightCard, {
-                    backgroundColor: dc.surface, borderColor: colors.expense,
-                  }]}>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.expense }]}>
                     <Text style={styles.highlightEmoji}>📉</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>
-                      {t('annual.worstMonth')}
-                    </Text>
-                    <Text style={[styles.highlightMonth, { color: colors.expense }]}>
-                      {t(`home.month_${worstMonth.month - 1}`)}
-                    </Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>
-                      -{worstMonth.expense.toFixed(0)} {currencySymbol}
-                    </Text>
+                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.worstMonth')}</Text>
+                    <Text style={[styles.highlightMonth, { color: colors.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>-{worstMonth.expense.toFixed(0)} {currencySymbol}</Text>
                   </View>
                 </View>
               </>
@@ -441,22 +403,10 @@ const AnnualScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  filtersRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    gap: 12, marginBottom: 20,
-  },
-  selectorRow: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: 4,
-  },
-  selectorButton: {
-    width: 32, height: 32, borderRadius: 10,
-    borderWidth: 0.5, justifyContent: 'center', alignItems: 'center',
-  },
-  selectorText: {
-    fontSize: 13, fontFamily: 'Poppins_600SemiBold',
-    textAlign: 'center', flex: 1,
-  },
+  filtersRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 },
+  selectorRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  selectorButton: { width: 32, height: 32, borderRadius: 10, borderWidth: 0.5, justifyContent: 'center', alignItems: 'center' },
+  selectorText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center', flex: 1 },
   chartCard: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 0.5 },
   sectionTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold', marginBottom: 12 },
   chartHint: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12 },
@@ -465,60 +415,26 @@ const styles = StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
   categoryFilterSection: { marginBottom: 16 },
-  categoryFilterHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 8, marginBottom: 10,
-  },
-  categoryFilterTitle: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-  },
-  premiumBadge: {
-    backgroundColor: colors.savings + '20',
-    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
-  },
-  premiumBadgeText: {
-    fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings,
-  },
+  categoryFilterHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  categoryFilterTitle: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8 },
+  premiumBadge: { backgroundColor: colors.savings + '20', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  premiumBadgeText: { fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings },
   categoryChips: { flexDirection: 'row', gap: 8 },
-  categoryChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 0.5,
-  },
+  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5 },
   categoryChipLocked: { opacity: 0.6 },
   categoryChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  annualCard: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 16, marginBottom: 10,
-    borderLeftWidth: 4, borderWidth: 0.5, gap: 14,
-  },
-  annualCardIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  annualCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, marginBottom: 10, borderLeftWidth: 4, borderWidth: 0.5, gap: 14 },
+  annualCardIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   annualCardAmount: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
   annualCardLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   highlightsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  highlightCard: {
-    flex: 1, borderRadius: 16, padding: 16,
-    alignItems: 'center', borderWidth: 1.5,
-  },
+  highlightCard: { flex: 1, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1.5 },
   highlightEmoji: { fontSize: 28, marginBottom: 8 },
-  highlightLabel: {
-    fontSize: 12, fontFamily: 'Poppins_400Regular',
-    marginBottom: 4, textAlign: 'center',
-  },
+  highlightLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 4, textAlign: 'center' },
   highlightMonth: { fontSize: 16, fontFamily: 'Poppins_700Bold', marginBottom: 4 },
   highlightAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  movementRow: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 0.5,
-  },
-  movementIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center', marginRight: 10,
-  },
+  movementRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 0.5 },
+  movementIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   movementInfo: { flex: 1 },
   movementDesc: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
@@ -526,10 +442,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
-  emptySubtext: {
-    fontSize: 13, fontFamily: 'Poppins_400Regular',
-    textAlign: 'center', paddingHorizontal: 32,
-  },
+  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', paddingHorizontal: 32 },
 });
 
 export default AnnualScreen;

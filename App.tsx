@@ -16,6 +16,7 @@ import { useSettingsStore } from './src/store/settingsStore';
 import { usePremiumStore } from './src/store/premiumStore';
 import { useCategoryStore } from './src/store/categoryStore';
 import { useSharedAccountStore } from './src/store/sharedAccountStore';
+import { useSharedCategoryStore } from './src/store/sharedCategoryStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,6 +56,8 @@ export default function App() {
       if (shared && account) {
         setSharedAccountId(account.id);
         await loadSharedData(account.id);
+        await useSharedCategoryStore.getState().loadSharedCategories(account.id);
+        await useSharedAccountStore.getState().loadSharedSettings(account.id);
       } else {
         setSharedAccountId(null);
         await loadData();

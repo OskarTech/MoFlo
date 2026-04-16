@@ -93,4 +93,5 @@ export interface SharedAccount {
   memberNames: { [uid: string]: string };
   inviteCode: string;
   createdAt: string;
+  currencyCode?: string;
 }

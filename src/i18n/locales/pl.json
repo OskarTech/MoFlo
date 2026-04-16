@@ -166,6 +166,8 @@
   "pinSetupSuccess": "PIN został ustawiony pomyślnie",
   "rateAppSubtitle": "Podoba Ci się aplikacja? Zostaw opinię!",
   "shareApp": "Udostępnij znajomym",
+  "individualCategoriesSubtitle": "Dostosuj kategorie swojego konta",
+  "individualExportSubtitle": "Eksportuj ruchy swojego konta",
   "shareAppSubtitle": "Zaproś znajomych do MoFlo",
   "support": "Kontakt z pomocą",
   "supportSubtitle": "Pytania lub sugestie?",
@@ -344,6 +346,9 @@
   "code": "Kod",
   "renameAccount": "Zmień nazwę",
   "renameSuccess": "Nazwa zmieniona pomyślnie",
-  "renameError": "Nie można zmienić nazwy"
+  "renameError": "Nie można zmienić nazwy",
+  "sharedCategoriesSubtitle": "Zarządzaj kategoriami konta współdzielonego",
+  "exportSubtitle": "Eksportuj ruchy konta współdzielonego",
+  "currency": "Wspólna waluta" 
   }
 }

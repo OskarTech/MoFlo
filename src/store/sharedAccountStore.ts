@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { SharedAccount, Movement, RecurringMovement } from '../types';
+import { CURRENCIES } from './settingsStore';
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
@@ -20,7 +21,6 @@ export const generateInviteLink = (code: string, name: string): string => {
   return `https://oskartech.github.io/join.html?code=${code}&name=${encoded}`;
 };
 
-// Listeners fuera del store para poder cancelarlos
 let accountUnsubscribe: (() => void) | null = null;
 let movementsUnsubscribe: (() => void) | null = null;
 let recurringUnsubscribe: (() => void) | null = null;
@@ -31,6 +31,7 @@ interface SharedAccountStore {
   sharedRecurring: RecurringMovement[];
   isSharedMode: boolean;
   notificationsEnabled: boolean;
+  sharedCurrencyCode: string;
   isLoading: boolean;
 
   loadSharedAccount: () => Promise<void>;
@@ -43,6 +44,9 @@ interface SharedAccountStore {
   getInviteLink: () => string;
   subscribeToSharedMovements: (accountId: string) => void;
   unsubscribeAll: () => void;
+  loadSharedSettings: (accountId: string) => Promise<void>;
+  saveSharedSettings: (accountId: string, settings: { currencyCode: string }) => Promise<void>;
+  getSharedCurrencySymbol: () => string;
   resetStore: () => void;
 }
 
@@ -52,19 +56,19 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   sharedRecurring: [],
   isSharedMode: false,
   notificationsEnabled: true,
+  sharedCurrencyCode: 'EUR',
   isLoading: false,
 
   resetStore: () => {
-    // Cancela todos los listeners
     if (accountUnsubscribe) { accountUnsubscribe(); accountUnsubscribe = null; }
     if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
     if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
-
     set({
       sharedAccount: null,
       sharedMovements: [],
       sharedRecurring: [],
       isSharedMode: false,
+      sharedCurrencyCode: 'EUR',
     });
   },
 
@@ -89,6 +93,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           .map(d => d.data() as Movement)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         useMovementStore.setState({ movements: [...movements] });
+      }, (e) => {
+        console.error('Error listening to shared movements:', e);
       });
 
     recurringUnsubscribe = firestore()
@@ -99,6 +105,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
         useMovementStore.setState({ recurringMovements: [...recurring] });
+      }, (e) => {
+        console.error('Error listening to shared recurring:', e);
       });
   },
 
@@ -114,7 +122,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       if (notifPref !== null) set({ notificationsEnabled: notifPref === 'true' });
       if (activeMode === 'shared') set({ isSharedMode: true });
 
-      // Carga inicial
       const snap = await firestore()
         .collection('sharedAccounts')
         .where('members', 'array-contains', uid)
@@ -137,8 +144,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
               set({ sharedAccount: updated });
               AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             } else {
-              // Cuenta eliminada por el creador
-              set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
+              set({
+                sharedAccount: null,
+                isSharedMode: false,
+                sharedMovements: [],
+                sharedRecurring: [],
+              });
               AsyncStorage.removeItem(STORAGE_KEY);
               AsyncStorage.setItem(ACTIVE_KEY, 'individual');
             }
@@ -146,9 +157,9 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
             console.error('Error listening to shared account:', e);
           });
 
-        // Si está en modo compartido activa listeners de movimientos
         if (activeMode === 'shared') {
           get().subscribeToSharedMovements(account.id);
+          await get().loadSharedSettings(account.id);
         }
       } else {
         set({ sharedAccount: null, isSharedMode: false });
@@ -194,7 +205,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     set({ sharedAccount: newAccount });
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAccount));
 
-    // Activa listener de cuenta
     if (accountUnsubscribe) accountUnsubscribe();
     accountUnsubscribe = firestore()
       .collection('sharedAccounts')
@@ -253,7 +263,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       set({ sharedAccount: updatedAccount });
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAccount));
 
-      // Activa listener de cuenta
       if (accountUnsubscribe) accountUnsubscribe();
       accountUnsubscribe = firestore()
         .collection('sharedAccounts')
@@ -289,7 +298,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       .update({ members: updatedMembers, memberNames: updatedNames });
 
     get().unsubscribeAll();
-    set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
+    set({
+      sharedAccount: null,
+      isSharedMode: false,
+      sharedMovements: [],
+      sharedRecurring: [],
+    });
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
   },
@@ -311,6 +325,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       .collection('recurring').get();
     recurringSnap.docs.forEach(doc => batch.delete(doc.ref));
 
+    const categoriesSnap = await firestore()
+      .collection('sharedAccounts').doc(sharedAccount.id)
+      .collection('categories').get();
+    categoriesSnap.docs.forEach(doc => batch.delete(doc.ref));
+
     await batch.commit();
 
     await firestore()
@@ -319,7 +338,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       .delete();
 
     get().unsubscribeAll();
-    set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
+    set({
+      sharedAccount: null,
+      isSharedMode: false,
+      sharedMovements: [],
+      sharedRecurring: [],
+    });
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
   },
@@ -332,6 +356,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
     if (enabled && sharedAccount) {
       get().subscribeToSharedMovements(sharedAccount.id);
+      await get().loadSharedSettings(sharedAccount.id);
     } else {
       if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
       if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
@@ -349,5 +374,49 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { sharedAccount } = get();
     if (!sharedAccount) return '';
     return generateInviteLink(sharedAccount.inviteCode, sharedAccount.name);
+  },
+
+  // ── SETTINGS COMPARTIDOS ───────────────────────────────────────
+  loadSharedSettings: async (accountId) => {
+    try {
+      const cached = await AsyncStorage.getItem(`@moflo_shared_settings_${accountId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        set({ sharedCurrencyCode: parsed.currencyCode ?? 'EUR' });
+      }
+
+      const doc = await firestore()
+        .collection('sharedAccounts').doc(accountId).get();
+      const settings = doc.data()?.sharedSettings;
+      if (settings?.currencyCode) {
+        set({ sharedCurrencyCode: settings.currencyCode });
+        await AsyncStorage.setItem(
+          `@moflo_shared_settings_${accountId}`,
+          JSON.stringify(settings)
+        );
+      }
+    } catch (e) {
+      console.error('Error loading shared settings:', e);
+    }
+  },
+
+  saveSharedSettings: async (accountId, settings) => {
+    set({ sharedCurrencyCode: settings.currencyCode });
+    await AsyncStorage.setItem(
+      `@moflo_shared_settings_${accountId}`,
+      JSON.stringify(settings)
+    );
+    try {
+      await firestore()
+        .collection('sharedAccounts').doc(accountId)
+        .set({ sharedSettings: settings }, { merge: true });
+    } catch (e) {
+      console.error('Error saving shared settings:', e);
+    }
+  },
+
+  getSharedCurrencySymbol: () => {
+    const { sharedCurrencyCode } = get();
+    return CURRENCIES.find(c => c.code === sharedCurrencyCode)?.symbol ?? '€';
   },
 }));

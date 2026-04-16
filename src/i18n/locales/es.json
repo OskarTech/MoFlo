@@ -131,6 +131,8 @@
   "editPhoto": "Editar foto",
   "email": "Correo electrónico",
   "memberSince": "Miembro desde",
+  "individualCategoriesSubtitle": "Personaliza las categorías de tu cuenta individual",
+  "individualExportSubtitle": "Exporta los movimientos de tu cuenta individual",
   "preferences": "Preferencias",
   "dateFormat": "Formato de fecha",
   "dateFormatDMY": "DD/MM/AAAA",
@@ -344,6 +346,9 @@
   "code": "Código",
   "renameAccount": "Cambiar nombre",
   "renameSuccess": "Nombre cambiado correctamente",
-  "renameError": "No se pudo cambiar el nombre"
+  "renameError": "No se pudo cambiar el nombre",
+  "sharedCategoriesSubtitle": "Gestiona las categorías de la cuenta compartida",
+  "exportSubtitle": "Exporta los movimientos de la cuenta compartida",
+  "currency": "Moneda compartida"
   } 
 }

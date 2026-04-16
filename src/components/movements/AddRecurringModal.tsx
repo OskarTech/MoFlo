@@ -8,27 +8,32 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMovementStore } from '../../store/movementStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { MovementType, RecurringMovement } from '../../types';
+import { MovementType, Movement } from '../../types';
 
 interface Props {
   visible: boolean;
   onDismiss: () => void;
 }
 
-const AddRecurringModal = ({ visible, onDismiss }: Props) => {
+const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
-  const { addRecurringMovement } = useMovementStore();
+  const { addMovement } = useMovementStore();
+  const { getCurrencySymbol } = useSettingsStore();
   const { getCategoriesForType, getCategoryName } = useCategoryStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
-  const [recurringDay, setRecurringDay] = useState('1');
 
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const categoryScrollRef = useRef<ScrollView>(null);
@@ -57,6 +62,21 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     return () => { show.remove(); hide.remove(); };
   }, [sheetOffset]);
 
+  // Usa moneda compartida si está en modo compartido
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
+
+  // Usa categorías compartidas si está en modo compartido
+  const categoryList = isSharedMode
+    ? getSharedCategoriesForType(type)
+    : getCategoriesForType(type);
+
+  const getCatName = (id: string, tp: MovementType) =>
+    isSharedMode
+      ? getSharedCategoryName(id, tp, t)
+      : getCategoryName(id, tp, t);
+
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
   const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
@@ -64,19 +84,18 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
   const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
 
-  const categoryList = getCategoriesForType(type);
-
   const handleDismiss = () => {
     setType('expense');
     setAmount('');
     setCategoryId('housing');
-    setRecurringDay('1');
     onDismiss();
   };
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    const cats = getCategoriesForType(newType);
+    const cats = isSharedMode
+      ? getSharedCategoriesForType(newType)
+      : getCategoriesForType(newType);
     setCategoryId(cats[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
   };
@@ -89,30 +108,25 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount.replace(',', '.'));
-    const day = parseInt(recurringDay);
     if (!parsedAmount || parsedAmount <= 0) return;
-    if (!day || day < 1 || day > 31) return;
 
-    const newRecurring: RecurringMovement = {
+    const movement: Movement = {
       id: Date.now().toString(),
       type,
       amount: parsedAmount,
       category: categoryId as any,
-      description: getCategoryName(categoryId, type, t),
-      recurringDay: day,
-      currency: 'EUR',
-      isActive: true,
+      description: getCatName(categoryId, type),
+      date: new Date().toISOString(),
+      isRecurring: false,
+      currency: currencySymbol,
       createdAt: new Date().toISOString(),
     };
 
-    await addRecurringMovement(newRecurring);
+    await addMovement(movement);
     handleDismiss();
   };
 
-  const isValid = !!amount &&
-    parseFloat(amount.replace(',', '.')) > 0 &&
-    parseInt(recurringDay) >= 1 &&
-    parseInt(recurringDay) <= 31;
+  const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
@@ -127,7 +141,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {t('recurring.add')}
+              {t('movements.add')}
             </Text>
 
             {/* TIPO */}
@@ -166,34 +180,8 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               style={[styles.input, { backgroundColor: inputBg }]}
               outlineColor={typeColor}
               activeOutlineColor={typeColor}
-              left={<TextInput.Affix text="€" />}
+              left={<TextInput.Affix text={currencySymbol} />}
             />
-
-            {/* DÍA DEL MES */}
-            <TextInput
-              label={
-                type === 'income' ? t('recurring.dayLabelIncome')
-                  : type === 'saving' ? t('recurring.dayLabelSaving')
-                  : t('recurring.dayLabelExpense')
-              }
-              value={recurringDay}
-              onChangeText={(val) => {
-                const num = parseInt(val);
-                if (val === '' || (num >= 1 && num <= 31)) setRecurringDay(val);
-              }}
-              keyboardType="number-pad"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={typeColor}
-              activeOutlineColor={typeColor}
-              right={<TextInput.Affix text="/ mes" />}
-            />
-
-            {/* INFO */}
-            <View style={[styles.infoBox, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
-              <Text style={styles.infoText}>{t('recurring.infoMessage')}</Text>
-            </View>
 
             {/* CATEGORÍAS */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
@@ -269,27 +257,13 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24, maxHeight: '90%',
-  },
-  handleBar: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
-  },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
+  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   typeButtonText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   input: { marginBottom: 16 },
-  infoBox: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    gap: 8, borderRadius: 12, padding: 12, marginBottom: 20,
-  },
-  infoText: {
-    flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular',
-    color: colors.primary, lineHeight: 18,
-  },
   sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
   categoryScroll: { marginBottom: 20 },
   categoryChip: {
@@ -303,4 +277,4 @@ const styles = StyleSheet.create({
   saveButton: { flex: 2 },
 });
 
-export default AddRecurringModal;
+export default AddMovementModal;
