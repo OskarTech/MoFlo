@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -32,6 +33,7 @@ const AppHeader = ({
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { isPremium } = usePremiumStore();
   const {
     sharedAccount, isSharedMode,
@@ -53,6 +55,14 @@ const AppHeader = ({
   const bellIconBg = isInReminders ? colors.primaryLight + '30' : iconBg;
   const settingsIconColor = isInSettings ? colors.primaryLight : iconColor;
   const settingsIconBg = isInSettings ? colors.primaryLight + '30' : iconBg;
+
+  const paddingTop = Platform.OS === 'android'
+    ? (StatusBar.currentHeight ?? 0) + 12
+    : insets.top + 12;
+
+  const modalPaddingTop = Platform.OS === 'android'
+    ? (StatusBar.currentHeight ?? 0) + 60
+    : insets.top + 60;
 
   const handleBellPress = () => {
     if (!isInReminders) navigation.navigate('Reminders');
@@ -85,7 +95,7 @@ const AppHeader = ({
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: headerBg }]}>
+      <View style={[styles.container, { backgroundColor: headerBg, paddingTop }]}>
         {/* CAMPANA */}
         {showBell ? (
           <TouchableOpacity
@@ -139,7 +149,7 @@ const AppHeader = ({
         animationType="fade"
         onRequestClose={() => setShowAccountModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingTop: modalPaddingTop }]}>
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
@@ -222,7 +232,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
     paddingBottom: 12,
   },
   iconButton: {
@@ -241,7 +250,6 @@ const styles = StyleSheet.create({
   accountText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   modalOverlay: {
     flex: 1, justifyContent: 'flex-start',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 60 : 80,
     paddingHorizontal: 16,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
