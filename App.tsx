@@ -21,7 +21,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const colorScheme = useColorScheme();
-  const { loadData, applyRecurringMovements, loadSharedData } = useMovementStore();
+  const { loadData, applyRecurringMovements, loadSharedData, setSharedAccountId } = useMovementStore();
   const { loadSettings, themeMode } = useSettingsStore();
   const { loadPremium } = usePremiumStore();
   const { loadCategories } = useCategoryStore();
@@ -53,8 +53,10 @@ export default function App() {
         useSharedAccountStore.getState();
 
       if (shared && account) {
+        setSharedAccountId(account.id);
         await loadSharedData(account.id);
       } else {
+        setSharedAccountId(null);
         await loadData();
         await applyRecurringMovements();
       }

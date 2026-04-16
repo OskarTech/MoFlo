@@ -39,7 +39,7 @@ const AppHeader = ({
     sharedAccount, isSharedMode,
     setSharedMode,
   } = useSharedAccountStore();
-  const { loadData, loadSharedData } = useMovementStore();
+  const { loadData, loadSharedData, setSharedAccountId } = useMovementStore();
 
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -72,6 +72,7 @@ const AppHeader = ({
   const handleSelectIndividual = async () => {
     setShowAccountModal(false);
     if (isSharedMode) {
+      setSharedAccountId(null);
       await setSharedMode(false);
       await loadData();
       navigation.navigate('HomeTab');
@@ -85,7 +86,7 @@ const AppHeader = ({
       return;
     }
     if (sharedAccount) {
-      await loadSharedData(sharedAccount.id);
+      setSharedAccountId(sharedAccount.id);
       await setSharedMode(true);
       navigation.navigate('HomeTab');
     } else {
