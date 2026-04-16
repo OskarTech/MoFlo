@@ -465,11 +465,23 @@ const SettingsScreen = () => {
         {/* INFO */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>Info</Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="information-circle-outline" iconColor={colors.primary}
-            label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
-          />
-        </View>
+  <OptionRow
+    icon="information-circle-outline" iconColor={colors.primary}
+    label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
+  />
+  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+  <OptionRow
+    icon="document-text-outline" iconColor={colors.primary}
+    label={t('settings.privacyPolicy')}
+    onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
+  />
+  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+  <OptionRow
+    icon="shield-checkmark-outline" iconColor={colors.primary}
+    label={t('settings.termsOfService')}
+    onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
+  />
+</View>
 
         <Text style={[styles.footer, { color: dc.textSecondary }]}>
           {t('settings.madeWith')}

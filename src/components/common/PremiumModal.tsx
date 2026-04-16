@@ -11,7 +11,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
 
-const REVENUECAT_API_KEY = 'TU_API_KEY_AQUI';
+const REVENUECAT_API_KEY = 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
 
 interface Props {
   visible: boolean;
