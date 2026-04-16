@@ -193,21 +193,31 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   // ── AÑADIR MOVIMIENTO ──────────────────────────────────────────
   addMovement: async (movement) => {
     const { sharedAccountId } = get();
-    const newMovements = [movement, ...get().movements];
-    set({ movements: newMovements });
-    await get().saveMovements(newMovements);
 
     if (sharedAccountId) {
+      // Optimistic update inmediato
+      const { useSharedAccountStore } = require('./sharedAccountStore');
+      const current = useSharedAccountStore.getState().sharedMovements;
+      useSharedAccountStore.setState({ sharedMovements: [movement, ...current] });
+
+      // Escribe en Firestore — el listener confirmará
       try {
         const uid = auth().currentUser?.uid ?? '';
         await getSharedMovementsCol(sharedAccountId)
           .doc(movement.id)
           .set({ ...movement, addedBy: uid });
       } catch (e) {
+        // Revierte si falla
+        useSharedAccountStore.setState({ sharedMovements: current });
         console.error('Error saving shared movement:', e);
       }
       return;
     }
+
+    // Cuenta individual — lógica original
+    const newMovements = [movement, ...get().movements];
+    set({ movements: newMovements });
+    await get().saveMovements(newMovements);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
@@ -221,21 +231,32 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     }
   },
 
-  // ── ELIMINAR MOVIMIENTO ────────────────────────────────────────
   deleteMovement: async (id) => {
     const { sharedAccountId } = get();
-    const newMovements = get().movements.filter((m) => m.id !== id);
-    set({ movements: newMovements });
-    await get().saveMovements(newMovements);
 
     if (sharedAccountId) {
+      // Optimistic update inmediato
+      const { useSharedAccountStore } = require('./sharedAccountStore');
+      const current = useSharedAccountStore.getState().sharedMovements;
+      useSharedAccountStore.setState({
+        sharedMovements: current.filter((m: Movement) => m.id !== id),
+      });
+
+      // Elimina en Firestore — el listener confirmará
       try {
         await getSharedMovementsCol(sharedAccountId).doc(id).delete();
       } catch (e) {
+        // Revierte si falla
+        useSharedAccountStore.setState({ sharedMovements: current });
         console.error('Error deleting shared movement:', e);
       }
       return;
     }
+
+    // Cuenta individual — lógica original
+    const newMovements = get().movements.filter((m) => m.id !== id);
+    set({ movements: newMovements });
+    await get().saveMovements(newMovements);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
@@ -252,18 +273,26 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   // ── AÑADIR RECURRENTE ──────────────────────────────────────────
   addRecurringMovement: async (movement) => {
     const { sharedAccountId } = get();
-    const newRecurring = [movement, ...get().recurringMovements];
-    set({ recurringMovements: newRecurring });
-    await get().saveRecurring(newRecurring);
 
     if (sharedAccountId) {
+      const { useSharedAccountStore } = require('./sharedAccountStore');
+      const current = useSharedAccountStore.getState().sharedRecurring;
+      useSharedAccountStore.setState({
+        sharedRecurring: [...current, movement].sort((a, b) => a.recurringDay - b.recurringDay),
+      });
+
       try {
         await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
       } catch (e) {
+        useSharedAccountStore.setState({ sharedRecurring: current });
         console.error('Error saving shared recurring:', e);
       }
       return;
     }
+
+    const newRecurring = [movement, ...get().recurringMovements];
+    set({ recurringMovements: newRecurring });
+    await get().saveRecurring(newRecurring);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
@@ -277,21 +306,28 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     }
   },
 
-  // ── ELIMINAR RECURRENTE ────────────────────────────────────────
   deleteRecurringMovement: async (id) => {
     const { sharedAccountId } = get();
-    const newRecurring = get().recurringMovements.filter((m) => m.id !== id);
-    set({ recurringMovements: newRecurring });
-    await get().saveRecurring(newRecurring);
 
     if (sharedAccountId) {
+      const { useSharedAccountStore } = require('./sharedAccountStore');
+      const current = useSharedAccountStore.getState().sharedRecurring;
+      useSharedAccountStore.setState({
+        sharedRecurring: current.filter((m: RecurringMovement) => m.id !== id),
+      });
+
       try {
         await getSharedRecurringCol(sharedAccountId).doc(id).delete();
       } catch (e) {
+        useSharedAccountStore.setState({ sharedRecurring: current });
         console.error('Error deleting shared recurring:', e);
       }
       return;
     }
+
+    const newRecurring = get().recurringMovements.filter((m) => m.id !== id);
+    set({ recurringMovements: newRecurring });
+    await get().saveRecurring(newRecurring);
 
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
