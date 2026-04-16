@@ -20,8 +20,15 @@ export const generateInviteLink = (code: string, name: string): string => {
   return `https://oskartech.github.io/join.html?code=${code}&name=${encoded}`;
 };
 
+// Listeners fuera del store para poder cancelarlos
+let accountUnsubscribe: (() => void) | null = null;
+let movementsUnsubscribe: (() => void) | null = null;
+let recurringUnsubscribe: (() => void) | null = null;
+
 interface SharedAccountStore {
   sharedAccount: SharedAccount | null;
+  sharedMovements: Movement[];
+  sharedRecurring: RecurringMovement[];
   isSharedMode: boolean;
   notificationsEnabled: boolean;
   isLoading: boolean;
@@ -34,20 +41,71 @@ interface SharedAccountStore {
   setSharedMode: (enabled: boolean) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   getInviteLink: () => string;
+  subscribeToSharedMovements: (accountId: string) => void;
+  unsubscribeAll: () => void;
   resetStore: () => void;
 }
 
 export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   sharedAccount: null,
+  sharedMovements: [],
+  sharedRecurring: [],
   isSharedMode: false,
   notificationsEnabled: true,
   isLoading: false,
 
-  resetStore: () => set({
-    sharedAccount: null,
-    isSharedMode: false,
-  }),
+  resetStore: () => {
+    // Cancela todos los listeners
+    if (accountUnsubscribe) { accountUnsubscribe(); accountUnsubscribe = null; }
+    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
+    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
 
+    set({
+      sharedAccount: null,
+      sharedMovements: [],
+      sharedRecurring: [],
+      isSharedMode: false,
+    });
+  },
+
+  unsubscribeAll: () => {
+    if (accountUnsubscribe) { accountUnsubscribe(); accountUnsubscribe = null; }
+    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
+    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+  },
+
+  // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────
+  subscribeToSharedMovements: (accountId) => {
+    // Cancela listeners anteriores
+    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
+    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+
+    // Listener movimientos
+    movementsUnsubscribe = firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('movements')
+      .onSnapshot((snap) => {
+        const movements = snap.docs.map(d => d.data() as Movement)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        set({ sharedMovements: movements });
+      }, (e) => {
+        console.error('Error listening to shared movements:', e);
+      });
+
+    // Listener recurrentes
+    recurringUnsubscribe = firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('recurring')
+      .onSnapshot((snap) => {
+        const recurring = snap.docs.map(d => d.data() as RecurringMovement)
+          .sort((a, b) => a.recurringDay - b.recurringDay);
+        set({ sharedRecurring: recurring });
+      }, (e) => {
+        console.error('Error listening to shared recurring:', e);
+      });
+  },
+
+  // ── CARGAR CUENTA COMPARTIDA ───────────────────────────────────
   loadSharedAccount: async () => {
     set({ isLoading: true });
     try {
@@ -59,6 +117,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       if (notifPref !== null) set({ notificationsEnabled: notifPref === 'true' });
       if (activeMode === 'shared') set({ isSharedMode: true });
 
+      // Carga inicial
       const snap = await firestore()
         .collection('sharedAccounts')
         .where('members', 'array-contains', uid)
@@ -69,6 +128,31 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         const account = { id: snap.docs[0].id, ...snap.docs[0].data() } as SharedAccount;
         set({ sharedAccount: account });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+
+        // Listener cuenta en tiempo real
+        if (accountUnsubscribe) accountUnsubscribe();
+        accountUnsubscribe = firestore()
+          .collection('sharedAccounts')
+          .doc(account.id)
+          .onSnapshot((doc) => {
+            if (doc.exists()) {
+              const updated = { id: doc.id, ...doc.data() } as SharedAccount;
+              set({ sharedAccount: updated });
+              AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            } else {
+              // Cuenta eliminada por el creador
+              set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
+              AsyncStorage.removeItem(STORAGE_KEY);
+              AsyncStorage.setItem(ACTIVE_KEY, 'individual');
+            }
+          }, (e) => {
+            console.error('Error listening to shared account:', e);
+          });
+
+        // Si está en modo compartido activa listeners de movimientos
+        if (activeMode === 'shared') {
+          get().subscribeToSharedMovements(account.id);
+        }
       } else {
         set({ sharedAccount: null, isSharedMode: false });
         await AsyncStorage.removeItem(STORAGE_KEY);
@@ -82,6 +166,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     }
   },
 
+  // ── CREAR CUENTA ───────────────────────────────────────────────
   createSharedAccount: async (name) => {
     const uid = auth().currentUser?.uid;
     const displayName = auth().currentUser?.displayName ?? 'Usuario';
@@ -107,8 +192,22 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
     set({ sharedAccount: newAccount });
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAccount));
+
+    // Activa listener de cuenta
+    if (accountUnsubscribe) accountUnsubscribe();
+    accountUnsubscribe = firestore()
+      .collection('sharedAccounts')
+      .doc(accountId)
+      .onSnapshot((doc) => {
+        if (doc.exists()) {
+          const updated = { id: doc.id, ...doc.data() } as SharedAccount;
+          set({ sharedAccount: updated });
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        }
+      });
   },
 
+  // ── UNIRSE A CUENTA ────────────────────────────────────────────
   joinSharedAccount: async (code) => {
     const uid = auth().currentUser?.uid;
     const displayName = auth().currentUser?.displayName ?? 'Usuario';
@@ -148,6 +247,20 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
       set({ sharedAccount: updatedAccount });
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAccount));
+
+      // Activa listener de cuenta
+      if (accountUnsubscribe) accountUnsubscribe();
+      accountUnsubscribe = firestore()
+        .collection('sharedAccounts')
+        .doc(account.id)
+        .onSnapshot((doc) => {
+          if (doc.exists()) {
+            const updated = { id: doc.id, ...doc.data() } as SharedAccount;
+            set({ sharedAccount: updated });
+            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          }
+        });
+
       return true;
     } catch (e) {
       console.error('Error joining shared account:', e);
@@ -155,6 +268,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     }
   },
 
+  // ── SALIR DE CUENTA ────────────────────────────────────────────
   leaveSharedAccount: async () => {
     const uid = auth().currentUser?.uid;
     const { sharedAccount } = get();
@@ -169,11 +283,13 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       .doc(sharedAccount.id)
       .update({ members: updatedMembers, memberNames: updatedNames });
 
-    set({ sharedAccount: null, isSharedMode: false });
+    get().unsubscribeAll();
+    set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
   },
 
+  // ── ELIMINAR CUENTA ────────────────────────────────────────────
   deleteSharedAccount: async () => {
     const { sharedAccount } = get();
     if (!sharedAccount) return;
@@ -197,14 +313,25 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       .doc(sharedAccount.id)
       .delete();
 
-    set({ sharedAccount: null, isSharedMode: false });
+    get().unsubscribeAll();
+    set({ sharedAccount: null, isSharedMode: false, sharedMovements: [], sharedRecurring: [] });
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
   },
 
+  // ── MODO COMPARTIDO ────────────────────────────────────────────
   setSharedMode: async (enabled) => {
+    const { sharedAccount } = get();
     set({ isSharedMode: enabled });
     await AsyncStorage.setItem(ACTIVE_KEY, enabled ? 'shared' : 'individual');
+
+    if (enabled && sharedAccount) {
+      get().subscribeToSharedMovements(sharedAccount.id);
+    } else {
+      if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
+      if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+      set({ sharedMovements: [], sharedRecurring: [] });
+    }
   },
 
   setNotificationsEnabled: async (enabled) => {

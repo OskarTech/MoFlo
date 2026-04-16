@@ -69,6 +69,20 @@ const getSharedMovementsCol = (accountId: string) =>
 const getSharedRecurringCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('recurring');
 
+const getActiveMovements = () => {
+  const { useSharedAccountStore } = require('./sharedAccountStore');
+  const { isSharedMode, sharedMovements } = useSharedAccountStore.getState();
+  const { movements } = useMovementStore.getState();
+  return isSharedMode ? sharedMovements : movements;
+};
+
+const getActiveRecurring = () => {
+  const { useSharedAccountStore } = require('./sharedAccountStore');
+  const { isSharedMode, sharedRecurring } = useSharedAccountStore.getState();
+  const { recurringMovements } = useMovementStore.getState();
+  return isSharedMode ? sharedRecurring : recurringMovements;
+};
+
 export const useMovementStore = create<MovementStore>((set, get) => ({
   movements: [],
   recurringMovements: [],
@@ -101,6 +115,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       set({
         movements: movementsRaw ? JSON.parse(movementsRaw) : [],
         recurringMovements: recurringRaw ? JSON.parse(recurringRaw) : [],
+        sharedAccountId: null,
       });
 
       await processQueue();
@@ -293,7 +308,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   // ── APLICAR RECURRENTES ────────────────────────────────────────
   applyRecurringMovements: async () => {
     const { sharedAccountId, recurringMovements, movements } = get();
-    if (sharedAccountId) return; // No aplica recurrentes en modo compartido automáticamente
+    if (sharedAccountId) return;
 
     const now = new Date();
     const currentDay = now.getDate();
@@ -315,7 +330,10 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       );
 
       if (!alreadyExists) {
-        const day = Math.min(recurring.recurringDay, new Date(currentYear, currentMonth, 0).getDate());
+        const day = Math.min(
+          recurring.recurringDay,
+          new Date(currentYear, currentMonth, 0).getDate()
+        );
         const date = new Date(currentYear, currentMonth - 1, day);
 
         newMovements.push({
@@ -356,9 +374,14 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   setSelectedMonth: (month, year) => set({ selectedMonth: month, selectedYear: year }),
   setSelectedAnnualYear: (year) => set({ selectedAnnualYear: year }),
 
+  // ── SELECTORES ─────────────────────────────────────────────────
   getMovementsForSelectedMonth: () => {
-    const { movements, selectedMonth, selectedYear } = get();
-    return movements.filter((m) => {
+    const { selectedMonth, selectedYear, movements, sharedAccountId } = get();
+    const source: Movement[] = sharedAccountId
+      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
+      : movements;
+
+    return source.filter((m: Movement) => {
       const date = new Date(m.date);
       return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
     });
@@ -367,9 +390,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   getMonthlySummary: () => {
     const { selectedMonth, selectedYear } = get();
     const monthMovements = get().getMovementsForSelectedMonth();
-    const totalIncome = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
-    const totalExpense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
-    const totalSavings = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
+    const totalIncome = monthMovements.filter((m: Movement) => m.type === 'income').reduce((s: number, m: Movement) => s + m.amount, 0);
+    const totalExpense = monthMovements.filter((m: Movement) => m.type === 'expense').reduce((s: number, m: Movement) => s + m.amount, 0);
+    const totalSavings = monthMovements.filter((m: Movement) => m.type === 'saving').reduce((s: number, m: Movement) => s + m.amount, 0);
     return {
       totalIncome, totalExpense, totalSavings,
       balance: totalIncome - totalExpense - totalSavings,
@@ -378,22 +401,30 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   },
 
   getRecentMovements: (limit = 5) => {
-    return [...get().movements]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const { movements, sharedAccountId } = get();
+    const source: Movement[] = sharedAccountId
+      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
+      : movements;
+    return [...source]
+      .sort((a: Movement, b: Movement) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
   },
 
-  getAnnualSummary: () => {
-    const { movements, selectedAnnualYear } = get();
-    return Array.from({ length: 12 }, (_, i) => {
+  getAnnualSummary: (): AnnualMonthData[] => {
+    const { selectedAnnualYear, movements, sharedAccountId } = get();
+    const source: Movement[] = sharedAccountId
+      ? (require('./sharedAccountStore').useSharedAccountStore.getState().sharedMovements as Movement[])
+      : movements;
+
+    return Array.from({ length: 12 }, (_, i): AnnualMonthData => {
       const month = i + 1;
-      const monthMovements = movements.filter((m) => {
+      const monthMovements = source.filter((m: Movement) => {
         const date = new Date(m.date);
         return date.getMonth() + 1 === month && date.getFullYear() === selectedAnnualYear;
       });
-      const income = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
-      const expense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
-      const saving = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
+      const income = monthMovements.filter((m: Movement) => m.type === 'income').reduce((s: number, m: Movement) => s + m.amount, 0);
+      const expense = monthMovements.filter((m: Movement) => m.type === 'expense').reduce((s: number, m: Movement) => s + m.amount, 0);
+      const saving = monthMovements.filter((m: Movement) => m.type === 'saving').reduce((s: number, m: Movement) => s + m.amount, 0);
       return { month, income, expense, saving, balance: income - expense - saving };
     });
   },
