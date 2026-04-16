@@ -397,27 +397,29 @@ const SharedAccountSettingsScreen = () => {
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('settings.notifications')}
         </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <View style={styles.optionRow}>
-            <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.optionContent}>
-              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
+        <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+        <View style={styles.optionRow}>
+          <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
+            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.optionContent}>
+            <View style={styles.notifTitleRow}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary, flex: 1 }]}>
                 {t('sharedAccount.notifTitle')}
               </Text>
-              <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
-                {t('sharedAccount.notifSubtitle')}
-              </Text>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={setNotificationsEnabled}
+                trackColor={{ false: dc.border, true: colors.primary + '80' }}
+                thumbColor={notificationsEnabled ? colors.primary : dc.textSecondary}
+              />
             </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: dc.border, true: colors.primary + '80' }}
-              thumbColor={notificationsEnabled ? colors.primary : dc.textSecondary}
-            />
+            <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
+              {t('sharedAccount.notifSubtitle')}
+            </Text>
           </View>
         </View>
+      </View>
 
         {/* GESTIÓN */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
@@ -567,6 +569,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16, borderBottomWidth: 0.5,
   },
   modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
+  notifTitleRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  },
 });
 
 export default SharedAccountSettingsScreen;
