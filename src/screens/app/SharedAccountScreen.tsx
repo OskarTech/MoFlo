@@ -233,7 +233,6 @@ const SharedAccountScreen = () => {
               contentStyle={styles.openButtonContent}
               buttonColor={colors.primary}
               textColor="#FFFFFF"
-              icon="people"
             >
               {t('sharedAccount.openShared')}
             </Button>

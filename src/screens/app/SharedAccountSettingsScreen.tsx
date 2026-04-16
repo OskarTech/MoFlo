@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share, Clipboard, Switch,
@@ -34,10 +34,13 @@ const SharedAccountSettingsScreen = () => {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(sharedAccount?.name ?? '');
 
-  if (!sharedAccount) {
-    navigation.goBack();
-    return null;
-  }
+  useEffect(() => {
+    if (!sharedAccount) {
+      navigation.goBack();
+    }
+  }, [sharedAccount]);
+
+  if (!sharedAccount) return null;
 
   const isCreator = sharedAccount.createdBy === uid;
 

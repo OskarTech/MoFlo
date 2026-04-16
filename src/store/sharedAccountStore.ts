@@ -166,7 +166,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── CREAR CUENTA ───────────────────────────────────────────────
   createSharedAccount: async (name) => {
     const uid = auth().currentUser?.uid;
-    const displayName = auth().currentUser?.displayName ?? 'Usuario';
+    const { useSettingsStore } = require('./settingsStore');
+    const displayName = useSettingsStore.getState().displayName
+      || auth().currentUser?.displayName
+      || auth().currentUser?.email?.split('@')[0]
+      || 'Usuario';
     if (!uid) return;
 
     const inviteCode = generateInviteCode();
@@ -207,7 +211,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── UNIRSE A CUENTA ────────────────────────────────────────────
   joinSharedAccount: async (code) => {
     const uid = auth().currentUser?.uid;
-    const displayName = auth().currentUser?.displayName ?? 'Usuario';
+    const { useSettingsStore } = require('./settingsStore');
+    const displayName = useSettingsStore.getState().displayName
+      || auth().currentUser?.displayName
+      || auth().currentUser?.email?.split('@')[0]
+      || 'Usuario';
     if (!uid) return false;
 
     try {
