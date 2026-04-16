@@ -42,27 +42,27 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const uid = auth().currentUser?.uid;
+      if (!uid) return;
 
-      // Carga local primero
+      // Carga local primero para respuesta inmediata
       const customRaw = await AsyncStorage.getItem(CUSTOM_KEY);
       if (customRaw) set({ customCategories: JSON.parse(customRaw) });
 
       const hiddenRaw = await AsyncStorage.getItem(`${HIDDEN_KEY}_${uid}`);
       if (hiddenRaw) set({ hiddenBaseCategories: JSON.parse(hiddenRaw) });
 
-      if (!uid) return;
-
-      // Sincroniza custom con Firestore
+      // SIEMPRE sincroniza con Firestore cuando hay conexión
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         const snap = await firestore()
           .collection('users').doc(uid)
           .collection('categories').get();
+
         const firestoreCategories = snap.docs.map(d => d.data() as Category);
-        if (firestoreCategories.length > 0) {
-          set({ customCategories: firestoreCategories });
-          await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(firestoreCategories));
-        }
+
+        // Actualiza siempre con los datos de Firestore
+        set({ customCategories: firestoreCategories });
+        await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(firestoreCategories));
       }
     } catch (e) {
       console.error('Error loading categories:', e);
