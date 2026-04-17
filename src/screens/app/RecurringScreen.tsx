@@ -75,6 +75,9 @@ const RecurringCard = ({
         <Text style={[styles.cardDescription, { color: dc.textPrimary }]}>
           {item.description}
         </Text>
+        <Text style={[styles.cardCategory, { color: dc.textSecondary }]}>
+          {t(`movements.categories.${item.category}`)}
+        </Text>
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>
@@ -88,17 +91,14 @@ const RecurringCard = ({
   );
 };
 
-interface RecurringScreenProps {
-  modalVisible?: boolean;
-  onModalDismiss?: () => void;
-}
-
-const RecurringScreen = ({
-  modalVisible = false,
-  onModalDismiss,
-}: RecurringScreenProps) => {
+const RecurringScreen = () => {
   const { t } = useTranslation();
-  const { recurringMovements, deleteRecurringMovement } = useMovementStore();
+  const {
+    recurringMovements,
+    deleteRecurringMovement,
+    showRecurringModal,
+    setShowRecurringModal,
+  } = useMovementStore();
   const { colors: dc } = useTheme();
 
   const sortedRecurring = [...recurringMovements].sort(
@@ -134,8 +134,8 @@ const RecurringScreen = ({
       </ScrollView>
 
       <AddRecurringModal
-        visible={modalVisible}
-        onDismiss={onModalDismiss ?? (() => {})}
+        visible={showRecurringModal}
+        onDismiss={() => setShowRecurringModal(false)}
       />
     </View>
   );

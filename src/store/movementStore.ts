@@ -37,6 +37,7 @@ interface MovementStore {
   selectedYear: number;
   selectedAnnualYear: number;
   sharedAccountId: string | null;
+  showRecurringModal: boolean;
 
   loadData: () => Promise<void>;
   loadSharedData: (accountId: string) => Promise<void>;
@@ -53,6 +54,7 @@ interface MovementStore {
   setSelectedMonth: (month: number, year: number) => void;
   setSelectedAnnualYear: (year: number) => void;
   setSharedAccountId: (id: string | null) => void;
+  setShowRecurringModal: (show: boolean) => void;
   resetStore: () => void;
 
   getMovementsForSelectedMonth: () => Movement[];
@@ -77,6 +79,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   selectedYear: now.getFullYear(),
   selectedAnnualYear: now.getFullYear(),
   sharedAccountId: null,
+  showRecurringModal: false,
 
   resetStore: () => set({
     movements: [],
@@ -86,9 +89,11 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     selectedYear: new Date().getFullYear(),
     selectedAnnualYear: new Date().getFullYear(),
     sharedAccountId: null,
+    showRecurringModal: false,
   }),
 
   setSharedAccountId: (id) => set({ sharedAccountId: id }),
+  setShowRecurringModal: (show) => set({ showRecurringModal: show }),
 
   // ── CARGAR DATOS INDIVIDUALES ──────────────────────────────────
   loadData: async () => {
@@ -185,17 +190,14 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      // Optimistic update directo en movements
       const newMovements = [movement, ...get().movements];
       set({ movements: [...newMovements] });
-
       try {
         const uid = auth().currentUser?.uid ?? '';
         await getSharedMovementsCol(sharedAccountId)
           .doc(movement.id)
           .set({ ...movement, addedBy: uid });
       } catch (e) {
-        // Revierte si falla
         set({ movements: get().movements.filter(m => m.id !== movement.id) });
         console.error('Error saving shared movement:', e);
       }
@@ -222,7 +224,6 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     if (sharedAccountId) {
       const previous = get().movements;
       set({ movements: [...previous.filter(m => m.id !== id)] });
-
       try {
         await getSharedMovementsCol(sharedAccountId).doc(id).delete();
       } catch (e) {
@@ -253,7 +254,6 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const newRecurring = [...get().recurringMovements, movement]
         .sort((a, b) => a.recurringDay - b.recurringDay);
       set({ recurringMovements: [...newRecurring] });
-
       try {
         await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
       } catch (e) {
@@ -283,7 +283,6 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     if (sharedAccountId) {
       const previous = get().recurringMovements;
       set({ recurringMovements: [...previous.filter(m => m.id !== id)] });
-
       try {
         await getSharedRecurringCol(sharedAccountId).doc(id).delete();
       } catch (e) {
@@ -367,7 +366,6 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   setSelectedMonth: (month, year) => set({ selectedMonth: month, selectedYear: year }),
   setSelectedAnnualYear: (year) => set({ selectedAnnualYear: year }),
 
-  // ── SELECTORES — usan movements directamente ───────────────────
   getMovementsForSelectedMonth: () => {
     const { selectedMonth, selectedYear, movements } = get();
     return movements.filter(m => {

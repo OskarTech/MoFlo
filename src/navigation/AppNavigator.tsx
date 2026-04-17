@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
@@ -12,14 +12,14 @@ import SupportScreen from '../screens/app/SupportScreen';
 import CategoriesScreen from '../screens/app/CategoriesScreen';
 import SharedAccountScreen from '../screens/app/SharedAccountScreen';
 import SharedAccountSettingsScreen from '../screens/app/SharedAccountSettingsScreen';
+import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
-import AddRecurringModal from '../components/movements/AddRecurringModal';
 import AddTabButton from '../components/common/AddTabButton';
+import { useMovementStore } from '../store/movementStore';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -27,10 +27,11 @@ const AppNavigator = () => {
   const { t } = useTranslation();
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
   const [movementModalVisible, setMovementModalVisible] = useState(false);
-  const [recurringModalVisible, setRecurringModalVisible] = useState(false);
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState('HomeTab');
+
+  const activeTabRef = useRef('HomeTab');
 
   const tabBarBg = isDark ? colors.surfaceDark : '#FFFFFF';
   const tabBarBorder = isDark ? colors.borderDark : '#E5E7EB';
@@ -38,10 +39,11 @@ const AppNavigator = () => {
   const inactiveColor = isDark ? '#FFFFFF' : '#9CA3AF';
 
   const handleFabPress = () => {
-    if (activeTab === 'Reminders') {
+    const current = activeTabRef.current;
+    if (current === 'Reminders') {
       setReminderModalVisible(true);
-    } else if (activeTab === 'Recurring' || activeTab === 'RecurringTab') {
-      setRecurringModalVisible(true);
+    } else if (current === 'RecurringTab') {
+      useMovementStore.getState().setShowRecurringModal(true);
     } else {
       setMovementModalVisible(true);
     }
@@ -87,7 +89,7 @@ const AppNavigator = () => {
             const state = e.data?.state;
             if (state) {
               const activeRoute = state.routes[state.index];
-              setActiveTab(activeRoute?.name ?? 'HomeTab');
+              activeTabRef.current = activeRoute?.name ?? 'HomeTab';
             }
           },
         }}
@@ -117,13 +119,7 @@ const AppNavigator = () => {
         />
         <Tab.Screen
           name="RecurringTab"
-          component={(props: any) => (
-            <RecurringScreen
-              {...props}
-              modalVisible={recurringModalVisible}
-              onModalDismiss={() => setRecurringModalVisible(false)}
-            />
-          )}
+          component={RecurringScreen}
           options={{ tabBarLabel: t('tabs.recurring') }}
         />
 
@@ -131,12 +127,11 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
-        />
-        <Tab.Screen
-          name="SharedCategories"
-          component={SharedCategoriesScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
         <Tab.Screen
           name="Reminders"
@@ -147,27 +142,56 @@ const AppNavigator = () => {
               onModalDismiss={() => setReminderModalVisible(false)}
             />
           )}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
         <Tab.Screen
           name="Support"
           component={SupportScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
         <Tab.Screen
           name="Categories"
           component={CategoriesScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
         <Tab.Screen
           name="SharedAccount"
           component={SharedAccountScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
         <Tab.Screen
           name="SharedAccountSettings"
           component={SharedAccountSettingsScreen}
-          options={{ tabBarButton: () => null, tabBarLabel: '', tabBarItemStyle: { display: 'none' } }}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
+        />
+        <Tab.Screen
+          name="SharedCategories"
+          component={SharedCategoriesScreen}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
         />
       </Tab.Navigator>
 
