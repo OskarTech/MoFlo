@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, StyleSheet, ScrollView,
-  TouchableOpacity, Dimensions,
+  TouchableOpacity, Dimensions, Modal, FlatList,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,6 @@ import PremiumModal from '../../components/common/PremiumModal';
 import { formatDate } from '../../utils/dateFormat';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const SHORT_MONTHS = ['E','F','M','A','M','J','J','A','S','O','N','D'];
 
 const AnnualCard = ({
   label, amount, color, icon, currencySymbol,
@@ -47,6 +46,56 @@ const AnnualCard = ({
   );
 };
 
+// Modal desplegable genérico
+const DropdownModal = ({
+  visible, title, options, selectedValue, onSelect, onDismiss,
+}: {
+  visible: boolean;
+  title: string;
+  options: { value: string | null; label: string }[];
+  selectedValue: string | null;
+  onSelect: (value: string | null) => void;
+  onDismiss: () => void;
+}) => {
+  const { isDark, colors: dc } = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.dropdownOverlay}>
+        <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={onDismiss} />
+        <View style={[styles.dropdownSheet, {
+          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+        }]}>
+          <View style={[styles.dropdownHandle, { backgroundColor: dc.border }]} />
+          <Text style={[styles.dropdownTitle, { color: dc.textPrimary }]}>{title}</Text>
+          <FlatList
+            data={options}
+            keyExtractor={(item) => String(item.value)}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.dropdownOption, { borderBottomColor: dc.border }]}
+                onPress={() => { onSelect(item.value); onDismiss(); }}
+              >
+                <Text style={[
+                  styles.dropdownOptionText, { color: dc.textPrimary },
+                  item.value === selectedValue && {
+                    color: colors.primary,
+                    fontFamily: 'Poppins_600SemiBold',
+                  },
+                ]}>
+                  {item.label}
+                </Text>
+                {item.value === selectedValue && (
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const AnnualScreen = () => {
   const { t } = useTranslation();
   const {
@@ -58,7 +107,7 @@ const AnnualScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
-  const { colors: dc } = useTheme();
+  const { colors: dc, isDark } = useTheme();
 
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
@@ -72,7 +121,10 @@ const AnnualScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
     new Date().getMonth() + 1
   );
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<MovementType | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showYearModal, setShowYearModal] = useState(false);
+  const [showMonthModal, setShowMonthModal] = useState(false);
 
   const annualData = getAnnualSummary();
 
@@ -83,6 +135,16 @@ const AnnualScreen = () => {
     t('home.month_9'), t('home.month_10'), t('home.month_11'),
   ];
 
+  // Letras de meses traducidas
+  const SHORT_MONTHS = MONTH_NAMES.map(m => m[0].toUpperCase());
+
+  // Años disponibles — desde el primer movimiento hasta el año actual + 1
+  const currentYear = new Date().getFullYear();
+  const availableYears = Array.from(
+    { length: 5 },
+    (_, i) => currentYear - 2 + i
+  );
+
   const monthMovements = useMemo(() => {
     if (!selectedMonth) return [];
     return movements.filter((m) => {
@@ -91,15 +153,25 @@ const AnnualScreen = () => {
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedMonth, movements, selectedAnnualYear]);
 
-  const filteredMonthMovements = useMemo(() => {
-    if (!selectedCategory) return monthMovements;
-    return monthMovements.filter(m => m.category === selectedCategory);
-  }, [monthMovements, selectedCategory]);
+  // Filtra por tipo primero, luego por categoría
+  const typeFilteredMovements = useMemo(() => {
+    if (!selectedTypeFilter) return monthMovements;
+    return monthMovements.filter(m => m.type === selectedTypeFilter);
+  }, [monthMovements, selectedTypeFilter]);
 
+  const filteredMonthMovements = useMemo(() => {
+    if (!selectedCategory) return typeFilteredMovements;
+    return typeFilteredMovements.filter(m => m.category === selectedCategory);
+  }, [typeFilteredMovements, selectedCategory]);
+
+  // Categorías del tipo seleccionado
   const monthCategories = useMemo(() => {
-    const cats = new Set(monthMovements.map(m => m.category));
+    const source = selectedTypeFilter
+      ? monthMovements.filter(m => m.type === selectedTypeFilter)
+      : monthMovements;
+    const cats = new Set(source.map(m => m.category));
     return Array.from(cats);
-  }, [monthMovements]);
+  }, [monthMovements, selectedTypeFilter]);
 
   const monthSummary = useMemo(() => ({
     income: filteredMonthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
@@ -134,68 +206,63 @@ const AnnualScreen = () => {
     { value: m.expense, frontColor: colors.expense, spacing: 12 },
   ]);
 
-  const handlePrevMonth = () => {
-    if (selectedMonth === null) setSelectedMonth(12);
-    else if (selectedMonth === 1) setSelectedMonth(null);
-    else setSelectedMonth(selectedMonth - 1);
-    setSelectedCategory(null);
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === null) setSelectedMonth(1);
-    else if (selectedMonth === 12) setSelectedMonth(null);
-    else setSelectedMonth(selectedMonth + 1);
-    setSelectedCategory(null);
-  };
-
   const handleCategoryFilter = (cat: string) => {
     requirePremium(() => {
       setSelectedCategory(selectedCategory === cat ? null : cat);
     });
   };
 
+  const handleTypeFilter = (type: MovementType) => {
+    if (selectedTypeFilter === type) {
+      setSelectedTypeFilter(null);
+      setSelectedCategory(null);
+    } else {
+      setSelectedTypeFilter(type);
+      setSelectedCategory(null);
+    }
+  };
+
+  // Opciones para modales
+  const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
+  const monthOptions = [
+    { value: null, label: t('annual.allYear') },
+    ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
+  ];
+
+  const TYPE_OPTIONS: { type: MovementType; label: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
+    { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
+    { type: 'saving', label: t('movements.saving'), color: colors.savings, icon: 'save' },
+  ];
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.annual')} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* SELECTORES AÑO Y MES */}
+        {/* SELECTORES AÑO Y MES — desplegables */}
         <View style={styles.filtersRow}>
-          <View style={styles.selectorRow}>
-            <TouchableOpacity
-              onPress={() => { setSelectedAnnualYear(selectedAnnualYear - 1); setSelectedMonth(null); }}
-              style={[styles.selectorButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.selectorText, { color: dc.textPrimary }]}>
+          <TouchableOpacity
+            style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
+            onPress={() => setShowYearModal(true)}
+          >
+            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+            <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]}>
               {selectedAnnualYear}
             </Text>
-            <TouchableOpacity
-              onPress={() => { setSelectedAnnualYear(selectedAnnualYear + 1); setSelectedMonth(null); }}
-              style={[styles.selectorButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            >
-              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+            <Ionicons name="chevron-down" size={14} color={dc.textSecondary} />
+          </TouchableOpacity>
 
-          <View style={styles.selectorRow}>
-            <TouchableOpacity
-              onPress={handlePrevMonth}
-              style={[styles.selectorButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.selectorText, { color: dc.textPrimary }]}>
+          <TouchableOpacity
+            style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
+            onPress={() => setShowMonthModal(true)}
+          >
+            <Ionicons name="calendar" size={16} color={colors.primary} />
+            <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]} numberOfLines={1}>
               {selectedMonth ? MONTH_NAMES[selectedMonth - 1] : t('annual.allYear')}
             </Text>
-            <TouchableOpacity
-              onPress={handleNextMonth}
-              style={[styles.selectorButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            >
-              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+            <Ionicons name="chevron-down" size={14} color={dc.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {!hasData ? (
@@ -258,8 +325,39 @@ const AnnualScreen = () => {
                   {MONTH_NAMES[selectedMonth - 1]} {selectedAnnualYear}
                 </Text>
 
-                {/* FILTRO POR CATEGORÍA */}
-                {monthCategories.length > 0 && (
+                {/* FILTRO POR TIPO */}
+                <View style={styles.typeFilterRow}>
+                  {TYPE_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.type}
+                      style={[
+                        styles.typeFilterChip,
+                        { backgroundColor: dc.surface, borderColor: dc.border },
+                        selectedTypeFilter === opt.type && {
+                          backgroundColor: opt.color,
+                          borderColor: opt.color,
+                        },
+                      ]}
+                      onPress={() => handleTypeFilter(opt.type)}
+                    >
+                      <Ionicons
+                        name={opt.icon}
+                        size={14}
+                        color={selectedTypeFilter === opt.type ? '#FFFFFF' : opt.color}
+                      />
+                      <Text style={[
+                        styles.typeFilterChipText,
+                        { color: dc.textSecondary },
+                        selectedTypeFilter === opt.type && { color: '#FFFFFF' },
+                      ]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* FILTRO POR CATEGORÍA — solo si hay tipo seleccionado */}
+                {selectedTypeFilter && monthCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
                       <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
@@ -391,6 +489,35 @@ const AnnualScreen = () => {
         )}
       </ScrollView>
 
+      {/* MODAL AÑO */}
+      <DropdownModal
+        visible={showYearModal}
+        title={t('annual.selectYear')}
+        options={yearOptions}
+        selectedValue={String(selectedAnnualYear)}
+        onSelect={(val) => {
+          if (val) setSelectedAnnualYear(Number(val));
+          setSelectedMonth(null);
+          setSelectedTypeFilter(null);
+          setSelectedCategory(null);
+        }}
+        onDismiss={() => setShowYearModal(false)}
+      />
+
+      {/* MODAL MES */}
+      <DropdownModal
+        visible={showMonthModal}
+        title={t('annual.selectMonth')}
+        options={monthOptions}
+        selectedValue={selectedMonth ? String(selectedMonth) : null}
+        onSelect={(val) => {
+          setSelectedMonth(val ? Number(val) : null);
+          setSelectedTypeFilter(null);
+          setSelectedCategory(null);
+        }}
+        onDismiss={() => setShowMonthModal(false)}
+      />
+
       <PremiumModal
         visible={showModal}
         onDismiss={() => setShowModal(false)}
@@ -403,10 +530,15 @@ const AnnualScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  filtersRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 },
-  selectorRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
-  selectorButton: { width: 32, height: 32, borderRadius: 10, borderWidth: 0.5, justifyContent: 'center', alignItems: 'center' },
-  selectorText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center', flex: 1 },
+  filtersRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  selectorDropdown: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    gap: 8, borderRadius: 12, borderWidth: 0.5,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  selectorDropdownText: {
+    flex: 1, fontSize: 13, fontFamily: 'Poppins_600SemiBold',
+  },
   chartCard: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 0.5 },
   sectionTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold', marginBottom: 12 },
   chartHint: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12 },
@@ -414,6 +546,13 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  typeFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  typeFilterChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6,
+    paddingVertical: 8, borderRadius: 12, borderWidth: 0.5,
+  },
+  typeFilterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   categoryFilterSection: { marginBottom: 16 },
   categoryFilterHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   categoryFilterTitle: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -443,6 +582,13 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
   emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', paddingHorizontal: 32 },
+  dropdownOverlay: { flex: 1, justifyContent: 'flex-end' },
+  dropdownBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  dropdownSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
+  dropdownHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  dropdownTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
+  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
+  dropdownOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
 });
 
 export default AnnualScreen;

@@ -110,6 +110,8 @@
   "title": "Resumen Anual",
   "summary": "Resumen",
   "movements": "Movimientos",
+  "selectYear": "Seleccionar año",
+  "selectMonth": "Seleccionar mes",
   "filterByCategory": "Filtrar por categoría",
   "tapMonthHint": "Usa las flechas de arriba para filtrar por mes",
   "allYear": "Todo el año",

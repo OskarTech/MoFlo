@@ -111,6 +111,8 @@
   "summary": "Summary",
   "movements": "Movements",
   "filterByCategory": "Filter by category",
+  "selectYear": "Select year",
+  "selectMonth": "Select month",
   "year": "Year",
   "totalIncome": "Total Income",
   "tapMonthHint": "Use the arrows above to filter by month",
