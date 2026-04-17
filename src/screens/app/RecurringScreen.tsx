@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert,
@@ -8,11 +8,12 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
-
+import AddRecurringModal from '../../components/movements/AddRecurringModal';
 
 const TYPE_COLORS = {
   income: colors.income,
@@ -33,10 +34,14 @@ const RecurringCard = ({
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
+
   const color = TYPE_COLORS[item.type];
   const icon = TYPE_ICONS[item.type];
-  const currencySymbol = getCurrencySymbol();
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
 
   const handleDelete = () => {
     Alert.alert(
@@ -96,7 +101,6 @@ const RecurringScreen = ({
   const { recurringMovements, deleteRecurringMovement } = useMovementStore();
   const { colors: dc } = useTheme();
 
-  // Ordenados por día del mes
   const sortedRecurring = [...recurringMovements].sort(
     (a, b) => a.recurringDay - b.recurringDay
   );
@@ -128,6 +132,11 @@ const RecurringScreen = ({
           ))
         )}
       </ScrollView>
+
+      <AddRecurringModal
+        visible={modalVisible}
+        onDismiss={onModalDismiss ?? (() => {})}
+      />
     </View>
   );
 };
@@ -136,37 +145,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 0.5,
-    gap: 10,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, padding: 14, marginBottom: 10,
+    borderWidth: 0.5, gap: 10,
   },
   dayBadge: {
     width: 40, height: 40, borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center',
-    flexShrink: 0,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  dayNumber: {
-    fontSize: 14, fontFamily: 'Poppins_700Bold', lineHeight: 16,
-  },
-  dayLabel: {
-    fontSize: 9, fontFamily: 'Poppins_400Regular',
-  },
+  dayNumber: { fontSize: 14, fontFamily: 'Poppins_700Bold', lineHeight: 16 },
+  dayLabel: { fontSize: 9, fontFamily: 'Poppins_400Regular' },
   cardIcon: {
     width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
-    flexShrink: 0,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   cardInfo: { flex: 1 },
-  cardDescription: {
-    fontSize: 14, fontFamily: 'Poppins_500Medium',
-  },
-  cardCategory: {
-    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2,
-  },
+  cardDescription: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  cardCategory: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   cardRight: { alignItems: 'flex-end', gap: 6 },
   cardAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
   deleteButton: { padding: 4 },

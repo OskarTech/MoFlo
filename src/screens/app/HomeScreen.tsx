@@ -66,20 +66,24 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
   const { getCategoryName } = useCategoryStore();
-  const { isSharedMode } = useSharedAccountStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { colors: dc } = useTheme();
-  const currencySymbol = getCurrencySymbol();
-  const isIncome = movement.type === 'income';
-  const isSaving = movement.type === 'saving';
-  const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
-  const icon: keyof typeof Ionicons.glyphMap = isIncome
-    ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
+
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode
       ? getSharedCategoryName(id, type, t)
       : getCategoryName(id, type, t);
+
+  const isIncome = movement.type === 'income';
+  const isSaving = movement.type === 'saving';
+  const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
+  const icon: keyof typeof Ionicons.glyphMap = isIncome
+    ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
 
   return (
     <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
