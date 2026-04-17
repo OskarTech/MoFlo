@@ -14,6 +14,7 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType, RecurringMovement } from '../../types';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface Props {
   visible: boolean;
@@ -25,6 +26,8 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const { isDark, colors: dc } = useTheme();
   const { addRecurringMovement } = useMovementStore();
   const { getCategoriesForType, getCategoryName } = useCategoryStore();
+  const { getCurrencySymbol } = useSettingsStore();
+  const { getSharedCurrencySymbol } = useSharedAccountStore();
   const { isSharedMode } = useSharedAccountStore();
   const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
   const insets = useSafeAreaInsets();
@@ -180,7 +183,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               style={[styles.input, { backgroundColor: inputBg }]}
               outlineColor={typeColor}
               activeOutlineColor={typeColor}
-              left={<TextInput.Affix text="€" />}
+              left={<TextInput.Affix text={isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol()} />}
             />
 
             {/* DÍA DEL MES */}

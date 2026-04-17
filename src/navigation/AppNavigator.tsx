@@ -175,10 +175,6 @@ const AppNavigator = () => {
         visible={movementModalVisible}
         onDismiss={() => setMovementModalVisible(false)}
       />
-      <AddRecurringModal
-        visible={recurringModalVisible}
-        onDismiss={() => setRecurringModalVisible(false)}
-      />
     </>
   );
 };
