@@ -40,18 +40,17 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const categoryPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    if (Platform.OS !== 'ios') return;
 
-    const show = Keyboard.addListener(showEvent, (e) => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
       Animated.timing(sheetOffset, {
-        toValue: -e.endCoordinates.height,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        toValue: -(e.endCoordinates.height - insets.bottom),
+        duration: e.duration ?? 250,
         useNativeDriver: true,
       }).start();
     });
 
-    const hide = Keyboard.addListener(hideEvent, () => {
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
       Animated.timing(sheetOffset, {
         toValue: 0,
         duration: 200,
@@ -60,14 +59,12 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
     });
 
     return () => { show.remove(); hide.remove(); };
-  }, [sheetOffset]);
+  }, [sheetOffset, insets.bottom]);
 
-  // Usa moneda compartida si está en modo compartido
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
 
-  // Usa categorías compartidas si está en modo compartido
   const categoryList = isSharedMode
     ? getSharedCategoriesForType(type)
     : getCategoriesForType(type);
@@ -130,7 +127,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
+      <Animated.View style={[
+        styles.overlay,
+        Platform.OS === 'ios' && { transform: [{ translateY: sheetOffset }] },
+      ]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
 
         <View style={[styles.sheet, {
@@ -139,7 +139,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('movements.add')}
             </Text>

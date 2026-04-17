@@ -8,13 +8,13 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMovementStore } from '../../store/movementStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType, RecurringMovement } from '../../types';
-import { useSettingsStore } from '../../store/settingsStore';
 
 interface Props {
   visible: boolean;
@@ -25,10 +25,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
   const { addRecurringMovement } = useMovementStore();
-  const { getCategoriesForType, getCategoryName } = useCategoryStore();
   const { getCurrencySymbol } = useSettingsStore();
-  const { getSharedCurrencySymbol } = useSharedAccountStore();
-  const { isSharedMode } = useSharedAccountStore();
+  const { getCategoriesForType, getCategoryName } = useCategoryStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
   const insets = useSafeAreaInsets();
 
@@ -42,18 +41,17 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const categoryPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    if (Platform.OS !== 'ios') return;
 
-    const show = Keyboard.addListener(showEvent, (e) => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
       Animated.timing(sheetOffset, {
-        toValue: -e.endCoordinates.height,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        toValue: -(e.endCoordinates.height - insets.bottom),
+        duration: e.duration ?? 250,
         useNativeDriver: true,
       }).start();
     });
 
-    const hide = Keyboard.addListener(hideEvent, () => {
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
       Animated.timing(sheetOffset, {
         toValue: 0,
         duration: 200,
@@ -62,16 +60,12 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     });
 
     return () => { show.remove(); hide.remove(); };
-  }, [sheetOffset]);
+  }, [sheetOffset, insets.bottom]);
 
-  const typeColor = type === 'income' ? colors.income
-    : type === 'saving' ? colors.savings : colors.expense;
-  const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
-  const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
-  const chipBg = isDark ? colors.borderDark : '#F8F8F8';
-  const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
 
-  // Usa categorías compartidas si está en modo compartido
   const categoryList = isSharedMode
     ? getSharedCategoriesForType(type)
     : getCategoriesForType(type);
@@ -80,6 +74,13 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     isSharedMode
       ? getSharedCategoryName(id, tp, t)
       : getCategoryName(id, tp, t);
+
+  const typeColor = type === 'income' ? colors.income
+    : type === 'saving' ? colors.savings : colors.expense;
+  const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
+  const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
+  const chipBg = isDark ? colors.borderDark : '#F8F8F8';
+  const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
 
   const handleDismiss = () => {
     setType('expense');
@@ -117,7 +118,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       category: categoryId as any,
       description: getCatName(categoryId, type),
       recurringDay: day,
-      currency: 'EUR',
+      currency: currencySymbol,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
@@ -133,7 +134,10 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
+      <Animated.View style={[
+        styles.overlay,
+        Platform.OS === 'ios' && { transform: [{ translateY: sheetOffset }] },
+      ]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
 
         <View style={[styles.sheet, {
@@ -142,7 +146,10 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
               {t('recurring.add')}
             </Text>
@@ -183,7 +190,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               style={[styles.input, { backgroundColor: inputBg }]}
               outlineColor={typeColor}
               activeOutlineColor={typeColor}
-              left={<TextInput.Affix text={isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol()} />}
+              left={<TextInput.Affix text={currencySymbol} />}
             />
 
             {/* DÍA DEL MES */}
