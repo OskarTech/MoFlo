@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share, Clipboard,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +42,6 @@ const SharedAccountScreen = () => {
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    // Deep link — viene con código de invitación
     if (route.params?.code && !sharedAccount) {
       setInviteCode(route.params.code);
       setMode('join');
@@ -133,239 +133,239 @@ const SharedAccountScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('sharedAccount.title')} showBell={false} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
-        ) : sharedAccount ? (
-          // ── TIENE CUENTA COMPARTIDA ────────────────────────────
-          <>
-            <View style={[styles.accountCard, {
-              backgroundColor: colors.primary,
-            }]}>
-              <Text style={styles.accountEmoji}>👥</Text>
-              <Text style={styles.accountCardName}>{sharedAccount.name}</Text>
-              <Text style={styles.accountCardCode}>
-                {t('sharedAccount.code')}: {sharedAccount.inviteCode}
-              </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={colors.primary} size="large" />
             </View>
-
-            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.inviteLink')}
-            </Text>
-            <View style={[styles.linkCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <Text style={[styles.linkText, { color: dc.textSecondary }]} numberOfLines={2}>
-                {getInviteLink()}
-              </Text>
-              <View style={styles.linkButtons}>
-                <TouchableOpacity
-                  style={[styles.linkButton, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
-                  onPress={handleCopyLink}
-                >
-                  <Ionicons
-                    name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
-                    size={18}
-                    color={linkCopied ? colors.income : colors.primary}
-                  />
-                  <Text style={[styles.linkButtonText, {
-                    color: linkCopied ? colors.income : colors.primary,
-                  }]}>
-                    {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.linkButton, { backgroundColor: dc.background }]}
-                  onPress={handleShareLink}
-                >
-                  <Ionicons name="share-social-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.linkButtonText, { color: colors.primary }]}>
-                    {t('sharedAccount.shareLink')}
-                  </Text>
-                </TouchableOpacity>
+          ) : sharedAccount ? (
+            <>
+              <View style={[styles.accountCard, { backgroundColor: colors.primary }]}>
+                <Text style={styles.accountEmoji}>👥</Text>
+                <Text style={styles.accountCardName}>{sharedAccount.name}</Text>
+                <Text style={styles.accountCardCode}>
+                  {t('sharedAccount.code')}: {sharedAccount.inviteCode}
+                </Text>
               </View>
-            </View>
 
-            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.members')}
-            </Text>
-            <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              {sharedAccount.members.map((uid, index) => {
-                const name = sharedAccount.memberNames[uid] ?? 'Usuario';
-                const isCreator = uid === sharedAccount.createdBy;
-                const isCurrentUser = uid === require('@react-native-firebase/auth').default().currentUser?.uid;
-                return (
-                  <View key={uid}>
-                    <View style={styles.memberRow}>
-                      <View style={[styles.memberAvatar, { backgroundColor: colors.primary + '20' }]}>
-                        <Text style={[styles.memberInitial, { color: colors.primary }]}>
-                          {name[0].toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.memberInfo}>
-                        <Text style={[styles.memberName, { color: dc.textPrimary }]}>
-                          {name}
-                          {isCurrentUser ? ` ${t('sharedAccount.you')}` : ''}
-                        </Text>
-                        {isCreator && (
-                          <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
-                            {t('sharedAccount.creator')}
+              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                {t('sharedAccount.inviteLink')}
+              </Text>
+              <View style={[styles.linkCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                <Text style={[styles.linkText, { color: dc.textSecondary }]} numberOfLines={2}>
+                  {getInviteLink()}
+                </Text>
+                <View style={styles.linkButtons}>
+                  <TouchableOpacity
+                    style={[styles.linkButton, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
+                    onPress={handleCopyLink}
+                  >
+                    <Ionicons
+                      name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+                      size={18}
+                      color={linkCopied ? colors.income : colors.primary}
+                    />
+                    <Text style={[styles.linkButtonText, {
+                      color: linkCopied ? colors.income : colors.primary,
+                    }]}>
+                      {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.linkButton, { backgroundColor: dc.background }]}
+                    onPress={handleShareLink}
+                  >
+                    <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.linkButtonText, { color: colors.primary }]}>
+                      {t('sharedAccount.shareLink')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                {t('sharedAccount.members')}
+              </Text>
+              <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                {sharedAccount.members.map((uid, index) => {
+                  const name = sharedAccount.memberNames[uid] ?? 'Usuario';
+                  const isCreator = uid === sharedAccount.createdBy;
+                  const isCurrentUser = uid === require('@react-native-firebase/auth').default().currentUser?.uid;
+                  return (
+                    <View key={uid}>
+                      <View style={styles.memberRow}>
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary + '20' }]}>
+                          <Text style={[styles.memberInitial, { color: colors.primary }]}>
+                            {name[0].toUpperCase()}
                           </Text>
-                        )}
+                        </View>
+                        <View style={styles.memberInfo}>
+                          <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                            {name}{isCurrentUser ? ` ${t('sharedAccount.you')}` : ''}
+                          </Text>
+                          {isCreator && (
+                            <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                              {t('sharedAccount.creator')}
+                            </Text>
+                          )}
+                        </View>
                       </View>
+                      {index < sharedAccount.members.length - 1 && (
+                        <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                      )}
                     </View>
-                    {index < sharedAccount.members.length - 1 && (
-                      <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
 
-            <Button
-              mode="contained"
-              onPress={handleOpenShared}
-              style={styles.openButton}
-              contentStyle={styles.openButtonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('sharedAccount.openShared')}
-            </Button>
+              <Button
+                mode="contained"
+                onPress={handleOpenShared}
+                style={styles.openButton}
+                contentStyle={styles.openButtonContent}
+                buttonColor={colors.primary}
+                textColor="#FFFFFF"
+              >
+                {t('sharedAccount.openShared')}
+              </Button>
 
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate('SharedAccountSettings')}
-              style={styles.settingsButton}
-              textColor={dc.textSecondary}
-            >
-              {t('sharedAccount.settings')}
-            </Button>
-          </>
-        ) : (
-          // ── NO TIENE CUENTA COMPARTIDA ─────────────────────────
-          <>
-            <View style={styles.introSection}>
-              <Text style={styles.introEmoji}>👥</Text>
-              <Text style={[styles.introTitle, { color: dc.textPrimary }]}>
-                {t('sharedAccount.title')}
-              </Text>
-              <Text style={[styles.introText, { color: dc.textSecondary }]}>
-                {t('sharedAccount.intro')}
-              </Text>
-            </View>
+              <Button
+                mode="outlined"
+                onPress={() => navigation.navigate('SharedAccountSettings')}
+                style={styles.settingsButton}
+                textColor={dc.textSecondary}
+              >
+                {t('sharedAccount.settings')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <View style={styles.introSection}>
+                <Text style={styles.introEmoji}>👥</Text>
+                <Text style={[styles.introTitle, { color: dc.textPrimary }]}>
+                  {t('sharedAccount.title')}
+                </Text>
+                <Text style={[styles.introText, { color: dc.textSecondary }]}>
+                  {t('sharedAccount.intro')}
+                </Text>
+              </View>
 
-            {mode === 'menu' && (
-              <>
-                <Button
-                  mode="contained"
-                  onPress={() => setMode('create')}
-                  style={styles.actionButton}
-                  contentStyle={styles.actionButtonContent}
-                  buttonColor={colors.primary}
-                  textColor="#FFFFFF"
-                  icon="add-circle-outline"
-                >
-                  {t('sharedAccount.createTitle')}
-                </Button>
+              {mode === 'menu' && (
+                <>
+                  <Button
+                    mode="contained"
+                    onPress={() => setMode('create')}
+                    style={styles.actionButton}
+                    contentStyle={styles.actionButtonContent}
+                    buttonColor={colors.primary}
+                    textColor="#FFFFFF"
+                    icon="add-circle-outline"
+                  >
+                    {t('sharedAccount.createTitle')}
+                  </Button>
+                  <TouchableOpacity
+                    onPress={() => setMode('join')}
+                    style={styles.secondaryLink}
+                  >
+                    <Text style={[styles.secondaryLinkText, { color: colors.primary }]}>
+                      {t('sharedAccount.orJoin')}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
-                <TouchableOpacity
-                  onPress={() => setMode('join')}
-                  style={styles.secondaryLink}
-                >
-                  <Text style={[styles.secondaryLinkText, { color: colors.primary }]}>
-                    {t('sharedAccount.orJoin')}
+              {mode === 'create' && (
+                <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                  <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
+                    {t('sharedAccount.createTitle')}
                   </Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {mode === 'create' && (
-              <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-                  {t('sharedAccount.createTitle')}
-                </Text>
-                <TextInput
-                  label={t('sharedAccount.accountName')}
-                  value={accountName}
-                  onChangeText={setAccountName}
-                  mode="outlined"
-                  placeholder={t('sharedAccount.accountNamePlaceholder')}
-                  style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
-                  outlineColor={colors.primary}
-                  activeOutlineColor={colors.primary}
-                />
-                <View style={styles.formButtons}>
-                  <Button
+                  <TextInput
+                    label={t('sharedAccount.accountName')}
+                    value={accountName}
+                    onChangeText={setAccountName}
                     mode="outlined"
-                    onPress={() => setMode('menu')}
-                    style={styles.cancelBtn}
-                    textColor={dc.textSecondary}
-                  >
-                    {t('movements.cancel')}
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleCreate}
-                    loading={loading}
-                    disabled={!accountName.trim() || loading}
-                    style={styles.confirmBtn}
-                    buttonColor={colors.primary}
-                    textColor="#FFFFFF"
-                  >
-                    {t('sharedAccount.createButton')}
-                  </Button>
+                    placeholder={t('sharedAccount.accountNamePlaceholder')}
+                    style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
+                    outlineColor={colors.primary}
+                    activeOutlineColor={colors.primary}
+                  />
+                  <View style={styles.formButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => setMode('menu')}
+                      style={styles.cancelBtn}
+                      textColor={dc.textSecondary}
+                    >
+                      {t('movements.cancel')}
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleCreate}
+                      loading={loading}
+                      disabled={!accountName.trim() || loading}
+                      style={styles.confirmBtn}
+                      buttonColor={colors.primary}
+                      textColor="#FFFFFF"
+                    >
+                      {t('sharedAccount.createButton')}
+                    </Button>
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
 
-            {mode === 'join' && (
-              <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-                  {t('sharedAccount.joinTitle')}
-                </Text>
-                <TextInput
-                  label={t('sharedAccount.enterCode')}
-                  value={inviteCode}
-                  onChangeText={(v) => setInviteCode(v.toUpperCase())}
-                  mode="outlined"
-                  placeholder={t('sharedAccount.enterCodePlaceholder')}
-                  autoCapitalize="characters"
-                  maxLength={6}
-                  style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
-                  outlineColor={colors.primary}
-                  activeOutlineColor={colors.primary}
-                />
-                <View style={styles.formButtons}>
-                  <Button
+              {mode === 'join' && (
+                <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                  <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
+                    {t('sharedAccount.joinTitle')}
+                  </Text>
+                  <TextInput
+                    label={t('sharedAccount.enterCode')}
+                    value={inviteCode}
+                    onChangeText={(v) => setInviteCode(v.toUpperCase())}
                     mode="outlined"
-                    onPress={() => setMode('menu')}
-                    style={styles.cancelBtn}
-                    textColor={dc.textSecondary}
-                  >
-                    {t('movements.cancel')}
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleJoin}
-                    loading={loading}
-                    disabled={inviteCode.length < 6 || loading}
-                    style={styles.confirmBtn}
-                    buttonColor={colors.primary}
-                    textColor="#FFFFFF"
-                  >
-                    {t('sharedAccount.joinButton')}
-                  </Button>
+                    placeholder={t('sharedAccount.enterCodePlaceholder')}
+                    autoCapitalize="characters"
+                    maxLength={6}
+                    style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
+                    outlineColor={colors.primary}
+                    activeOutlineColor={colors.primary}
+                  />
+                  <View style={styles.formButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => setMode('menu')}
+                      style={styles.cancelBtn}
+                      textColor={dc.textSecondary}
+                    >
+                      {t('movements.cancel')}
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleJoin}
+                      loading={loading}
+                      disabled={inviteCode.length < 6 || loading}
+                      style={styles.confirmBtn}
+                      buttonColor={colors.primary}
+                      textColor="#FFFFFF"
+                    >
+                      {t('sharedAccount.joinButton')}
+                    </Button>
+                  </View>
                 </View>
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -379,10 +379,7 @@ const styles = StyleSheet.create({
   premiumTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 8, textAlign: 'center' },
   premiumSubtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   premiumButton: { borderRadius: 12, width: '100%' },
-  accountCard: {
-    borderRadius: 20, padding: 24, alignItems: 'center',
-    marginBottom: 24, elevation: 4,
-  },
+  accountCard: { borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 24, elevation: 4 },
   accountEmoji: { fontSize: 40, marginBottom: 8 },
   accountCardName: { fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', marginBottom: 4 },
   accountCardCode: { fontSize: 13, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
@@ -401,10 +398,7 @@ const styles = StyleSheet.create({
   linkButtonText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
   membersCard: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
   memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  memberAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  memberAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   memberInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
   memberInfo: { flex: 1 },
   memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
-  Keyboard, Animated,
+  Keyboard, Animated, KeyboardAvoidingView,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -115,35 +115,45 @@ const AddReminderModal = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // ─── Keyboard fix ────────────────────────────────────────────────────────────
   const sheetOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    // ANDROID — no tocar
+    if (Platform.OS === 'android') {
+      const show = Keyboard.addListener('keyboardDidShow', (e) => {
+        Animated.timing(sheetOffset, {
+          toValue: -e.endCoordinates.height,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      });
+      const hide = Keyboard.addListener('keyboardDidHide', () => {
+        Animated.timing(sheetOffset, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      });
+      return () => { show.remove(); hide.remove(); };
+    }
 
-    const show = Keyboard.addListener(showEvent, (e) => {
+    // iOS — fix margen con insets
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
       Animated.timing(sheetOffset, {
-        toValue: -e.endCoordinates.height,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        toValue: -(e.endCoordinates.height - insets.bottom),
+        duration: e.duration ?? 250,
         useNativeDriver: true,
       }).start();
     });
-
-    const hide = Keyboard.addListener(hideEvent, (e) => {
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
       Animated.timing(sheetOffset, {
         toValue: 0,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 200) : 200,
+        duration: 200,
         useNativeDriver: true,
       }).start();
     });
-
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [sheetOffset]);
-  // ─────────────────────────────────────────────────────────────────────────────
+    return () => { show.remove(); hide.remove(); };
+  }, [sheetOffset, insets.bottom]);
 
   const handleDismiss = () => {
     setDescription('');
@@ -168,10 +178,7 @@ const AddReminderModal = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      {/* Animated.View reemplaza a KeyboardAvoidingView */}
-      <Animated.View
-        style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}
-      >
+      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.modalSheet, {
           backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
@@ -293,7 +300,6 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [internalModalVisible, setInternalModalVisible] = useState(false);
   const uid = auth().currentUser?.uid ?? 'guest';
   const STORAGE_KEY = `@moflo_reminders_${uid}`;
 
@@ -373,7 +379,10 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.reminders')} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {sortedReminders.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🔔</Text>
@@ -392,11 +401,8 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
       </ScrollView>
 
       <AddReminderModal
-        visible={modalVisible || internalModalVisible}
-        onDismiss={() => {
-          setInternalModalVisible(false);
-          onModalDismiss?.();
-        }}
+        visible={modalVisible}
+        onDismiss={() => onModalDismiss?.()}
         onSave={handleAddReminder}
       />
     </View>
@@ -427,7 +433,10 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   input: { marginBottom: 16 },
   pickerLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 8 },
-  pickerButton: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16 },
+  pickerButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16,
+  },
   pickerText: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },
