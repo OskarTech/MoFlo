@@ -57,6 +57,7 @@ export default function App() {
         setSharedAccountId(account.id);
         await loadSharedData(account.id);
         await useSharedCategoryStore.getState().loadSharedCategories(account.id);
+        useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
         await useSharedAccountStore.getState().loadSharedSettings(account.id);
       } else {
         setSharedAccountId(null);

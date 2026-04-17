@@ -7,6 +7,8 @@ import { BASE_CATEGORIES } from '../constants/categories';
 const SHARED_CUSTOM_KEY = '@moflo_shared_custom_categories';
 const SHARED_HIDDEN_KEY = '@moflo_shared_hidden_categories';
 
+let categoriesUnsubscribe: (() => void) | null = null;
+
 interface SharedCategoryStore {
   sharedCustomCategories: Category[];
   sharedHiddenCategories: string[];
@@ -19,6 +21,8 @@ interface SharedCategoryStore {
   getSharedCategoriesForType: (type: MovementType) => { id: string; name: string; icon: string; isCustom: boolean }[];
   getSharedCategoryName: (id: string, type: MovementType, t: (key: string) => string) => string;
   resetSharedCategories: () => void;
+  subscribeToSharedCategories: (accountId: string) => void;
+  unsubscribeCategories: () => void;
 }
 
 export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => ({
@@ -26,10 +30,16 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
   sharedHiddenCategories: [],
   isLoading: false,
 
-  resetSharedCategories: () => set({
-    sharedCustomCategories: [],
-    sharedHiddenCategories: [],
-  }),
+  resetSharedCategories: () => {
+    if (categoriesUnsubscribe) {
+      categoriesUnsubscribe();
+      categoriesUnsubscribe = null;
+    }
+    set({
+      sharedCustomCategories: [],
+      sharedHiddenCategories: [],
+    });
+  },
 
   loadSharedCategories: async (accountId) => {
     set({ isLoading: true });
@@ -150,5 +160,47 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
     const custom = get().sharedCustomCategories.find(c => c.id === id);
     if (custom) return custom.name;
     return t(`movements.categories.${id}`);
+  },
+
+  unsubscribeCategories: () => {
+    if (categoriesUnsubscribe) {
+      categoriesUnsubscribe();
+      categoriesUnsubscribe = null;
+    }
+  },
+
+  subscribeToSharedCategories: (accountId) => {
+    if (categoriesUnsubscribe) {
+      categoriesUnsubscribe();
+      categoriesUnsubscribe = null;
+    }
+
+    categoriesUnsubscribe = firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('categories')
+      .onSnapshot((snap) => {
+        const categories = snap.docs.map(d => d.data() as Category);
+        set({ sharedCustomCategories: categories });
+        AsyncStorage.setItem(
+          `@moflo_shared_custom_categories_${accountId}`,
+          JSON.stringify(categories)
+        );
+      }, (e) => {
+        console.error('Error listening to shared categories:', e);
+      });
+
+    // Listener para categorías ocultas
+    firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .onSnapshot((doc) => {
+        if (doc.exists()) {
+          const hidden: string[] = doc.data()?.hiddenCategories ?? [];
+          set({ sharedHiddenCategories: hidden });
+          AsyncStorage.setItem(
+            `@moflo_shared_hidden_categories_${accountId}`,
+            JSON.stringify(hidden)
+          );
+        }
+      });
   },
 }));

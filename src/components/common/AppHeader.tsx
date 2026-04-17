@@ -93,6 +93,7 @@ const AppHeader = ({
       await setSharedMode(true);
       subscribeToSharedMovements(sharedAccount.id);
       await loadSharedCategories(sharedAccount.id);
+      useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);
       await loadSharedSettings(sharedAccount.id);
       navigation.navigate('HomeTab');
     } else {
