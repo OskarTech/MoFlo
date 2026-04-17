@@ -41,17 +41,21 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const categoryPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const offset = Platform.OS === 'ios'
+        ? -(e.endCoordinates.height - insets.bottom)
+        : -e.endCoordinates.height;
       Animated.timing(sheetOffset, {
-        toValue: -(e.endCoordinates.height - insets.bottom),
-        duration: e.duration ?? 250,
+        toValue: offset,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
         useNativeDriver: true,
       }).start();
     });
 
-    const hide = Keyboard.addListener('keyboardWillHide', () => {
+    const hide = Keyboard.addListener(hideEvent, () => {
       Animated.timing(sheetOffset, {
         toValue: 0,
         duration: 200,
@@ -134,10 +138,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <Animated.View style={[
-        styles.overlay,
-        Platform.OS === 'ios' && { transform: [{ translateY: sheetOffset }] },
-      ]}>
+      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
 
         <View style={[styles.sheet, {
