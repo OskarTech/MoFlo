@@ -70,9 +70,6 @@ const RecurringCard = ({
         <Text style={[styles.cardDescription, { color: dc.textPrimary }]}>
           {item.description}
         </Text>
-        <Text style={[styles.cardCategory, { color: dc.textSecondary }]}>
-          {t(`movements.categories.${item.category}`)}
-        </Text>
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, Modal, ScrollView,
@@ -10,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMovementStore } from '../../store/movementStore';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType, RecurringMovement } from '../../types';
@@ -24,6 +25,8 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const { isDark, colors: dc } = useTheme();
   const { addRecurringMovement } = useMovementStore();
   const { getCategoriesForType, getCategoryName } = useCategoryStore();
+  const { isSharedMode } = useSharedAccountStore();
+  const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>('expense');
@@ -65,7 +68,15 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const chipBg = isDark ? colors.borderDark : '#F8F8F8';
   const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
 
-  const categoryList = getCategoriesForType(type);
+  // Usa categorías compartidas si está en modo compartido
+  const categoryList = isSharedMode
+    ? getSharedCategoriesForType(type)
+    : getCategoriesForType(type);
+
+  const getCatName = (id: string, tp: MovementType) =>
+    isSharedMode
+      ? getSharedCategoryName(id, tp, t)
+      : getCategoryName(id, tp, t);
 
   const handleDismiss = () => {
     setType('expense');
@@ -77,7 +88,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    const cats = getCategoriesForType(newType);
+    const cats = isSharedMode
+      ? getSharedCategoriesForType(newType)
+      : getCategoriesForType(newType);
     setCategoryId(cats[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
   };
@@ -99,7 +112,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       type,
       amount: parsedAmount,
       category: categoryId as any,
-      description: getCategoryName(categoryId, type, t),
+      description: getCatName(categoryId, type),
       recurringDay: day,
       currency: 'EUR',
       isActive: true,
@@ -270,14 +283,8 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24, maxHeight: '90%',
-  },
-  handleBar: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
-  },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
+  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
   typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
