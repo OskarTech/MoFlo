@@ -46,7 +46,6 @@ const AnnualCard = ({
   );
 };
 
-// Modal desplegable genérico
 const DropdownModal = ({
   visible, title, options, selectedValue, onSelect, onDismiss,
 }: {
@@ -107,7 +106,7 @@ const AnnualScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
-  const { colors: dc, isDark } = useTheme();
+  const { colors: dc } = useTheme();
 
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
@@ -123,6 +122,11 @@ const AnnualScreen = () => {
   );
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<MovementType | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Filtros vista anual completa
+  const [annualTypeFilter, setAnnualTypeFilter] = useState<MovementType | null>(null);
+  const [annualCategoryFilter, setAnnualCategoryFilter] = useState<string | null>(null);
+
   const [showYearModal, setShowYearModal] = useState(false);
   const [showMonthModal, setShowMonthModal] = useState(false);
 
@@ -135,16 +139,12 @@ const AnnualScreen = () => {
     t('home.month_9'), t('home.month_10'), t('home.month_11'),
   ];
 
-  // Letras de meses traducidas
   const SHORT_MONTHS = MONTH_NAMES.map(m => m[0].toUpperCase());
 
-  // Años disponibles — desde el primer movimiento hasta el año actual + 1
   const currentYear = new Date().getFullYear();
-  const availableYears = Array.from(
-    { length: 5 },
-    (_, i) => currentYear - 2 + i
-  );
+  const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
+  // ── MOVIMIENTOS DEL MES SELECCIONADO ──────────────────────────
   const monthMovements = useMemo(() => {
     if (!selectedMonth) return [];
     return movements.filter((m) => {
@@ -153,7 +153,6 @@ const AnnualScreen = () => {
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [selectedMonth, movements, selectedAnnualYear]);
 
-  // Filtra por tipo primero, luego por categoría
   const typeFilteredMovements = useMemo(() => {
     if (!selectedTypeFilter) return monthMovements;
     return monthMovements.filter(m => m.type === selectedTypeFilter);
@@ -164,7 +163,6 @@ const AnnualScreen = () => {
     return typeFilteredMovements.filter(m => m.category === selectedCategory);
   }, [typeFilteredMovements, selectedCategory]);
 
-  // Categorías del tipo seleccionado
   const monthCategories = useMemo(() => {
     const source = selectedTypeFilter
       ? monthMovements.filter(m => m.type === selectedTypeFilter)
@@ -179,6 +177,34 @@ const AnnualScreen = () => {
     saving: filteredMonthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0),
   }), [filteredMonthMovements]);
 
+  // ── MOVIMIENTOS DEL AÑO COMPLETO ───────────────────────────────
+  const yearMovements = useMemo(() => {
+    return movements.filter(m => {
+      const d = new Date(m.date);
+      return d.getFullYear() === selectedAnnualYear;
+    });
+  }, [movements, selectedAnnualYear]);
+
+  const annualTypeMovements = useMemo(() => {
+    if (!annualTypeFilter) return yearMovements;
+    return yearMovements.filter(m => m.type === annualTypeFilter);
+  }, [yearMovements, annualTypeFilter]);
+
+  const annualFilteredMovements = useMemo(() => {
+    if (!annualCategoryFilter) return annualTypeMovements;
+    return annualTypeMovements.filter(m => m.category === annualCategoryFilter);
+  }, [annualTypeMovements, annualCategoryFilter]);
+
+  const annualCategories = useMemo(() => {
+    const cats = new Set(annualTypeMovements.map(m => m.category));
+    return Array.from(cats);
+  }, [annualTypeMovements]);
+
+  const annualFilteredTotal = useMemo(() => {
+    return annualFilteredMovements.reduce((s, m) => s + m.amount, 0);
+  }, [annualFilteredMovements]);
+
+  // ── TOTALES GLOBALES ───────────────────────────────────────────
   const totals = useMemo(() => annualData.reduce(
     (acc, m) => ({
       income: acc.income + m.income,
@@ -206,41 +232,36 @@ const AnnualScreen = () => {
     { value: m.expense, frontColor: colors.expense, spacing: 12 },
   ]);
 
-  const handleCategoryFilter = (cat: string) => {
-    requirePremium(() => {
-      setSelectedCategory(selectedCategory === cat ? null : cat);
-    });
-  };
+  const TYPE_OPTIONS: {
+    type: MovementType; label: string;
+    color: string; icon: keyof typeof Ionicons.glyphMap;
+  }[] = [
+    { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
+    { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
+    { type: 'saving', label: t('movements.saving'), color: colors.savings, icon: 'save' },
+  ];
 
-  const handleTypeFilter = (type: MovementType) => {
-    if (selectedTypeFilter === type) {
-      setSelectedTypeFilter(null);
-      setSelectedCategory(null);
-    } else {
-      setSelectedTypeFilter(type);
-      setSelectedCategory(null);
-    }
-  };
-
-  // Opciones para modales
   const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
   const monthOptions = [
     { value: null, label: t('annual.allYear') },
     ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
   ];
 
-  const TYPE_OPTIONS: { type: MovementType; label: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
-    { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
-    { type: 'saving', label: t('movements.saving'), color: colors.savings, icon: 'save' },
-  ];
+  const typeColor = annualTypeFilter === 'income' ? colors.income
+    : annualTypeFilter === 'expense' ? colors.expense
+    : annualTypeFilter === 'saving' ? colors.savings
+    : colors.primary;
+
+  const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
+    ? 'arrow-down-circle'
+    : annualTypeFilter === 'saving' ? 'save' : 'arrow-up-circle';
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.annual')} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* SELECTORES AÑO Y MES — desplegables */}
+        {/* SELECTORES AÑO Y MES */}
         <View style={styles.filtersRow}>
           <TouchableOpacity
             style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
@@ -321,6 +342,7 @@ const AnnualScreen = () => {
 
             {selectedMonth ? (
               <>
+                {/* ── VISTA MENSUAL ── */}
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {MONTH_NAMES[selectedMonth - 1]} {selectedAnnualYear}
                 </Text>
@@ -338,7 +360,15 @@ const AnnualScreen = () => {
                           borderColor: opt.color,
                         },
                       ]}
-                      onPress={() => handleTypeFilter(opt.type)}
+                      onPress={() => {
+                        if (selectedTypeFilter === opt.type) {
+                          setSelectedTypeFilter(null);
+                          setSelectedCategory(null);
+                        } else {
+                          setSelectedTypeFilter(opt.type);
+                          setSelectedCategory(null);
+                        }
+                      }}
                     >
                       <Ionicons
                         name={opt.icon}
@@ -346,8 +376,7 @@ const AnnualScreen = () => {
                         color={selectedTypeFilter === opt.type ? '#FFFFFF' : opt.color}
                       />
                       <Text style={[
-                        styles.typeFilterChipText,
-                        { color: dc.textSecondary },
+                        styles.typeFilterChipText, { color: dc.textSecondary },
                         selectedTypeFilter === opt.type && { color: '#FFFFFF' },
                       ]}>
                         {opt.label}
@@ -356,7 +385,7 @@ const AnnualScreen = () => {
                   ))}
                 </View>
 
-                {/* FILTRO POR CATEGORÍA — solo si hay tipo seleccionado */}
+                {/* FILTRO CATEGORÍA — solo si hay tipo */}
                 {selectedTypeFilter && monthCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
@@ -386,7 +415,9 @@ const AnnualScreen = () => {
                                 },
                                 !isPremium && styles.categoryChipLocked,
                               ]}
-                              onPress={() => handleCategoryFilter(cat)}
+                              onPress={() => requirePremium(() => {
+                                setSelectedCategory(selectedCategory === cat ? null : cat);
+                              })}
                             >
                               {!isPremium && (
                                 <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
@@ -405,7 +436,7 @@ const AnnualScreen = () => {
                   </View>
                 )}
 
-                {/* MOVIMIENTOS */}
+                {/* MOVIMIENTOS DEL MES */}
                 {filteredMonthMovements.length > 0 && (
                   <>
                     <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
@@ -457,18 +488,135 @@ const AnnualScreen = () => {
               </>
             ) : (
               <>
+                {/* ── VISTA ANUAL COMPLETA ── */}
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {t('annual.year')} {selectedAnnualYear}
                 </Text>
-                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalSavings')} amount={totals.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
-                <AnnualCard
-                  label={t('annual.netBalance')}
-                  amount={totals.balance}
-                  color={totals.balance >= 0 ? colors.income : colors.expense}
-                  icon="wallet" currencySymbol={currencySymbol}
-                />
+
+                {/* FILTRO POR TIPO ANUAL */}
+                <View style={styles.typeFilterRow}>
+                  {TYPE_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.type}
+                      style={[
+                        styles.typeFilterChip,
+                        { backgroundColor: dc.surface, borderColor: dc.border },
+                        annualTypeFilter === opt.type && {
+                          backgroundColor: opt.color,
+                          borderColor: opt.color,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (annualTypeFilter === opt.type) {
+                          setAnnualTypeFilter(null);
+                          setAnnualCategoryFilter(null);
+                        } else {
+                          setAnnualTypeFilter(opt.type);
+                          setAnnualCategoryFilter(null);
+                        }
+                      }}
+                    >
+                      <Ionicons
+                        name={opt.icon}
+                        size={14}
+                        color={annualTypeFilter === opt.type ? '#FFFFFF' : opt.color}
+                      />
+                      <Text style={[
+                        styles.typeFilterChipText, { color: dc.textSecondary },
+                        annualTypeFilter === opt.type && { color: '#FFFFFF' },
+                      ]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* FILTRO CATEGORÍA ANUAL — solo si hay tipo */}
+                {annualTypeFilter && annualCategories.length > 0 && (
+                  <View style={styles.categoryFilterSection}>
+                    <View style={styles.categoryFilterHeader}>
+                      <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
+                        {t('annual.filterByCategory')}
+                      </Text>
+                      {!isPremium && (
+                        <View style={styles.premiumBadge}>
+                          <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
+                        </View>
+                      )}
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.categoryChips}>
+                        {annualCategories.map((cat) => {
+                          const catMovement = annualTypeMovements.find(m => m.category === cat);
+                          const catType = catMovement?.type ?? annualTypeFilter;
+                          return (
+                            <TouchableOpacity
+                              key={cat}
+                              style={[
+                                styles.categoryChip,
+                                { backgroundColor: dc.surface, borderColor: dc.border },
+                                annualCategoryFilter === cat && {
+                                  backgroundColor: colors.primary,
+                                  borderColor: colors.primary,
+                                },
+                                !isPremium && styles.categoryChipLocked,
+                              ]}
+                              onPress={() => requirePremium(() => {
+                                setAnnualCategoryFilter(annualCategoryFilter === cat ? null : cat);
+                              })}
+                            >
+                              {!isPremium && (
+                                <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
+                              )}
+                              <Text style={[
+                                styles.categoryChipText, { color: dc.textSecondary },
+                                annualCategoryFilter === cat && { color: '#FFFFFF' },
+                              ]}>
+                                {getCatName(cat, catType as MovementType)}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* TOTAL FILTRADO ANUAL */}
+                {annualTypeFilter ? (
+                  <>
+                    <AnnualCard
+                      label={
+                        annualCategoryFilter
+                          ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter)}`
+                          : TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label ?? ''
+                      }
+                      amount={annualFilteredTotal}
+                      color={typeColor}
+                      icon={typeIcon}
+                      currencySymbol={currencySymbol}
+                    />
+
+                    <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginTop: 8, marginBottom: 12 }]}>
+                      {t('annual.summary')}
+                    </Text>
+                  </>
+                ) : (
+                  // Totales globales sin filtro
+                  <>
+                    <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                    <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                    <AnnualCard label={t('annual.totalSavings')} amount={totals.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
+                    <AnnualCard
+                      label={t('annual.netBalance')}
+                      amount={totals.balance}
+                      color={totals.balance >= 0 ? colors.income : colors.expense}
+                      icon="wallet" currencySymbol={currencySymbol}
+                    />
+                  </>
+                )}
+
+                {/* HIGHLIGHTS — siempre visibles */}
                 <View style={styles.highlightsRow}>
                   <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.income }]}>
                     <Text style={styles.highlightEmoji}>🏆</Text>
@@ -500,6 +648,8 @@ const AnnualScreen = () => {
           setSelectedMonth(null);
           setSelectedTypeFilter(null);
           setSelectedCategory(null);
+          setAnnualTypeFilter(null);
+          setAnnualCategoryFilter(null);
         }}
         onDismiss={() => setShowYearModal(false)}
       />
@@ -514,6 +664,8 @@ const AnnualScreen = () => {
           setSelectedMonth(val ? Number(val) : null);
           setSelectedTypeFilter(null);
           setSelectedCategory(null);
+          setAnnualTypeFilter(null);
+          setAnnualCategoryFilter(null);
         }}
         onDismiss={() => setShowMonthModal(false)}
       />
