@@ -81,10 +81,10 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-  const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
-  const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
-  const chipBg = isDark ? colors.borderDark : '#F8F8F8';
-  const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
+  const sheetBg = dc.surface;
+  const inputBg = isDark ? dc.background : '#FFFFFF';
+  const chipBg = isDark ? dc.border : '#F8F8F8';
+  const chipBorder = isDark ? dc.border : '#E0E0E0';
 
   const handleDismiss = () => {
     setType('expense');
@@ -162,7 +162,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
                   key={t_}
                   style={[
                     styles.typeButton,
-                    { backgroundColor: isDark ? colors.borderDark : '#F0F0F0' },
+                    { backgroundColor: isDark ? dc.border : '#F0F0F0' },
                     type === t_ && {
                       backgroundColor: t_ === 'income' ? colors.income
                         : t_ === 'saving' ? colors.savings : colors.expense,
@@ -215,9 +215,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             />
 
             {/* INFO */}
-            <View style={[styles.infoBox, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
-              <Text style={styles.infoText}>{t('recurring.infoMessage')}</Text>
+            <View style={[styles.infoBox, { backgroundColor: dc.primary + '15' }]}>
+              <Ionicons name="information-circle-outline" size={16} color={dc.primary} />
+              <Text style={[styles.infoText, { color: dc.primary }]}>{t('recurring.infoMessage')}</Text>
             </View>
 
             {/* CATEGORÍAS */}
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular',
-    color: colors.primary, lineHeight: 18,
+    lineHeight: 18,
   },
   sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
   categoryScroll: { marginBottom: 20 },

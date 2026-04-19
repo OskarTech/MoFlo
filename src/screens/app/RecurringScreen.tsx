@@ -60,11 +60,11 @@ const RecurringCard = ({
 
   return (
     <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.dayBadge, { backgroundColor: colors.primary + '20' }]}>
-        <Text style={[styles.dayNumber, { color: colors.primary }]}>
+      <View style={[styles.dayBadge, { backgroundColor: dc.primary + '20' }]}>
+        <Text style={[styles.dayNumber, { color: dc.primary }]}>
           {item.recurringDay}
         </Text>
-        <Text style={[styles.dayLabel, { color: colors.primary }]}>
+        <Text style={[styles.dayLabel, { color: dc.primary }]}>
           {t('recurring.dayShort') ?? 'día'}
         </Text>
       </View>

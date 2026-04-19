@@ -27,13 +27,13 @@ const SelectModal = ({
   onSelect: (code: string) => void;
   onDismiss: () => void;
 }) => {
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc } = useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
         <View style={[styles.modalSheet, {
-          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+          backgroundColor: dc.surface,
         }]}>
           <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{title}</Text>
@@ -48,14 +48,14 @@ const SelectModal = ({
                 <Text style={[
                   styles.modalOptionText, { color: dc.textPrimary },
                   item.code === selectedValue && {
-                    color: colors.primary,
+                    color: dc.primary,
                     fontFamily: 'Poppins_600SemiBold',
                   },
                 ]}>
                   {item.label}
                 </Text>
                 {item.code === selectedValue && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  <Ionicons name="checkmark" size={20} color={dc.primary} />
                 )}
               </TouchableOpacity>
             )}
@@ -206,7 +206,7 @@ const SharedAccountSettingsScreen = () => {
         keyboardShouldPersistTaps="handled"
       >
         {/* NOMBRE */}
-        <View style={[styles.accountCard, { backgroundColor: colors.primary }]}>
+        <View style={[styles.accountCard, { backgroundColor: dc.primary }]}>
           <Text style={styles.accountEmoji}>👥</Text>
           {editingName && isCreator ? (
             <View style={styles.renameRow}>
@@ -269,10 +269,10 @@ const SharedAccountSettingsScreen = () => {
               <Ionicons
                 name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
                 size={16}
-                color={linkCopied ? colors.income : colors.primary}
+                color={linkCopied ? colors.income : dc.primary}
               />
               <Text style={[styles.linkBtnText, {
-                color: linkCopied ? colors.income : colors.primary,
+                color: linkCopied ? colors.income : dc.primary,
               }]}>
                 {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
               </Text>
@@ -281,8 +281,8 @@ const SharedAccountSettingsScreen = () => {
               style={[styles.linkBtn, { backgroundColor: dc.background }]}
               onPress={handleShareLink}
             >
-              <Ionicons name="share-social-outline" size={16} color={colors.primary} />
-              <Text style={[styles.linkBtnText, { color: colors.primary }]}>
+              <Ionicons name="share-social-outline" size={16} color={dc.primary} />
+              <Text style={[styles.linkBtnText, { color: dc.primary }]}>
                 {t('sharedAccount.shareLink')}
               </Text>
             </TouchableOpacity>
@@ -301,8 +301,8 @@ const SharedAccountSettingsScreen = () => {
             return (
               <View key={memberId}>
                 <View style={styles.memberRow}>
-                  <View style={[styles.memberAvatar, { backgroundColor: colors.primary + '20' }]}>
-                    <Text style={[styles.memberInitial, { color: colors.primary }]}>
+                  <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
+                    <Text style={[styles.memberInitial, { color: dc.primary }]}>
                       {name[0].toUpperCase()}
                     </Text>
                   </View>
@@ -399,8 +399,8 @@ const SharedAccountSettingsScreen = () => {
         </Text>
         <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
         <View style={styles.optionRow}>
-          <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          <View style={[styles.optionIcon, { backgroundColor: dc.primary + '20' }]}>
+            <Ionicons name="notifications-outline" size={20} color={dc.primary} />
           </View>
           <View style={styles.optionContent}>
             <View style={styles.notifTitleRow}>
@@ -410,8 +410,8 @@ const SharedAccountSettingsScreen = () => {
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{ false: dc.border, true: colors.primary + '80' }}
-                thumbColor={notificationsEnabled ? colors.primary : dc.textSecondary}
+                trackColor={{ false: dc.border, true: dc.primary + '80' }}
+                thumbColor={notificationsEnabled ? dc.primary : dc.textSecondary}
               />
             </View>
             <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>
@@ -432,8 +432,8 @@ const SharedAccountSettingsScreen = () => {
                 style={styles.optionRow}
                 onPress={() => setEditingName(true)}
               >
-                <View style={[styles.optionIcon, { backgroundColor: colors.primary + '20' }]}>
-                  <Ionicons name="pencil-outline" size={20} color={colors.primary} />
+                <View style={[styles.optionIcon, { backgroundColor: dc.primary + '20' }]}>
+                  <Ionicons name="pencil-outline" size={20} color={dc.primary} />
                 </View>
                 <View style={styles.optionContent}>
                   <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>

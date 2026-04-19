@@ -17,7 +17,6 @@ import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
 import { useMovementStore } from '../store/movementStore';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,7 +24,7 @@ const Tab = createBottomTabNavigator();
 
 const AppNavigator = () => {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
+  const { isDark, colors: dc } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [movementModalVisible, setMovementModalVisible] = useState(false);
@@ -33,9 +32,9 @@ const AppNavigator = () => {
 
   const activeTabRef = useRef('HomeTab');
 
-  const tabBarBg = isDark ? colors.surfaceDark : '#FFFFFF';
-  const tabBarBorder = isDark ? colors.borderDark : '#E5E7EB';
-  const activeColor = isDark ? colors.primaryLight : colors.primary;
+  const tabBarBg = dc.surface;
+  const tabBarBorder = isDark ? dc.border : '#E5E7EB';
+  const activeColor = isDark ? dc.primaryLight : dc.primary;
   const inactiveColor = isDark ? '#FFFFFF' : '#9CA3AF';
 
   const handleFabPress = () => {

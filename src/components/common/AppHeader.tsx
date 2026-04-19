@@ -50,14 +50,14 @@ const AppHeader = ({
   const isInSettings = route.name === 'Settings';
   const isInReminders = route.name === 'Reminders';
 
-  const headerBg = isDark ? dc.surface : colors.secondary;
+  const headerBg = isDark ? dc.surface : dc.secondary;
   const iconColor = isDark ? dc.textPrimary : '#FFFFFF';
   const titleColor = isDark ? dc.textPrimary : '#FFFFFF';
   const iconBg = isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)';
-  const bellIconColor = isInReminders ? colors.primaryLight : iconColor;
-  const bellIconBg = isInReminders ? colors.primaryLight + '30' : iconBg;
-  const settingsIconColor = isInSettings ? colors.primaryLight : iconColor;
-  const settingsIconBg = isInSettings ? colors.primaryLight + '30' : iconBg;
+  const bellIconColor = isInReminders ? dc.primaryLight : iconColor;
+  const bellIconBg = isInReminders ? dc.primaryLight + '30' : iconBg;
+  const settingsIconColor = isInSettings ? dc.primaryLight : iconColor;
+  const settingsIconBg = isInSettings ? dc.primaryLight + '30' : iconBg;
 
   const paddingTop = Platform.OS === 'android'
     ? (StatusBar.currentHeight ?? 0) + 12
@@ -163,7 +163,7 @@ const AppHeader = ({
             onPress={() => setShowAccountModal(false)}
           />
           <View style={[styles.accountModal, {
-            backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+            backgroundColor: dc.surface,
           }]}>
             <Text style={[styles.accountModalTitle, { color: dc.textSecondary }]}>
               {t('header.selectAccount')}

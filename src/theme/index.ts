@@ -29,6 +29,14 @@ export const colors = {
   secondary: '#1F2937',
 };
 
+// ── PALETA CUENTA COMPARTIDA (Azul) ────────────────────────────
+export const sharedColors = {
+  primary: '#1D4ED8',
+  primaryLight: '#60A5FA',
+  primaryDark: '#1E40AF',
+  secondary: '#1E3A5F',
+};
+
 export const getDynamicColors = (isDark: boolean) => ({
   background: isDark ? '#0F1110' : '#F0FAF4',
   surface: isDark ? '#1C2120' : '#FFFFFF',
@@ -37,6 +45,16 @@ export const getDynamicColors = (isDark: boolean) => ({
   border: isDark ? '#2E3330' : '#D1FAE5',
   cardBackground: isDark ? '#1C2120' : '#FFFFFF',
   balanceCard: isDark ? '#065F46' : '#166534',
+});
+
+export const getSharedDynamicColors = (isDark: boolean) => ({
+  background: isDark ? '#0F172A' : '#EFF6FF',
+  surface: isDark ? '#1E293B' : '#FFFFFF',
+  textPrimary: isDark ? '#F9FAFB' : '#1F2937',
+  textSecondary: isDark ? '#9CA3AF' : '#6B7280',
+  border: isDark ? '#1E3A5F' : '#BFDBFE',
+  cardBackground: isDark ? '#1E293B' : '#FFFFFF',
+  balanceCard: isDark ? '#1E40AF' : '#1D4ED8',
 });
 
 export const lightTheme = {

@@ -56,13 +56,13 @@ const DropdownModal = ({
   onSelect: (value: string | null) => void;
   onDismiss: () => void;
 }) => {
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc } = useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.dropdownOverlay}>
         <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={onDismiss} />
         <View style={[styles.dropdownSheet, {
-          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+          backgroundColor: dc.surface,
         }]}>
           <View style={[styles.dropdownHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.dropdownTitle, { color: dc.textPrimary }]}>{title}</Text>
@@ -77,14 +77,14 @@ const DropdownModal = ({
                 <Text style={[
                   styles.dropdownOptionText, { color: dc.textPrimary },
                   item.value === selectedValue && {
-                    color: colors.primary,
+                    color: dc.primary,
                     fontFamily: 'Poppins_600SemiBold',
                   },
                 ]}>
                   {item.label}
                 </Text>
                 {item.value === selectedValue && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  <Ionicons name="checkmark" size={20} color={dc.primary} />
                 )}
               </TouchableOpacity>
             )}
@@ -250,7 +250,7 @@ const AnnualScreen = () => {
   const typeColor = annualTypeFilter === 'income' ? colors.income
     : annualTypeFilter === 'expense' ? colors.expense
     : annualTypeFilter === 'saving' ? colors.savings
-    : colors.primary;
+    : dc.primary;
 
   const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
     ? 'arrow-down-circle'
@@ -267,7 +267,7 @@ const AnnualScreen = () => {
             style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
             onPress={() => setShowYearModal(true)}
           >
-            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+            <Ionicons name="calendar-outline" size={16} color={dc.primary} />
             <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]}>
               {selectedAnnualYear}
             </Text>
@@ -278,7 +278,7 @@ const AnnualScreen = () => {
             style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
             onPress={() => setShowMonthModal(true)}
           >
-            <Ionicons name="calendar" size={16} color={colors.primary} />
+            <Ionicons name="calendar" size={16} color={dc.primary} />
             <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]} numberOfLines={1}>
               {selectedMonth ? MONTH_NAMES[selectedMonth - 1] : t('annual.allYear')}
             </Text>
@@ -410,8 +410,8 @@ const AnnualScreen = () => {
                                 styles.categoryChip,
                                 { backgroundColor: dc.surface, borderColor: dc.border },
                                 selectedCategory === cat && {
-                                  backgroundColor: colors.primary,
-                                  borderColor: colors.primary,
+                                  backgroundColor: dc.primary,
+                                  borderColor: dc.primary,
                                 },
                                 !isPremium && styles.categoryChipLocked,
                               ]}
@@ -556,8 +556,8 @@ const AnnualScreen = () => {
                                 styles.categoryChip,
                                 { backgroundColor: dc.surface, borderColor: dc.border },
                                 annualCategoryFilter === cat && {
-                                  backgroundColor: colors.primary,
-                                  borderColor: colors.primary,
+                                  backgroundColor: dc.primary,
+                                  borderColor: dc.primary,
                                 },
                                 !isPremium && styles.categoryChipLocked,
                               ]}

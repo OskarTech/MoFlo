@@ -5,7 +5,6 @@ import {
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import { useSettingsStore } from '../../store/settingsStore';
 import Constants from 'expo-constants';
@@ -86,10 +85,10 @@ const SupportScreen = () => {
         style={{ backgroundColor: dc.background }}
       >
         <View style={[styles.infoCard, {
-          backgroundColor: colors.primary + '15',
-          borderColor: colors.primary + '30',
+          backgroundColor: dc.primary + '15',
+          borderColor: dc.primary + '30',
         }]}>
-          <Text style={[styles.infoText, { color: colors.primary }]}>
+          <Text style={[styles.infoText, { color: dc.primary }]}>
             💬 {t('settings.supportInfo')}
           </Text>
         </View>
@@ -114,7 +113,7 @@ const SupportScreen = () => {
           mode="outlined"
           style={[styles.input, { backgroundColor: dc.surface }]}
           outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
+          activeOutlineColor={dc.primary}
         />
 
         <TextInput
@@ -126,7 +125,7 @@ const SupportScreen = () => {
           numberOfLines={6}
           style={[styles.input, styles.messageInput, { backgroundColor: dc.surface }]}
           outlineColor={dc.border}
-          activeOutlineColor={colors.primary}
+          activeOutlineColor={dc.primary}
         />
 
         <Button
@@ -136,7 +135,7 @@ const SupportScreen = () => {
           disabled={!isValid || sending}
           style={styles.button}
           contentStyle={styles.buttonContent}
-          buttonColor={colors.primary}
+          buttonColor={dc.primary}
           textColor="#FFFFFF"
         >
           {t('settings.supportSend')}

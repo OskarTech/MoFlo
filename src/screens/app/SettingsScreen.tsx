@@ -78,12 +78,12 @@ const SelectModal = ({
   onSelect: (code: string) => void;
   onDismiss: () => void;
 }) => {
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc } = useTheme();
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.modalSheet, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}>
+        <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
           <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{title}</Text>
           <FlatList
@@ -96,12 +96,12 @@ const SelectModal = ({
               >
                 <Text style={[
                   styles.modalOptionText, { color: dc.textPrimary },
-                  item.code === selectedValue && { color: colors.primary, fontFamily: 'Poppins_600SemiBold' },
+                  item.code === selectedValue && { color: dc.primary, fontFamily: 'Poppins_600SemiBold' },
                 ]}>
                   {item.label}
                 </Text>
                 {item.code === selectedValue && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  <Ionicons name="checkmark" size={20} color={dc.primary} />
                 )}
               </TouchableOpacity>
             )}
@@ -265,7 +265,7 @@ const SettingsScreen = () => {
 
         {/* PERFIL */}
         <View style={[styles.profileCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+          <View style={[styles.avatar, { backgroundColor: dc.primary }]}>
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
           <View style={styles.profileInfo}>
@@ -277,13 +277,13 @@ const SettingsScreen = () => {
                   mode="flat"
                   style={[styles.nameEditInput, { backgroundColor: 'transparent' }]}
                   textColor={dc.textPrimary}
-                  underlineColor={colors.primary}
-                  activeUnderlineColor={colors.primary}
+                  underlineColor={dc.primary}
+                  activeUnderlineColor={dc.primary}
                   autoFocus
                   onSubmitEditing={handleSaveName}
                 />
                 <TouchableOpacity onPress={handleSaveName} style={styles.saveNameButton}>
-                  <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                  <Ionicons name="checkmark-circle" size={24} color={dc.primary} />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -339,7 +339,7 @@ const SettingsScreen = () => {
                   <View style={[styles.divider, { backgroundColor: dc.border }]} />
                   <OptionRow
                     icon="settings-outline"
-                    iconColor={colors.primary}
+                    iconColor={dc.primary}
                     label={t('sharedAccount.settings')}
                     onPress={() => navigation.navigate('SharedAccountSettings')}
                   />
@@ -361,19 +361,19 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="language-outline" iconColor={colors.primary}
+            icon="language-outline" iconColor={dc.primary}
             label={t('settings.language')} value={selectedLanguageLabel}
             onPress={() => setShowLanguageModal(true)}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="moon-outline" iconColor={colors.primaryDark}
+            icon="moon-outline" iconColor={dc.primaryDark}
             label={t('settings.theme')} value={selectedThemeLabel}
             onPress={() => setShowThemeModal(true)}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="calendar-outline" iconColor={colors.primary}
+            icon="calendar-outline" iconColor={dc.primary}
             label={t('settings.dateFormat')} value={selectedDateFormatLabel}
             onPress={() => setShowDateFormatModal(true)}
           />
@@ -395,7 +395,7 @@ const SettingsScreen = () => {
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <OptionRow
-            icon="notifications-outline" iconColor={colors.primary}
+            icon="notifications-outline" iconColor={dc.primary}
             label={t('settings.notifMovements')}
             subtitle={t('settings.notifMovementsSubtitle')}
             showArrow={false}
@@ -403,8 +403,8 @@ const SettingsScreen = () => {
               <Switch
                 value={dailyNotifEnabled}
                 onValueChange={handleDailyNotif}
-                trackColor={{ false: dc.border, true: colors.primary + '80' }}
-                thumbColor={dailyNotifEnabled ? colors.primary : dc.textSecondary}
+                trackColor={{ false: dc.border, true: dc.primary + '80' }}
+                thumbColor={dailyNotifEnabled ? dc.primary : dc.textSecondary}
               />
             }
           />
@@ -438,7 +438,7 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="chatbubble-outline" iconColor={colors.primary}
+            icon="chatbubble-outline" iconColor={dc.primary}
             label={t('settings.support')} subtitle={t('settings.supportSubtitle')}
             onPress={() => navigation.navigate('Support')}
           />
@@ -466,18 +466,18 @@ const SettingsScreen = () => {
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>Info</Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
   <OptionRow
-    icon="information-circle-outline" iconColor={colors.primary}
+    icon="information-circle-outline" iconColor={dc.primary}
     label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
   />
   <View style={[styles.divider, { backgroundColor: dc.border }]} />
   <OptionRow
-    icon="document-text-outline" iconColor={colors.primary}
+    icon="document-text-outline" iconColor={dc.primary}
     label={t('settings.privacyPolicy')}
     onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
   />
   <View style={[styles.divider, { backgroundColor: dc.border }]} />
   <OptionRow
-    icon="shield-checkmark-outline" iconColor={colors.primary}
+    icon="shield-checkmark-outline" iconColor={dc.primary}
     label={t('settings.termsOfService')}
     onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
   />

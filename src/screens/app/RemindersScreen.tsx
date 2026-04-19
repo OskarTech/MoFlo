@@ -53,24 +53,24 @@ const ReminderCard = ({
   return (
     <View style={[styles.card, {
       backgroundColor: dc.surface,
-      borderColor: isPast ? dc.border : colors.primary + '40',
-      borderLeftColor: isPast ? dc.border : colors.primary,
+      borderColor: isPast ? dc.border : dc.primary + '40',
+      borderLeftColor: isPast ? dc.border : dc.primary,
     }]}>
       <View style={styles.cardContent}>
         <View style={[styles.cardIcon, {
-          backgroundColor: isPast ? dc.border + '40' : colors.primary + '20',
+          backgroundColor: isPast ? dc.border + '40' : dc.primary + '20',
         }]}>
           <Ionicons
             name={isPast ? 'notifications-off-outline' : 'notifications-outline'}
             size={22}
-            color={isPast ? dc.textSecondary : colors.primary}
+            color={isPast ? dc.textSecondary : dc.primary}
           />
         </View>
         <View style={styles.cardInfo}>
           <Text style={[styles.cardTitle, { color: isPast ? dc.textSecondary : dc.textPrimary }]}>
             {reminder.title}
           </Text>
-          <Text style={[styles.cardDate, { color: isPast ? dc.textSecondary : colors.primary }]}>
+          <Text style={[styles.cardDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
             📅 {formatDate(date)} · ⏰ {formatTime(date)}
           </Text>
         </View>
@@ -181,7 +181,7 @@ const AddReminderModal = ({
       <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.modalSheet, {
-          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
+          backgroundColor: dc.surface,
           paddingBottom: insets.bottom + 24,
         }]}>
           <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
@@ -196,9 +196,9 @@ const AddReminderModal = ({
               value={description}
               onChangeText={setDescription}
               mode="outlined"
-              style={[styles.input, { backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF' }]}
+              style={[styles.input, { backgroundColor: isDark ? dc.surface : '#FFFFFF' }]}
               outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
+              activeOutlineColor={dc.primary}
             />
 
             <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
@@ -208,7 +208,7 @@ const AddReminderModal = ({
               style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Ionicons name="calendar-outline" size={20} color={dc.primary} />
               <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
                 {formatDate(selectedDate)}
               </Text>
@@ -222,7 +222,7 @@ const AddReminderModal = ({
               style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
               onPress={() => setShowTimePicker(true)}
             >
-              <Ionicons name="time-outline" size={20} color={colors.primary} />
+              <Ionicons name="time-outline" size={20} color={dc.primary} />
               <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
                 {formatTime(selectedDate)}
               </Text>
@@ -278,7 +278,7 @@ const AddReminderModal = ({
                 loading={saving}
                 disabled={!description.trim() || saving}
                 style={styles.saveButton}
-                buttonColor={colors.primary}
+                buttonColor={dc.primary}
                 textColor="#FFFFFF"
               >
                 {t('reminders.save')}

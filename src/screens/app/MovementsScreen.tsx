@@ -71,8 +71,8 @@ const MovementRow = ({
             {getCatName(movement.category, movement.type)}
           </Text>
           {movement.isRecurring && (
-            <View style={styles.recurringBadge}>
-              <Ionicons name="repeat" size={10} color={colors.primary} />
+            <View style={[styles.recurringBadge, { backgroundColor: dc.primary + '15' }]}>
+              <Ionicons name="repeat" size={10} color={dc.primary} />
             </View>
           )}
         </View>
@@ -100,7 +100,7 @@ const MovementsScreen = () => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const filters: { key: FilterType; label: string; color: string }[] = [
-    { key: 'all', label: t('movementsList.all'), color: colors.primary },
+    { key: 'all', label: t('movementsList.all'), color: dc.primary },
     { key: 'income', label: t('movementsList.income'), color: colors.income },
     { key: 'expense', label: t('movementsList.expenses'), color: colors.expense },
     { key: 'saving', label: t('movementsList.savings'), color: colors.savings },
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   movementInfo: { flex: 1 },
   movementTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   movementCategory: { fontSize: 14, fontFamily: 'Poppins_500Medium', flexShrink: 1 },
-  recurringBadge: { backgroundColor: colors.primary + '15', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  recurringBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 3 },
   movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8 },
   emptyState: { alignItems: 'center', paddingVertical: 60 },

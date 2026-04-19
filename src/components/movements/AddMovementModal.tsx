@@ -80,10 +80,10 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
 
   const typeColor = type === 'income' ? colors.income
     : type === 'saving' ? colors.savings : colors.expense;
-  const sheetBg = isDark ? colors.surfaceDark : '#FFFFFF';
-  const inputBg = isDark ? colors.backgroundDark : '#FFFFFF';
-  const chipBg = isDark ? colors.borderDark : '#F8F8F8';
-  const chipBorder = isDark ? colors.borderDark : '#E0E0E0';
+  const sheetBg = dc.surface;
+  const inputBg = isDark ? dc.background : '#FFFFFF';
+  const chipBg = isDark ? dc.border : '#F8F8F8';
+  const chipBorder = isDark ? dc.border : '#E0E0E0';
 
   const handleDismiss = () => {
     setType('expense');
@@ -155,7 +155,7 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
                   key={t_}
                   style={[
                     styles.typeButton,
-                    { backgroundColor: isDark ? colors.borderDark : '#F0F0F0' },
+                    { backgroundColor: isDark ? dc.border : '#F0F0F0' },
                     type === t_ && {
                       backgroundColor: t_ === 'income' ? colors.income
                         : t_ === 'saving' ? colors.savings : colors.expense,

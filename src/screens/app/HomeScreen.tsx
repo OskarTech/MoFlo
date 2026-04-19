@@ -20,10 +20,10 @@ const BalanceCard = ({
   balance: number; month: number; year: number; currencySymbol: string;
 }) => {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
+  const { isDark, colors: dc } = useTheme();
 
   const bgColor = balance > 0
-    ? isDark ? '#065F46' : '#166534'
+    ? dc.balanceCard
     : balance < 0
     ? isDark ? '#7F1D1D' : '#991B1B'
     : isDark ? '#1F2937' : '#1F2937';
