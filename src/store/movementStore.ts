@@ -308,7 +308,6 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   // ── APLICAR RECURRENTES ────────────────────────────────────────
   applyRecurringMovements: async () => {
     const { sharedAccountId, recurringMovements, movements } = get();
-    if (sharedAccountId) return;
 
     const now = new Date();
     const currentDay = now.getDate();
@@ -351,13 +350,24 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       set({ movements: allMovements });
       await get().saveMovements(allMovements);
 
-      const netState = await NetInfo.fetch();
-      for (const m of newMovements) {
-        if (netState.isConnected) {
-          try { await addMovementToFirestore(m); }
-          catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: m }); }
-        } else {
-          await enqueue({ type: 'ADD_MOVEMENT', payload: m });
+      if (sharedAccountId) {
+        const uid = auth().currentUser?.uid ?? '';
+        for (const m of newMovements) {
+          try {
+            await getSharedMovementsCol(sharedAccountId).doc(m.id).set({ ...m, addedBy: uid });
+          } catch (e) {
+            console.error('Error saving shared recurring movement:', e);
+          }
+        }
+      } else {
+        const netState = await NetInfo.fetch();
+        for (const m of newMovements) {
+          if (netState.isConnected) {
+            try { await addMovementToFirestore(m); }
+            catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: m }); }
+          } else {
+            await enqueue({ type: 'ADD_MOVEMENT', payload: m });
+          }
         }
       }
     }

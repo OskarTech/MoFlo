@@ -42,7 +42,7 @@ const AppHeader = ({
     loadSharedSettings,
   } = useSharedAccountStore();
   const { loadSharedCategories } = useSharedCategoryStore();
-  const { loadData, loadSharedData, setSharedAccountId } = useMovementStore();
+  const { loadData, loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
 
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -92,6 +92,8 @@ const AppHeader = ({
       setSharedAccountId(sharedAccount.id);
       await setSharedMode(true);
       subscribeToSharedMovements(sharedAccount.id);
+      await loadSharedData(sharedAccount.id);
+      await applyRecurringMovements();
       await loadSharedCategories(sharedAccount.id);
       useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);
       await loadSharedSettings(sharedAccount.id);

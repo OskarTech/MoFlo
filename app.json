@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoFlo",
     "slug": "moflo",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -30,7 +30,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.oskartech.moflo",
-      "versionCode": 10,
+      "versionCode": 11,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.INTERNET",

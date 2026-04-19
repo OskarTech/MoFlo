@@ -56,6 +56,7 @@ export default function App() {
       if (shared && account) {
         setSharedAccountId(account.id);
         await loadSharedData(account.id);
+        await applyRecurringMovements();
         await useSharedCategoryStore.getState().loadSharedCategories(account.id);
         useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
         await useSharedAccountStore.getState().loadSharedSettings(account.id);
