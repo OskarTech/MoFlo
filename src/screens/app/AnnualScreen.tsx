@@ -174,7 +174,6 @@ const AnnualScreen = () => {
   const monthSummary = useMemo(() => ({
     income: filteredMonthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
     expense: filteredMonthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
-    saving: filteredMonthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0),
   }), [filteredMonthMovements]);
 
   // ── MOVIMIENTOS DEL AÑO COMPLETO ───────────────────────────────
@@ -209,10 +208,9 @@ const AnnualScreen = () => {
     (acc, m) => ({
       income: acc.income + m.income,
       expense: acc.expense + m.expense,
-      saving: acc.saving + m.saving,
       balance: acc.balance + m.balance,
     }),
-    { income: 0, expense: 0, saving: 0, balance: 0 }
+    { income: 0, expense: 0, balance: 0 }
   ), [annualData]);
 
   const bestMonth = useMemo(() =>
@@ -225,7 +223,7 @@ const AnnualScreen = () => {
     [annualData]
   );
 
-  const hasData = totals.income > 0 || totals.expense > 0 || totals.saving > 0;
+  const hasData = totals.income > 0 || totals.expense > 0;
 
   const barData = annualData.flatMap((m, i) => [
     { value: m.income, label: SHORT_MONTHS[i], frontColor: colors.income, spacing: 2 },
@@ -238,7 +236,6 @@ const AnnualScreen = () => {
   }[] = [
     { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
     { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
-    { type: 'saving', label: t('movements.saving'), color: colors.savings, icon: 'save' },
   ];
 
   const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
@@ -249,12 +246,10 @@ const AnnualScreen = () => {
 
   const typeColor = annualTypeFilter === 'income' ? colors.income
     : annualTypeFilter === 'expense' ? colors.expense
-    : annualTypeFilter === 'saving' ? colors.savings
     : dc.primary;
 
   const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
-    ? 'arrow-down-circle'
-    : annualTypeFilter === 'saving' ? 'save' : 'arrow-up-circle';
+    ? 'arrow-down-circle' : 'arrow-up-circle';
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -444,7 +439,7 @@ const AnnualScreen = () => {
                     </Text>
                     {filteredMonthMovements.map((m) => {
                       const isIncome = m.type === 'income';
-                      const isSaving = m.type === 'saving';
+                      const isSaving = (m.type as string) === 'saving';
                       const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
                       const icon: keyof typeof Ionicons.glyphMap = isIncome
                         ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
@@ -478,11 +473,10 @@ const AnnualScreen = () => {
                 </Text>
                 <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
                 <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalSavings')} amount={monthSummary.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
                 <AnnualCard
                   label={t('annual.netBalance')}
-                  amount={monthSummary.income - monthSummary.expense - monthSummary.saving}
-                  color={(monthSummary.income - monthSummary.expense - monthSummary.saving) >= 0 ? colors.income : colors.expense}
+                  amount={monthSummary.income - monthSummary.expense}
+                  color={(monthSummary.income - monthSummary.expense) >= 0 ? colors.income : colors.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
               </>
@@ -606,7 +600,6 @@ const AnnualScreen = () => {
                   <>
                     <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
                     <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                    <AnnualCard label={t('annual.totalSavings')} amount={totals.saving} color={colors.savings} icon="save" currencySymbol={currencySymbol} />
                     <AnnualCard
                       label={t('annual.netBalance')}
                       amount={totals.balance}

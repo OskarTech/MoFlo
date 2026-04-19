@@ -209,6 +209,7 @@
   "logout": "Cerrar Sesión",
   "logoutConfirm": "¿Seguro que quieres cerrar sesión?",
   "recurring": "Movimientos Recurrentes",
+  "recurringMovements": "Movimientos fijos",
   "save": "Guardar",
   "cancel": "Cancelar",
   "currencies": {
@@ -225,11 +226,32 @@
       "pl": "Polski"
     }
   },
+  "hucha": {
+  "title": "Hucha",
+  "balance": "Saldo actual",
+  "deposit": "Meter",
+  "withdraw": "Sacar",
+  "empty": "Tu hucha está vacía",
+  "emptySubtitle": "Pulsa Meter para añadir tu primer ahorro",
+  "depositTitle": "Meter dinero",
+  "withdrawTitle": "Sacar dinero",
+  "amount": "Importe",
+  "description": "Descripción",
+  "descriptionPlaceholder": "Ej. Fondo de emergencia, Vacaciones...",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "depositType": "Depósito",
+  "withdrawType": "Retirada",
+  "withdrawError": "Saldo insuficiente",
+  "withdrawErrorMsg": "No puedes sacar más de lo que tienes en la hucha",
+  "deleteConfirm": "¿Eliminar este movimiento de la hucha?"
+  },
   "tabs": {
   "home": "Inicio",
   "historial": "Historial",
   "annual": "Resumen",
   "recurring": "Fijos",
+  "hucha": "Hucha",
   "reminders": "Notificaciones"
   },
   "header": {

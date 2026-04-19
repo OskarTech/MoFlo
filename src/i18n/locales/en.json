@@ -209,6 +209,7 @@
   "logout": "Log Out",
   "logoutConfirm": "Are you sure you want to log out?",
   "recurring": "Recurring Movements",
+  "recurringMovements": "Fixed movements",
   "save": "Save",
   "cancel": "Cancel",
   "currencies": {
@@ -225,11 +226,32 @@
       "pl": "Polski"
     }
   },
+  "hucha": {
+  "title": "Piggy Bank",
+  "balance": "Current balance",
+  "deposit": "Add",
+  "withdraw": "Withdraw",
+  "empty": "Your piggy bank is empty",
+  "emptySubtitle": "Press Add to save your first amount",
+  "depositTitle": "Add money",
+  "withdrawTitle": "Withdraw money",
+  "amount": "Amount",
+  "description": "Description",
+  "descriptionPlaceholder": "E.g. Emergency fund, Vacation...",
+  "save": "Save",
+  "cancel": "Cancel",
+  "depositType": "Deposit",
+  "withdrawType": "Withdrawal",
+  "withdrawError": "Insufficient balance",
+  "withdrawErrorMsg": "You can't withdraw more than your current balance",
+  "deleteConfirm": "Delete this piggy bank movement?"
+  },
   "tabs": {
   "home": "Home",
   "historial": "History",
   "annual": "Summary",
   "recurring": "Fixed",
+  "hucha": "Savings",
   "reminders": "Notifications"
   },
   "header": {

@@ -15,15 +15,13 @@ import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 
-const TYPE_COLORS = {
+const TYPE_COLORS: Record<string, string> = {
   income: colors.income,
-  saving: colors.savings,
   expense: colors.expense,
 };
 
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   income: 'arrow-down-circle',
-  saving: 'save',
   expense: 'arrow-up-circle',
 };
 

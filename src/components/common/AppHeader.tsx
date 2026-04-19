@@ -14,6 +14,7 @@ import { usePremiumStore } from '../../store/premiumStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useMovementStore } from '../../store/movementStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { colors } from '../../theme';
 import PremiumModal from './PremiumModal';
 
@@ -76,8 +77,10 @@ const AppHeader = ({
     setShowAccountModal(false);
     if (isSharedMode) {
       setSharedAccountId(null);
+      useSavingsStore.getState().setSharedAccountId(null);
       await setSharedMode(false);
       await loadData();
+      await useSavingsStore.getState().loadSavings();
       navigation.navigate('HomeTab');
     }
   };
@@ -90,9 +93,11 @@ const AppHeader = ({
     }
     if (sharedAccount) {
       setSharedAccountId(sharedAccount.id);
+      useSavingsStore.getState().setSharedAccountId(sharedAccount.id);
       await setSharedMode(true);
       subscribeToSharedMovements(sharedAccount.id);
       await loadSharedData(sharedAccount.id);
+      await useSavingsStore.getState().loadSharedSavings(sharedAccount.id);
       await applyRecurringMovements();
       await loadSharedCategories(sharedAccount.id);
       useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);

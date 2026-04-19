@@ -6,6 +6,7 @@ import HomeScreen from '../screens/app/HomeScreen';
 import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
 import RecurringScreen from '../screens/app/RecurringScreen';
+import HuchaScreen from '../screens/app/HuchaScreen';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
@@ -15,7 +16,6 @@ import SharedAccountSettingsScreen from '../screens/app/SharedAccountSettingsScr
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
-import { useMovementStore } from '../store/movementStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,8 +41,8 @@ const AppNavigator = () => {
     const current = activeTabRef.current;
     if (current === 'Reminders') {
       setReminderModalVisible(true);
-    } else if (current === 'RecurringTab') {
-      useMovementStore.getState().setShowRecurringModal(true);
+    } else if (current === 'HuchaTab') {
+      // no-op: hucha has its own deposit/withdraw buttons
     } else {
       setMovementModalVisible(true);
     }
@@ -75,8 +75,8 @@ const AppNavigator = () => {
               iconName = focused ? 'time' : 'time-outline';
             } else if (route.name === 'AnnualTab') {
               iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-            } else if (route.name === 'RecurringTab') {
-              iconName = focused ? 'repeat' : 'repeat-outline';
+            } else if (route.name === 'HuchaTab') {
+              iconName = focused ? 'cash' : 'cash-outline';
             } else {
               iconName = 'add';
             }
@@ -117,12 +117,21 @@ const AppNavigator = () => {
           options={{ tabBarLabel: t('tabs.annual') }}
         />
         <Tab.Screen
-          name="RecurringTab"
-          component={RecurringScreen}
-          options={{ tabBarLabel: t('tabs.recurring') }}
+          name="HuchaTab"
+          component={HuchaScreen}
+          options={{ tabBarLabel: t('tabs.hucha') }}
         />
 
         {/* TABS OCULTOS */}
+        <Tab.Screen
+          name="Recurring"
+          component={RecurringScreen}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
+        />
         <Tab.Screen
           name="Settings"
           component={SettingsScreen}

@@ -25,7 +25,6 @@ export interface AnnualMonthData {
   month: number;
   income: number;
   expense: number;
-  saving: number;
   balance: number;
 }
 
@@ -389,10 +388,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const monthMovements = get().getMovementsForSelectedMonth();
     const totalIncome = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
     const totalExpense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
-    const totalSavings = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
     return {
-      totalIncome, totalExpense, totalSavings,
-      balance: totalIncome - totalExpense - totalSavings,
+      totalIncome, totalExpense,
+      balance: totalIncome - totalExpense,
       month: selectedMonth, year: selectedYear,
     };
   },
@@ -414,8 +412,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       });
       const income = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
       const expense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
-      const saving = monthMovements.filter(m => m.type === 'saving').reduce((s, m) => s + m.amount, 0);
-      return { month, income, expense, saving, balance: income - expense - saving };
+      return { month, income, expense, balance: income - expense };
     });
   },
 }));

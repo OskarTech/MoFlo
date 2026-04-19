@@ -41,7 +41,7 @@ const MovementRow = ({
       : getCategoryName(id, type, t);
 
   const isIncome = movement.type === 'income';
-  const isSaving = movement.type === 'saving';
+  const isSaving = (movement.type as string) === 'saving';
   const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
   const icon: keyof typeof Ionicons.glyphMap = isIncome
     ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
@@ -103,7 +103,6 @@ const MovementsScreen = () => {
     { key: 'all', label: t('movementsList.all'), color: dc.primary },
     { key: 'income', label: t('movementsList.income'), color: colors.income },
     { key: 'expense', label: t('movementsList.expenses'), color: colors.expense },
-    { key: 'saving', label: t('movementsList.savings'), color: colors.savings },
   ];
 
   const handleFilterPress = (key: FilterType) => {

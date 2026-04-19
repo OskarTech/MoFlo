@@ -209,6 +209,7 @@
   "logout": "Wyloguj się",
   "logoutConfirm": "Czy na pewno chcesz się wylogować?",
   "recurring": "Cykliczne Transakcje",
+  "recurringMovements": "Stałe transakcje",
   "save": "Zapisz",
   "cancel": "Anuluj",
   "currencies": {
@@ -225,11 +226,32 @@
       "pl": "Polski"
     }
   },
+  "hucha": {
+  "title": "Skarbonka",
+  "balance": "Aktualne saldo",
+  "deposit": "Wpłać",
+  "withdraw": "Wypłać",
+  "empty": "Twoja skarbonka jest pusta",
+  "emptySubtitle": "Naciśnij Wpłać, aby dodać pierwszy oszczędność",
+  "depositTitle": "Wpłać pieniądze",
+  "withdrawTitle": "Wypłać pieniądze",
+  "amount": "Kwota",
+  "description": "Opis",
+  "descriptionPlaceholder": "Np. Fundusz awaryjny, Wakacje...",
+  "save": "Zapisz",
+  "cancel": "Anuluj",
+  "depositType": "Wpłata",
+  "withdrawType": "Wypłata",
+  "withdrawError": "Niewystarczające saldo",
+  "withdrawErrorMsg": "Nie możesz wypłacić więcej niż masz w skarbonce",
+  "deleteConfirm": "Usunąć tę transakcję skarbonki?"
+  },
   "tabs": {
   "home": "Główna",
   "historial": "Historia",
   "annual": "Raport",
   "recurring": "Stałe",
+  "hucha": "Skarbonka",
   "reminders": "Powiadomienia"
   },
   "header": {

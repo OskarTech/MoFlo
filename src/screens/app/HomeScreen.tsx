@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -80,7 +82,7 @@ const MovementRow = ({ movement }: { movement: Movement }) => {
       : getCategoryName(id, type, t);
 
   const isIncome = movement.type === 'income';
-  const isSaving = movement.type === 'saving';
+  const isSaving = (movement.type as string) === 'saving';
   const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
   const icon: keyof typeof Ionicons.glyphMap = isIncome
     ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
@@ -110,18 +112,17 @@ const HomeScreen = () => {
   const { colors: dc } = useTheme();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const navigation = useNavigation<any>();
 
-  const {
-    getMonthlySummary,
-    getRecentMovements,
-    movements,
-  } = useMovementStore();
+  const { getMonthlySummary, getRecentMovements } = useMovementStore();
+  const { getSaldo } = useSavingsStore();
 
   const summary = getMonthlySummary();
   const recentMovements = getRecentMovements(5);
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
+  const huchaSaldo = getSaldo();
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -152,14 +153,22 @@ const HomeScreen = () => {
             color={colors.expense}
             currencySymbol={currencySymbol}
           />
-          <SummaryCard
-            label={t('home.savings')}
-            amount={summary.totalSavings}
-            icon="save"
-            color={colors.savings}
-            currencySymbol={currencySymbol}
-          />
         </View>
+
+        <TouchableOpacity
+          style={[styles.huchaWidget, { backgroundColor: dc.primary }]}
+          onPress={() => navigation.navigate('HuchaTab')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.huchaEmoji}>🐷</Text>
+          <View style={styles.huchaInfo}>
+            <Text style={styles.huchaLabel}>{t('hucha.title')}</Text>
+            <Text style={styles.huchaAmount}>
+              {huchaSaldo.toFixed(2)} {currencySymbol}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
 
         <View style={styles.recentSection}>
           <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
@@ -223,6 +232,15 @@ const styles = StyleSheet.create({
   },
   summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
   summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
+  huchaWidget: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 16, marginBottom: 24,
+    borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, gap: 12,
+  },
+  huchaEmoji: { fontSize: 28 },
+  huchaInfo: { flex: 1 },
+  huchaLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  huchaAmount: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold' },
   recentSection: { paddingHorizontal: 16 },
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
   movementRow: {

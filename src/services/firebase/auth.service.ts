@@ -6,6 +6,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSavingsStore } from '../../store/savingsStore';
 
 GoogleSignin.configure({
   webClientId: '376703221466-iovth1ic0v85o741s0k6sms9141h35fn.apps.googleusercontent.com',
@@ -49,6 +50,7 @@ export const logout = async () => {
   usePremiumStore.getState().setPremium(false);
   useCategoryStore.getState().resetStore();
   useSharedAccountStore.getState().resetStore();
+  useSavingsStore.getState().resetStore();
 
   // 3. Limpia AsyncStorage
   const keysToRemove = [
@@ -62,6 +64,8 @@ export const logout = async () => {
     '@moflo_active_account',
     '@moflo_shared_movements',
     '@moflo_shared_recurring',
+    '@moflo_savings',
+    '@moflo_shared_savings',
   ];
 
   if (uid) {

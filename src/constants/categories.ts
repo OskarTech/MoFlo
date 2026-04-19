@@ -24,11 +24,6 @@ export const BASE_CATEGORIES: BaseCategory[] = [
   { id: 'education', type: 'expense', icon: 'school', isCustom: false },
   { id: 'bills', type: 'expense', icon: 'receipt', isCustom: false },
   { id: 'other', type: 'expense', icon: 'ellipsis-horizontal', isCustom: false },
-  // SAVING
-  { id: 'emergency', type: 'saving', icon: 'shield', isCustom: false },
-  { id: 'retirement', type: 'saving', icon: 'umbrella', isCustom: false },
-  { id: 'travel', type: 'saving', icon: 'airplane', isCustom: false },
-  { id: 'other', type: 'saving', icon: 'ellipsis-horizontal', isCustom: false },
 ];
 
 export const getBaseByType = (type: MovementType): BaseCategory[] =>

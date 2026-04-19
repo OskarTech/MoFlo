@@ -1,5 +1,5 @@
 // Tipos de movimiento posibles
-export type MovementType = 'income' | 'expense' | 'saving';
+export type MovementType = 'income' | 'expense';
 
 // Categorías de movimientos
 export type MovementCategory =
@@ -50,11 +50,21 @@ export interface RecurringMovement {
   createdAt: string;
 }
 
+// Movimiento de hucha (ahorros)
+export interface SavingMovement {
+  id: string;
+  amount: number;
+  description: string;
+  date: string;
+  type: 'deposit' | 'withdrawal';
+  createdAt: string;
+  addedBy?: string;
+}
+
 // Resumen mensual calculado
 export interface MonthlySummary {
   totalIncome: number;
   totalExpense: number;
-  totalSavings: number;
   balance: number;
   month: number; // 1-12
   year: number;

@@ -361,6 +361,12 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
+            icon="repeat-outline" iconColor={dc.primary}
+            label={t('settings.recurringMovements')}
+            onPress={() => navigation.navigate('Recurring')}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
             icon="language-outline" iconColor={dc.primary}
             label={t('settings.language')} value={selectedLanguageLabel}
             onPress={() => setShowLanguageModal(true)}

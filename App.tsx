@@ -17,6 +17,7 @@ import { usePremiumStore } from './src/store/premiumStore';
 import { useCategoryStore } from './src/store/categoryStore';
 import { useSharedAccountStore } from './src/store/sharedAccountStore';
 import { useSharedCategoryStore } from './src/store/sharedCategoryStore';
+import { useSavingsStore } from './src/store/savingsStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,14 +56,18 @@ export default function App() {
 
       if (shared && account) {
         setSharedAccountId(account.id);
+        useSavingsStore.getState().setSharedAccountId(account.id);
         await loadSharedData(account.id);
+        await useSavingsStore.getState().loadSharedSavings(account.id);
         await applyRecurringMovements();
         await useSharedCategoryStore.getState().loadSharedCategories(account.id);
         useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
         await useSharedAccountStore.getState().loadSharedSettings(account.id);
       } else {
         setSharedAccountId(null);
+        useSavingsStore.getState().setSharedAccountId(null);
         await loadData();
+        await useSavingsStore.getState().loadSavings();
         await applyRecurringMovements();
       }
 

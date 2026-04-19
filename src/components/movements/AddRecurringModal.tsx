@@ -79,8 +79,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       ? getSharedCategoryName(id, tp, t)
       : getCategoryName(id, tp, t);
 
-  const typeColor = type === 'income' ? colors.income
-    : type === 'saving' ? colors.savings : colors.expense;
+  const typeColor = type === 'income' ? colors.income : colors.expense;
   const sheetBg = dc.surface;
   const inputBg = isDark ? dc.background : '#FFFFFF';
   const chipBg = isDark ? dc.border : '#F8F8F8';
@@ -157,15 +156,14 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
             {/* TIPO */}
             <View style={styles.typeSelector}>
-              {(['expense', 'income', 'saving'] as MovementType[]).map((t_) => (
+              {(['expense', 'income'] as MovementType[]).map((t_) => (
                 <TouchableOpacity
                   key={t_}
                   style={[
                     styles.typeButton,
                     { backgroundColor: isDark ? dc.border : '#F0F0F0' },
                     type === t_ && {
-                      backgroundColor: t_ === 'income' ? colors.income
-                        : t_ === 'saving' ? colors.savings : colors.expense,
+                      backgroundColor: t_ === 'income' ? colors.income : colors.expense,
                     },
                   ]}
                   onPress={() => handleTypeChange(t_)}
@@ -197,9 +195,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             {/* DÍA DEL MES */}
             <TextInput
               label={
-                type === 'income' ? t('recurring.dayLabelIncome')
-                  : type === 'saving' ? t('recurring.dayLabelSaving')
-                  : t('recurring.dayLabelExpense')
+                type === 'income' ? t('recurring.dayLabelIncome') : t('recurring.dayLabelExpense')
               }
               value={recurringDay}
               onChangeText={(val) => {
