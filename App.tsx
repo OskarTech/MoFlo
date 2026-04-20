@@ -11,23 +11,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { lightTheme, darkTheme } from './src/theme';
-import { useMovementStore } from './src/store/movementStore';
 import { useSettingsStore } from './src/store/settingsStore';
-import { usePremiumStore } from './src/store/premiumStore';
-import { useCategoryStore } from './src/store/categoryStore';
-import { useSharedAccountStore } from './src/store/sharedAccountStore';
-import { useSharedCategoryStore } from './src/store/sharedCategoryStore';
-import { useSavingsStore } from './src/store/savingsStore';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const colorScheme = useColorScheme();
-  const { loadData, applyRecurringMovements, loadSharedData, setSharedAccountId } = useMovementStore();
-  const { loadSettings, themeMode } = useSettingsStore();
-  const { loadPremium } = usePremiumStore();
-  const { loadCategories } = useCategoryStore();
-  const { loadSharedAccount } = useSharedAccountStore();
+  const { themeMode } = useSettingsStore();
 
   const isDark = themeMode === 'dark'
     ? true
@@ -45,39 +35,9 @@ export default function App() {
   });
 
   useEffect(() => {
-    const init = async () => {
-      await loadSettings();
-      await loadPremium();
-      await loadCategories();
-      await loadSharedAccount();
-
-      const { isSharedMode: shared, sharedAccount: account } =
-        useSharedAccountStore.getState();
-
-      if (shared && account) {
-        setSharedAccountId(account.id);
-        useSavingsStore.getState().setSharedAccountId(account.id);
-        await loadSharedData(account.id);
-        await useSavingsStore.getState().loadSharedHuchas(account.id);
-        await applyRecurringMovements();
-        await useSavingsStore.getState().applyAutomaticContributions();
-        await useSharedCategoryStore.getState().loadSharedCategories(account.id);
-        useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
-        await useSharedAccountStore.getState().loadSharedSettings(account.id);
-      } else {
-        setSharedAccountId(null);
-        useSavingsStore.getState().setSharedAccountId(null);
-        await loadData();
-        await useSavingsStore.getState().loadHuchas();
-        await applyRecurringMovements();
-        await useSavingsStore.getState().applyAutomaticContributions();
-      }
-
-      if (fontsLoaded) {
-        await SplashScreen.hideAsync();
-      }
-    };
-    init();
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
   }, [fontsLoaded]);
 
   useEffect(() => {

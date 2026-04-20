@@ -48,7 +48,6 @@ const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] 
 const TYPE_COLORS = {
   income: colors.income,
   expense: colors.expense,
-  saving: colors.savings,
 };
 
 interface AddCategoryModalProps {
@@ -95,7 +94,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
               {t('categories.type')}
             </Text>
             <View style={styles.typeRow}>
-              {(['expense', 'income', 'saving'] as MovementType[]).map((tp) => (
+              {(['expense', 'income'] as MovementType[]).map((tp) => (
                 <TouchableOpacity
                   key={tp}
                   style={[
@@ -248,7 +247,7 @@ const CategoriesScreen = () => {
       <View style={[styles.typeTabs, {
         backgroundColor: dc.surface, borderBottomColor: dc.border,
       }]}>
-        {(['expense', 'income', 'saving'] as MovementType[]).map((tp) => (
+        {(['expense', 'income'] as MovementType[]).map((tp) => (
           <TouchableOpacity
             key={tp}
             style={[

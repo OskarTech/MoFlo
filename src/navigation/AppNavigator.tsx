@@ -18,6 +18,9 @@ import SharedAccountSettingsScreen from '../screens/app/SharedAccountSettingsScr
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
+import PremiumModal from '../components/common/PremiumModal';
+import { useMovementStore } from '../store/movementStore';
+import { usePremiumStore } from '../store/premiumStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +34,7 @@ const AppNavigator = () => {
 
   const [movementModalVisible, setMovementModalVisible] = useState(false);
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
+  const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
   const activeTabRef = useRef('HomeTab');
 
@@ -44,9 +48,17 @@ const AppNavigator = () => {
     if (current === 'Reminders') {
       setReminderModalVisible(true);
     } else if (current === 'HuchaTab') {
-      useSavingsStore.getState().setShowCreateModal(true);
+      const { huchas } = useSavingsStore.getState();
+      const { isPremium } = usePremiumStore.getState();
+      if (!isPremium && huchas.length >= 1) {
+        setPremiumModalVisible(true);
+      } else {
+        useSavingsStore.getState().setShowCreateModal(true);
+      }
     } else if (current === 'HuchaDetail') {
       useSavingsStore.getState().setShowAddMoneyModal(true);
+    } else if (current === 'Recurring') {
+      useMovementStore.getState().setShowRecurringModal(true);
     } else {
       setMovementModalVisible(true);
     }
@@ -219,6 +231,11 @@ const AppNavigator = () => {
       <AddMovementModal
         visible={movementModalVisible}
         onDismiss={() => setMovementModalVisible(false)}
+      />
+      <PremiumModal
+        visible={premiumModalVisible}
+        onDismiss={() => setPremiumModalVisible(false)}
+        onPurchase={() => setPremiumModalVisible(false)}
       />
     </>
   );

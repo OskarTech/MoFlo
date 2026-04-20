@@ -78,6 +78,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().unsubscribeSharedHuchas();
+    const { useSharedCategoryStore } = require('./sharedCategoryStore');
+    useSharedCategoryStore.getState().resetSharedCategories();
   },
 
   // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────

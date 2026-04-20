@@ -24,6 +24,7 @@ const FEATURES = [
   'premium.featureCustomCategories',
   'premium.featureExportCSV',
   'premium.featureCategoryFilter',
+  'premium.featureUnlimitedHuchas',
 ];
 
 const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {

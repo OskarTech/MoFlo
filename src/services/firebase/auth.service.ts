@@ -6,6 +6,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 
 GoogleSignin.configure({
@@ -43,6 +44,7 @@ export const logout = async () => {
 
   // 1. Cancela listeners PRIMERO antes de todo
   useSharedAccountStore.getState().unsubscribeAll();
+  useSharedCategoryStore.getState().resetSharedCategories();
 
   // 2. Resetea todos los stores
   useMovementStore.getState().resetStore();

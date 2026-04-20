@@ -3,7 +3,7 @@ import {
   View, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Modal, Platform, Animated, Keyboard,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -248,23 +248,24 @@ const CreateHuchaModal = ({
             </View>
 
             <View style={styles.sheetButtons}>
-              <TouchableOpacity
-                style={[styles.sheetBtn, { backgroundColor: dc.border }]}
+              <Button
+                mode="outlined"
                 onPress={handleDismiss}
+                style={[styles.cancelButton, { borderColor: dc.border }]}
+                textColor={dc.textSecondary}
               >
-                <Text style={[styles.sheetBtnText, { color: dc.textSecondary }]}>
-                  {t('hucha.cancel')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sheetBtn, { backgroundColor: isValid && !isSaving ? selectedColor : dc.border }]}
+                {t('hucha.cancel')}
+              </Button>
+              <Button
+                mode="contained"
                 onPress={handleSave}
                 disabled={!isValid || isSaving}
+                style={styles.saveButton}
+                buttonColor={selectedColor}
+                textColor="#FFFFFF"
               >
-                <Text style={[styles.sheetBtnText, { color: isValid ? '#fff' : dc.textSecondary }]}>
-                  {t('hucha.save')}
-                </Text>
-              </TouchableOpacity>
+                {t('hucha.save')}
+              </Button>
             </View>
           </ScrollView>
         </View>
@@ -435,10 +436,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sheetButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  sheetBtn: {
-    flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: 'center',
-  },
-  sheetBtnText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  cancelButton: { flex: 1 },
+  saveButton: { flex: 2 },
 });
 
 export default HuchaScreen;

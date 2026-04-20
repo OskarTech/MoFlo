@@ -8,6 +8,7 @@ const SHARED_CUSTOM_KEY = '@moflo_shared_custom_categories';
 const SHARED_HIDDEN_KEY = '@moflo_shared_hidden_categories';
 
 let categoriesUnsubscribe: (() => void) | null = null;
+let hiddenUnsubscribe: (() => void) | null = null;
 
 interface SharedCategoryStore {
   sharedCustomCategories: Category[];
@@ -31,14 +32,9 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
   isLoading: false,
 
   resetSharedCategories: () => {
-    if (categoriesUnsubscribe) {
-      categoriesUnsubscribe();
-      categoriesUnsubscribe = null;
-    }
-    set({
-      sharedCustomCategories: [],
-      sharedHiddenCategories: [],
-    });
+    if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
+    set({ sharedCustomCategories: [], sharedHiddenCategories: [] });
   },
 
   loadSharedCategories: async (accountId) => {
@@ -163,10 +159,8 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
   },
 
   unsubscribeCategories: () => {
-    if (categoriesUnsubscribe) {
-      categoriesUnsubscribe();
-      categoriesUnsubscribe = null;
-    }
+    if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
   },
 
   subscribeToSharedCategories: (accountId) => {
@@ -190,7 +184,8 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       });
 
     // Listener para categorías ocultas
-    firestore()
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
+    hiddenUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .onSnapshot((doc) => {
         if (doc.exists()) {
@@ -201,6 +196,8 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
             JSON.stringify(hidden)
           );
         }
+      }, (e) => {
+        console.error('Error listening to shared hidden categories:', e);
       });
   },
 }));

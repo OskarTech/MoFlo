@@ -6,23 +6,56 @@ import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import { useMovementStore } from '../store/movementStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { usePremiumStore } from '../store/premiumStore';
+import { useCategoryStore } from '../store/categoryStore';
+import { useSharedAccountStore } from '../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../store/sharedCategoryStore';
+import { useSavingsStore } from '../store/savingsStore';
 
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
-  const { loadData, applyRecurringMovements } = useMovementStore();
+
+  const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
   const { loadSettings } = useSettingsStore();
+  const { loadPremium } = usePremiumStore();
+  const { loadCategories } = useCategoryStore();
+  const { loadSharedAccount } = useSharedAccountStore();
+
+  const initUser = async () => {
+    await loadSettings();
+    await loadPremium();
+    await loadCategories();
+    await loadSharedAccount();
+
+    const { isSharedMode: shared, sharedAccount: account } = useSharedAccountStore.getState();
+
+    if (shared && account) {
+      setSharedAccountId(account.id);
+      useSavingsStore.getState().setSharedAccountId(account.id);
+      await loadSharedData(account.id);
+      await useSavingsStore.getState().loadSharedHuchas(account.id);
+      await applyRecurringMovements();
+      await useSavingsStore.getState().applyAutomaticContributions();
+      await useSharedCategoryStore.getState().loadSharedCategories(account.id);
+      useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
+      await useSharedAccountStore.getState().loadSharedSettings(account.id);
+    } else {
+      setSharedAccountId(null);
+      useSavingsStore.getState().setSharedAccountId(null);
+      await loadData();
+      await useSavingsStore.getState().loadHuchas();
+      await applyRecurringMovements();
+      await useSavingsStore.getState().applyAutomaticContributions();
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
-
-      // ✅ Cuando el usuario inicia sesión → carga sus datos
       if (firebaseUser) {
-        await loadSettings();
-        await loadData();
-        await applyRecurringMovements();
+        await initUser();
       }
     });
     return unsubscribe;
