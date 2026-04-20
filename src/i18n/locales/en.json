@@ -354,7 +354,16 @@
   "yes": "Yes",
   "no": "No",
   "success": "File exported successfully",
-  "error": "Error exporting file"
+  "error": "Error exporting file",
+  "huchasTitle": "Savings Goals",
+  "huchaName": "Name",
+  "huchaSaved": "Saved",
+  "huchaGoal": "Goal",
+  "huchaProgress": "Progress",
+  "huchaTargetDate": "Target date",
+  "huchaAutomatic": "Auto-contribution",
+  "huchaMonthly": "Monthly amount",
+  "huchaCreated": "Created"
   },
   "sharedAccount": {
   "title": "Shared Account",
@@ -384,6 +393,9 @@
   "settings": "Shared account settings",
   "notifTitle": "Partner notifications",
   "notifSubtitle": "Get notified when someone adds a movement",
+  "notifMovementTitle": "New movement",
+  "notifMovementBody": "{{name}} added a new movement",
+  "someone": "Someone",
   "leaveAccount": "Leave account",
   "leaveConfirm": "Are you sure you want to leave this shared account?",
   "deleteAccount": "Delete account",

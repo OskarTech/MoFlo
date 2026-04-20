@@ -12,6 +12,7 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors, COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { CURRENCIES } from '../../store/settingsStore';
@@ -80,6 +81,7 @@ const SharedAccountSettingsScreen = () => {
     sharedCurrencyCode, sharedColorPalette, saveSharedSettings,
   } = useSharedAccountStore();
   const { loadData, movements } = useMovementStore();
+  const { huchas } = useSavingsStore();
 
   const [linkCopied, setLinkCopied] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -134,7 +136,7 @@ const SharedAccountSettingsScreen = () => {
 
   const handleExportCSV = async () => {
     try {
-      await exportMovementsToCSV(movements, t);
+      await exportMovementsToCSV(movements, huchas, t);
     } catch (e) {
       Alert.alert('Error', t('export.error'));
     }
@@ -169,7 +171,7 @@ const SharedAccountSettingsScreen = () => {
         {
           text: t('sharedAccount.exportFirst'),
           onPress: async () => {
-            try { await exportMovementsToCSV(movements, t); } catch (e) {}
+            try { await exportMovementsToCSV(movements, huchas, t); } catch (e) {}
             confirmDelete();
           },
         },

@@ -18,6 +18,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode, DateFormat } from '../../store/settingsStore';
 import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { colors } from '../../theme';
@@ -121,6 +122,7 @@ const SettingsScreen = () => {
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { movements } = useMovementStore();
+  const { huchas } = useSavingsStore();
   const { sharedAccount } = useSharedAccountStore();
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -191,7 +193,7 @@ const SettingsScreen = () => {
   const handleExportCSV = () => {
     requirePremium(async () => {
       try {
-        await exportMovementsToCSV(movements, t);
+        await exportMovementsToCSV(movements, huchas, t);
       } catch (e) {
         Alert.alert('Error', t('export.error'));
       }
@@ -209,8 +211,9 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring']);
+              await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring', '@moflo_huchas']);
               useMovementStore.getState().resetStore();
+              useSavingsStore.getState().resetStore();
               const uid = auth().currentUser?.uid;
               if (uid) {
                 const batch = firestore().batch();
@@ -218,6 +221,8 @@ const SettingsScreen = () => {
                 movementsSnap.docs.forEach(doc => batch.delete(doc.ref));
                 const recurringSnap = await firestore().collection('users').doc(uid).collection('recurring').get();
                 recurringSnap.docs.forEach(doc => batch.delete(doc.ref));
+                const huchasSnap = await firestore().collection('users').doc(uid).collection('huchas').get();
+                huchasSnap.docs.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
               }
               Alert.alert('✅', t('settings.deleteDataSuccess'));

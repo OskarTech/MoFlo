@@ -35,6 +35,7 @@ export interface Movement {
   recurringDay?: number; // Día del mes que se repite (1-31)
   currency: string; // "EUR", "USD", "PLN"
   createdAt: string;
+  addedBy?: string;
 }
 
 // Estructura de un movimiento recurrente

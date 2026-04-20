@@ -354,7 +354,16 @@
   "yes": "Sí",
   "no": "No",
   "success": "Archivo exportado correctamente",
-  "error": "Error al exportar el archivo"
+  "error": "Error al exportar el archivo",
+  "huchasTitle": "Metas de ahorro",
+  "huchaName": "Nombre",
+  "huchaSaved": "Ahorrado",
+  "huchaGoal": "Objetivo",
+  "huchaProgress": "Progreso",
+  "huchaTargetDate": "Fecha objetivo",
+  "huchaAutomatic": "Automático",
+  "huchaMonthly": "Aportación mensual",
+  "huchaCreated": "Creado"
   },
   "sharedAccount": {
   "title": "Cuenta Compartida",
@@ -378,6 +387,9 @@
   "settings": "Ajustes cuenta compartida",
   "notifTitle": "Notificaciones de compañeros",
   "notifSubtitle": "Recibe notificaciones cuando alguien añada un movimiento",
+  "notifMovementTitle": "Nuevo movimiento",
+  "notifMovementBody": "{{name}} ha añadido un movimiento",
+  "someone": "Alguien",
   "leaveAccount": "Salir de la cuenta",
   "leaveConfirm": "¿Seguro que quieres salir de esta cuenta compartida?",
   "deleteAccount": "Eliminar cuenta",

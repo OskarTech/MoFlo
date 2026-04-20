@@ -354,7 +354,16 @@
   "yes": "Tak",
   "no": "Nie",
   "success": "Plik wyeksportowany pomyślnie",
-  "error": "Błąd podczas eksportu pliku"
+  "error": "Błąd podczas eksportu pliku",
+  "huchasTitle": "Cele oszczędnościowe",
+  "huchaName": "Nazwa",
+  "huchaSaved": "Zaoszczędzono",
+  "huchaGoal": "Cel",
+  "huchaProgress": "Postęp",
+  "huchaTargetDate": "Data celu",
+  "huchaAutomatic": "Auto-wpłata",
+  "huchaMonthly": "Kwota miesięczna",
+  "huchaCreated": "Utworzono"
   },
   "sharedAccount": {
   "title": "Konto Współdzielone",
@@ -378,6 +387,9 @@
   "settings": "Ustawienia konta",
   "notifTitle": "Powiadomienia partnera",
   "notifSubtitle": "Otrzymuj powiadomienia gdy ktoś doda ruch",
+  "notifMovementTitle": "Nowy ruch",
+  "notifMovementBody": "{{name}} dodał(a) nowy ruch",
+  "someone": "Ktoś",
   "leaveAccount": "Opuść konto",
   "leaveConfirm": "Czy na pewno chcesz opuścić to konto?",
   "deleteAccount": "Usuń konto",

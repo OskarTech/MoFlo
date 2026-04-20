@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import * as Notifications from 'expo-notifications';
+import i18n from '../i18n';
 import { SharedAccount, Movement, RecurringMovement } from '../types';
 import { CURRENCIES, ColorPaletteId } from './settingsStore';
 
@@ -94,6 +96,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().subscribeToSharedHuchas(accountId);
 
+    let isFirstSnapshot = true;
+
     movementsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('movements')
@@ -102,6 +106,30 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           .map(d => d.data() as Movement)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         useMovementStore.setState({ movements: [...movements] });
+
+        if (!isFirstSnapshot) {
+          const currentUid = auth().currentUser?.uid;
+          const { notificationsEnabled, sharedAccount } = get();
+          if (notificationsEnabled && currentUid) {
+            snap.docChanges().forEach((change) => {
+              if (change.type === 'added') {
+                const movement = change.doc.data() as Movement;
+                if (movement.addedBy && movement.addedBy !== currentUid) {
+                  const authorName = sharedAccount?.memberNames?.[movement.addedBy]
+                    ?? i18n.t('sharedAccount.someone');
+                  Notifications.scheduleNotificationAsync({
+                    content: {
+                      title: i18n.t('sharedAccount.notifMovementTitle'),
+                      body: i18n.t('sharedAccount.notifMovementBody', { name: authorName }),
+                    },
+                    trigger: null,
+                  }).catch(() => {});
+                }
+              }
+            });
+          }
+        }
+        isFirstSnapshot = false;
       }, (e) => {
         console.error('Error listening to shared movements:', e);
       });

@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Movement } from '../types';
+import { Movement, Hucha } from '../types';
 import { useCategoryStore } from '../store/categoryStore';
 
 const escapeCSV = (value: string) => {
@@ -12,11 +12,13 @@ const escapeCSV = (value: string) => {
 
 export const exportMovementsToCSV = async (
   movements: Movement[],
+  huchas: Hucha[],
   t: (key: string) => string
 ): Promise<void> => {
   const { getCategoryName } = useCategoryStore.getState();
 
-  const headers = [
+  // ── MOVEMENTS ──────────────────────────────────────────────────
+  const movHeaders = [
     t('export.date'),
     t('export.type'),
     t('export.category'),
@@ -25,7 +27,7 @@ export const exportMovementsToCSV = async (
     t('export.recurring'),
   ].join(',');
 
-  const rows = [...movements]
+  const movRows = [...movements]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map((m) => {
       const date = new Date(m.date).toLocaleDateString();
@@ -47,7 +49,54 @@ export const exportMovementsToCSV = async (
       ].join(',');
     });
 
-  const csv = [headers, ...rows].join('\n');
+  // ── HUCHAS ─────────────────────────────────────────────────────
+  const huchaHeaders = [
+    t('export.huchaName'),
+    t('export.huchaSaved'),
+    t('export.huchaGoal'),
+    t('export.huchaProgress'),
+    t('export.huchaTargetDate'),
+    t('export.huchaAutomatic'),
+    t('export.huchaMonthly'),
+    t('export.huchaCreated'),
+  ].join(',');
+
+  const huchaRows = [...huchas]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((h) => {
+      const progress = h.targetAmount > 0
+        ? `${Math.min(100, Math.round((h.currentAmount / h.targetAmount) * 100))}%`
+        : '0%';
+      const targetDate = h.targetDate
+        ? (() => { const [y, mo] = h.targetDate!.split('-'); return `${mo}/${y}`; })()
+        : '-';
+      const automatic = h.isAutomatic ? t('export.yes') : t('export.no');
+      const monthly = h.isAutomatic && h.monthlyAmount ? h.monthlyAmount.toFixed(2) : '-';
+      const created = new Date(h.createdAt).toLocaleDateString();
+
+      return [
+        escapeCSV(h.name),
+        escapeCSV(h.currentAmount.toFixed(2)),
+        escapeCSV(h.targetAmount.toFixed(2)),
+        escapeCSV(progress),
+        escapeCSV(targetDate),
+        escapeCSV(automatic),
+        escapeCSV(monthly),
+        escapeCSV(created),
+      ].join(',');
+    });
+
+  // ── COMBINE ────────────────────────────────────────────────────
+  const lines: string[] = [movHeaders, ...movRows];
+
+  if (huchas.length > 0) {
+    lines.push('');
+    lines.push(escapeCSV(t('export.huchasTitle')));
+    lines.push(huchaHeaders);
+    lines.push(...huchaRows);
+  }
+
+  const csv = lines.join('\n');
   const fileName = `moflo_export_${new Date().toISOString().split('T')[0]}.csv`;
   const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
