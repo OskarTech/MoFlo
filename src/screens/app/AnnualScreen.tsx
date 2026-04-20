@@ -291,56 +291,22 @@ const AnnualScreen = () => {
           </View>
         ) : (
           <>
-            {/* GRÁFICA */}
-            <View style={[styles.chartCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-                {t('annual.monthlyChart')}
-              </Text>
-              <Text style={[styles.chartHint, { color: dc.textSecondary }]}>
-                {t('annual.tapMonthHint')}
-              </Text>
-              <BarChart
-                data={barData}
-                barWidth={10}
-                spacing={2}
-                roundedTop
-                hideRules
-                xAxisThickness={1}
-                yAxisThickness={0}
-                xAxisColor={dc.border}
-                yAxisTextStyle={{ color: dc.textSecondary, fontSize: 10 }}
-                noOfSections={4}
-                maxValue={
-                  Math.max(...annualData.map(m => Math.max(m.income, m.expense))) * 1.2 || 100
-                }
-                width={SCREEN_WIDTH - 80}
-                height={180}
-                labelWidth={24}
-                xAxisLabelTextStyle={{ color: dc.textSecondary, fontSize: 9 }}
-                backgroundColor={dc.surface}
-              />
-              <View style={styles.legend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
-                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
-                    {t('annual.totalIncome')}
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
-                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
-                    {t('annual.totalExpenses')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
             {selectedMonth ? (
               <>
                 {/* ── VISTA MENSUAL ── */}
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {MONTH_NAMES[selectedMonth - 1]} {selectedAnnualYear}
                 </Text>
+
+                {/* RESUMEN DEL MES */}
+                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard
+                  label={t('annual.netBalance')}
+                  amount={monthSummary.income - monthSummary.expense}
+                  color={(monthSummary.income - monthSummary.expense) >= 0 ? colors.income : colors.expense}
+                  icon="wallet" currencySymbol={currencySymbol}
+                />
 
                 {/* FILTRO POR TIPO */}
                 <View style={styles.typeFilterRow}>
@@ -466,19 +432,6 @@ const AnnualScreen = () => {
                     })}
                   </>
                 )}
-
-                {/* TOTALES DEL MES */}
-                <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginTop: 8, marginBottom: 12 }]}>
-                  {t('annual.summary')}
-                </Text>
-                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                <AnnualCard
-                  label={t('annual.netBalance')}
-                  amount={monthSummary.income - monthSummary.expense}
-                  color={(monthSummary.income - monthSummary.expense) >= 0 ? colors.income : colors.expense}
-                  icon="wallet" currencySymbol={currencySymbol}
-                />
               </>
             ) : (
               <>
@@ -486,6 +439,32 @@ const AnnualScreen = () => {
                 <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                   {t('annual.year')} {selectedAnnualYear}
                 </Text>
+
+                {/* RESUMEN ANUAL */}
+                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard
+                  label={t('annual.netBalance')}
+                  amount={totals.balance}
+                  color={totals.balance >= 0 ? colors.income : colors.expense}
+                  icon="wallet" currencySymbol={currencySymbol}
+                />
+
+                {/* HIGHLIGHTS */}
+                <View style={styles.highlightsRow}>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.income }]}>
+                    <Text style={styles.highlightEmoji}>🏆</Text>
+                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.bestMonth')}</Text>
+                    <Text style={[styles.highlightMonth, { color: colors.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>+{bestMonth.balance.toFixed(0)} {currencySymbol}</Text>
+                  </View>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.expense }]}>
+                    <Text style={styles.highlightEmoji}>📉</Text>
+                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.worstMonth')}</Text>
+                    <Text style={[styles.highlightMonth, { color: colors.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>-{worstMonth.expense.toFixed(0)} {currencySymbol}</Text>
+                  </View>
+                </View>
 
                 {/* FILTRO POR TIPO ANUAL */}
                 <View style={styles.typeFilterRow}>
@@ -577,55 +556,65 @@ const AnnualScreen = () => {
                 )}
 
                 {/* TOTAL FILTRADO ANUAL */}
-                {annualTypeFilter ? (
-                  <>
-                    <AnnualCard
-                      label={
-                        annualCategoryFilter
-                          ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter)}`
-                          : TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label ?? ''
-                      }
-                      amount={annualFilteredTotal}
-                      color={typeColor}
-                      icon={typeIcon}
-                      currencySymbol={currencySymbol}
-                    />
-
-                    <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginTop: 8, marginBottom: 12 }]}>
-                      {t('annual.summary')}
-                    </Text>
-                  </>
-                ) : (
-                  // Totales globales sin filtro
-                  <>
-                    <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                    <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                    <AnnualCard
-                      label={t('annual.netBalance')}
-                      amount={totals.balance}
-                      color={totals.balance >= 0 ? colors.income : colors.expense}
-                      icon="wallet" currencySymbol={currencySymbol}
-                    />
-                  </>
+                {annualTypeFilter && (
+                  <AnnualCard
+                    label={
+                      annualCategoryFilter
+                        ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter)}`
+                        : TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label ?? ''
+                    }
+                    amount={annualFilteredTotal}
+                    color={typeColor}
+                    icon={typeIcon}
+                    currencySymbol={currencySymbol}
+                  />
                 )}
-
-                {/* HIGHLIGHTS — siempre visibles */}
-                <View style={styles.highlightsRow}>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.income }]}>
-                    <Text style={styles.highlightEmoji}>🏆</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.bestMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: colors.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>+{bestMonth.balance.toFixed(0)} {currencySymbol}</Text>
-                  </View>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.expense }]}>
-                    <Text style={styles.highlightEmoji}>📉</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.worstMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: colors.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>-{worstMonth.expense.toFixed(0)} {currencySymbol}</Text>
-                  </View>
-                </View>
               </>
             )}
+
+            {/* GRÁFICA — abajo del todo */}
+            <View style={[styles.chartCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
+                {t('annual.monthlyChart')}
+              </Text>
+              <Text style={[styles.chartHint, { color: dc.textSecondary }]}>
+                {t('annual.tapMonthHint')}
+              </Text>
+              <BarChart
+                data={barData}
+                barWidth={10}
+                spacing={2}
+                roundedTop
+                hideRules
+                xAxisThickness={1}
+                yAxisThickness={0}
+                xAxisColor={dc.border}
+                yAxisTextStyle={{ color: dc.textSecondary, fontSize: 10 }}
+                noOfSections={4}
+                maxValue={
+                  Math.max(...annualData.map(m => Math.max(m.income, m.expense))) * 1.2 || 100
+                }
+                width={SCREEN_WIDTH - 80}
+                height={180}
+                labelWidth={24}
+                xAxisLabelTextStyle={{ color: dc.textSecondary, fontSize: 9 }}
+                backgroundColor={dc.surface}
+              />
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
+                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
+                    {t('annual.totalIncome')}
+                  </Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
+                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
+                    {t('annual.totalExpenses')}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </>
         )}
       </ScrollView>
