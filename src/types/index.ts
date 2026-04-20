@@ -50,13 +50,18 @@ export interface RecurringMovement {
   createdAt: string;
 }
 
-// Movimiento de hucha (ahorros)
-export interface SavingMovement {
+// Meta de ahorro (hucha)
+export interface Hucha {
   id: string;
-  amount: number;
-  description: string;
-  date: string;
-  type: 'deposit' | 'withdrawal';
+  name: string;
+  icon: string;
+  color: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: string;        // 'YYYY-MM'
+  isAutomatic: boolean;
+  monthlyAmount?: number;
+  nextContributionDate?: string; // ISO date
   createdAt: string;
   addedBy?: string;
 }

@@ -77,7 +77,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
     if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
     const { useSavingsStore } = require('./savingsStore');
-    useSavingsStore.getState().unsubscribeSharedSavings();
+    useSavingsStore.getState().unsubscribeSharedHuchas();
   },
 
   // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────
@@ -87,7 +87,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
     const { useMovementStore } = require('./movementStore');
     const { useSavingsStore } = require('./savingsStore');
-    useSavingsStore.getState().subscribeToSharedSavings(accountId);
+    useSavingsStore.getState().subscribeToSharedHuchas(accountId);
 
     movementsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
@@ -365,7 +365,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
       if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
       const { useSavingsStore } = require('./savingsStore');
-      useSavingsStore.getState().unsubscribeSharedSavings();
+      useSavingsStore.getState().unsubscribeSharedHuchas();
       set({ sharedMovements: [], sharedRecurring: [] });
     }
   },

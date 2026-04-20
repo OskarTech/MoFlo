@@ -1,217 +1,277 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import { SavingMovement } from '../types';
+import { Hucha } from '../types';
 
-const STORAGE_KEYS = {
-  SAVINGS: '@moflo_savings',
-  SHARED_SAVINGS: '@moflo_shared_savings',
-};
+const STORAGE_KEY = '@moflo_huchas';
+const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
 
 let unsubscribeShared: (() => void) | null = null;
 
-const getUserSavingsCol = () => {
+const getUserHuchasCol = () => {
   const uid = auth().currentUser?.uid;
-  if (!uid) throw new Error('No authenticated user');
-  return firestore().collection('users').doc(uid).collection('savings');
+  if (!uid) throw new Error('No user');
+  return firestore().collection('users').doc(uid).collection('huchas');
 };
 
-const getSharedSavingsCol = (accountId: string) =>
-  firestore().collection('sharedAccounts').doc(accountId).collection('savings');
+const getSharedHuchasCol = (accountId: string) =>
+  firestore().collection('sharedAccounts').doc(accountId).collection('huchas');
+
+const advanceOneMonth = (isoDate: string): string => {
+  const d = new Date(isoDate);
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+};
 
 interface SavingsStore {
-  savingMovements: SavingMovement[];
+  huchas: Hucha[];
   isLoading: boolean;
   sharedAccountId: string | null;
+  showCreateModal: boolean;
 
-  loadSavings: () => Promise<void>;
-  loadSharedSavings: (accountId: string) => Promise<void>;
-  deposit: (amount: number, description: string) => Promise<void>;
-  withdraw: (amount: number, description: string) => Promise<boolean>;
-  deleteSavingMovement: (id: string) => Promise<void>;
-  subscribeToSharedSavings: (accountId: string) => void;
-  unsubscribeSharedSavings: () => void;
-  getSaldo: () => number;
+  loadHuchas: () => Promise<void>;
+  loadSharedHuchas: (accountId: string) => Promise<void>;
+  createHucha: (data: Omit<Hucha, 'id' | 'currentAmount' | 'createdAt'>) => Promise<void>;
+  updateHucha: (id: string, data: Partial<Hucha>) => Promise<void>;
+  addToHucha: (huchaId: string, amount: number) => Promise<void>;
+  deleteHucha: (id: string) => Promise<void>;
+  applyAutomaticContributions: () => Promise<void>;
+  subscribeToSharedHuchas: (accountId: string) => void;
+  unsubscribeSharedHuchas: () => void;
   setSharedAccountId: (id: string | null) => void;
+  setShowCreateModal: (show: boolean) => void;
+  showAddMoneyModal: boolean;
+  setShowAddMoneyModal: (show: boolean) => void;
+  getTotalSaved: () => number;
+  getTotalTarget: () => number;
   resetStore: () => void;
 }
 
 export const useSavingsStore = create<SavingsStore>((set, get) => ({
-  savingMovements: [],
+  huchas: [],
   isLoading: false,
   sharedAccountId: null,
+  showCreateModal: false,
+  showAddMoneyModal: false,
 
-  resetStore: () => {
-    get().unsubscribeSharedSavings();
-    set({ savingMovements: [], isLoading: false, sharedAccountId: null });
-  },
+  setShowCreateModal: (show) => set({ showCreateModal: show }),
+  setShowAddMoneyModal: (show) => set({ showAddMoneyModal: show }),
 
   setSharedAccountId: (id) => set({ sharedAccountId: id }),
 
-  getSaldo: () => {
-    const { savingMovements } = get();
-    return savingMovements.reduce((total, m) => {
-      return m.type === 'deposit' ? total + m.amount : total - m.amount;
-    }, 0);
-  },
+  getTotalSaved: () =>
+    get().huchas.reduce((acc, h) => acc + h.currentAmount, 0),
 
-  // ── CARGAR DATOS INDIVIDUALES ──────────────────────────────────
-  loadSavings: async () => {
-    set({ isLoading: true, sharedAccountId: null });
+  getTotalTarget: () =>
+    get().huchas.reduce((acc, h) => acc + h.targetAmount, 0),
+
+  loadHuchas: async () => {
+    set({ isLoading: true });
     try {
-      const cached = await AsyncStorage.getItem(STORAGE_KEYS.SAVINGS);
-      if (cached) set({ savingMovements: JSON.parse(cached) });
+      const cached = await AsyncStorage.getItem(STORAGE_KEY);
+      if (cached) set({ huchas: JSON.parse(cached) });
 
-      const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        const snap = await getUserSavingsCol().orderBy('date', 'desc').get();
-        const movements = snap.docs.map(d => d.data() as SavingMovement);
-        set({ savingMovements: movements });
-        await AsyncStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(movements));
-      }
+      const uid = auth().currentUser?.uid;
+      if (!uid) return;
+
+      const snap = await getUserHuchasCol().orderBy('createdAt', 'desc').get();
+      const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
+      set({ huchas });
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(huchas));
     } catch (e) {
-      console.error('Error loading savings:', e);
+      console.error('Error loading huchas:', e);
     } finally {
       set({ isLoading: false });
     }
   },
 
-  // ── CARGAR DATOS COMPARTIDOS ───────────────────────────────────
-  loadSharedSavings: async (accountId) => {
-    set({ isLoading: true, sharedAccountId: accountId });
+  loadSharedHuchas: async (accountId) => {
+    set({ isLoading: true });
     try {
-      const cached = await AsyncStorage.getItem(STORAGE_KEYS.SHARED_SAVINGS);
-      if (cached) set({ savingMovements: JSON.parse(cached) });
+      const cached = await AsyncStorage.getItem(SHARED_STORAGE_KEY);
+      if (cached) set({ huchas: JSON.parse(cached) });
 
-      const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        const snap = await getSharedSavingsCol(accountId).orderBy('date', 'desc').get();
-        const movements = snap.docs.map(d => d.data() as SavingMovement);
-        set({ savingMovements: movements });
-        await AsyncStorage.setItem(STORAGE_KEYS.SHARED_SAVINGS, JSON.stringify(movements));
-      }
+      const snap = await getSharedHuchasCol(accountId).orderBy('createdAt', 'desc').get();
+      const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
+      set({ huchas });
+      await AsyncStorage.setItem(SHARED_STORAGE_KEY, JSON.stringify(huchas));
     } catch (e) {
-      console.error('Error loading shared savings:', e);
+      console.error('Error loading shared huchas:', e);
     } finally {
       set({ isLoading: false });
     }
   },
 
-  // ── DEPOSITAR ─────────────────────────────────────────────────
-  deposit: async (amount, description) => {
+  createHucha: async (data) => {
     const { sharedAccountId } = get();
-    const uid = auth().currentUser?.uid ?? '';
-    const now = new Date().toISOString();
-    const movement: SavingMovement = {
-      id: `saving_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      amount,
-      description,
-      date: now,
-      type: 'deposit',
-      createdAt: now,
-      ...(sharedAccountId ? { addedBy: uid } : {}),
+    const uid = auth().currentUser?.uid;
+    const id = `hucha_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    const nextContribDate = data.isAutomatic
+      ? (() => {
+          const d = new Date();
+          d.setDate(1);
+          d.setMonth(d.getMonth() + 1);
+          return d.toISOString();
+        })()
+      : undefined;
+
+    const hucha: Hucha = {
+      ...data,
+      id,
+      currentAmount: 0,
+      createdAt: new Date().toISOString(),
+      ...(uid ? { addedBy: uid } : {}),
+      ...(nextContribDate ? { nextContributionDate: nextContribDate } : {}),
     };
 
-    const newMovements = [movement, ...get().savingMovements];
-    set({ savingMovements: newMovements });
+    // Strip undefined values — Firestore rejects them
+    const firestoreData = Object.fromEntries(
+      Object.entries(hucha).filter(([, v]) => v !== undefined)
+    );
 
     try {
       if (sharedAccountId) {
-        await getSharedSavingsCol(sharedAccountId).doc(movement.id).set(movement);
-        await AsyncStorage.setItem(STORAGE_KEYS.SHARED_SAVINGS, JSON.stringify(newMovements));
+        await getSharedHuchasCol(sharedAccountId).doc(id).set(firestoreData);
+        // onSnapshot handles state update in shared mode — don't add locally
       } else {
-        await getUserSavingsCol().doc(movement.id).set(movement);
-        await AsyncStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(newMovements));
+        await getUserHuchasCol().doc(id).set(firestoreData);
+        const updated = [hucha, ...get().huchas];
+        set({ huchas: updated });
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       }
     } catch (e) {
-      set({ savingMovements: get().savingMovements.filter(m => m.id !== movement.id) });
-      console.error('Error saving deposit:', e);
-      throw e;
+      console.error('Error creating hucha:', e);
     }
   },
 
-  // ── RETIRAR ───────────────────────────────────────────────────
-  withdraw: async (amount, description) => {
-    const { sharedAccountId } = get();
-    const saldo = get().getSaldo();
-    if (amount > saldo) return false;
-
-    const uid = auth().currentUser?.uid ?? '';
-    const now = new Date().toISOString();
-    const movement: SavingMovement = {
-      id: `saving_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      amount,
-      description,
-      date: now,
-      type: 'withdrawal',
-      createdAt: now,
-      ...(sharedAccountId ? { addedBy: uid } : {}),
-    };
-
-    const newMovements = [movement, ...get().savingMovements];
-    set({ savingMovements: newMovements });
-
+  updateHucha: async (id, data) => {
+    const { sharedAccountId, huchas } = get();
+    const updated = huchas.map(h => h.id === id ? { ...h, ...data } : h);
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    const firestoreData = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    ) as Record<string, unknown>;
     try {
       if (sharedAccountId) {
-        await getSharedSavingsCol(sharedAccountId).doc(movement.id).set(movement);
-        await AsyncStorage.setItem(STORAGE_KEYS.SHARED_SAVINGS, JSON.stringify(newMovements));
+        await getSharedHuchasCol(sharedAccountId).doc(id).update(firestoreData);
       } else {
-        await getUserSavingsCol().doc(movement.id).set(movement);
-        await AsyncStorage.setItem(STORAGE_KEYS.SAVINGS, JSON.stringify(newMovements));
+        await getUserHuchasCol().doc(id).update(firestoreData);
       }
     } catch (e) {
-      set({ savingMovements: get().savingMovements.filter(m => m.id !== movement.id) });
-      console.error('Error saving withdrawal:', e);
-      throw e;
+      console.error('Error updating hucha:', e);
     }
-    return true;
   },
 
-  // ── ELIMINAR ──────────────────────────────────────────────────
-  deleteSavingMovement: async (id) => {
-    const { sharedAccountId } = get();
-    const previous = get().savingMovements;
-    set({ savingMovements: previous.filter(m => m.id !== id) });
+  addToHucha: async (huchaId, amount) => {
+    const { sharedAccountId, huchas } = get();
+    const hucha = huchas.find(h => h.id === huchaId);
+    if (!hucha) return;
 
+    const newAmount = hucha.currentAmount + amount;
+    const updated = huchas.map(h =>
+      h.id === huchaId ? { ...h, currentAmount: newAmount } : h
+    );
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
     try {
       if (sharedAccountId) {
-        await getSharedSavingsCol(sharedAccountId).doc(id).delete();
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.SHARED_SAVINGS,
-          JSON.stringify(get().savingMovements)
-        );
+        await getSharedHuchasCol(sharedAccountId).doc(huchaId).update({ currentAmount: newAmount });
       } else {
-        await getUserSavingsCol().doc(id).delete();
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.SAVINGS,
-          JSON.stringify(get().savingMovements)
-        );
+        await getUserHuchasCol().doc(huchaId).update({ currentAmount: newAmount });
       }
     } catch (e) {
-      set({ savingMovements: previous });
-      console.error('Error deleting saving movement:', e);
-      throw e;
+      console.error('Error adding to hucha:', e);
     }
   },
 
-  // ── LISTENER TIEMPO REAL (COMPARTIDA) ─────────────────────────
-  subscribeToSharedSavings: (accountId) => {
-    if (unsubscribeShared) unsubscribeShared();
-    unsubscribeShared = getSharedSavingsCol(accountId)
-      .orderBy('date', 'desc')
-      .onSnapshot(snap => {
-        const movements = snap.docs.map(d => d.data() as SavingMovement);
-        set({ savingMovements: movements });
-        AsyncStorage.setItem(STORAGE_KEYS.SHARED_SAVINGS, JSON.stringify(movements));
+  deleteHucha: async (id) => {
+    const { sharedAccountId, huchas } = get();
+    const updated = huchas.filter(h => h.id !== id);
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    try {
+      if (sharedAccountId) {
+        await getSharedHuchasCol(sharedAccountId).doc(id).delete();
+      } else {
+        await getUserHuchasCol().doc(id).delete();
+      }
+    } catch (e) {
+      console.error('Error deleting hucha:', e);
+    }
+  },
+
+  applyAutomaticContributions: async () => {
+    const { huchas, sharedAccountId } = get();
+    const now = new Date();
+    const toUpdate: Hucha[] = [];
+
+    for (const h of huchas) {
+      if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
+      if (new Date(h.nextContributionDate) > now) continue;
+      if (h.currentAmount >= h.targetAmount) continue;
+
+      toUpdate.push({
+        ...h,
+        currentAmount: Math.min(h.currentAmount + h.monthlyAmount, h.targetAmount),
+        nextContributionDate: advanceOneMonth(h.nextContributionDate),
+      });
+    }
+
+    if (toUpdate.length === 0) return;
+
+    const updated = huchas.map(h => {
+      const u = toUpdate.find(t => t.id === h.id);
+      return u ?? h;
+    });
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+
+    for (const u of toUpdate) {
+      try {
+        if (sharedAccountId) {
+          await getSharedHuchasCol(sharedAccountId).doc(u.id).update({
+            currentAmount: u.currentAmount,
+            nextContributionDate: u.nextContributionDate,
+          });
+        } else {
+          await getUserHuchasCol().doc(u.id).update({
+            currentAmount: u.currentAmount,
+            nextContributionDate: u.nextContributionDate,
+          });
+        }
+      } catch (e) {
+        console.error('Error applying automatic contribution:', e);
+      }
+    }
+  },
+
+  subscribeToSharedHuchas: (accountId) => {
+    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+
+    unsubscribeShared = getSharedHuchasCol(accountId)
+      .orderBy('createdAt', 'desc')
+      .onSnapshot((snap) => {
+        const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
+        set({ huchas });
+        AsyncStorage.setItem(SHARED_STORAGE_KEY, JSON.stringify(huchas));
+      }, (e) => {
+        console.error('Error listening to shared huchas:', e);
       });
   },
 
-  unsubscribeSharedSavings: () => {
-    if (unsubscribeShared) {
-      unsubscribeShared();
-      unsubscribeShared = null;
-    }
+  unsubscribeSharedHuchas: () => {
+    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+  },
+
+  resetStore: () => {
+    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    set({ huchas: [], isLoading: false, sharedAccountId: null, showCreateModal: false, showAddMoneyModal: false });
   },
 }));

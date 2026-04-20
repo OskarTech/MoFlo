@@ -80,7 +80,7 @@ const AppHeader = ({
       useSavingsStore.getState().setSharedAccountId(null);
       await setSharedMode(false);
       await loadData();
-      await useSavingsStore.getState().loadSavings();
+      await useSavingsStore.getState().loadHuchas();
       navigation.navigate('HomeTab');
     }
   };
@@ -97,7 +97,7 @@ const AppHeader = ({
       await setSharedMode(true);
       subscribeToSharedMovements(sharedAccount.id);
       await loadSharedData(sharedAccount.id);
-      await useSavingsStore.getState().loadSharedSavings(sharedAccount.id);
+      await useSavingsStore.getState().loadSharedHuchas(sharedAccount.id);
       await applyRecurringMovements();
       await loadSharedCategories(sharedAccount.id);
       useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);

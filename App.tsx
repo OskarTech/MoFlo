@@ -58,8 +58,9 @@ export default function App() {
         setSharedAccountId(account.id);
         useSavingsStore.getState().setSharedAccountId(account.id);
         await loadSharedData(account.id);
-        await useSavingsStore.getState().loadSharedSavings(account.id);
+        await useSavingsStore.getState().loadSharedHuchas(account.id);
         await applyRecurringMovements();
+        await useSavingsStore.getState().applyAutomaticContributions();
         await useSharedCategoryStore.getState().loadSharedCategories(account.id);
         useSharedCategoryStore.getState().subscribeToSharedCategories(account.id);
         await useSharedAccountStore.getState().loadSharedSettings(account.id);
@@ -67,8 +68,9 @@ export default function App() {
         setSharedAccountId(null);
         useSavingsStore.getState().setSharedAccountId(null);
         await loadData();
-        await useSavingsStore.getState().loadSavings();
+        await useSavingsStore.getState().loadHuchas();
         await applyRecurringMovements();
+        await useSavingsStore.getState().applyAutomaticContributions();
       }
 
       if (fontsLoaded) {

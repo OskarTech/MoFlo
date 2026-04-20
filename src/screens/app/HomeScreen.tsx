@@ -115,14 +115,15 @@ const HomeScreen = () => {
   const navigation = useNavigation<any>();
 
   const { getMonthlySummary, getRecentMovements } = useMovementStore();
-  const { getSaldo } = useSavingsStore();
+  const { getTotalSaved, getTotalTarget } = useSavingsStore();
 
   const summary = getMonthlySummary();
   const recentMovements = getRecentMovements(5);
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
-  const huchaSaldo = getSaldo();
+  const huchaSaldo = getTotalSaved();
+  const huchaTarget = getTotalTarget();
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -166,6 +167,13 @@ const HomeScreen = () => {
             <Text style={styles.huchaAmount}>
               {huchaSaldo.toFixed(2)} {currencySymbol}
             </Text>
+            {huchaTarget > 0 && (
+              <View style={styles.huchaMiniBar}>
+                <View style={[styles.huchaMiniBarFill, {
+                  width: `${Math.min(Math.round((huchaSaldo / huchaTarget) * 100), 100)}%` as any,
+                }]} />
+              </View>
+            )}
           </View>
           <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
@@ -241,6 +249,14 @@ const styles = StyleSheet.create({
   huchaInfo: { flex: 1 },
   huchaLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Poppins_400Regular' },
   huchaAmount: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold' },
+  huchaMiniBar: {
+    height: 3, borderRadius: 2, marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  huchaMiniBarFill: {
+    height: 3, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
   recentSection: { paddingHorizontal: 16 },
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
   movementRow: {

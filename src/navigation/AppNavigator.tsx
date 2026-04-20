@@ -7,6 +7,8 @@ import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
 import RecurringScreen from '../screens/app/RecurringScreen';
 import HuchaScreen from '../screens/app/HuchaScreen';
+import HuchaDetailScreen from '../screens/app/HuchaDetailScreen';
+import { useSavingsStore } from '../store/savingsStore';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
@@ -42,7 +44,9 @@ const AppNavigator = () => {
     if (current === 'Reminders') {
       setReminderModalVisible(true);
     } else if (current === 'HuchaTab') {
-      // no-op: hucha has its own deposit/withdraw buttons
+      useSavingsStore.getState().setShowCreateModal(true);
+    } else if (current === 'HuchaDetail') {
+      useSavingsStore.getState().setShowAddMoneyModal(true);
     } else {
       setMovementModalVisible(true);
     }
@@ -123,6 +127,15 @@ const AppNavigator = () => {
         />
 
         {/* TABS OCULTOS */}
+        <Tab.Screen
+          name="HuchaDetail"
+          component={HuchaDetailScreen}
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
+        />
         <Tab.Screen
           name="Recurring"
           component={RecurringScreen}

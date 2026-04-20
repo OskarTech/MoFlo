@@ -64,8 +64,8 @@ export const logout = async () => {
     '@moflo_active_account',
     '@moflo_shared_movements',
     '@moflo_shared_recurring',
-    '@moflo_savings',
-    '@moflo_shared_savings',
+    '@moflo_huchas',
+    '@moflo_shared_huchas',
   ];
 
   if (uid) {
