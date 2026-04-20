@@ -25,6 +25,7 @@ const FEATURES = [
   'premium.featureExportCSV',
   'premium.featureCategoryFilter',
   'premium.featureUnlimitedHuchas',
+  'premium.featureCustomColor',
 ];
 
 const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {

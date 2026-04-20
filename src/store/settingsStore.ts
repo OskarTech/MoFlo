@@ -5,6 +5,7 @@ import {
   saveSettingsToFirestore,
   fetchSettingsFromFirestore,
 } from '../services/firebase/firestore.service';
+import { ColorPaletteId } from '../theme';
 
 const STORAGE_KEY = '@moflo_settings';
 
@@ -31,6 +32,7 @@ export const LANGUAGES = [
 
 export type ThemeMode = 'auto' | 'light' | 'dark';
 export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY';
+export type { ColorPaletteId };
 
 interface SettingsStore {
   displayName: string;
@@ -38,6 +40,7 @@ interface SettingsStore {
   language: string;
   themeMode: ThemeMode;
   dateFormat: DateFormat;
+  colorPalette: ColorPaletteId;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
@@ -47,6 +50,7 @@ interface SettingsStore {
     language: string;
     themeMode: ThemeMode;
     dateFormat: DateFormat;
+    colorPalette: ColorPaletteId;
   }>) => Promise<void>;
   getCurrencySymbol: () => string;
   resetStore: () => void;
@@ -58,6 +62,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   language: i18n.language ?? 'en',
   themeMode: 'auto',
   dateFormat: 'DD/MM/YYYY',
+  colorPalette: 'green',
   isLoading: false,
 
   resetStore: () => set({
@@ -66,6 +71,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     language: i18n.language ?? 'en',
     themeMode: 'auto',
     dateFormat: 'DD/MM/YYYY',
+    colorPalette: 'green',
   }),
 
   loadSettings: async () => {
@@ -84,6 +90,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           ...firestoreSettings,
           themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
           dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
+          colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
         };
         set(typedSettings);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -105,6 +112,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       language: get().language,
       themeMode: get().themeMode,
       dateFormat: get().dateFormat,
+      colorPalette: get().colorPalette,
     };
     const updated = { ...current, ...newSettings };
     set(updated);

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { SharedAccount, Movement, RecurringMovement } from '../types';
-import { CURRENCIES } from './settingsStore';
+import { CURRENCIES, ColorPaletteId } from './settingsStore';
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
@@ -32,6 +32,7 @@ interface SharedAccountStore {
   isSharedMode: boolean;
   notificationsEnabled: boolean;
   sharedCurrencyCode: string;
+  sharedColorPalette: ColorPaletteId;
   isLoading: boolean;
 
   loadSharedAccount: () => Promise<void>;
@@ -45,7 +46,7 @@ interface SharedAccountStore {
   subscribeToSharedMovements: (accountId: string) => void;
   unsubscribeAll: () => void;
   loadSharedSettings: (accountId: string) => Promise<void>;
-  saveSharedSettings: (accountId: string, settings: { currencyCode: string }) => Promise<void>;
+  saveSharedSettings: (accountId: string, settings: { currencyCode?: string; colorPalette?: ColorPaletteId }) => Promise<void>;
   getSharedCurrencySymbol: () => string;
   resetStore: () => void;
 }
@@ -57,6 +58,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   isSharedMode: false,
   notificationsEnabled: true,
   sharedCurrencyCode: 'EUR',
+  sharedColorPalette: 'blue',
   isLoading: false,
 
   resetStore: () => {
@@ -69,6 +71,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       sharedRecurring: [],
       isSharedMode: false,
       sharedCurrencyCode: 'EUR',
+      sharedColorPalette: 'blue',
     });
   },
 
@@ -390,14 +393,20 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       const cached = await AsyncStorage.getItem(`@moflo_shared_settings_${accountId}`);
       if (cached) {
         const parsed = JSON.parse(cached);
-        set({ sharedCurrencyCode: parsed.currencyCode ?? 'EUR' });
+        set({
+          sharedCurrencyCode: parsed.currencyCode ?? 'EUR',
+          sharedColorPalette: parsed.colorPalette ?? 'blue',
+        });
       }
 
       const doc = await firestore()
         .collection('sharedAccounts').doc(accountId).get();
       const settings = doc.data()?.sharedSettings;
-      if (settings?.currencyCode) {
-        set({ sharedCurrencyCode: settings.currencyCode });
+      if (settings) {
+        const update: Partial<{ sharedCurrencyCode: string; sharedColorPalette: ColorPaletteId }> = {};
+        if (settings.currencyCode) update.sharedCurrencyCode = settings.currencyCode;
+        if (settings.colorPalette) update.sharedColorPalette = settings.colorPalette as ColorPaletteId;
+        set(update);
         await AsyncStorage.setItem(
           `@moflo_shared_settings_${accountId}`,
           JSON.stringify(settings)
@@ -409,15 +418,20 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   },
 
   saveSharedSettings: async (accountId, settings) => {
-    set({ sharedCurrencyCode: settings.currencyCode });
+    const current = {
+      currencyCode: settings.currencyCode ?? get().sharedCurrencyCode,
+      colorPalette: settings.colorPalette ?? get().sharedColorPalette,
+    };
+    if (settings.currencyCode) set({ sharedCurrencyCode: settings.currencyCode });
+    if (settings.colorPalette) set({ sharedColorPalette: settings.colorPalette });
     await AsyncStorage.setItem(
       `@moflo_shared_settings_${accountId}`,
-      JSON.stringify(settings)
+      JSON.stringify(current)
     );
     try {
       await firestore()
         .collection('sharedAccounts').doc(accountId)
-        .set({ sharedSettings: settings }, { merge: true });
+        .set({ sharedSettings: current }, { merge: true });
     } catch (e) {
       console.error('Error saving shared settings:', e);
     }

@@ -1,6 +1,6 @@
 import './src/i18n';
 import React, { useEffect } from 'react';
-import { PaperProvider } from 'react-native-paper';
+import { MD3LightTheme, MD3DarkTheme, PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { Linking, useColorScheme } from 'react-native';
 import {
@@ -10,14 +10,14 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
-import { lightTheme, darkTheme } from './src/theme';
+import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const colorScheme = useColorScheme();
-  const { themeMode } = useSettingsStore();
+  const { themeMode, colorPalette } = useSettingsStore();
 
   const isDark = themeMode === 'dark'
     ? true
@@ -25,7 +25,33 @@ export default function App() {
     ? false
     : colorScheme === 'dark';
 
-  const theme = isDark ? darkTheme : lightTheme;
+  const p = COLOR_PALETTES[colorPalette ?? 'green'];
+
+  const theme = isDark
+    ? {
+        ...MD3DarkTheme,
+        colors: {
+          ...MD3DarkTheme.colors,
+          primary: p.primaryLight,
+          secondary: p.primaryDark,
+          background: p.darkBg,
+          surface: p.darkSurface,
+          onSurface: '#F9FAFB',
+          outline: p.darkBorder,
+        },
+      }
+    : {
+        ...MD3LightTheme,
+        colors: {
+          ...MD3LightTheme.colors,
+          primary: p.primary,
+          secondary: '#1F2937',
+          background: p.lightBg,
+          surface: '#FFFFFF',
+          onSurface: '#1F2937',
+          outline: p.lightBorder,
+        },
+      };
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,

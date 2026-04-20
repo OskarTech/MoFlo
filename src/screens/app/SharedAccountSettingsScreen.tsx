@@ -13,9 +13,10 @@ import firestore from '@react-native-firebase/firestore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
+import { colors, COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { CURRENCIES } from '../../store/settingsStore';
 import AppHeader from '../../components/common/AppHeader';
+import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import { exportMovementsToCSV } from '../../services/export.service';
 
 const SelectModal = ({
@@ -76,7 +77,7 @@ const SharedAccountSettingsScreen = () => {
     sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount,
     deleteSharedAccount, setSharedMode, getInviteLink,
-    sharedCurrencyCode, saveSharedSettings,
+    sharedCurrencyCode, sharedColorPalette, saveSharedSettings,
   } = useSharedAccountStore();
   const { loadData, movements } = useMovementStore();
 
@@ -84,6 +85,10 @@ const SharedAccountSettingsScreen = () => {
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(sharedAccount?.name ?? '');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [showColorPaletteModal, setShowColorPaletteModal] = useState(false);
+
+  const selectedPaletteId = (sharedColorPalette ?? 'blue') as ColorPaletteId;
+  const selectedPaletteColor = COLOR_PALETTES[selectedPaletteId].primary;
 
   useEffect(() => {
     if (!sharedAccount) {
@@ -325,6 +330,28 @@ const SharedAccountSettingsScreen = () => {
           })}
         </View>
 
+        {/* APARIENCIA */}
+        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+          {t('settings.colorPalette')}
+        </Text>
+        <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => setShowColorPaletteModal(true)}
+          >
+            <View style={[styles.optionIcon, { backgroundColor: dc.primary + '20' }]}>
+              <Ionicons name="color-palette-outline" size={20} color={dc.primary} />
+            </View>
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionLabel, { color: dc.textPrimary }]}>
+                {t('settings.colorPalette')}
+              </Text>
+            </View>
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: selectedPaletteColor, marginRight: 8 }} />
+            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* MONEDA COMPARTIDA */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('sharedAccount.currency')}
@@ -481,6 +508,13 @@ const SharedAccountSettingsScreen = () => {
         selectedValue={sharedCurrencyCode}
         onSelect={(code) => saveSharedSettings(sharedAccount.id, { currencyCode: code })}
         onDismiss={() => setShowCurrencyModal(false)}
+      />
+
+      <ColorPaletteModal
+        visible={showColorPaletteModal}
+        selectedPalette={selectedPaletteId}
+        onSelect={(id) => saveSharedSettings(sharedAccount.id, { colorPalette: id })}
+        onDismiss={() => setShowColorPaletteModal(false)}
       />
     </View>
   );

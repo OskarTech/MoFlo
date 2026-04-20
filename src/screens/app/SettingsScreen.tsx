@@ -16,12 +16,14 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode, DateFormat } from '../../store/settingsStore';
+import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
+import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import { logout } from '../../services/firebase/auth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
 import Constants from 'expo-constants';
@@ -116,7 +118,7 @@ const SettingsScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { displayName, currencyCode, language, themeMode, dateFormat, saveSettings } = useSettingsStore();
+  const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { movements } = useMovementStore();
   const { sharedAccount } = useSharedAccountStore();
@@ -128,6 +130,7 @@ const SettingsScreen = () => {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showDateFormatModal, setShowDateFormatModal] = useState(false);
+  const [showColorPaletteModal, setShowColorPaletteModal] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(displayName ?? '');
 
@@ -253,6 +256,8 @@ const SettingsScreen = () => {
   const selectedLanguageLabel = LANGUAGES.find(l => l.code === language)?.label ?? 'English';
   const selectedThemeLabel = THEME_OPTIONS.find(o => o.code === themeMode)?.label ?? t('settings.themeAuto');
   const selectedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === dateFormat)?.label ?? 'DD/MM/YYYY';
+  const selectedPaletteId = (colorPalette ?? 'green') as ColorPaletteId;
+  const selectedPaletteLabel = t(`settings.palette${selectedPaletteId.charAt(0).toUpperCase() + selectedPaletteId.slice(1)}`);
 
   const initials = displayName
     ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -382,6 +387,20 @@ const SettingsScreen = () => {
             icon="calendar-outline" iconColor={dc.primary}
             label={t('settings.dateFormat')} value={selectedDateFormatLabel}
             onPress={() => setShowDateFormatModal(true)}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="color-palette-outline" iconColor={dc.primary}
+            label={t('settings.colorPalette')}
+            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
+            onPress={() => requirePremium(() => setShowColorPaletteModal(true))}
+            right={isPremium ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedPaletteId].primary }} />
+                <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{selectedPaletteLabel}</Text>
+                <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              </View>
+            ) : undefined}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
@@ -524,6 +543,13 @@ const SettingsScreen = () => {
         visible={showModal}
         onDismiss={() => setShowModal(false)}
         onPurchase={() => setShowModal(false)}
+      />
+
+      <ColorPaletteModal
+        visible={showColorPaletteModal}
+        selectedPalette={selectedPaletteId}
+        onSelect={(id) => saveSettings({ colorPalette: id })}
+        onDismiss={() => setShowColorPaletteModal(false)}
       />
     </View>
   );

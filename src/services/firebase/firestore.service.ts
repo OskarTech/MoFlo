@@ -89,6 +89,7 @@ interface UserSettings {
   language: string;
   themeMode: string;
   dateFormat?: string;
+  colorPalette?: string;
 }
 
 export const saveSettingsToFirestore = async (
