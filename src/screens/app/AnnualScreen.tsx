@@ -12,13 +12,16 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { MovementType } from '../../types';
+import { MovementType, HuchaMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import { formatDate } from '../../utils/dateFormat';
+
+type AnnualFilterType = MovementType | 'hucha';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -46,6 +49,37 @@ const AnnualCard = ({
   );
 };
 
+const HuchaMovRow = ({
+  movement, currencySymbol,
+}: {
+  movement: HuchaMovement; currencySymbol: string;
+}) => {
+  const { colors: dc } = useTheme();
+  const { t } = useTranslation();
+  const isDeposit = movement.type === 'deposit';
+  const movColor = isDeposit ? colors.income : colors.expense;
+  return (
+    <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <View style={[styles.movementIcon, { backgroundColor: movement.huchaColor + '20' }]}>
+        <Ionicons
+          name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
+          size={18}
+          color={movement.huchaColor}
+        />
+      </View>
+      <View style={styles.movementInfo}>
+        <Text style={[styles.movementDesc, { color: dc.textPrimary }]}>{movement.huchaName}</Text>
+        <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
+          {t(isDeposit ? 'hucha.depositLabel' : 'hucha.withdrawalLabel')} · {formatDate(movement.date)}
+        </Text>
+      </View>
+      <Text style={[styles.movementAmount, { color: movColor }]}>
+        {isDeposit ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
+      </Text>
+    </View>
+  );
+};
+
 const DropdownModal = ({
   visible, title, options, selectedValue, onSelect, onDismiss,
 }: {
@@ -61,9 +95,7 @@ const DropdownModal = ({
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.dropdownOverlay}>
         <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.dropdownSheet, {
-          backgroundColor: dc.surface,
-        }]}>
+        <View style={[styles.dropdownSheet, { backgroundColor: dc.surface }]}>
           <View style={[styles.dropdownHandle, { backgroundColor: dc.border }]} />
           <Text style={[styles.dropdownTitle, { color: dc.textPrimary }]}>{title}</Text>
           <FlatList
@@ -76,10 +108,7 @@ const DropdownModal = ({
               >
                 <Text style={[
                   styles.dropdownOptionText, { color: dc.textPrimary },
-                  item.value === selectedValue && {
-                    color: dc.primary,
-                    fontFamily: 'Poppins_600SemiBold',
-                  },
+                  item.value === selectedValue && { color: dc.primary, fontFamily: 'Poppins_600SemiBold' },
                 ]}>
                   {item.label}
                 </Text>
@@ -105,28 +134,22 @@ const AnnualScreen = () => {
   const { getCategoryName } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
+  const { huchaMovements } = useSavingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { colors: dc } = useTheme();
 
-  const currencySymbol = isSharedMode
-    ? getSharedCurrencySymbol()
-    : getCurrencySymbol();
+  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const getCatName = (id: string, type: MovementType) =>
-    isSharedMode
-      ? getSharedCategoryName(id, type, t)
-      : getCategoryName(id, type, t);
+    isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
     new Date().getMonth() + 1
   );
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<MovementType | null>(null);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<AnnualFilterType | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  // Filtros vista anual completa
-  const [annualTypeFilter, setAnnualTypeFilter] = useState<MovementType | null>(null);
+  const [annualTypeFilter, setAnnualTypeFilter] = useState<AnnualFilterType | null>(null);
   const [annualCategoryFilter, setAnnualCategoryFilter] = useState<string | null>(null);
-
   const [showYearModal, setShowYearModal] = useState(false);
   const [showMonthModal, setShowMonthModal] = useState(false);
 
@@ -154,7 +177,7 @@ const AnnualScreen = () => {
   }, [selectedMonth, movements, selectedAnnualYear]);
 
   const typeFilteredMovements = useMemo(() => {
-    if (!selectedTypeFilter) return monthMovements;
+    if (!selectedTypeFilter || selectedTypeFilter === 'hucha') return monthMovements;
     return monthMovements.filter(m => m.type === selectedTypeFilter);
   }, [monthMovements, selectedTypeFilter]);
 
@@ -164,7 +187,7 @@ const AnnualScreen = () => {
   }, [typeFilteredMovements, selectedCategory]);
 
   const monthCategories = useMemo(() => {
-    const source = selectedTypeFilter
+    const source = selectedTypeFilter && selectedTypeFilter !== 'hucha'
       ? monthMovements.filter(m => m.type === selectedTypeFilter)
       : monthMovements;
     const cats = new Set(source.map(m => m.category));
@@ -172,9 +195,18 @@ const AnnualScreen = () => {
   }, [monthMovements, selectedTypeFilter]);
 
   const monthSummary = useMemo(() => ({
-    income: filteredMonthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
-    expense: filteredMonthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
-  }), [filteredMonthMovements]);
+    income: monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
+    expense: monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
+  }), [monthMovements]);
+
+  // ── HUCHA MOVIMIENTOS MES ──────────────────────────────────────
+  const huchaMonthMovements = useMemo(() => {
+    if (!selectedMonth || selectedTypeFilter !== 'hucha') return [];
+    return huchaMovements.filter(m => {
+      const d = new Date(m.date);
+      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedAnnualYear;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [selectedMonth, huchaMovements, selectedAnnualYear, selectedTypeFilter]);
 
   // ── MOVIMIENTOS DEL AÑO COMPLETO ───────────────────────────────
   const yearMovements = useMemo(() => {
@@ -185,7 +217,7 @@ const AnnualScreen = () => {
   }, [movements, selectedAnnualYear]);
 
   const annualTypeMovements = useMemo(() => {
-    if (!annualTypeFilter) return yearMovements;
+    if (!annualTypeFilter || annualTypeFilter === 'hucha') return yearMovements;
     return yearMovements.filter(m => m.type === annualTypeFilter);
   }, [yearMovements, annualTypeFilter]);
 
@@ -202,6 +234,20 @@ const AnnualScreen = () => {
   const annualFilteredTotal = useMemo(() => {
     return annualFilteredMovements.reduce((s, m) => s + m.amount, 0);
   }, [annualFilteredMovements]);
+
+  // ── HUCHA MOVIMIENTOS AÑO ─────────────────────────────────────
+  const huchaYearMovements = useMemo(() => {
+    if (annualTypeFilter !== 'hucha') return [];
+    return huchaMovements.filter(m => {
+      const d = new Date(m.date);
+      return d.getFullYear() === selectedAnnualYear;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [annualTypeFilter, huchaMovements, selectedAnnualYear]);
+
+  const huchaYearTotals = useMemo(() => ({
+    deposits: huchaYearMovements.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0),
+    withdrawals: huchaYearMovements.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0),
+  }), [huchaYearMovements]);
 
   // ── TOTALES GLOBALES ───────────────────────────────────────────
   const totals = useMemo(() => annualData.reduce(
@@ -231,11 +277,12 @@ const AnnualScreen = () => {
   ]);
 
   const TYPE_OPTIONS: {
-    type: MovementType; label: string;
+    type: AnnualFilterType; label: string;
     color: string; icon: keyof typeof Ionicons.glyphMap;
   }[] = [
     { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
     { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
+    { type: 'hucha', label: t('tabs.hucha'), color: colors.savings, icon: 'wallet' },
   ];
 
   const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
@@ -246,10 +293,11 @@ const AnnualScreen = () => {
 
   const typeColor = annualTypeFilter === 'income' ? colors.income
     : annualTypeFilter === 'expense' ? colors.expense
+    : annualTypeFilter === 'hucha' ? colors.savings
     : dc.primary;
 
   const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
-    ? 'arrow-down-circle' : 'arrow-up-circle';
+    ? 'arrow-down-circle' : annualTypeFilter === 'hucha' ? 'wallet' : 'arrow-up-circle';
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -346,8 +394,8 @@ const AnnualScreen = () => {
                   ))}
                 </View>
 
-                {/* FILTRO CATEGORÍA — solo si hay tipo */}
-                {selectedTypeFilter && monthCategories.length > 0 && (
+                {/* FILTRO CATEGORÍA — solo si hay tipo income/expense */}
+                {selectedTypeFilter && selectedTypeFilter !== 'hucha' && monthCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
                       <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
@@ -397,8 +445,8 @@ const AnnualScreen = () => {
                   </View>
                 )}
 
-                {/* MOVIMIENTOS DEL MES */}
-                {filteredMonthMovements.length > 0 && (
+                {/* MOVIMIENTOS DEL MES (income/expense) */}
+                {filteredMonthMovements.length > 0 && selectedTypeFilter !== 'hucha' && (
                   <>
                     <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
                       {t('annual.movements')}
@@ -430,6 +478,28 @@ const AnnualScreen = () => {
                         </View>
                       );
                     })}
+                  </>
+                )}
+
+                {/* MOVIMIENTOS HUCHA DEL MES */}
+                {selectedTypeFilter === 'hucha' && (
+                  <>
+                    {huchaMonthMovements.length > 0 ? (
+                      <>
+                        <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
+                          {t('annual.movements')}
+                        </Text>
+                        {huchaMonthMovements.map((m) => (
+                          <HuchaMovRow key={m.id} movement={m} currencySymbol={currencySymbol} />
+                        ))}
+                      </>
+                    ) : (
+                      <View style={styles.huchaEmpty}>
+                        <Text style={[styles.huchaEmptyText, { color: dc.textSecondary }]}>
+                          {t('hucha.noHistoryMonth')}
+                        </Text>
+                      </View>
+                    )}
                   </>
                 )}
               </>
@@ -504,8 +574,8 @@ const AnnualScreen = () => {
                   ))}
                 </View>
 
-                {/* FILTRO CATEGORÍA ANUAL — solo si hay tipo */}
-                {annualTypeFilter && annualCategories.length > 0 && (
+                {/* FILTRO CATEGORÍA ANUAL — solo si hay tipo income/expense */}
+                {annualTypeFilter && annualTypeFilter !== 'hucha' && annualCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
                     <View style={styles.categoryFilterHeader}>
                       <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
@@ -555,12 +625,12 @@ const AnnualScreen = () => {
                   </View>
                 )}
 
-                {/* TOTAL FILTRADO ANUAL */}
-                {annualTypeFilter && (
+                {/* TOTAL FILTRADO ANUAL (solo income/expense) */}
+                {annualTypeFilter && annualTypeFilter !== 'hucha' && (
                   <AnnualCard
                     label={
                       annualCategoryFilter
-                        ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter)}`
+                        ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter as MovementType)}`
                         : TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label ?? ''
                     }
                     amount={annualFilteredTotal}
@@ -568,6 +638,27 @@ const AnnualScreen = () => {
                     icon={typeIcon}
                     currencySymbol={currencySymbol}
                   />
+                )}
+
+                {/* MOVIMIENTOS HUCHA DEL AÑO */}
+                {annualTypeFilter === 'hucha' && (
+                  <>
+                    {huchaYearMovements.length > 0 ? (
+                      <>
+                        <AnnualCard label={t('hucha.totalDeposits')} amount={huchaYearTotals.deposits} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                        <AnnualCard label={t('hucha.totalWithdrawals')} amount={huchaYearTotals.withdrawals} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                        {huchaYearMovements.map((m) => (
+                          <HuchaMovRow key={m.id} movement={m} currencySymbol={currencySymbol} />
+                        ))}
+                      </>
+                    ) : (
+                      <View style={styles.huchaEmpty}>
+                        <Text style={[styles.huchaEmptyText, { color: dc.textSecondary }]}>
+                          {t('hucha.noHistory')}
+                        </Text>
+                      </View>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -670,9 +761,7 @@ const styles = StyleSheet.create({
     gap: 8, borderRadius: 12, borderWidth: 0.5,
     paddingHorizontal: 12, paddingVertical: 10,
   },
-  selectorDropdownText: {
-    flex: 1, fontSize: 13, fontFamily: 'Poppins_600SemiBold',
-  },
+  selectorDropdownText: { flex: 1, fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   chartCard: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 0.5 },
   sectionTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold', marginBottom: 12 },
   chartHint: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12 },
@@ -700,7 +789,7 @@ const styles = StyleSheet.create({
   annualCardIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   annualCardAmount: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
   annualCardLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  highlightsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  highlightsRow: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 20 },
   highlightCard: { flex: 1, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1.5 },
   highlightEmoji: { fontSize: 28, marginBottom: 8 },
   highlightLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 4, textAlign: 'center' },
@@ -712,6 +801,8 @@ const styles = StyleSheet.create({
   movementDesc: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   movementAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  huchaEmpty: { alignItems: 'center', paddingVertical: 24 },
+  huchaEmptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },

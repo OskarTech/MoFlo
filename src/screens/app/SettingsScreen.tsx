@@ -211,7 +211,7 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring', '@moflo_huchas']);
+              await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring', '@moflo_huchas', '@moflo_hucha_movements']);
               useMovementStore.getState().resetStore();
               useSavingsStore.getState().resetStore();
               const uid = auth().currentUser?.uid;
@@ -223,6 +223,8 @@ const SettingsScreen = () => {
                 recurringSnap.docs.forEach(doc => batch.delete(doc.ref));
                 const huchasSnap = await firestore().collection('users').doc(uid).collection('huchas').get();
                 huchasSnap.docs.forEach(doc => batch.delete(doc.ref));
+                const huchaMovSnap = await firestore().collection('users').doc(uid).collection('huchaMovements').get();
+                huchaMovSnap.docs.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
               }
               Alert.alert('✅', t('settings.deleteDataSuccess'));

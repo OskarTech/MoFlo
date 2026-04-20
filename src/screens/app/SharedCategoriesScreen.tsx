@@ -125,7 +125,7 @@ const SharedCategoriesScreen = () => {
       <AppHeader title={t('categories.title')} showBell={false} />
 
       <View style={[styles.typeTabs, { backgroundColor: dc.surface, borderBottomColor: dc.border }]}>
-        {(['expense', 'income', 'saving'] as MovementType[]).map((tp) => (
+        {(['expense', 'income'] as MovementType[]).map((tp) => (
           <TouchableOpacity
             key={tp}
             style={[
@@ -244,7 +244,7 @@ const SharedCategoriesScreen = () => {
 
               <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>{t('categories.type')}</Text>
               <View style={styles.typeRow}>
-                {(['expense', 'income', 'saving'] as MovementType[]).map((tp) => (
+                {(['expense', 'income'] as MovementType[]).map((tp) => (
                   <TouchableOpacity
                     key={tp}
                     style={[

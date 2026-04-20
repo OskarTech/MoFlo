@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, FlatList, TouchableOpacity,
   Alert, ScrollView,
@@ -6,18 +6,20 @@ import {
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { Movement, MovementType } from '../../types';
+import { Movement, MovementType, HuchaMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatDate } from '../../utils/dateFormat';
 
-type FilterType = 'all' | MovementType;
+type FilterType = 'all' | MovementType | 'hucha';
 
 const MovementRow = ({
   movement, onDelete,
@@ -31,14 +33,10 @@ const MovementRow = ({
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { colors: dc } = useTheme();
 
-  const currencySymbol = isSharedMode
-    ? getSharedCurrencySymbol()
-    : getCurrencySymbol();
+  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const getCatName = (id: string, type: MovementType) =>
-    isSharedMode
-      ? getSharedCategoryName(id, type, t)
-      : getCategoryName(id, type, t);
+    isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
   const isIncome = movement.type === 'income';
   const isSaving = (movement.type as string) === 'saving';
@@ -87,22 +85,73 @@ const MovementRow = ({
   );
 };
 
+const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
+  const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { colors: dc } = useTheme();
+  const { t } = useTranslation();
+
+  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const isDeposit = movement.type === 'deposit';
+  const movColor = isDeposit ? colors.income : colors.expense;
+
+  return (
+    <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <View style={[styles.movementIcon, { backgroundColor: movement.huchaColor + '20' }]}>
+        <Ionicons
+          name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
+          size={22}
+          color={movement.huchaColor}
+        />
+      </View>
+      <View style={styles.movementInfo}>
+        <View style={styles.movementTitleRow}>
+          <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
+            {movement.huchaName}
+          </Text>
+          <View style={[styles.recurringBadge, { backgroundColor: movement.huchaColor + '20' }]}>
+            <Ionicons name="wallet" size={10} color={movement.huchaColor} />
+          </View>
+        </View>
+        <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
+          {t(isDeposit ? 'hucha.depositLabel' : 'hucha.withdrawalLabel')} · {formatDate(movement.date)}
+        </Text>
+      </View>
+      <Text style={[styles.movementAmount, { color: movColor }]}>
+        {isDeposit ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
+      </Text>
+    </View>
+  );
+};
+
 const MovementsScreen = () => {
   const { t } = useTranslation();
   const { movements, deleteMovement } = useMovementStore();
+  const { huchaMovements } = useSavingsStore();
   const { colors: dc } = useTheme();
-  const [filter, setFilter] = useState<FilterType>('all');
+  const route = useRoute<any>();
+  const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'all');
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (route.params?.initialFilter) {
+      setFilter(route.params.initialFilter);
+    }
+  }, [route.params?.initialFilter]);
   const filterPositions = useRef<{ [key: string]: number }>({});
 
   const filteredMovements = [...movements]
     .filter((m) => filter === 'all' || m.type === filter)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const sortedHuchaMovements = [...huchaMovements]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const filters: { key: FilterType; label: string; color: string }[] = [
     { key: 'all', label: t('movementsList.all'), color: dc.primary },
     { key: 'income', label: t('movementsList.income'), color: colors.income },
     { key: 'expense', label: t('movementsList.expenses'), color: colors.expense },
+    { key: 'hucha', label: t('movementsList.hucha'), color: colors.savings },
   ];
 
   const handleFilterPress = (key: FilterType) => {
@@ -111,56 +160,71 @@ const MovementsScreen = () => {
     scrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
 
+  const filterChips = (
+    <View style={[styles.filtersWrapper, { backgroundColor: dc.background, borderBottomColor: dc.border }]}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filtersRow}
+      >
+        {filters.map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[
+              styles.filterChip,
+              { backgroundColor: dc.surface, borderColor: dc.border },
+              filter === f.key && { backgroundColor: f.color, borderColor: f.color },
+            ]}
+            onLayout={(e) => { filterPositions.current[f.key] = e.nativeEvent.layout.x; }}
+            onPress={() => handleFilterPress(f.key)}
+          >
+            <Text style={[
+              styles.filterChipText, { color: dc.textSecondary },
+              filter === f.key && styles.filterChipTextActive,
+            ]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const emptyComponent = (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>{filter === 'hucha' ? '🐷' : '🔍'}</Text>
+      <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
+        {t('movementsList.noMovements')}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.historial')} />
-      <FlatList
-        data={filteredMovements}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersRow}
-          >
-            {filters.map((f) => (
-              <TouchableOpacity
-                key={f.key}
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: dc.surface, borderColor: dc.border },
-                  filter === f.key && { backgroundColor: f.color, borderColor: f.color },
-                ]}
-                onLayout={(e) => {
-                  filterPositions.current[f.key] = e.nativeEvent.layout.x;
-                }}
-                onPress={() => handleFilterPress(f.key)}
-              >
-                <Text style={[
-                  styles.filterChipText, { color: dc.textSecondary },
-                  filter === f.key && styles.filterChipTextActive,
-                ]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        }
-        renderItem={({ item }) => (
-          <MovementRow movement={item} onDelete={deleteMovement} />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔍</Text>
-            <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
-              {t('movementsList.noMovements')}
-            </Text>
-          </View>
-        }
-      />
+      {filterChips}
+      {filter === 'hucha' ? (
+        <FlatList
+          data={sortedHuchaMovements}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => <HuchaMovementRow movement={item} />}
+          ListEmptyComponent={emptyComponent}
+        />
+      ) : (
+        <FlatList
+          data={filteredMovements}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <MovementRow movement={item} onDelete={deleteMovement} />
+          )}
+          ListEmptyComponent={emptyComponent}
+        />
+      )}
     </View>
   );
 };
@@ -171,6 +235,7 @@ const styles = StyleSheet.create({
   filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5 },
   filterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   filterChipTextActive: { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
+  filtersWrapper: { borderBottomWidth: 0.5 },
   listContent: { paddingHorizontal: 16, paddingBottom: 100 },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',

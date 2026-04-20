@@ -67,6 +67,19 @@ export interface Hucha {
   addedBy?: string;
 }
 
+export type HuchaMovementType = 'deposit' | 'withdrawal';
+
+export interface HuchaMovement {
+  id: string;
+  huchaId: string;
+  huchaName: string;
+  huchaColor: string;
+  type: HuchaMovementType;
+  amount: number;
+  date: string;
+  createdAt: string;
+}
+
 // Resumen mensual calculado
 export interface MonthlySummary {
   totalIncome: number;

@@ -12,6 +12,9 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
+import { colors } from '../../theme';
+import { HuchaMovementType } from '../../types';
+import { formatDate } from '../../utils/dateFormat';
 
 type RouteParams = { HuchaDetail: { huchaId: string } };
 
@@ -41,12 +44,14 @@ const formatNextDate = (isoDate?: string): string => {
 const AddMoneyModal = ({
   visible,
   huchaColor,
+  huchaCurrentAmount,
   onConfirm,
   onDismiss,
 }: {
   visible: boolean;
   huchaColor: string;
-  onConfirm: (amount: number) => void;
+  huchaCurrentAmount: number;
+  onConfirm: (amount: number, type: HuchaMovementType) => void;
   onDismiss: () => void;
 }) => {
   const { t } = useTranslation();
@@ -54,6 +59,7 @@ const AddMoneyModal = ({
   const insets = useSafeAreaInsets();
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const [amount, setAmount] = useState('');
+  const [mode, setMode] = useState<HuchaMovementType>('deposit');
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -77,12 +83,21 @@ const AddMoneyModal = ({
   const handleConfirm = () => {
     const parsed = parseFloat(amount.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
-    onConfirm(parsed);
+    if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
+    onConfirm(parsed, mode);
     setAmount('');
+    setMode('deposit');
   };
 
-  const handleDismiss = () => { setAmount(''); onDismiss(); };
-  const isValid = parseFloat(amount.replace(',', '.')) > 0;
+  const handleDismiss = () => {
+    setAmount('');
+    setMode('deposit');
+    onDismiss();
+  };
+
+  const parsed = parseFloat(amount.replace(',', '.'));
+  const isValid = parsed > 0 && (mode === 'deposit' || parsed <= huchaCurrentAmount);
+  const activeColor = mode === 'deposit' ? huchaColor : colors.expense;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleDismiss}>
@@ -90,7 +105,31 @@ const AddMoneyModal = ({
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={handleDismiss} />
         <View style={[styles.sheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 16 }]}>
           <View style={[styles.sheetHandle, { backgroundColor: dc.border }]} />
-          <Text style={[styles.sheetTitle, { color: dc.textPrimary }]}>{t('hucha.addMoneyTitle')}</Text>
+
+          {/* Mode tabs */}
+          <View style={[styles.modeTabs, { backgroundColor: dc.background, borderColor: dc.border }]}>
+            <TouchableOpacity
+              style={[styles.modeTab, mode === 'deposit' && { backgroundColor: huchaColor }]}
+              onPress={() => setMode('deposit')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={15} color={mode === 'deposit' ? '#fff' : dc.textSecondary} />
+              <Text style={[styles.modeTabText, { color: mode === 'deposit' ? '#fff' : dc.textSecondary }]}>
+                {t('hucha.deposit')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeTab, mode === 'withdrawal' && { backgroundColor: colors.expense }]}
+              onPress={() => setMode('withdrawal')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="remove" size={15} color={mode === 'withdrawal' ? '#fff' : dc.textSecondary} />
+              <Text style={[styles.modeTabText, { color: mode === 'withdrawal' ? '#fff' : dc.textSecondary }]}>
+                {t('hucha.withdraw')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TextInput
             style={[styles.input, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
             placeholder={t('hucha.amount')}
@@ -100,6 +139,12 @@ const AddMoneyModal = ({
             onChangeText={setAmount}
             autoFocus
           />
+
+          {mode === 'withdrawal' && parsed > 0 && parsed > huchaCurrentAmount && (
+            <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
+          )}
+
+
           <View style={styles.sheetButtons}>
             <Button
               mode="outlined"
@@ -114,7 +159,7 @@ const AddMoneyModal = ({
               onPress={handleConfirm}
               disabled={!isValid}
               style={styles.saveButton}
-              buttonColor={huchaColor}
+              buttonColor={activeColor}
               textColor="#FFFFFF"
             >
               {t('hucha.save')}
@@ -133,7 +178,11 @@ const HuchaDetailScreen = () => {
   const route = useRoute<RouteProp<RouteParams, 'HuchaDetail'>>();
   const insets = useSafeAreaInsets();
 
-  const { huchas, addToHucha, deleteHucha, updateHucha, showAddMoneyModal, setShowAddMoneyModal } = useSavingsStore();
+  const {
+    huchas, huchaMovements,
+    addToHucha, deleteHucha, updateHucha,
+    showAddMoneyModal, setShowAddMoneyModal,
+  } = useSavingsStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -167,6 +216,10 @@ const HuchaDetailScreen = () => {
     );
   }
 
+  const recentMovements = huchaMovements
+    .filter(m => m.huchaId === hucha.id)
+    .slice(0, 4);
+
   const remaining = Math.max(hucha.targetAmount - hucha.currentAmount, 0);
   const monthsEstimate = hucha.isAutomatic && hucha.monthlyAmount && hucha.monthlyAmount > 0
     ? Math.ceil(remaining / hucha.monthlyAmount)
@@ -196,12 +249,12 @@ const HuchaDetailScreen = () => {
   };
 
   const handleQuickAdd = async (amount: number) => {
-    await addToHucha(hucha.id, amount);
+    await addToHucha(hucha.id, amount, 'deposit');
   };
 
-  const handleAddMoney = async (amount: number) => {
+  const handleAddMoney = async (amount: number, type: HuchaMovementType) => {
     setShowAddMoneyModal(false);
-    await addToHucha(hucha.id, amount);
+    await addToHucha(hucha.id, amount, type);
   };
 
   const handleToggleAutomatic = async (value: boolean) => {
@@ -249,10 +302,7 @@ const HuchaDetailScreen = () => {
         <View style={styles.fillWrapper}>
           <View style={[styles.fillContainer, { backgroundColor: dc.border }]}>
             <Animated.View
-              style={[
-                styles.fillBar,
-                { height: fillHeight, backgroundColor: hucha.color },
-              ]}
+              style={[styles.fillBar, { height: fillHeight, backgroundColor: hucha.color }]}
             />
             <View style={styles.fillOverlay}>
               <Text style={styles.fillPct}>{Math.round(pct)}%</Text>
@@ -323,11 +373,52 @@ const HuchaDetailScreen = () => {
           </View>
         </View>
 
+        {/* Mini historial de movimientos */}
+        {recentMovements.length > 0 && (
+          <View style={[styles.historyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginBottom: 12 }]}>
+              {t('hucha.history')}
+            </Text>
+            {recentMovements.map((m, idx) => {
+              const isDeposit = m.type === 'deposit';
+              const movColor = isDeposit ? colors.income : colors.expense;
+              return (
+                <View
+                  key={m.id}
+                  style={[
+                    styles.historyRow,
+                    idx < recentMovements.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: dc.border },
+                  ]}
+                >
+                  <View style={[styles.historyIconWrap, { backgroundColor: movColor + '20' }]}>
+                    <Ionicons
+                      name={isDeposit ? 'arrow-down' : 'arrow-up'}
+                      size={14}
+                      color={movColor}
+                    />
+                  </View>
+                  <View style={styles.historyInfo}>
+                    <Text style={[styles.historyLabel, { color: dc.textPrimary }]}>
+                      {isDeposit ? t('hucha.depositLabel') : t('hucha.withdrawalLabel')}
+                    </Text>
+                    <Text style={[styles.historyDate, { color: dc.textSecondary }]}>
+                      {formatDate(m.date)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.historyAmount, { color: movColor }]}>
+                    {isDeposit ? '+' : '-'}{m.amount.toFixed(2)} {currencySymbol}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
 
       <AddMoneyModal
         visible={showAddMoneyModal}
         huchaColor={hucha.color}
+        huchaCurrentAmount={hucha.currentAmount}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
       />
@@ -353,22 +444,11 @@ const styles = StyleSheet.create({
 
   fillWrapper: { alignItems: 'center', marginBottom: 24 },
   fillContainer: {
-    width: 160,
-    height: FILL_HEIGHT,
-    borderRadius: 24,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
+    width: 160, height: FILL_HEIGHT, borderRadius: 24,
+    overflow: 'hidden', justifyContent: 'flex-end',
   },
-  fillBar: {
-    width: '100%',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  fillOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  fillBar: { width: '100%', borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+  fillOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   fillPct: {
     fontSize: 32, fontFamily: 'Poppins_700Bold', color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
@@ -379,41 +459,47 @@ const styles = StyleSheet.create({
   targetAmount: { fontSize: 18, fontFamily: 'Poppins_400Regular', marginLeft: 4 },
   estimate: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', marginBottom: 28 },
 
-  sectionLabel: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-  },
+  sectionLabel: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
   quickRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  quickBtn: {
-    flex: 1, borderRadius: 12, borderWidth: 1,
-    paddingVertical: 12, alignItems: 'center',
-  },
+  quickBtn: { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
   quickBtnText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
 
-  automaticCard: {
-    borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 24,
-  },
+  automaticCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 16 },
   automaticRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  automaticIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-  },
+  automaticIconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   automaticInfo: { flex: 1 },
   automaticLabel: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
   automaticMeta: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
 
+  historyCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 24 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  historyIconWrap: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  historyInfo: { flex: 1 },
+  historyLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  historyDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 1 },
+  historyAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24,
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+
+  modeTabs: {
+    flexDirection: 'row', borderRadius: 12, borderWidth: 0.5,
+    padding: 4, gap: 4, marginBottom: 16,
   },
-  sheetHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
+  modeTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 9, borderRadius: 9,
   },
-  sheetTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
+  modeTabText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+
   input: {
     borderWidth: 1, borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 15, fontFamily: 'Poppins_400Regular', marginBottom: 12,
+    paddingVertical: 12, fontSize: 15, fontFamily: 'Poppins_400Regular', marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 12, fontFamily: 'Poppins_400Regular',
+    color: '#EF4444', marginBottom: 8, paddingHorizontal: 4,
   },
   sheetButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },

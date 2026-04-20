@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
-import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -44,15 +43,21 @@ const BalanceCard = ({
 };
 
 const SummaryCard = ({
-  label, amount, icon, color, currencySymbol,
+  label, amount, icon, color, currencySymbol, onPress,
 }: {
   label: string; amount: number;
   icon: keyof typeof Ionicons.glyphMap;
   color: string; currencySymbol: string;
+  onPress?: () => void;
 }) => {
   const { colors: dc } = useTheme();
   return (
-    <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+    <TouchableOpacity
+      style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
       <View style={[styles.summaryIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
@@ -60,7 +65,7 @@ const SummaryCard = ({
         {amount.toFixed(2)} {currencySymbol}
       </Text>
       <Text style={[styles.summaryLabel, { color: dc.textSecondary }]}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -115,15 +120,12 @@ const HomeScreen = () => {
   const navigation = useNavigation<any>();
 
   const { getMonthlySummary, getRecentMovements } = useMovementStore();
-  const { getTotalSaved, getTotalTarget } = useSavingsStore();
 
   const summary = getMonthlySummary();
   const recentMovements = getRecentMovements(5);
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
-  const huchaSaldo = getTotalSaved();
-  const huchaTarget = getTotalTarget();
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -146,6 +148,7 @@ const HomeScreen = () => {
             icon="arrow-down-circle"
             color={colors.income}
             currencySymbol={currencySymbol}
+            onPress={() => navigation.navigate('HistorialTab', { initialFilter: 'income' })}
           />
           <SummaryCard
             label={t('home.expenses')}
@@ -153,30 +156,9 @@ const HomeScreen = () => {
             icon="arrow-up-circle"
             color={colors.expense}
             currencySymbol={currencySymbol}
+            onPress={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
           />
         </View>
-
-        <TouchableOpacity
-          style={[styles.huchaWidget, { backgroundColor: dc.primary }]}
-          onPress={() => navigation.navigate('HuchaTab')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.huchaEmoji}>🐷</Text>
-          <View style={styles.huchaInfo}>
-            <Text style={styles.huchaLabel}>{t('hucha.title')}</Text>
-            <Text style={styles.huchaAmount}>
-              {huchaSaldo.toFixed(2)} {currencySymbol}
-            </Text>
-            {huchaTarget > 0 && (
-              <View style={styles.huchaMiniBar}>
-                <View style={[styles.huchaMiniBarFill, {
-                  width: `${Math.min(Math.round((huchaSaldo / huchaTarget) * 100), 100)}%` as any,
-                }]} />
-              </View>
-            )}
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
 
         <View style={styles.recentSection}>
           <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
@@ -240,23 +222,6 @@ const styles = StyleSheet.create({
   },
   summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
   summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
-  huchaWidget: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 16, marginBottom: 24,
-    borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, gap: 12,
-  },
-  huchaEmoji: { fontSize: 28 },
-  huchaInfo: { flex: 1 },
-  huchaLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontFamily: 'Poppins_400Regular' },
-  huchaAmount: { color: '#FFFFFF', fontSize: 20, fontFamily: 'Poppins_700Bold' },
-  huchaMiniBar: {
-    height: 3, borderRadius: 2, marginTop: 6,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  huchaMiniBarFill: {
-    height: 3, borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-  },
   recentSection: { paddingHorizontal: 16 },
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
   movementRow: {
