@@ -31,6 +31,8 @@
     "expenses": "Gastos",
     "savings": "Ahorros",
     "recentMovements": "Últimos Movimientos",
+    "whereMoneyGoes": "Donde va tu dinero",
+    "noExpenses": "Sin gastos este mes",
     "noMovements": "Sin movimientos",
     "noMovementsSubtitle": "Pulsa + para añadir tu primer movimiento",
     "month_0": "Enero",

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -11,9 +11,8 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { Movement, MovementType } from '../../types';
+import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
-import { formatDate } from '../../utils/dateFormat';
 
 const BalanceCard = ({
   balance, month, year, currencySymbol,
@@ -69,63 +68,40 @@ const SummaryCard = ({
   );
 };
 
-const MovementRow = ({ movement }: { movement: Movement }) => {
-  const { t } = useTranslation();
-  const { getCurrencySymbol } = useSettingsStore();
-  const { getCategoryName } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
-  const { getSharedCategoryName } = useSharedCategoryStore();
-  const { colors: dc } = useTheme();
-
-  const currencySymbol = isSharedMode
-    ? getSharedCurrencySymbol()
-    : getCurrencySymbol();
-
-  const getCatName = (id: string, type: MovementType) =>
-    isSharedMode
-      ? getSharedCategoryName(id, type, t)
-      : getCategoryName(id, type, t);
-
-  const isIncome = movement.type === 'income';
-  const isSaving = (movement.type as string) === 'saving';
-  const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
-  const icon: keyof typeof Ionicons.glyphMap = isIncome
-    ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
-
-  return (
-    <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      <View style={styles.movementInfo}>
-        <Text style={[styles.movementDescription, { color: dc.textPrimary }]} numberOfLines={1}>
-          {getCatName(movement.category, movement.type)}
-        </Text>
-        <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-          {formatDate(movement.date)}
-        </Text>
-      </View>
-      <Text style={[styles.movementAmount, { color }]}>
-        {isIncome ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
-      </Text>
-    </View>
-  );
-};
-
 const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const { getCurrencySymbol } = useSettingsStore();
+  const { getCategoryName } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { getSharedCategoryName } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
-  const { getMonthlySummary, getRecentMovements } = useMovementStore();
+  const { getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
 
   const summary = getMonthlySummary();
-  const recentMovements = getRecentMovements(5);
-  const currencySymbol = isSharedMode
-    ? getSharedCurrencySymbol()
-    : getCurrencySymbol();
+  const monthMovements = getMovementsForSelectedMonth();
+  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+
+  const getCatName = (id: string, type: MovementType) =>
+    isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
+
+  const topExpenseCategories = useMemo(() => {
+    const expenses = monthMovements.filter(m => m.type === 'expense');
+    const byCategory: Record<string, number> = {};
+    expenses.forEach(m => {
+      byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount;
+    });
+    const total = summary.totalExpense;
+    return Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: total > 0 ? (amount / total) * 100 : 0,
+      }));
+  }, [monthMovements, summary.totalExpense]);
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -160,23 +136,42 @@ const HomeScreen = () => {
           />
         </View>
 
-        <View style={styles.recentSection}>
+        {/* TOP CATEGORÍAS DE GASTO */}
+        <View style={styles.topSection}>
           <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-            {t('home.recentMovements')}
+            {t('home.whereMoneyGoes')}
           </Text>
-          {recentMovements.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💸</Text>
-              <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
-                {t('home.noMovements')}
-              </Text>
-              <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
-                {t('home.noMovementsSubtitle')}
+          {topExpenseCategories.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
+                {t('home.noExpenses')}
               </Text>
             </View>
           ) : (
-            recentMovements.map((movement) => (
-              <MovementRow key={movement.id} movement={movement} />
+            topExpenseCategories.map(({ category, amount, percentage }) => (
+              <View key={category} style={styles.categoryItem}>
+                <View style={styles.categoryHeader}>
+                  <Text style={[styles.categoryName, { color: dc.textPrimary }]} numberOfLines={1}>
+                    {getCatName(category, 'expense')}
+                  </Text>
+                  <View style={styles.categoryRight}>
+                    <Text style={[styles.categoryPercent, { color: dc.textSecondary }]}>
+                      {Math.round(percentage)}%
+                    </Text>
+                    <Text style={[styles.categoryAmount, { color: colors.expense }]}>
+                      {amount.toFixed(2)} {currencySymbol}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[styles.barTrack, { backgroundColor: dc.border }]}>
+                  <View
+                    style={[
+                      styles.barFill,
+                      { width: `${percentage}%`, backgroundColor: colors.expense },
+                    ]}
+                  />
+                </View>
+              </View>
             ))
           )}
         </View>
@@ -222,24 +217,20 @@ const styles = StyleSheet.create({
   },
   summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
   summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
-  recentSection: { paddingHorizontal: 16 },
+  topSection: { paddingHorizontal: 16 },
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
-  movementRow: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
+  emptyCard: {
+    borderRadius: 16, padding: 24, borderWidth: 0.5, alignItems: 'center',
   },
-  movementIcon: {
-    width: 42, height: 42, borderRadius: 21,
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
-  },
-  movementInfo: { flex: 1 },
-  movementDescription: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
-  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center' },
+  emptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+  categoryItem: { marginBottom: 16 },
+  categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  categoryName: { fontSize: 14, fontFamily: 'Poppins_500Medium', flex: 1, marginRight: 12 },
+  categoryRight: { alignItems: 'flex-end' },
+  categoryPercent: { fontSize: 11, fontFamily: 'Poppins_400Regular' },
+  categoryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  barTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: 4 },
 });
 
 export default HomeScreen;

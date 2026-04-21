@@ -1,29 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, StyleSheet, ScrollView,
-  TouchableOpacity, Dimensions, Modal, FlatList,
+  TouchableOpacity, Modal, FlatList,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { BarChart } from 'react-native-gifted-charts';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
-import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType, HuchaMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
-import PremiumModal from '../../components/common/PremiumModal';
 import { formatDate } from '../../utils/dateFormat';
 
 type AnnualFilterType = MovementType | 'hucha';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const AnnualCard = ({
   label, amount, color, icon, currencySymbol,
@@ -135,7 +131,6 @@ const AnnualScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { huchaMovements } = useSavingsStore();
-  const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { colors: dc } = useTheme();
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -271,11 +266,6 @@ const AnnualScreen = () => {
 
   const hasData = totals.income > 0 || totals.expense > 0;
 
-  const barData = annualData.flatMap((m, i) => [
-    { value: m.income, label: SHORT_MONTHS[i], frontColor: colors.income, spacing: 2 },
-    { value: m.expense, frontColor: colors.expense, spacing: 12 },
-  ]);
-
   const TYPE_OPTIONS: {
     type: AnnualFilterType; label: string;
     color: string; icon: keyof typeof Ionicons.glyphMap;
@@ -397,16 +387,9 @@ const AnnualScreen = () => {
                 {/* FILTRO CATEGORÍA — solo si hay tipo income/expense */}
                 {selectedTypeFilter && selectedTypeFilter !== 'hucha' && monthCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
-                    <View style={styles.categoryFilterHeader}>
-                      <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
-                        {t('annual.filterByCategory')}
-                      </Text>
-                      {!isPremium && (
-                        <View style={styles.premiumBadge}>
-                          <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
-                        </View>
-                      )}
-                    </View>
+                    <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
+                      {t('annual.filterByCategory')}
+                    </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.categoryChips}>
                         {monthCategories.map((cat) => {
@@ -422,15 +405,9 @@ const AnnualScreen = () => {
                                   backgroundColor: dc.primary,
                                   borderColor: dc.primary,
                                 },
-                                !isPremium && styles.categoryChipLocked,
                               ]}
-                              onPress={() => requirePremium(() => {
-                                setSelectedCategory(selectedCategory === cat ? null : cat);
-                              })}
+                              onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
                             >
-                              {!isPremium && (
-                                <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
-                              )}
                               <Text style={[
                                 styles.categoryChipText, { color: dc.textSecondary },
                                 selectedCategory === cat && { color: '#FFFFFF' },
@@ -577,16 +554,9 @@ const AnnualScreen = () => {
                 {/* FILTRO CATEGORÍA ANUAL — solo si hay tipo income/expense */}
                 {annualTypeFilter && annualTypeFilter !== 'hucha' && annualCategories.length > 0 && (
                   <View style={styles.categoryFilterSection}>
-                    <View style={styles.categoryFilterHeader}>
-                      <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
-                        {t('annual.filterByCategory')}
-                      </Text>
-                      {!isPremium && (
-                        <View style={styles.premiumBadge}>
-                          <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
-                        </View>
-                      )}
-                    </View>
+                    <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
+                      {t('annual.filterByCategory')}
+                    </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.categoryChips}>
                         {annualCategories.map((cat) => {
@@ -602,15 +572,9 @@ const AnnualScreen = () => {
                                   backgroundColor: dc.primary,
                                   borderColor: dc.primary,
                                 },
-                                !isPremium && styles.categoryChipLocked,
                               ]}
-                              onPress={() => requirePremium(() => {
-                                setAnnualCategoryFilter(annualCategoryFilter === cat ? null : cat);
-                              })}
+                              onPress={() => setAnnualCategoryFilter(annualCategoryFilter === cat ? null : cat)}
                             >
-                              {!isPremium && (
-                                <Ionicons name="lock-closed" size={10} color={dc.textSecondary} />
-                              )}
                               <Text style={[
                                 styles.categoryChipText, { color: dc.textSecondary },
                                 annualCategoryFilter === cat && { color: '#FFFFFF' },
@@ -663,49 +627,6 @@ const AnnualScreen = () => {
               </>
             )}
 
-            {/* GRÁFICA — abajo del todo */}
-            <View style={[styles.chartCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-                {t('annual.monthlyChart')}
-              </Text>
-              <Text style={[styles.chartHint, { color: dc.textSecondary }]}>
-                {t('annual.tapMonthHint')}
-              </Text>
-              <BarChart
-                data={barData}
-                barWidth={10}
-                spacing={2}
-                roundedTop
-                hideRules
-                xAxisThickness={1}
-                yAxisThickness={0}
-                xAxisColor={dc.border}
-                yAxisTextStyle={{ color: dc.textSecondary, fontSize: 10 }}
-                noOfSections={4}
-                maxValue={
-                  Math.max(...annualData.map(m => Math.max(m.income, m.expense))) * 1.2 || 100
-                }
-                width={SCREEN_WIDTH - 80}
-                height={180}
-                labelWidth={24}
-                xAxisLabelTextStyle={{ color: dc.textSecondary, fontSize: 9 }}
-                backgroundColor={dc.surface}
-              />
-              <View style={styles.legend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
-                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
-                    {t('annual.totalIncome')}
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
-                  <Text style={[styles.legendText, { color: dc.textSecondary }]}>
-                    {t('annual.totalExpenses')}
-                  </Text>
-                </View>
-              </View>
-            </View>
           </>
         )}
       </ScrollView>
@@ -743,11 +664,6 @@ const AnnualScreen = () => {
         onDismiss={() => setShowMonthModal(false)}
       />
 
-      <PremiumModal
-        visible={showModal}
-        onDismiss={() => setShowModal(false)}
-        onPurchase={() => setShowModal(false)}
-      />
     </View>
   );
 };

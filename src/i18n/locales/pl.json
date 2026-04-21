@@ -31,6 +31,8 @@
     "expenses": "Wydatki",
     "savings": "Oszczędności",
     "recentMovements": "Ostatnie Transakcje",
+    "whereMoneyGoes": "Gdzie idą Twoje pieniądze",
+    "noExpenses": "Brak wydatków w tym miesiącu",
     "noMovements": "Brak transakcji",
     "noMovementsSubtitle": "Naciśnij +, aby dodać pierwszą transakcję",
     "month_0": "Styczeń",

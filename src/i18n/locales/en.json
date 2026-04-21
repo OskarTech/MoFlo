@@ -31,6 +31,8 @@
     "expenses": "Expenses",
     "savings": "Savings",
     "recentMovements": "Recent Movements",
+    "whereMoneyGoes": "Where your money goes",
+    "noExpenses": "No expenses this month",
     "noMovements": "No movements yet",
     "noMovementsSubtitle": "Tap + to add your first movement",
     "month_0": "January",
