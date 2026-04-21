@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, StyleSheet, Modal,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Platform, Linking
 } from 'react-native';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,10 @@ import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
 
-const REVENUECAT_API_KEY = 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
+// Asignación estricta para evitar errores de tipo en TypeScript
+const REVENUECAT_API_KEY = Platform.OS === 'ios'
+  ? 'appl_YQYNRiBuRZKoXZvhaOnPNMJbSES'
+  : 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
 
 interface Props {
   visible: boolean;
@@ -43,7 +46,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       const offering: PurchasesOffering | null = offerings.current;
 
       if (!offering || !offering.lifetime) {
-        Alert.alert('Error', t('premium.errorNoProduct'));
+        Alert.alert('Error', t('premium.errorNoProduct', 'Producto no encontrado.'));
         return;
       }
 
@@ -52,11 +55,11 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       if (customerInfo.entitlements.active['premium']) {
         await setPremium(true);
         onPurchase();
-        Alert.alert('✅', t('premium.successMessage'));
+        Alert.alert('✅', t('premium.successMessage', '¡Gracias por tu compra!'));
       }
     } catch (e: any) {
       if (!e.userCancelled) {
-        Alert.alert('Error', t('premium.errorPurchase'));
+        Alert.alert('Error', t('premium.errorPurchase', 'Ha ocurrido un error con la compra.'));
       }
     } finally {
       setLoading(false);
@@ -72,12 +75,12 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       if (customerInfo.entitlements.active['premium']) {
         await setPremium(true);
         onPurchase();
-        Alert.alert('✅', t('premium.restoreSuccess'));
+        Alert.alert('✅', t('premium.restoreSuccess', 'Compras restauradas con éxito.'));
       } else {
-        Alert.alert('', t('premium.restoreNotFound'));
+        Alert.alert('', t('premium.restoreNotFound', 'No se han encontrado compras para restaurar.'));
       }
     } catch (e) {
-      Alert.alert('Error', t('premium.errorRestore'));
+      Alert.alert('Error', t('premium.errorRestore', 'Error al restaurar las compras.'));
     } finally {
       setRestoring(false);
     }
@@ -155,6 +158,17 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
             </Text>
           </TouchableOpacity>
 
+          {/* ENLACES LEGALES */}
+          <View style={styles.legalContainer}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}>
+              <Text style={[styles.legalText, { color: dc.textSecondary }]}>Términos de Servicio</Text>
+            </TouchableOpacity>
+            <Text style={[styles.legalSeparator, { color: dc.textSecondary }]}>|</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}>
+              <Text style={[styles.legalText, { color: dc.textSecondary }]}>Política de Privacidad</Text>
+            </TouchableOpacity>
+          </View>
+
         </View>
       </View>
     </Modal>
@@ -200,10 +214,27 @@ const styles = StyleSheet.create({
   featureText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   purchaseButton: { marginHorizontal: 24, borderRadius: 12 },
   purchaseButtonContent: { height: 52 },
-  restoreButton: { padding: 12, alignItems: 'center' },
+  restoreButton: { padding: 12, alignItems: 'center', marginTop: 4 },
   restoreText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
   dismissButton: { paddingBottom: 16, alignItems: 'center' },
   dismissText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  legalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 24,
+    gap: 8,
+  },
+  legalText: {
+    fontSize: 11,
+    fontFamily: 'Poppins_400Regular',
+    textDecorationLine: 'underline',
+    opacity: 0.7,
+  },
+  legalSeparator: {
+    fontSize: 11,
+    opacity: 0.5,
+  },
 });
 
 export default PremiumModal;
