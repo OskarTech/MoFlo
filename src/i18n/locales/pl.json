@@ -62,21 +62,25 @@
   "recurringDay": "Dzień miesiąca powtarzania",
     "categories": {
       "salary": "Wynagrodzenie",
+      "sales": "Sprzedaż",
+      "gift": "Prezenty",
+      "bonus": "Bonus",
+      "housing": "Dom",
+      "food": "Supermarket",
+      "transport": "Transport",
+      "entertainment": "Rozrywka",
+      "subscriptions": "Subskrypcje",
+      "unexpected": "Niespodziewane",
+      "other": "Inne",
       "freelance": "Freelance",
       "investment": "Inwestycja",
-      "gift": "Prezent",
-      "housing": "Mieszkanie / Czynsz",
-      "food": "Jedzenie",
-      "transport": "Transport",
       "health": "Zdrowie",
-      "entertainment": "Rozrywka",
       "shopping": "Zakupy",
       "education": "Edukacja",
       "bills": "Rachunki",
       "emergency": "Fundusz awaryjny",
       "retirement": "Emerytura",
-      "travel": "Podróże",
-      "other": "Inne"
+      "travel": "Podróże"
     }
   },
   "recurring": {
@@ -104,7 +108,8 @@
   "noMovements": "Brak transakcji",
   "noMovementsSubtitle": "Spróbuj zmienić filtr lub dodaj nową transakcję",
   "deleteConfirm": "Usunąć tę transakcję?",
-  "recurring": "Cykliczne"
+  "recurring": "Cykliczne",
+  "fixed": "Stałe"
   },
   "annual": {
   "title": "Podsumowanie Roczne",

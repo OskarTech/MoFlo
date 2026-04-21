@@ -62,21 +62,25 @@
   "recurringDay": "Day of month it repeats",
     "categories": {
       "salary": "Salary",
+      "sales": "Sales",
+      "gift": "Gifts",
+      "bonus": "Bonus",
+      "housing": "Home",
+      "food": "Supermarket",
+      "transport": "Transport",
+      "entertainment": "Leisure",
+      "subscriptions": "Subscriptions",
+      "unexpected": "Unexpected",
+      "other": "Others",
       "freelance": "Freelance",
       "investment": "Investment",
-      "gift": "Gift",
-      "housing": "Housing / Rent",
-      "food": "Food",
-      "transport": "Transport",
       "health": "Health",
-      "entertainment": "Entertainment",
       "shopping": "Shopping",
       "education": "Education",
       "bills": "Bills",
       "emergency": "Emergency Fund",
       "retirement": "Retirement",
-      "travel": "Travel",
-      "other": "Other"
+      "travel": "Travel"
     } 
   },
   "recurring": {
@@ -105,7 +109,8 @@
   "noMovements": "No movements found",
   "noMovementsSubtitle": "Try changing the filter or add a new movement",
   "deleteConfirm": "Delete this movement?",
-  "recurring": "Recurring"
+  "recurring": "Recurring",
+  "fixed": "Fixed"
   },
   "annual": {
   "title": "Annual Summary",

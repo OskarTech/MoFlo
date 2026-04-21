@@ -62,21 +62,25 @@
   "recurringDay": "Día del mes que se repite",
     "categories": {
       "salary": "Nómina",
+      "sales": "Ventas",
+      "gift": "Regalos",
+      "bonus": "Bonus",
+      "housing": "Hogar",
+      "food": "Supermercado",
+      "transport": "Transporte",
+      "entertainment": "Ocio",
+      "subscriptions": "Suscripciones",
+      "unexpected": "Imprevistos",
+      "other": "Otros",
       "freelance": "Freelance",
       "investment": "Inversión",
-      "gift": "Regalo",
-      "housing": "Vivienda / Alquiler",
-      "food": "Alimentación",
-      "transport": "Transporte",
       "health": "Salud",
-      "entertainment": "Ocio",
       "shopping": "Compras",
       "education": "Educación",
       "bills": "Facturas",
       "emergency": "Fondo de emergencia",
       "retirement": "Jubilación",
-      "travel": "Viajes",
-      "other": "Otro"
+      "travel": "Viajes"
     }
   }, 
   "recurring": {
@@ -105,7 +109,8 @@
   "noMovements": "Sin movimientos",
   "noMovementsSubtitle": "Prueba cambiando el filtro o añade un nuevo movimiento",
   "deleteConfirm": "¿Eliminar este movimiento?",
-  "recurring": "Recurrente"
+  "recurring": "Recurrente",
+  "fixed": "Fijos"
   },
   "annual": {
   "title": "Resumen Anual",

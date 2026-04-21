@@ -15,11 +15,12 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
-import { Movement, MovementType, HuchaMovement } from '../../types';
+import { Movement, MovementType, HuchaMovement, RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import AddRecurringModal from '../../components/movements/AddRecurringModal';
 import { formatDate } from '../../utils/dateFormat';
 
-type FilterType = 'all' | MovementType | 'hucha';
+type FilterType = MovementType | 'hucha' | 'recurring';
 
 const MovementRow = ({
   movement, onDelete,
@@ -124,34 +125,96 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
   );
 };
 
+const RecurringCard = ({
+  item, onDelete,
+}: {
+  item: RecurringMovement; onDelete: (id: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { colors: dc } = useTheme();
+
+  const color = item.type === 'income' ? colors.income : colors.expense;
+  const icon: keyof typeof Ionicons.glyphMap = item.type === 'income'
+    ? 'arrow-down-circle' : 'arrow-up-circle';
+  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+
+  const handleDelete = () => {
+    Alert.alert(
+      t('recurring.deleteConfirm'),
+      item.description,
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        { text: 'OK', style: 'destructive', onPress: () => onDelete(item.id) },
+      ]
+    );
+  };
+
+  return (
+    <View style={[styles.recurringCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <View style={[styles.dayBadge, { backgroundColor: dc.primary + '20' }]}>
+        <Text style={[styles.dayNumber, { color: dc.primary }]}>{item.recurringDay}</Text>
+        <Text style={[styles.dayLabel, { color: dc.primary }]}>{t('recurring.dayShort') ?? 'día'}</Text>
+      </View>
+      <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={22} color={color} />
+      </View>
+      <View style={styles.movementInfo}>
+        <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
+          {item.description}
+        </Text>
+        <Text style={[styles.movementAmount, { color, fontSize: 12 }]}>
+          {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
+        </Text>
+      </View>
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+        <Ionicons name="trash-outline" size={18} color={colors.expense} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 const MovementsScreen = () => {
   const { t } = useTranslation();
-  const { movements, deleteMovement } = useMovementStore();
+  const {
+    movements, deleteMovement,
+    recurringMovements, deleteRecurringMovement,
+    showRecurringModal, setShowRecurringModal,
+    setActiveHistorialFilter,
+  } = useMovementStore();
   const { huchaMovements } = useSavingsStore();
   const { colors: dc } = useTheme();
   const route = useRoute<any>();
-  const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'all');
+  const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const scrollRef = useRef<ScrollView>(null);
+  const filterPositions = useRef<{ [key: string]: number }>({});
 
   useEffect(() => {
     if (route.params?.initialFilter) {
       setFilter(route.params.initialFilter);
     }
   }, [route.params?.initialFilter]);
-  const filterPositions = useRef<{ [key: string]: number }>({});
+
+  useEffect(() => {
+    setActiveHistorialFilter(filter);
+  }, [filter]);
 
   const filteredMovements = [...movements]
-    .filter((m) => filter === 'all' || m.type === filter)
+    .filter((m) => m.type === filter)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const sortedHuchaMovements = [...huchaMovements]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const sortedRecurring = [...recurringMovements]
+    .sort((a, b) => a.recurringDay - b.recurringDay);
+
   const filters: { key: FilterType; label: string; color: string }[] = [
-    { key: 'all', label: t('movementsList.all'), color: dc.primary },
     { key: 'income', label: t('movementsList.income'), color: colors.income },
     { key: 'expense', label: t('movementsList.expenses'), color: colors.expense },
     { key: 'hucha', label: t('movementsList.hucha'), color: colors.savings },
+    { key: 'recurring', label: t('movementsList.fixed'), color: dc.primary },
   ];
 
   const handleFilterPress = (key: FilterType) => {
@@ -191,7 +254,7 @@ const MovementsScreen = () => {
     </View>
   );
 
-  const emptyComponent = (
+  const emptyMovements = (
     <View style={styles.emptyState}>
       <Text style={styles.emptyIcon}>{filter === 'hucha' ? '🐷' : '🔍'}</Text>
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
@@ -200,10 +263,23 @@ const MovementsScreen = () => {
     </View>
   );
 
+  const emptyRecurring = (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>🔄</Text>
+      <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
+        {t('recurring.noRecurring')}
+      </Text>
+      <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
+        {t('recurring.noRecurringSubtitle')}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.historial')} />
       {filterChips}
+
       {filter === 'hucha' ? (
         <FlatList
           data={sortedHuchaMovements}
@@ -211,8 +287,20 @@ const MovementsScreen = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => <HuchaMovementRow movement={item} />}
-          ListEmptyComponent={emptyComponent}
+          ListEmptyComponent={emptyMovements}
         />
+      ) : filter === 'recurring' ? (
+        <ScrollView
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {sortedRecurring.length === 0
+            ? emptyRecurring
+            : sortedRecurring.map((item) => (
+                <RecurringCard key={item.id} item={item} onDelete={deleteRecurringMovement} />
+              ))
+          }
+        </ScrollView>
       ) : (
         <FlatList
           data={filteredMovements}
@@ -222,9 +310,14 @@ const MovementsScreen = () => {
           renderItem={({ item }) => (
             <MovementRow movement={item} onDelete={deleteMovement} />
           )}
-          ListEmptyComponent={emptyComponent}
+          ListEmptyComponent={emptyMovements}
         />
       )}
+
+      <AddRecurringModal
+        visible={showRecurringModal}
+        onDismiss={() => setShowRecurringModal(false)}
+      />
     </View>
   );
 };
@@ -236,7 +329,7 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   filterChipTextActive: { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
   filtersWrapper: { borderBottomWidth: 0.5 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 100 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
@@ -251,9 +344,24 @@ const styles = StyleSheet.create({
   recurringBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 3 },
   movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8 },
+  recurringCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5, gap: 10,
+  },
+  dayBadge: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  dayNumber: { fontSize: 14, fontFamily: 'Poppins_700Bold', lineHeight: 16 },
+  dayLabel: { fontSize: 9, fontFamily: 'Poppins_400Regular' },
+  deleteButton: { padding: 4 },
   emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },
+  emptySubtext: {
+    fontSize: 13, fontFamily: 'Poppins_400Regular',
+    textAlign: 'center', paddingHorizontal: 32, marginTop: 8,
+  },
 });
 
 export default MovementsScreen;

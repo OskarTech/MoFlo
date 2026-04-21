@@ -37,6 +37,7 @@ interface MovementStore {
   selectedAnnualYear: number;
   sharedAccountId: string | null;
   showRecurringModal: boolean;
+  activeHistorialFilter: string;
 
   loadData: () => Promise<void>;
   loadSharedData: (accountId: string) => Promise<void>;
@@ -54,6 +55,7 @@ interface MovementStore {
   setSelectedAnnualYear: (year: number) => void;
   setSharedAccountId: (id: string | null) => void;
   setShowRecurringModal: (show: boolean) => void;
+  setActiveHistorialFilter: (filter: string) => void;
   resetStore: () => void;
 
   getMovementsForSelectedMonth: () => Movement[];
@@ -79,6 +81,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   selectedAnnualYear: now.getFullYear(),
   sharedAccountId: null,
   showRecurringModal: false,
+  activeHistorialFilter: 'income',
 
   resetStore: () => set({
     movements: [],
@@ -93,6 +96,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
 
   setSharedAccountId: (id) => set({ sharedAccountId: id }),
   setShowRecurringModal: (show) => set({ showRecurringModal: show }),
+  setActiveHistorialFilter: (filter) => set({ activeHistorialFilter: filter }),
 
   // ── CARGAR DATOS INDIVIDUALES ──────────────────────────────────
   loadData: async () => {

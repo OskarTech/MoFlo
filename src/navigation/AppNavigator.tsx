@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import HomeScreen from '../screens/app/HomeScreen';
 import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
-import RecurringScreen from '../screens/app/RecurringScreen';
 import HuchaScreen from '../screens/app/HuchaScreen';
 import HuchaDetailScreen from '../screens/app/HuchaDetailScreen';
 import { useSavingsStore } from '../store/savingsStore';
@@ -57,7 +56,7 @@ const AppNavigator = () => {
       }
     } else if (current === 'HuchaDetail') {
       useSavingsStore.getState().setShowAddMoneyModal(true);
-    } else if (current === 'Recurring') {
+    } else if (current === 'HistorialTab' && useMovementStore.getState().activeHistorialFilter === 'recurring') {
       useMovementStore.getState().setShowRecurringModal(true);
     } else {
       setMovementModalVisible(true);
@@ -142,15 +141,6 @@ const AppNavigator = () => {
         <Tab.Screen
           name="HuchaDetail"
           component={HuchaDetailScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="Recurring"
-          component={RecurringScreen}
           options={{
             tabBarButton: () => null,
             tabBarLabel: '',
