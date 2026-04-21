@@ -6,7 +6,8 @@ import en from './locales/en.json';
 import es from './locales/es.json';
 import pl from './locales/pl.json';
 
-const languageTag = Localization.getLocales()[0]?.languageTag ?? 'en';
+const rawTag = Localization.getLocales()[0]?.languageTag ?? 'en';
+const languageTag = rawTag.split('-')[0];
 
 i18n.use(initReactI18next).init({
   compatibilityJSON: 'v4',

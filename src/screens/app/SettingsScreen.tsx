@@ -25,6 +25,7 @@ import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import ColorPaletteModal from '../../components/common/ColorPaletteModal';
+import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
 import Constants from 'expo-constants';
@@ -167,7 +168,7 @@ const SettingsScreen = () => {
         content: { title: '💰 MoFlo', body: t('settings.notifMovementsSubtitle'), sound: true },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 0 },
       });
-      Alert.alert('✅', 'Recibirás un recordatorio diario a las 20:00h');
+      Alert.alert('✅', t('settings.notifDailyEnabled'));
     } else {
       await Notifications.cancelAllScheduledNotificationsAsync();
     }
@@ -524,7 +525,16 @@ const SettingsScreen = () => {
       <SelectModal
         visible={showLanguageModal} title={t('settings.selectLanguage')}
         options={LANGUAGES} selectedValue={language}
-        onSelect={code => saveSettings({ language: code })}
+        onSelect={async (code) => {
+          await saveSettings({ language: code });
+          if (dailyNotifEnabled) {
+            await Notifications.cancelAllScheduledNotificationsAsync();
+            await Notifications.scheduleNotificationAsync({
+              content: { title: '💰 MoFlo', body: i18n.t('settings.notifMovementsSubtitle'), sound: true },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 0 },
+            });
+          }
+        }}
         onDismiss={() => setShowLanguageModal(false)}
       />
       <SelectModal

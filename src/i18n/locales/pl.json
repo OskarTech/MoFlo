@@ -199,6 +199,7 @@
   "notifications": "Powiadomienia",   
   "notifMovements": "Przypomnienia o ruchach", 
   "notifMovementsSubtitle": "Codzienne przypomnienie o dodaniu ruchów",
+  "notifDailyEnabled": "Otrzymasz codzienne przypomnienie o 20:00",
   "notifEmail": "Powiadomienia email", 
   "themeLight": "Zawsze jasny",
   "themeDark": "Zawsze ciemny",

@@ -198,6 +198,7 @@
   "notifMovements": "Movement reminders",  
   "notifications": "Notifications",   
   "notifMovementsSubtitle": "Daily reminder to add your movements",
+  "notifDailyEnabled": "You'll receive a daily reminder at 8:00 PM",
   "notifEmail": "Email notifications",
   "version": "Version",
   "madeWith": "Developed by OskarTech",
