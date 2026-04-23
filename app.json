@@ -20,6 +20,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
       "buildNumber": "13",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

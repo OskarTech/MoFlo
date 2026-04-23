@@ -20,13 +20,15 @@ import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
+import { usePremiumStore } from '../../store/premiumStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import i18n from '../../i18n';
-import { logout } from '../../services/firebase/auth.service';
+import { logout, signInWithApple } from '../../services/firebase/auth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
 import Constants from 'expo-constants';
 
@@ -128,6 +130,7 @@ const SettingsScreen = () => {
   const user = auth().currentUser;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
+  const [isDeleting, setIsDeleting] = useState(false);
   const [dailyNotifEnabled, setDailyNotifEnabled] = useState(false);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -232,6 +235,116 @@ const SettingsScreen = () => {
             } catch (e) {
               Alert.alert('Error', 'No se pudieron eliminar los datos.');
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccount'),
+      t('settings.deleteAccountWarning'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteAccount'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('settings.deleteAccountConfirm'),
+              t('settings.deleteAccountConfirmMessage'),
+              [
+                { text: t('settings.cancel'), style: 'cancel' },
+                {
+                  text: t('settings.deleteAccount'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      const uid = auth().currentUser?.uid;
+                      if (!uid) throw new Error('No user');
+
+                      useSharedAccountStore.getState().unsubscribeAll();
+
+                      const { sharedAccount } = useSharedAccountStore.getState();
+                      if (sharedAccount) {
+                        const accountId = sharedAccount.id;
+                        if (sharedAccount.createdBy === uid) {
+                          const batch = firestore().batch();
+                          for (const col of ['movements', 'recurring', 'categories', 'savings']) {
+                            const snap = await firestore()
+                              .collection('sharedAccounts').doc(accountId)
+                              .collection(col).get();
+                            snap.docs.forEach(doc => batch.delete(doc.ref));
+                          }
+                          await batch.commit();
+                          await firestore().collection('sharedAccounts').doc(accountId).delete();
+                        } else {
+                          const updatedMembers = sharedAccount.members.filter(m => m !== uid);
+                          const updatedNames = { ...sharedAccount.memberNames };
+                          delete updatedNames[uid];
+                          await firestore()
+                            .collection('sharedAccounts').doc(accountId)
+                            .update({ members: updatedMembers, memberNames: updatedNames });
+                        }
+                      }
+
+                      const userRef = firestore().collection('users').doc(uid);
+                      const batch2 = firestore().batch();
+                      for (const col of ['movements', 'recurring', 'categories', 'savings']) {
+                        const snap = await userRef.collection(col).get();
+                        snap.docs.forEach(doc => batch2.delete(doc.ref));
+                      }
+                      await batch2.commit();
+                      await userRef.delete();
+
+                      await AsyncStorage.multiRemove([
+                        '@moflo_movements',
+                        '@moflo_recurring',
+                        '@moflo_settings',
+                        '@moflo_sync_queue',
+                        '@moflo_premium',
+                        '@moflo_custom_categories',
+                        '@moflo_shared_account',
+                        '@moflo_active_account',
+                        '@moflo_savings',
+                        '@moflo_daily_notif',
+                        `@moflo_hidden_base_${uid}`,
+                        `@moflo_reminders_${uid}`,
+                        `@moflo_shared_notif_${uid}`,
+                      ]);
+
+                      useMovementStore.getState().resetStore();
+                      useSettingsStore.getState().resetStore();
+                      usePremiumStore.getState().setPremium(false);
+                      useCategoryStore.getState().resetStore();
+                      useSharedAccountStore.getState().resetStore();
+                      useSavingsStore.getState().resetStore();
+
+                      await auth().currentUser?.delete();
+                    } catch (e: any) {
+                      setIsDeleting(false);
+                      if (e?.code === 'auth/requires-recent-login') {
+                        const providerData = auth().currentUser?.providerData;
+                        const isApple = providerData?.some(p => p.providerId === 'apple.com');
+                        if (isApple) {
+                          try {
+                            await signInWithApple();
+                            await auth().currentUser?.delete();
+                            return;
+                          } catch (_) {}
+                        }
+                        Alert.alert('Error', t('settings.deleteAccountError'));
+                      } else {
+                        Alert.alert('Error', t('settings.deleteAccountError'));
+                      }
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -480,6 +593,12 @@ const SettingsScreen = () => {
             icon="trash-outline" iconColor={colors.expense}
             label={t('settings.deleteData')} subtitle={t('settings.deleteDataSubtitle')}
             onPress={handleDeleteData} dangerous
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="person-remove-outline" iconColor={colors.expense}
+            label={t('settings.deleteAccount')} subtitle={t('settings.deleteAccountSubtitle')}
+            onPress={isDeleting ? undefined : handleDeleteAccount} dangerous
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow

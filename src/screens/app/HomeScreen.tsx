@@ -9,6 +9,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
@@ -78,10 +79,22 @@ const HomeScreen = () => {
   const navigation = useNavigation<any>();
 
   const { getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
+  const { huchaMovements } = useSavingsStore();
 
   const summary = getMonthlySummary();
   const monthMovements = getMovementsForSelectedMonth();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+
+  const huchaNetThisMonth = useMemo(() => {
+    return huchaMovements
+      .filter(m => {
+        const d = new Date(m.date);
+        return d.getMonth() + 1 === summary.month && d.getFullYear() === summary.year;
+      })
+      .reduce((acc, m) => acc + (m.type === 'withdrawal' ? m.amount : -m.amount), 0);
+  }, [huchaMovements, summary.month, summary.year]);
+
+  const displayBalance = summary.balance + huchaNetThisMonth;
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
@@ -111,7 +124,7 @@ const HomeScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <BalanceCard
-          balance={summary.balance}
+          balance={displayBalance}
           month={summary.month}
           year={summary.year}
           currencySymbol={currencySymbol}

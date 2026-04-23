@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  KeyboardAvoidingView, 
-  Platform 
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
-import { loginWithEmail, loginWithGoogle } from '../../services/firebase/auth.service';
+import { loginWithEmail, loginWithGoogle, signInWithApple } from '../../services/firebase/auth.service';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 
@@ -29,6 +31,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const inputBg = isDark ? colors.surfaceDark : '#FFFFFF';
@@ -55,6 +58,17 @@ const LoginScreen = ({ navigation }: Props) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setIsAppleLoading(true);
+    try {
+      await signInWithApple();
+    } catch (e) {
+      Alert.alert('Error', t('auth.appleSignInError'));
+    } finally {
+      setIsAppleLoading(false);
     }
   };
 
@@ -173,6 +187,18 @@ const LoginScreen = ({ navigation }: Props) => {
               {t('auth.googleLogin')}
             </Button>
 
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={12}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            )}
+
             <View style={styles.registerLink}>
               <Text style={[styles.linkText, { color: dc.textSecondary }]}>
                 {t('auth.noAccount')}{' '}
@@ -218,6 +244,7 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 0.5 },
   dividerText: { marginHorizontal: 12, fontSize: 13, fontFamily: 'Poppins_400Regular' },
   googleButton: { borderRadius: 12 },
+  appleButton: { width: '100%', height: 50, marginTop: 12 },
   registerLink: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   linkText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
   linkAction: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
