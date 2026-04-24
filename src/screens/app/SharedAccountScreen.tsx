@@ -268,7 +268,7 @@ const SharedAccountScreen = () => {
                     contentStyle={styles.actionButtonContent}
                     buttonColor={colors.primary}
                     textColor="#FFFFFF"
-                    icon="add-circle-outline"
+                    icon="plus-circle-outline"
                   >
                     {t('sharedAccount.createTitle')}
                   </Button>

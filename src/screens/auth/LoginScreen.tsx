@@ -9,7 +9,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
+import AppleSignInButton from '../../components/auth/AppleSignInButton';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -187,17 +187,7 @@ const LoginScreen = ({ navigation }: Props) => {
               {t('auth.googleLogin')}
             </Button>
 
-            {Platform.OS === 'ios' && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={isDark
-                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={12}
-                style={styles.appleButton}
-                onPress={handleAppleSignIn}
-              />
-            )}
+            <AppleSignInButton onPress={handleAppleSignIn} />
 
             <View style={styles.registerLink}>
               <Text style={[styles.linkText, { color: dc.textSecondary }]}>
@@ -244,7 +234,6 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 0.5 },
   dividerText: { marginHorizontal: 12, fontSize: 13, fontFamily: 'Poppins_400Regular' },
   googleButton: { borderRadius: 12 },
-  appleButton: { width: '100%', height: 50, marginTop: 12 },
   registerLink: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   linkText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
   linkAction: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
