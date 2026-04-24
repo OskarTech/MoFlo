@@ -59,13 +59,15 @@ const RegisterScreen = ({ navigation }: Props) => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="height"
+        enabled={Platform.OS === 'android'}
         style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {/* HEADER */}
           <View style={styles.header}>

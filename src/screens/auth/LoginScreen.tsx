@@ -87,16 +87,15 @@ const LoginScreen = ({ navigation }: Props) => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <KeyboardAvoidingView
-        // En iOS usamos padding, en Android el sistema suele manejarlo mejor con 'height' o nada
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="height"
+        enabled={Platform.OS === 'android'}
         style={{ flex: 1 }}
-        // Si tienes una cabecera de Stack activa, este offset suele ser de unos 60-80
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {/* LOGO */}
           <View style={styles.header}>
