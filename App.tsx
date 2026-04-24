@@ -36,7 +36,7 @@ export default function App() {
           secondary: p.primaryDark,
           background: p.darkBg,
           surface: p.darkSurface,
-          onSurface: '#F9FAFB',
+          onSurface: p.darkTextPrimary ?? '#F9FAFB',
           outline: p.darkBorder,
         },
       }
@@ -45,10 +45,10 @@ export default function App() {
         colors: {
           ...MD3LightTheme.colors,
           primary: p.primary,
-          secondary: '#1F2937',
+          secondary: p.lightTextPrimary ?? '#1F2937',
           background: p.lightBg,
-          surface: '#FFFFFF',
-          onSurface: '#1F2937',
+          surface: p.lightSurface ?? '#FFFFFF',
+          onSurface: p.lightTextPrimary ?? '#1F2937',
           outline: p.lightBorder,
         },
       };

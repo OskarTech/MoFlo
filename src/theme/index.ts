@@ -7,8 +7,8 @@ export const colors = {
   primaryDark: '#065F46',
 
   // ── SEMÁNTICOS ─────────────────────────────────────────────
-  income: '#10B981',
-  expense: '#EF4444',
+  income: '#84D175',
+  expense: '#E8735A',
   savings: '#F59E0B',
 
   // ── MODO CLARO ─────────────────────────────────────────────
@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'purple' | 'wood' | 'rose' | 'teal' | 'orange' | 'earth';
+export type ColorPaletteId = 'green' | 'blue' | 'purple' | 'wood' | 'rose' | 'teal' | 'orange' | 'earth' | 'mint';
 
 interface PaletteEntry {
   primary: string;
@@ -52,6 +52,11 @@ interface PaletteEntry {
   darkSurface: string;
   darkBorder: string;
   darkBalanceCard: string;
+  // Optional palette-specific overrides
+  lightSurface?: string;
+  lightTextPrimary?: string;
+  lightTextSecondary?: string;
+  darkTextPrimary?: string;
 }
 
 export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
@@ -95,6 +100,22 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     lightBg: '#F3EDE2', lightBorder: '#DDD0BC', lightBalanceCard: '#C85A3C',
     darkBg: '#141210', darkSurface: '#24211D', darkBorder: '#3A302A', darkBalanceCard: '#2D4A3E',
   },
+  mint: {
+    primary: '#3E5BA3',         // Dusk Blue
+    primaryLight: '#84D175',    // Moss Green
+    primaryDark: '#0C2D45',     // Deep Space Blue
+    lightBg: '#E6FBDA',         // Frosted Mint
+    lightSurface: '#ffffff',    // Lemon Chiffon
+    lightBorder: '#C5EDB0',     // Soft mint border
+    lightBalanceCard: '#3E5BA3',// Dusk Blue
+    lightTextPrimary: '#0C2D45',// Deep Space Blue
+    lightTextSecondary: '#3E5BA3',
+    darkBg: '#0C2D45',          // Deep Space Blue
+    darkSurface: '#1A4466',     // Dusk Blue darkened
+    darkBorder: '#1E3A5F',
+    darkBalanceCard: '#c5edb0c0',
+    darkTextPrimary: '#fafafa', // Frosted Mint text on dark
+  },
 };
 
 export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'green') => {
@@ -104,11 +125,11 @@ export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'g
     primaryLight: p.primaryLight,
     primaryDark: p.primaryDark,
     background: isDark ? p.darkBg : p.lightBg,
-    surface: isDark ? p.darkSurface : '#FFFFFF',
-    textPrimary: isDark ? '#F9FAFB' : '#1F2937',
-    textSecondary: isDark ? '#9CA3AF' : '#6B7280',
+    surface: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
+    textPrimary: isDark ? (p.darkTextPrimary ?? '#F9FAFB') : (p.lightTextPrimary ?? '#1F2937'),
+    textSecondary: isDark ? '#9CA3AF' : (p.lightTextSecondary ?? '#6B7280'),
     border: isDark ? p.darkBorder : p.lightBorder,
-    cardBackground: isDark ? p.darkSurface : '#FFFFFF',
+    cardBackground: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
     balanceCard: isDark ? p.darkBalanceCard : p.lightBalanceCard,
   };
 };
