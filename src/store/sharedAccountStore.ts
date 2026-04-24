@@ -35,6 +35,7 @@ interface SharedAccountStore {
   notificationsEnabled: boolean;
   sharedCurrencyCode: string;
   sharedColorPalette: ColorPaletteId;
+  sharedDateFormat: string;
   isLoading: boolean;
 
   loadSharedAccount: () => Promise<void>;
@@ -48,7 +49,7 @@ interface SharedAccountStore {
   subscribeToSharedMovements: (accountId: string) => void;
   unsubscribeAll: () => void;
   loadSharedSettings: (accountId: string) => Promise<void>;
-  saveSharedSettings: (accountId: string, settings: { currencyCode?: string; colorPalette?: ColorPaletteId }) => Promise<void>;
+  saveSharedSettings: (accountId: string, settings: { currencyCode?: string; colorPalette?: ColorPaletteId; dateFormat?: string }) => Promise<void>;
   getSharedCurrencySymbol: () => string;
   resetStore: () => void;
 }
@@ -61,6 +62,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   notificationsEnabled: true,
   sharedCurrencyCode: 'EUR',
   sharedColorPalette: 'blue',
+  sharedDateFormat: 'DD/MM/YYYY',
   isLoading: false,
 
   resetStore: () => {
@@ -74,6 +76,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       isSharedMode: false,
       sharedCurrencyCode: 'EUR',
       sharedColorPalette: 'blue',
+      sharedDateFormat: 'DD/MM/YYYY',
     });
   },
 
@@ -431,9 +434,10 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         .collection('sharedAccounts').doc(accountId).get();
       const settings = doc.data()?.sharedSettings;
       if (settings) {
-        const update: Partial<{ sharedCurrencyCode: string; sharedColorPalette: ColorPaletteId }> = {};
+        const update: Partial<{ sharedCurrencyCode: string; sharedColorPalette: ColorPaletteId; sharedDateFormat: string }> = {};
         if (settings.currencyCode) update.sharedCurrencyCode = settings.currencyCode;
         if (settings.colorPalette) update.sharedColorPalette = settings.colorPalette as ColorPaletteId;
+        if (settings.dateFormat) update.sharedDateFormat = settings.dateFormat;
         set(update);
         await AsyncStorage.setItem(
           `@moflo_shared_settings_${accountId}`,
@@ -449,9 +453,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const current = {
       currencyCode: settings.currencyCode ?? get().sharedCurrencyCode,
       colorPalette: settings.colorPalette ?? get().sharedColorPalette,
+      dateFormat: settings.dateFormat ?? get().sharedDateFormat,
     };
     if (settings.currencyCode) set({ sharedCurrencyCode: settings.currencyCode });
     if (settings.colorPalette) set({ sharedColorPalette: settings.colorPalette });
+    if (settings.dateFormat) set({ sharedDateFormat: settings.dateFormat });
     await AsyncStorage.setItem(
       `@moflo_shared_settings_${accountId}`,
       JSON.stringify(current)

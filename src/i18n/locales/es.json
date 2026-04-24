@@ -438,6 +438,12 @@
   "renameError": "No se pudo cambiar el nombre",
   "sharedCategoriesSubtitle": "Gestiona las categorías de la cuenta compartida",
   "exportSubtitle": "Exporta los movimientos de la cuenta compartida",
-  "currency": "Moneda compartida"
-  } 
+  "currency": "Moneda compartida",
+  "kickMember": "Expulsar miembro",
+  "kickConfirm": "¿Expulsar a",
+  "kick": "Expulsar",
+  "noMembersToKick": "No hay miembros que expulsar",
+  "kickSuccess": "Miembro expulsado correctamente",
+  "kickWarning": "Esta persona perderá acceso a la cuenta compartida"
+  }
 }

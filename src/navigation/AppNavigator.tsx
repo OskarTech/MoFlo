@@ -13,7 +13,7 @@ import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
 import CategoriesScreen from '../screens/app/CategoriesScreen';
 import SharedAccountScreen from '../screens/app/SharedAccountScreen';
-import SharedAccountSettingsScreen from '../screens/app/SharedAccountSettingsScreen';
+import RecurringScreen from '../screens/app/RecurringScreen';
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
@@ -199,8 +199,8 @@ const AppNavigator = () => {
           }}
         />
         <Tab.Screen
-          name="SharedAccountSettings"
-          component={SharedAccountSettingsScreen}
+          name="Recurring"
+          component={RecurringScreen}
           options={{
             tabBarButton: () => null,
             tabBarLabel: '',

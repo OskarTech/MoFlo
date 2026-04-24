@@ -438,6 +438,12 @@
   "renameError": "Nie można zmienić nazwy",
   "sharedCategoriesSubtitle": "Zarządzaj kategoriami konta współdzielonego",
   "exportSubtitle": "Eksportuj ruchy konta współdzielonego",
-  "currency": "Wspólna waluta" 
+  "currency": "Wspólna waluta",
+  "kickMember": "Usuń członka",
+  "kickConfirm": "Usuń",
+  "kick": "Usuń",
+  "noMembersToKick": "Brak członków do usunięcia",
+  "kickSuccess": "Członek został usunięty",
+  "kickWarning": "Ta osoba straci dostęp do wspólnego konta"
   }
 }

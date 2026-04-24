@@ -438,6 +438,12 @@
   "orJoin": "or join with a code",
   "orCreate": "or create a new one",
   "openShared": "Go to shared account",
-  "code": "Code"
-  } 
+  "code": "Code",
+  "kickMember": "Remove member",
+  "kickConfirm": "Remove",
+  "kick": "Remove",
+  "noMembersToKick": "No members to remove",
+  "kickSuccess": "Member removed successfully",
+  "kickWarning": "This person will lose access to the shared account"
+  }
 }

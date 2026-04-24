@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Linking, Share,
-  Switch, Modal, FlatList,
+  Switch, Modal, FlatList, Clipboard,
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +86,7 @@ const SelectModal = ({
 }) => {
   const { colors: dc } = useTheme();
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.modalOverlay}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
         <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
@@ -122,14 +122,24 @@ const SettingsScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { movements } = useMovementStore();
   const { huchas } = useSavingsStore();
-  const { sharedAccount } = useSharedAccountStore();
+  const {
+    isSharedMode, sharedAccount, notificationsEnabled,
+    setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
+    setSharedMode, getInviteLink, sharedCurrencyCode, sharedColorPalette,
+    sharedDateFormat, saveSharedSettings,
+  } = useSharedAccountStore();
+
+  const { loadData } = useMovementStore();
   const user = auth().currentUser;
+  const uid = user?.uid;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
+  // Individual state
   const [isDeleting, setIsDeleting] = useState(false);
   const [dailyNotifEnabled, setDailyNotifEnabled] = useState(false);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
@@ -140,15 +150,30 @@ const SettingsScreen = () => {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(displayName ?? '');
 
+  // Shared state
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [editingSharedName, setEditingSharedName] = useState(false);
+  const [newSharedName, setNewSharedName] = useState(sharedAccount?.name ?? '');
+  const [showSharedCurrencyModal, setShowSharedCurrencyModal] = useState(false);
+  const [showSharedDateFormatModal, setShowSharedDateFormatModal] = useState(false);
+  const [showSharedColorPaletteModal, setShowSharedColorPaletteModal] = useState(false);
+  const [showKickMemberModal, setShowKickMemberModal] = useState(false);
+
   useEffect(() => {
     loadNotifSettings();
     setNameInput(displayName ?? '');
   }, [displayName]);
 
+  useEffect(() => {
+    setNewSharedName(sharedAccount?.name ?? '');
+  }, [sharedAccount?.name]);
+
   const loadNotifSettings = async () => {
     const val = await AsyncStorage.getItem(NOTIF_KEY);
     setDailyNotifEnabled(val === 'true');
   };
+
+  // ── INDIVIDUAL HANDLERS ───────────────────────────────────────
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;
@@ -177,33 +202,6 @@ const SettingsScreen = () => {
     }
   };
 
-  const handleRateApp = async () => {
-    if (await StoreReview.hasAction()) {
-      await StoreReview.requestReview();
-    } else {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.oskartech.moflo');
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: '💰 Descarga MoFlo: https://play.google.com/store/apps/details?id=com.oskartech.moflo',
-        title: 'MoFlo — Control de finanzas',
-      });
-    } catch (e) {}
-  };
-
-  const handleExportCSV = () => {
-    requirePremium(async () => {
-      try {
-        await exportMovementsToCSV(movements, huchas, t);
-      } catch (e) {
-        Alert.alert('Error', t('export.error'));
-      }
-    });
-  };
-
   const handleDeleteData = () => {
     Alert.alert(
       t('settings.deleteData'),
@@ -218,17 +216,12 @@ const SettingsScreen = () => {
               await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring', '@moflo_huchas', '@moflo_hucha_movements']);
               useMovementStore.getState().resetStore();
               useSavingsStore.getState().resetStore();
-              const uid = auth().currentUser?.uid;
               if (uid) {
                 const batch = firestore().batch();
-                const movementsSnap = await firestore().collection('users').doc(uid).collection('movements').get();
-                movementsSnap.docs.forEach(doc => batch.delete(doc.ref));
-                const recurringSnap = await firestore().collection('users').doc(uid).collection('recurring').get();
-                recurringSnap.docs.forEach(doc => batch.delete(doc.ref));
-                const huchasSnap = await firestore().collection('users').doc(uid).collection('huchas').get();
-                huchasSnap.docs.forEach(doc => batch.delete(doc.ref));
-                const huchaMovSnap = await firestore().collection('users').doc(uid).collection('huchaMovements').get();
-                huchaMovSnap.docs.forEach(doc => batch.delete(doc.ref));
+                for (const col of ['movements', 'recurring', 'huchas', 'huchaMovements']) {
+                  const snap = await firestore().collection('users').doc(uid).collection(col).get();
+                  snap.docs.forEach(doc => batch.delete(doc.ref));
+                }
                 await batch.commit();
               }
               Alert.alert('✅', t('settings.deleteDataSuccess'));
@@ -263,15 +256,14 @@ const SettingsScreen = () => {
                     if (isDeleting) return;
                     setIsDeleting(true);
                     try {
-                      const uid = auth().currentUser?.uid;
                       if (!uid) throw new Error('No user');
 
                       useSharedAccountStore.getState().unsubscribeAll();
 
-                      const { sharedAccount } = useSharedAccountStore.getState();
-                      if (sharedAccount) {
-                        const accountId = sharedAccount.id;
-                        if (sharedAccount.createdBy === uid) {
+                      const { sharedAccount: sa } = useSharedAccountStore.getState();
+                      if (sa) {
+                        const accountId = sa.id;
+                        if (sa.createdBy === uid) {
                           const batch = firestore().batch();
                           for (const col of ['movements', 'recurring', 'categories', 'savings']) {
                             const snap = await firestore()
@@ -282,8 +274,8 @@ const SettingsScreen = () => {
                           await batch.commit();
                           await firestore().collection('sharedAccounts').doc(accountId).delete();
                         } else {
-                          const updatedMembers = sharedAccount.members.filter(m => m !== uid);
-                          const updatedNames = { ...sharedAccount.memberNames };
+                          const updatedMembers = sa.members.filter(m => m !== uid);
+                          const updatedNames = { ...sa.memberNames };
                           delete updatedNames[uid];
                           await firestore()
                             .collection('sharedAccounts').doc(accountId)
@@ -301,19 +293,11 @@ const SettingsScreen = () => {
                       await userRef.delete();
 
                       await AsyncStorage.multiRemove([
-                        '@moflo_movements',
-                        '@moflo_recurring',
-                        '@moflo_settings',
-                        '@moflo_sync_queue',
-                        '@moflo_premium',
-                        '@moflo_custom_categories',
-                        '@moflo_shared_account',
-                        '@moflo_active_account',
-                        '@moflo_savings',
+                        '@moflo_movements', '@moflo_recurring', '@moflo_settings',
+                        '@moflo_sync_queue', '@moflo_premium', '@moflo_custom_categories',
+                        '@moflo_shared_account', '@moflo_active_account', '@moflo_savings',
                         '@moflo_daily_notif',
-                        `@moflo_hidden_base_${uid}`,
-                        `@moflo_reminders_${uid}`,
-                        `@moflo_shared_notif_${uid}`,
+                        `@moflo_hidden_base_${uid}`, `@moflo_reminders_${uid}`, `@moflo_shared_notif_${uid}`,
                       ]);
 
                       useMovementStore.getState().resetStore();
@@ -362,6 +346,148 @@ const SettingsScreen = () => {
     );
   };
 
+  // ── SHARED HANDLERS ───────────────────────────────────────────
+
+  const handleRenameAccount = async () => {
+    if (!newSharedName.trim() || !sharedAccount) return;
+    try {
+      await firestore()
+        .collection('sharedAccounts')
+        .doc(sharedAccount.id)
+        .update({ name: newSharedName.trim() });
+      useSharedAccountStore.setState({
+        sharedAccount: { ...sharedAccount, name: newSharedName.trim() },
+      });
+      setEditingSharedName(false);
+      Alert.alert('✅', t('sharedAccount.renameSuccess'));
+    } catch (e) {
+      Alert.alert('Error', t('sharedAccount.renameError'));
+    }
+  };
+
+  const handleCopyLink = () => {
+    Clipboard.setString(getInviteLink());
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleShareLink = async () => {
+    if (!sharedAccount) return;
+    await Share.share({
+      message: `${t('sharedAccount.inviteInfo')}\n\n${getInviteLink()}`,
+      title: `MoFlo — ${sharedAccount.name}`,
+    });
+  };
+
+  const handleLeave = () => {
+    Alert.alert(
+      t('sharedAccount.leaveAccount'),
+      t('sharedAccount.leaveConfirm'),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.leaveAccount'),
+          style: 'destructive',
+          onPress: async () => {
+            await leaveSharedAccount();
+            await loadData();
+            await setSharedMode(false);
+            navigation.navigate('HomeTab');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteShared = () => {
+    Alert.alert(
+      t('sharedAccount.deleteAccount'),
+      t('sharedAccount.deleteWarning'),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.exportFirst'),
+          onPress: async () => {
+            try { await exportMovementsToCSV(movements, huchas, t); } catch (e) {}
+            confirmDeleteShared();
+          },
+        },
+        {
+          text: t('sharedAccount.deleteAnyway'),
+          style: 'destructive',
+          onPress: confirmDeleteShared,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteShared = () => {
+    Alert.alert(
+      t('sharedAccount.deleteAccount'),
+      t('sharedAccount.deleteConfirm'),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.deleteAccount'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteSharedAccount();
+            await loadData();
+            await setSharedMode(false);
+            navigation.navigate('HomeTab');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleKickMember = () => {
+    if (!sharedAccount) return;
+    const kickableMembers = sharedAccount.members.filter(m => m !== sharedAccount.createdBy);
+    if (kickableMembers.length === 0) {
+      Alert.alert('', t('sharedAccount.noMembersToKick'));
+      return;
+    }
+    setShowKickMemberModal(true);
+  };
+
+  // ── SHARED ───────────────────────────────────────────────────
+
+  const handleRateApp = async () => {
+    if (await StoreReview.hasAction()) {
+      await StoreReview.requestReview();
+    } else {
+      Linking.openURL('https://play.google.com/store/apps/details?id=com.oskartech.moflo');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: '💰 Descarga MoFlo: https://play.google.com/store/apps/details?id=com.oskartech.moflo',
+        title: 'MoFlo — Control de finanzas',
+      });
+    } catch (e) {}
+  };
+
+  const handleExportCSV = () => {
+    if (isSharedMode) {
+      exportMovementsToCSV(movements, huchas, t).catch(() => {
+        Alert.alert('Error', t('export.error'));
+      });
+    } else {
+      requirePremium(async () => {
+        try {
+          await exportMovementsToCSV(movements, huchas, t);
+        } catch (e) {
+          Alert.alert('Error', t('export.error'));
+        }
+      });
+    }
+  };
+
+  // ── COMPUTED VALUES ───────────────────────────────────────────
+
   const THEME_OPTIONS: { code: ThemeMode; label: string }[] = [
     { code: 'auto', label: t('settings.themeAuto') },
     { code: 'light', label: t('settings.themeLight') },
@@ -380,177 +506,344 @@ const SettingsScreen = () => {
   const selectedPaletteId = (colorPalette ?? 'green') as ColorPaletteId;
   const selectedPaletteLabel = t(`settings.palette${selectedPaletteId.charAt(0).toUpperCase() + selectedPaletteId.slice(1)}`);
 
+  const selectedSharedCurrencyLabel = CURRENCIES.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
+  const selectedSharedPaletteId = (sharedColorPalette ?? 'blue') as ColorPaletteId;
+  const selectedSharedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === sharedDateFormat)?.label ?? 'DD/MM/YYYY';
+
   const initials = displayName
     ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0].toUpperCase() ?? '?';
 
+  const isCreator = sharedAccount?.createdBy === uid;
+  const kickableMembers = sharedAccount
+    ? sharedAccount.members.filter(m => m !== sharedAccount.createdBy)
+    : [];
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.settings_screen')} />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
 
-        {/* PERFIL */}
-        <View style={[styles.profileCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <View style={[styles.avatar, { backgroundColor: dc.primary }]}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
-          </View>
-          <View style={styles.profileInfo}>
-            {editingName ? (
-              <View style={styles.nameEditRow}>
-                <TextInput
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                  mode="flat"
-                  style={[styles.nameEditInput, { backgroundColor: 'transparent' }]}
-                  textColor={dc.textPrimary}
-                  underlineColor={dc.primary}
-                  activeUnderlineColor={dc.primary}
-                  autoFocus
-                  onSubmitEditing={handleSaveName}
-                />
-                <TouchableOpacity onPress={handleSaveName} style={styles.saveNameButton}>
-                  <Ionicons name="checkmark-circle" size={24} color={dc.primary} />
-                </TouchableOpacity>
+        {/* ── SECCIÓN 1: CABECERA ─────────────────────────────── */}
+        {!isSharedMode ? (
+          <>
+            {/* Perfil individual */}
+            <View style={[styles.profileCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <View style={[styles.avatar, { backgroundColor: dc.primary }]}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
               </View>
-            ) : (
-              <TouchableOpacity style={styles.nameRow} onPress={() => setEditingName(true)}>
-                <Text style={[styles.profileName, { color: dc.textPrimary }]}>
-                  {displayName || t('settings.displayName')}
+              <View style={styles.profileInfo}>
+                {editingName ? (
+                  <View style={styles.nameEditRow}>
+                    <TextInput
+                      value={nameInput}
+                      onChangeText={setNameInput}
+                      mode="flat"
+                      style={[styles.nameEditInput, { backgroundColor: 'transparent' }]}
+                      textColor={dc.textPrimary}
+                      underlineColor={dc.primary}
+                      activeUnderlineColor={dc.primary}
+                      autoFocus
+                      onSubmitEditing={handleSaveName}
+                    />
+                    <TouchableOpacity onPress={handleSaveName} style={styles.saveNameButton}>
+                      <Ionicons name="checkmark-circle" size={24} color={dc.primary} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.nameRow} onPress={() => setEditingName(true)}>
+                    <Text style={[styles.profileName, { color: dc.textPrimary }]}>
+                      {displayName || t('settings.displayName')}
+                    </Text>
+                    <Ionicons name="pencil-outline" size={16} color={dc.textSecondary} />
+                  </TouchableOpacity>
+                )}
+                <Text style={[styles.profileEmail, { color: dc.textSecondary }]}>
+                  {user?.email ?? '—'}
                 </Text>
-                <Ionicons name="pencil-outline" size={16} color={dc.textSecondary} />
-              </TouchableOpacity>
-            )}
-            <Text style={[styles.profileEmail, { color: dc.textSecondary }]}>
-              {user?.email ?? '—'}
-            </Text>
-          </View>
-        </View>
-
-        {/* UPGRADE */}
-        {!isPremium && (
-          <TouchableOpacity
-            style={[styles.upgradeCard, { borderColor: colors.savings }]}
-            onPress={() => setShowModal(true)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.upgradeLeft}>
-              <Text style={styles.upgradeEmoji}>⭐</Text>
-              <View>
-                <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
-                <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.savings} />
-          </TouchableOpacity>
-        )}
 
-        {/* CUENTA COMPARTIDA — solo si tiene Premium */}
-        {isPremium && (
+            {/* Upgrade o cuenta compartida */}
+            {!isPremium ? (
+              <TouchableOpacity
+                style={[styles.upgradeCard, { borderColor: colors.savings }]}
+                onPress={() => setShowModal(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.upgradeLeft}>
+                  <Text style={styles.upgradeEmoji}>⭐</Text>
+                  <View>
+                    <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
+                    <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.savings} />
+              </TouchableOpacity>
+            ) : (
+              <>
+                <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                  {t('sharedAccount.title')}
+                </Text>
+                <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                  <OptionRow
+                    icon="people-outline"
+                    iconColor={colors.savings}
+                    label={sharedAccount?.name ?? t('sharedAccount.title')}
+                    subtitle={sharedAccount
+                      ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
+                      : t('sharedAccount.noAccount')}
+                    onPress={() => navigation.navigate('SharedAccount')}
+                  />
+                </View>
+              </>
+            )}
+          </>
+        ) : (
           <>
+            {/* Cuenta compartida — card principal */}
+            <View style={[styles.accountCard, { backgroundColor: dc.primary }]}>
+              <Text style={styles.accountEmoji}>👥</Text>
+              {editingSharedName && isCreator ? (
+                <View style={styles.renameRow}>
+                  <TextInput
+                    value={newSharedName}
+                    onChangeText={setNewSharedName}
+                    mode="flat"
+                    style={[styles.renameInput, { backgroundColor: 'transparent' }]}
+                    textColor="#FFFFFF"
+                    underlineColor="rgba(255,255,255,0.5)"
+                    activeUnderlineColor="#FFFFFF"
+                    autoFocus
+                    onSubmitEditing={handleRenameAccount}
+                  />
+                  <TouchableOpacity onPress={handleRenameAccount} style={styles.renameConfirm}>
+                    <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setEditingSharedName(false);
+                    setNewSharedName(sharedAccount?.name ?? '');
+                  }}>
+                    <Ionicons name="close-circle" size={28} color="rgba(255,255,255,0.6)" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.sharedNameRow}
+                  onPress={() => isCreator && setEditingSharedName(true)}
+                  activeOpacity={isCreator ? 0.7 : 1}
+                >
+                  <Text style={styles.accountName}>{sharedAccount?.name ?? ''}</Text>
+                  {isCreator && (
+                    <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.7)" />
+                  )}
+                </TouchableOpacity>
+              )}
+              <Text style={styles.accountCode}>
+                {t('sharedAccount.code')}: {sharedAccount?.inviteCode ?? ''}
+              </Text>
+            </View>
+
+            {/* Enlace de invitación */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.title')}
+              {t('sharedAccount.inviteLink')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border, padding: 16 }]}>
+              <Text style={[styles.inviteInfo, { color: dc.textSecondary }]}>
+                {t('sharedAccount.inviteInfo')}
+              </Text>
+              <Text style={[styles.linkText, { color: dc.textPrimary }]} numberOfLines={2}>
+                {getInviteLink()}
+              </Text>
+              <View style={styles.linkButtons}>
+                <TouchableOpacity
+                  style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
+                  onPress={handleCopyLink}
+                >
+                  <Ionicons
+                    name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+                    size={16}
+                    color={linkCopied ? colors.income : dc.primary}
+                  />
+                  <Text style={[styles.linkBtnText, { color: linkCopied ? colors.income : dc.primary }]}>
+                    {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.linkBtn, { backgroundColor: dc.background }]}
+                  onPress={handleShareLink}
+                >
+                  <Ionicons name="share-social-outline" size={16} color={dc.primary} />
+                  <Text style={[styles.linkBtnText, { color: dc.primary }]}>
+                    {t('sharedAccount.shareLink')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Miembros */}
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('sharedAccount.members')} ({sharedAccount?.members.length ?? 0})
             </Text>
             <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <OptionRow
-                icon="people-outline"
-                iconColor={colors.savings}
-                label={sharedAccount?.name ?? t('sharedAccount.title')}
-                subtitle={sharedAccount
-                  ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
-                  : t('sharedAccount.noAccount')}
-                onPress={() => navigation.navigate('SharedAccount')}
-              />
-              {sharedAccount && (
-                <>
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                  <OptionRow
-                    icon="settings-outline"
-                    iconColor={dc.primary}
-                    label={t('sharedAccount.settings')}
-                    onPress={() => navigation.navigate('SharedAccountSettings')}
-                  />
-                </>
-              )}
+              {sharedAccount?.members.map((memberId, index) => {
+                const name = sharedAccount.memberNames[memberId] ?? 'Usuario';
+                const isMe = memberId === uid;
+                const isMemberCreator = memberId === sharedAccount.createdBy;
+                return (
+                  <View key={memberId}>
+                    <View style={styles.memberRow}>
+                      <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
+                        <Text style={[styles.memberInitial, { color: dc.primary }]}>
+                          {name[0].toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.memberInfo}>
+                        <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                          {name}{isMe ? ` ${t('sharedAccount.you')}` : ''}
+                        </Text>
+                        {isMemberCreator && (
+                          <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                            {t('sharedAccount.creator')}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {index < sharedAccount.members.length - 1 && (
+                      <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                    )}
+                  </View>
+                );
+              })}
             </View>
           </>
         )}
 
-        {/* PREFERENCIAS */}
+        {/* ── SECCIÓN 2: PREFERENCIAS ─────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('settings.preferences')}
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="cash-outline" iconColor={colors.income}
-            label={t('settings.currency')} value={selectedCurrencyLabel}
-            onPress={() => setShowCurrencyModal(true)}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="language-outline" iconColor={dc.primary}
-            label={t('settings.language')} value={selectedLanguageLabel}
-            onPress={() => setShowLanguageModal(true)}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="moon-outline" iconColor={dc.primaryDark}
-            label={t('settings.theme')} value={selectedThemeLabel}
-            onPress={() => setShowThemeModal(true)}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="calendar-outline" iconColor={dc.primary}
-            label={t('settings.dateFormat')} value={selectedDateFormatLabel}
-            onPress={() => setShowDateFormatModal(true)}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="color-palette-outline" iconColor={dc.primary}
-            label={t('settings.colorPalette')}
-            subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
-            onPress={() => requirePremium(() => setShowColorPaletteModal(true))}
-            right={isPremium ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedPaletteId].primary }} />
-                <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{selectedPaletteLabel}</Text>
-                <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-              </View>
-            ) : undefined}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="pricetag-outline"
-            iconColor={colors.savings}
-            label={t('categories.title')}
-            subtitle={!isPremium
-              ? `⭐ ${t('premium.badge')}`
-              : t('settings.individualCategoriesSubtitle')}
-            onPress={() => requirePremium(() => navigation.navigate('Categories'))}
-          />
-        </View>
-
-        {/* NOTIFICACIONES */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('settings.notifications')}
-        </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="notifications-outline" iconColor={dc.primary}
-            label={t('settings.notifMovements')}
-            subtitle={t('settings.notifMovementsSubtitle')}
-            showArrow={false}
-            right={
-              <Switch
-                value={dailyNotifEnabled}
-                onValueChange={handleDailyNotif}
-                trackColor={{ false: dc.border, true: dc.primary + '80' }}
-                thumbColor={dailyNotifEnabled ? dc.primary : dc.textSecondary}
+          {!isSharedMode ? (
+            <>
+              <OptionRow
+                icon="cash-outline" iconColor={colors.income}
+                label={t('settings.currency')} value={selectedCurrencyLabel}
+                onPress={() => setShowCurrencyModal(true)}
               />
-            }
-          />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="language-outline" iconColor={dc.primary}
+                label={t('settings.language')} value={selectedLanguageLabel}
+                onPress={() => setShowLanguageModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="moon-outline" iconColor={dc.primaryDark}
+                label={t('settings.theme')} value={selectedThemeLabel}
+                onPress={() => setShowThemeModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="calendar-outline" iconColor={dc.primary}
+                label={t('settings.dateFormat')} value={selectedDateFormatLabel}
+                onPress={() => setShowDateFormatModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="color-palette-outline" iconColor={dc.primary}
+                label={t('settings.colorPalette')}
+                subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
+                onPress={() => requirePremium(() => setShowColorPaletteModal(true))}
+                right={isPremium ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedPaletteId].primary }} />
+                    <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{selectedPaletteLabel}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                  </View>
+                ) : undefined}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="pricetag-outline" iconColor={colors.savings}
+                label={t('categories.title')}
+                subtitle={!isPremium
+                  ? `⭐ ${t('premium.badge')}`
+                  : t('settings.individualCategoriesSubtitle')}
+                onPress={() => requirePremium(() => navigation.navigate('Categories'))}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="notifications-outline" iconColor={dc.primary}
+                label={t('settings.notifMovements')}
+                subtitle={t('settings.notifMovementsSubtitle')}
+                showArrow={false}
+                right={
+                  <Switch
+                    value={dailyNotifEnabled}
+                    onValueChange={handleDailyNotif}
+                    trackColor={{ false: dc.border, true: dc.primary + '80' }}
+                    thumbColor={dailyNotifEnabled ? dc.primary : dc.textSecondary}
+                  />
+                }
+              />
+            </>
+          ) : (
+            <>
+              <OptionRow
+                icon="cash-outline" iconColor={colors.income}
+                label={t('settings.currency')} value={selectedSharedCurrencyLabel}
+                onPress={() => setShowSharedCurrencyModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="calendar-outline" iconColor={dc.primary}
+                label={t('settings.dateFormat')} value={selectedSharedDateFormatLabel}
+                onPress={() => setShowSharedDateFormatModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="color-palette-outline" iconColor={dc.primary}
+                label={t('settings.colorPalette')}
+                right={
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedSharedPaletteId].primary }} />
+                    <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                  </View>
+                }
+                onPress={() => setShowSharedColorPaletteModal(true)}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="pricetag-outline" iconColor={colors.savings}
+                label={t('categories.title')}
+                subtitle={t('sharedAccount.sharedCategoriesSubtitle')}
+                onPress={() => sharedAccount && navigation.navigate('SharedCategories', { accountId: sharedAccount.id })}
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="notifications-outline" iconColor={dc.primary}
+                label={t('sharedAccount.notifTitle')}
+                subtitle={t('sharedAccount.notifSubtitle')}
+                showArrow={false}
+                right={
+                  <Switch
+                    value={notificationsEnabled}
+                    onValueChange={setNotificationsEnabled}
+                    trackColor={{ false: dc.border, true: dc.primary + '80' }}
+                    thumbColor={notificationsEnabled ? dc.primary : dc.textSecondary}
+                  />
+                }
+              />
+            </>
+          )}
         </View>
 
-        {/* APLICACIÓN */}
+        {/* ── SECCIÓN 3: APLICACIÓN (igual en ambos modos) ──────── */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
           {t('settings.appSection')}
         </Text>
@@ -568,13 +861,18 @@ const SettingsScreen = () => {
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="download-outline"
-            iconColor={colors.savings}
+            icon="download-outline" iconColor={colors.savings}
             label={t('export.title')}
-            subtitle={!isPremium
+            subtitle={!isSharedMode && !isPremium
               ? `⭐ ${t('premium.badge')}`
-              : t('settings.individualExportSubtitle')}
+              : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
             onPress={handleExportCSV}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="repeat-outline" iconColor={dc.primary}
+            label={t('settings.recurringMovements')}
+            onPress={() => navigation.navigate('Recurring')}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
@@ -584,56 +882,109 @@ const SettingsScreen = () => {
           />
         </View>
 
-        {/* CUENTA */}
+        {/* ── SECCIÓN 4: CUENTA ────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('settings.accountSection') ?? 'Cuenta'}
+          {t('settings.accountSection')}
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="trash-outline" iconColor={colors.expense}
-            label={t('settings.deleteData')} subtitle={t('settings.deleteDataSubtitle')}
-            onPress={handleDeleteData} dangerous
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="person-remove-outline" iconColor={colors.expense}
-            label={t('settings.deleteAccount')} subtitle={t('settings.deleteAccountSubtitle')}
-            onPress={isDeleting ? undefined : handleDeleteAccount} dangerous
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="log-out-outline" iconColor={colors.expense}
-            label={t('settings.logout')}
-            onPress={handleLogout} dangerous
-          />
+          {!isSharedMode ? (
+            <>
+              <OptionRow
+                icon="trash-outline" iconColor={colors.expense}
+                label={t('settings.deleteData')} subtitle={t('settings.deleteDataSubtitle')}
+                onPress={handleDeleteData} dangerous
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="person-remove-outline" iconColor={colors.expense}
+                label={t('settings.deleteAccount')} subtitle={t('settings.deleteAccountSubtitle')}
+                onPress={isDeleting ? undefined : handleDeleteAccount} dangerous
+              />
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="log-out-outline" iconColor={colors.expense}
+                label={t('settings.logout')}
+                onPress={handleLogout} dangerous
+              />
+            </>
+          ) : (
+            <>
+              {isCreator && (
+                <>
+                  <OptionRow
+                    icon="pencil-outline" iconColor={dc.primary}
+                    label={t('sharedAccount.renameAccount')}
+                    onPress={() => setEditingSharedName(true)}
+                  />
+                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                </>
+              )}
+              {isCreator && kickableMembers.length > 0 && (
+                <>
+                  <OptionRow
+                    icon="person-remove-outline" iconColor={colors.expense}
+                    label={t('sharedAccount.kickMember')}
+                    onPress={handleKickMember} dangerous
+                  />
+                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                </>
+              )}
+              {!isCreator && (
+                <>
+                  <OptionRow
+                    icon="exit-outline" iconColor={colors.expense}
+                    label={t('sharedAccount.leaveAccount')}
+                    onPress={handleLeave} dangerous
+                  />
+                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                </>
+              )}
+              {isCreator && (
+                <>
+                  <OptionRow
+                    icon="trash-outline" iconColor={colors.expense}
+                    label={t('sharedAccount.deleteAccount')}
+                    onPress={handleDeleteShared} dangerous
+                  />
+                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                </>
+              )}
+              <OptionRow
+                icon="log-out-outline" iconColor={colors.expense}
+                label={t('settings.logout')}
+                onPress={handleLogout} dangerous
+              />
+            </>
+          )}
         </View>
 
-        {/* INFO */}
+        {/* ── SECCIÓN 5: INFO (igual en ambos modos) ───────────── */}
         <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>Info</Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-  <OptionRow
-    icon="information-circle-outline" iconColor={dc.primary}
-    label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
-  />
-  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-  <OptionRow
-    icon="document-text-outline" iconColor={dc.primary}
-    label={t('settings.privacyPolicy')}
-    onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
-  />
-  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-  <OptionRow
-    icon="shield-checkmark-outline" iconColor={dc.primary}
-    label={t('settings.termsOfService')}
-    onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
-  />
-</View>
+          <OptionRow
+            icon="information-circle-outline" iconColor={dc.primary}
+            label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="document-text-outline" iconColor={dc.primary}
+            label={t('settings.privacyPolicy')}
+            onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="shield-checkmark-outline" iconColor={dc.primary}
+            label={t('settings.termsOfService')}
+            onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
+          />
+        </View>
 
         <Text style={[styles.footer, { color: dc.textSecondary }]}>
           {t('settings.madeWith')}
         </Text>
       </ScrollView>
 
+      {/* ── MODALES INDIVIDUALES ─────────────────────────────── */}
       <SelectModal
         visible={showCurrencyModal} title={t('settings.selectCurrency')}
         options={CURRENCIES.map(c => ({ code: c.code, label: c.label }))}
@@ -668,18 +1019,107 @@ const SettingsScreen = () => {
         onSelect={code => saveSettings({ dateFormat: code as DateFormat })}
         onDismiss={() => setShowDateFormatModal(false)}
       />
-
-      <PremiumModal
-        visible={showModal}
-        onDismiss={() => setShowModal(false)}
-        onPurchase={() => setShowModal(false)}
-      />
-
       <ColorPaletteModal
         visible={showColorPaletteModal}
         selectedPalette={selectedPaletteId}
         onSelect={(id) => saveSettings({ colorPalette: id })}
         onDismiss={() => setShowColorPaletteModal(false)}
+      />
+
+      {/* ── MODALES COMPARTIDOS ──────────────────────────────── */}
+      <SelectModal
+        visible={showSharedCurrencyModal} title={t('settings.selectCurrency')}
+        options={CURRENCIES.map(c => ({ code: c.code, label: c.label }))}
+        selectedValue={sharedCurrencyCode}
+        onSelect={code => sharedAccount && saveSharedSettings(sharedAccount.id, { currencyCode: code })}
+        onDismiss={() => setShowSharedCurrencyModal(false)}
+      />
+      <SelectModal
+        visible={showSharedDateFormatModal} title={t('settings.selectDateFormat')}
+        options={DATE_FORMAT_OPTIONS} selectedValue={sharedDateFormat}
+        onSelect={code => sharedAccount && saveSharedSettings(sharedAccount.id, { dateFormat: code })}
+        onDismiss={() => setShowSharedDateFormatModal(false)}
+      />
+      <ColorPaletteModal
+        visible={showSharedColorPaletteModal}
+        selectedPalette={selectedSharedPaletteId}
+        onSelect={(id) => sharedAccount && saveSharedSettings(sharedAccount.id, { colorPalette: id })}
+        onDismiss={() => setShowSharedColorPaletteModal(false)}
+      />
+
+      {/* ── MODAL EXPULSAR MIEMBRO ───────────────────────────── */}
+      <Modal
+        visible={showKickMemberModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowKickMemberModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowKickMemberModal(false)}
+          />
+          <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
+            <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
+            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
+              {t('sharedAccount.kickMember')}
+            </Text>
+            <FlatList
+              data={kickableMembers}
+              keyExtractor={(item) => item}
+              renderItem={({ item: memberId }) => {
+                const name = sharedAccount?.memberNames?.[memberId] ?? 'Usuario';
+                return (
+                  <TouchableOpacity
+                    style={[styles.modalOption, { borderBottomColor: dc.border }]}
+                    onPress={() => {
+                      setShowKickMemberModal(false);
+                      Alert.alert(
+                        t('sharedAccount.kickMember'),
+                        `${t('sharedAccount.kickConfirm')} ${name}?\n\n${t('sharedAccount.kickWarning')}`,
+                        [
+                          { text: t('settings.cancel'), style: 'cancel' },
+                          {
+                            text: t('sharedAccount.kick'),
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (!sharedAccount) return;
+                              const updatedMembers = sharedAccount.members.filter(m => m !== memberId);
+                              const updatedNames = { ...sharedAccount.memberNames };
+                              delete updatedNames[memberId];
+                              await firestore()
+                                .collection('sharedAccounts')
+                                .doc(sharedAccount.id)
+                                .update({ members: updatedMembers, memberNames: updatedNames });
+                              Alert.alert('✅', t('sharedAccount.kickSuccess'));
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
+                      <Text style={[styles.memberInitial, { color: dc.primary }]}>
+                        {name[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={[styles.modalOptionText, { color: dc.textPrimary, flex: 1, marginLeft: 12 }]}>
+                      {name}
+                    </Text>
+                    <Ionicons name="person-remove-outline" size={18} color={colors.expense} />
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <PremiumModal
+        visible={showModal}
+        onDismiss={() => setShowModal(false)}
+        onPurchase={() => setShowModal(false)}
       />
     </View>
   );
@@ -688,6 +1128,8 @@ const SettingsScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
+
+  // Individual profile
   profileCard: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 0.5, gap: 16,
@@ -701,6 +1143,8 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   profileName: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
   profileEmail: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+
+  // Upgrade
   upgradeCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1.5,
@@ -710,6 +1154,39 @@ const styles = StyleSheet.create({
   upgradeEmoji: { fontSize: 28 },
   upgradeTitle: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
   upgradeSubtitle: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+
+  // Shared account card
+  accountCard: {
+    borderRadius: 20, padding: 24,
+    alignItems: 'center', marginBottom: 24, elevation: 4,
+  },
+  accountEmoji: { fontSize: 36, marginBottom: 8 },
+  sharedNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  accountName: { fontSize: 20, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', textAlign: 'center' },
+  accountCode: { fontSize: 12, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
+  renameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', marginBottom: 4 },
+  renameInput: { flex: 1, fontSize: 18 },
+  renameConfirm: { padding: 4 },
+
+  // Invite link
+  inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 8 },
+  linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
+  linkButtons: { flexDirection: 'row', gap: 8 },
+  linkBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+  },
+  linkBtnText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
+
+  // Members
+  memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  memberAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  memberInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+
+  // Common
   sectionLabel: {
     fontSize: 12, fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginLeft: 4,
@@ -723,6 +1200,8 @@ const styles = StyleSheet.create({
   optionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   optionValue: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginRight: 4 },
   footer: { textAlign: 'center', fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8, marginBottom: 16 },
+
+  // Modals
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
