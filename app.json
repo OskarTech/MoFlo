@@ -46,6 +46,7 @@
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
+      "expo-apple-authentication", 
       [
         "expo-image-picker",
         {
