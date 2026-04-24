@@ -73,9 +73,9 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const { getCurrencySymbol } = useSettingsStore();
-  const { getCategoryName } = useCategoryStore();
+  const { getCategoryName, getCategoriesForType } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
-  const { getSharedCategoryName } = useSharedCategoryStore();
+  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
   const { getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
@@ -98,6 +98,15 @@ const HomeScreen = () => {
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
+
+  const getCatIcon = (id: string): keyof typeof Ionicons.glyphMap => {
+    const cats = isSharedMode
+      ? getSharedCategoriesForType('expense')
+      : getCategoriesForType('expense');
+    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+  };
+
+  const CAT_COLORS = ['#E8735A', '#4A6FD9', '#7BC67E', '#F5A623', '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12'];
 
   const topExpenseCategories = useMemo(() => {
     const expenses = monthMovements.filter(m => m.type === 'expense');
@@ -151,9 +160,14 @@ const HomeScreen = () => {
 
         {/* TOP CATEGORÍAS DE GASTO */}
         <View style={styles.topSection}>
-          <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-            {t('home.whereMoneyGoes')}
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
+              {t('home.whereMoneyGoes')}
+            </Text>
+            <Text style={[styles.sectionMonth, { color: dc.textSecondary }]}>
+              {t(`home.month_${summary.month - 1}`)}
+            </Text>
+          </View>
           {topExpenseCategories.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
               <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
@@ -161,31 +175,34 @@ const HomeScreen = () => {
               </Text>
             </View>
           ) : (
-            topExpenseCategories.map(({ category, amount, percentage }) => (
-              <View key={category} style={styles.categoryItem}>
-                <View style={styles.categoryHeader}>
-                  <Text style={[styles.categoryName, { color: dc.textPrimary }]} numberOfLines={1}>
-                    {getCatName(category, 'expense')}
-                  </Text>
-                  <View style={styles.categoryRight}>
-                    <Text style={[styles.categoryPercent, { color: dc.textSecondary }]}>
-                      {Math.round(percentage)}%
-                    </Text>
-                    <Text style={[styles.categoryAmount, { color: colors.expense }]}>
-                      {amount.toFixed(2)} {currencySymbol}
-                    </Text>
+            <View style={[styles.catCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              {topExpenseCategories.map(({ category, amount, percentage }, index) => {
+                const catColor = CAT_COLORS[index % CAT_COLORS.length];
+                return (
+                  <View key={category}>
+                    {index > 0 && <View style={[styles.catDivider, { backgroundColor: dc.border }]} />}
+                    <View style={styles.catRow}>
+                      <View style={[styles.catIconCircle, { backgroundColor: catColor + '20' }]}>
+                        <Ionicons name={getCatIcon(category)} size={18} color={catColor} />
+                      </View>
+                      <View style={styles.catContent}>
+                        <View style={styles.catHeader}>
+                          <Text style={[styles.categoryName, { color: dc.textPrimary }]} numberOfLines={1}>
+                            {getCatName(category, 'expense')}
+                          </Text>
+                          <Text style={[styles.categoryAmount, { color: dc.textPrimary }]}>
+                            {amount.toFixed(2)} {currencySymbol}
+                          </Text>
+                        </View>
+                        <View style={[styles.barTrack, { backgroundColor: dc.border }]}>
+                          <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: catColor }]} />
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                </View>
-                <View style={[styles.barTrack, { backgroundColor: dc.border }]}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { width: `${percentage}%`, backgroundColor: colors.expense },
-                    ]}
-                  />
-                </View>
-              </View>
-            ))
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -231,19 +248,21 @@ const styles = StyleSheet.create({
   summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
   summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
   topSection: { paddingHorizontal: 16 },
-  sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 16 },
-  emptyCard: {
-    borderRadius: 16, padding: 24, borderWidth: 0.5, alignItems: 'center',
-  },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },
+  sectionMonth: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  emptyCard: { borderRadius: 16, padding: 24, borderWidth: 0.5, alignItems: 'center' },
   emptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  categoryItem: { marginBottom: 16 },
-  categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  categoryName: { fontSize: 14, fontFamily: 'Poppins_500Medium', flex: 1, marginRight: 12 },
-  categoryRight: { alignItems: 'flex-end' },
-  categoryPercent: { fontSize: 11, fontFamily: 'Poppins_400Regular' },
+  catCard: { borderRadius: 16, borderWidth: 0.5, overflow: 'hidden' },
+  catRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
+  catIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  catContent: { flex: 1 },
+  catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  catDivider: { height: 0.5, marginLeft: 66 },
+  categoryName: { fontSize: 14, fontFamily: 'Poppins_500Medium', flex: 1, marginRight: 8 },
   categoryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  barTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: 8, borderRadius: 4 },
+  barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: 6, borderRadius: 3 },
 });
 
 export default HomeScreen;
