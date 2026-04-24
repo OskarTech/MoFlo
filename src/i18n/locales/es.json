@@ -412,7 +412,7 @@
   "you": "(Tú)",
   "creator": "Creador",
   "settings": "Ajustes cuenta compartida",
-  "notifTitle": "Notificaciones de compañeros",
+  "notifTitle": "Notificaciones compañeros",
   "notifSubtitle": "Recibe notificaciones cuando alguien añada un movimiento",
   "notifMovementTitle": "Nuevo movimiento",
   "notifMovementBody": "{{name}} ha añadido un movimiento",

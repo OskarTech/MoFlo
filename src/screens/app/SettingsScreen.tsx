@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Linking, Share,
-  Switch, Modal, FlatList, Clipboard,
+  Switch, Modal, FlatList, Clipboard, Platform,
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -457,7 +457,10 @@ const SettingsScreen = () => {
     if (await StoreReview.hasAction()) {
       await StoreReview.requestReview();
     } else {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.oskartech.moflo');
+      const url = Platform.OS === 'ios'
+        ? 'itms-apps://itunes.apple.com/app/id6762832281?action=write-review'
+        : 'https://play.google.com/store/apps/details?id=com.oskartech.moflo';
+      Linking.openURL(url);
     }
   };
 
@@ -597,7 +600,14 @@ const SettingsScreen = () => {
                     subtitle={sharedAccount
                       ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
                       : t('sharedAccount.noAccount')}
-                    onPress={() => navigation.navigate('SharedAccount')}
+                    onPress={async () => {
+                      if (sharedAccount) {
+                        await setSharedMode(true);
+                        navigation.navigate('HomeTab');
+                      } else {
+                        navigation.navigate('SharedAccount');
+                      }
+                    }}
                   />
                 </View>
               </>
@@ -743,12 +753,6 @@ const SettingsScreen = () => {
               />
               <View style={[styles.divider, { backgroundColor: dc.border }]} />
               <OptionRow
-                icon="moon-outline" iconColor={dc.primaryDark}
-                label={t('settings.theme')} value={selectedThemeLabel}
-                onPress={() => setShowThemeModal(true)}
-              />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
                 icon="calendar-outline" iconColor={dc.primary}
                 label={t('settings.dateFormat')} value={selectedDateFormatLabel}
                 onPress={() => setShowDateFormatModal(true)}
@@ -868,12 +872,16 @@ const SettingsScreen = () => {
               : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
             onPress={handleExportCSV}
           />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="repeat-outline" iconColor={dc.primary}
-            label={t('settings.recurringMovements')}
-            onPress={() => navigation.navigate('Recurring')}
-          />
+          {!isSharedMode && (
+            <>
+              <View style={[styles.divider, { backgroundColor: dc.border }]} />
+              <OptionRow
+                icon="moon-outline" iconColor={dc.primaryDark}
+                label={t('settings.theme')} value={selectedThemeLabel}
+                onPress={() => setShowThemeModal(true)}
+              />
+            </>
+          )}
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
             icon="chatbubble-outline" iconColor={dc.primary}
