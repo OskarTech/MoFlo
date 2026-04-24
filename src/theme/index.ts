@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'purple' | 'wood' | 'rose' | 'teal' | 'orange';
+export type ColorPaletteId = 'green' | 'blue' | 'purple' | 'wood' | 'rose' | 'teal' | 'orange' | 'earth';
 
 interface PaletteEntry {
   primary: string;
@@ -89,6 +89,11 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     primary: '#EA580C', primaryLight: '#FB923C', primaryDark: '#C2410C',
     lightBg: '#FFF7ED', lightBorder: '#FED7AA', lightBalanceCard: '#EA580C',
     darkBg: '#1A0500', darkSurface: '#2A0D00', darkBorder: '#3D1500', darkBalanceCard: '#C2410C',
+  },
+  earth: {
+    primary: '#2D4A3E', primaryLight: '#8FB8A0', primaryDark: '#1E3329',
+    lightBg: '#F3EDE2', lightBorder: '#DDD0BC', lightBalanceCard: '#C85A3C',
+    darkBg: '#141210', darkSurface: '#24211D', darkBorder: '#3A302A', darkBalanceCard: '#2D4A3E',
   },
 };
 

@@ -48,7 +48,10 @@
     "month_8": "September",
     "month_9": "October",
     "month_10": "November",
-    "month_11": "December"
+    "month_11": "December",
+    "hello": "Hello",
+    "availableBalance": "Available balance",
+    "ofIncomeSpent": "of income spent"
   },
   "movements": {
   "add": "Add Movement",
@@ -193,6 +196,7 @@
   "paletteRose": "Rose",
   "paletteTeal": "Teal",
   "paletteOrange": "Orange",
+  "paletteEarth": "Earth",
   "pinErrorMessage": "Try again. Attempts: {{attempts}}/3",
   "pinTooManyAttempts": "Too many attempts",
   "pinTooManyAttemptsMessage": "You have failed 3 times. Please try again in a few seconds.",

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 
 export const PALETTE_ORDER: ColorPaletteId[] = [
-  'green', 'blue', 'purple', 'wood', 'rose', 'teal', 'orange',
+  'green', 'blue', 'purple', 'wood', 'rose', 'teal', 'orange', 'earth',
 ];
 
 interface Props {

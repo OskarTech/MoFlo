@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -16,63 +16,62 @@ import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 const BalanceCard = ({
-  balance, month, year, currencySymbol,
+  balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense,
 }: {
-  balance: number; month: number; year: number; currencySymbol: string;
+  balance: number; month: number; currencySymbol: string;
+  totalIncome: number; totalExpense: number;
+  onPressIncome: () => void; onPressExpense: () => void;
 }) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc } = useTheme();
+  const { colorPalette } = useSettingsStore();
 
-  const bgColor = balance > 0
-    ? dc.balanceCard
-    : balance < 0
-    ? isDark ? '#7F1D1D' : '#991B1B'
-    : isDark ? '#1F2937' : '#1F2937';
+  const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
+  const absBalance = Math.abs(balance);
+  const [intPart, decPart] = absBalance.toFixed(2).replace('.', ',').split(',');
 
   return (
-    <View style={[styles.balanceCard, { backgroundColor: bgColor }]}>
-      <Text style={styles.balanceMonth}>
-        {t(`home.month_${month - 1}`)} {year}
-      </Text>
-      <Text style={styles.balanceLabel}>{t('home.balance')}</Text>
-      <Text style={styles.balanceAmount}>
-        {balance >= 0 ? '+' : ''}{balance.toFixed(2)} {currencySymbol}
-      </Text>
+    <View style={[styles.balanceCard, { backgroundColor: colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard }]}>
+      <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
+      <View style={styles.balanceAmountRow}>
+        {balance < 0 && <Text style={styles.balanceSign}>-</Text>}
+        <Text style={styles.balanceInt}>{intPart}</Text>
+        <Text style={styles.balanceDec}>,{decPart} {currencySymbol}</Text>
+      </View>
+      <View style={styles.progressRow}>
+        <Text style={styles.progressMonth}>{t(`home.month_${month - 1}`)}</Text>
+        {totalIncome > 0 && (
+          <Text style={styles.progressPct}>{spentPct}% {t('home.ofIncomeSpent')}</Text>
+        )}
+      </View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${spentPct}%` as any }]} />
+      </View>
+      <View style={styles.statsRow}>
+        <TouchableOpacity onPress={onPressIncome} activeOpacity={0.7}>
+          <View style={styles.statLabelRow}>
+            <View style={[styles.statDot, { backgroundColor: '#4ADE80' }]} />
+            <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
+          </View>
+          <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onPressExpense} activeOpacity={0.7}>
+          <View style={styles.statLabelRow}>
+            <View style={[styles.statDot, { backgroundColor: colors.expense }]} />
+            <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
+          </View>
+          <Text style={styles.statAmount}>-{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-const SummaryCard = ({
-  label, amount, icon, color, currencySymbol, onPress,
-}: {
-  label: string; amount: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string; currencySymbol: string;
-  onPress?: () => void;
-}) => {
-  const { colors: dc } = useTheme();
-  return (
-    <TouchableOpacity
-      style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      disabled={!onPress}
-    >
-      <View style={[styles.summaryIcon, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={18} color={color} />
-      </View>
-      <Text style={[styles.summaryAmount, { color: dc.textPrimary }]}>
-        {amount.toFixed(2)} {currencySymbol}
-      </Text>
-      <Text style={[styles.summaryLabel, { color: dc.textSecondary }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-};
 
 const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const { getCurrencySymbol } = useSettingsStore();
+  const { getCurrencySymbol, displayName, language } = useSettingsStore();
   const { getCategoryName, getCategoriesForType } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
@@ -132,31 +131,32 @@ const HomeScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {(() => {
+          const today = new Date();
+          const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+          const dayName = today.toLocaleDateString(locale, { weekday: 'long' }).toUpperCase();
+          const monthName = t(`home.month_${today.getMonth()}`).toUpperCase();
+          return (
+            <View style={styles.dateHeader}>
+              <Text style={[styles.dateText, { color: dc.textSecondary }]}>
+                {dayName} · {today.getDate()} {monthName}
+              </Text>
+              <Text style={[styles.greetingText, { color: dc.textPrimary }]}>
+                {t('home.hello')}, {displayName || 'Usuario'}
+              </Text>
+            </View>
+          );
+        })()}
+
         <BalanceCard
           balance={displayBalance}
           month={summary.month}
-          year={summary.year}
           currencySymbol={currencySymbol}
+          totalIncome={summary.totalIncome}
+          totalExpense={summary.totalExpense}
+          onPressIncome={() => navigation.navigate('HistorialTab', { initialFilter: 'income' })}
+          onPressExpense={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
         />
-
-        <View style={styles.summaryRow}>
-          <SummaryCard
-            label={t('home.income')}
-            amount={summary.totalIncome}
-            icon="arrow-down-circle"
-            color={colors.income}
-            currencySymbol={currencySymbol}
-            onPress={() => navigation.navigate('HistorialTab', { initialFilter: 'income' })}
-          />
-          <SummaryCard
-            label={t('home.expenses')}
-            amount={summary.totalExpense}
-            icon="arrow-up-circle"
-            color={colors.expense}
-            currencySymbol={currencySymbol}
-            onPress={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
-          />
-        </View>
 
         {/* TOP CATEGORÍAS DE GASTO */}
         <View style={styles.topSection}>
@@ -213,40 +213,53 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
+
+  // Date header
+  dateHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  dateText: { fontSize: 12, fontFamily: 'Poppins_500Medium', letterSpacing: 0.5, marginBottom: 4 },
+  greetingText: { fontSize: 26, fontFamily: 'Poppins_700Bold' },
+
+  // Balance card
   balanceCard: {
-    margin: 16, borderRadius: 24, padding: 28,
-    alignItems: 'center', overflow: 'hidden',
-    elevation: 8, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8,
+    marginHorizontal: 16, marginBottom: 20, borderRadius: 24, padding: 24,
+    overflow: 'hidden', elevation: 6, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6,
   },
-  balanceMonth: {
-    color: 'rgba(255,255,255,0.6)', fontSize: 12,
-    fontFamily: 'Poppins_500Medium', textTransform: 'uppercase',
-    letterSpacing: 1.5, marginBottom: 8,
+  balanceLabelTop: {
+    color: 'rgba(255,255,255,0.6)', fontSize: 11,
+    fontFamily: 'Poppins_600SemiBold', letterSpacing: 1.5, marginBottom: 12,
   },
-  balanceLabel: {
-    color: 'rgba(255,255,255,0.6)', fontSize: 13,
-    fontFamily: 'Poppins_400Regular', marginBottom: 4,
+  balanceAmountRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 20 },
+  balanceSign: {
+    color: '#FFFFFF', fontSize: 40, fontFamily: 'Poppins_700Bold',
+    lineHeight: 52, marginRight: 2,
   },
-  balanceAmount: {
-    color: '#FFFFFF', fontSize: 40,
-    fontFamily: 'Poppins_700Bold', letterSpacing: -1,
+  balanceInt: {
+    color: '#FFFFFF', fontSize: 52, fontFamily: 'Poppins_700Bold',
+    letterSpacing: -2, lineHeight: 56,
   },
-  summaryRow: {
-    flexDirection: 'row', paddingHorizontal: 16,
-    gap: 10, marginBottom: 24,
+  balanceDec: {
+    color: 'rgba(255,255,255,0.8)', fontSize: 26,
+    fontFamily: 'Poppins_500Medium', marginBottom: 5, marginLeft: 1,
   },
-  summaryCard: {
-    flex: 1, borderRadius: 16, padding: 14,
-    alignItems: 'center', borderWidth: 0.5,
+  progressRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6,
   },
-  summaryIcon: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
+  progressMonth: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Poppins_500Medium' },
+  progressPct: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'Poppins_400Regular' },
+  progressTrack: {
+    height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 20, overflow: 'hidden',
   },
-  summaryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
-  summaryLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },
+  progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.expense },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
+  statDot: { width: 6, height: 6, borderRadius: 3 },
+  statLabelText: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8,
+  },
+  statAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Poppins_700Bold' },
   topSection: { paddingHorizontal: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },

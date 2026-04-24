@@ -48,7 +48,10 @@
     "month_8": "Wrzesień",
     "month_9": "Październik",
     "month_10": "Listopad",
-    "month_11": "Grudzień"
+    "month_11": "Grudzień",
+    "hello": "Cześć",
+    "availableBalance": "Dostępne saldo",
+    "ofIncomeSpent": "dochodu wydane"
   },
   "movements": {
   "add": "Dodaj Transakcję",
@@ -228,6 +231,7 @@
   "paletteRose": "Różowy",
   "paletteTeal": "Turkusowy",
   "paletteOrange": "Pomarańczowy",
+  "paletteEarth": "Ziemia",
   "language": "Język",
   "selectCurrency": "Wybierz Walutę",
   "selectLanguage": "Wybierz Język",
