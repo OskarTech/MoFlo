@@ -35,7 +35,7 @@ const BalanceCard = ({
       <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
       <View style={styles.balanceAmountRow}>
         {balance < 0 && <Text style={styles.balanceSign}>-</Text>}
-        <Text style={styles.balanceInt}>{intPart}</Text>
+        <Text style={styles.balanceInt} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.4}>{intPart}</Text>
         <Text style={styles.balanceDec}>,{decPart} {currencySymbol}</Text>
       </View>
       <View style={styles.progressRow}>
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   balanceInt: {
     color: '#FFFFFF', fontSize: 52, fontFamily: 'Poppins_700Bold',
-    letterSpacing: -2, lineHeight: 56,
+    letterSpacing: -2, lineHeight: 56, flexShrink: 1,
   },
   balanceDec: {
     color: 'rgba(255,255,255,0.8)', fontSize: 26,

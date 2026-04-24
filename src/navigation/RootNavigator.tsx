@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
+
+export const navigationRef = createNavigationContainerRef<any>();
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
@@ -70,7 +72,7 @@ const RootNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {user ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

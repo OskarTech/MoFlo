@@ -18,7 +18,7 @@ import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 
 type RouteParams = {
-  SharedAccount: { code?: string; name?: string };
+  SharedAccount: { code?: string; name?: string; fromDeepLink?: boolean };
 };
 
 const SharedAccountScreen = () => {
@@ -43,8 +43,19 @@ const SharedAccountScreen = () => {
 
   useEffect(() => {
     if (route.params?.code && !sharedAccount) {
-      setInviteCode(route.params.code);
-      setMode('join');
+      const code = route.params.code;
+      setInviteCode(code);
+      if (route.params?.fromDeepLink) {
+        // Auto-unirse directamente desde el link de invitación
+        setLoading(true);
+        joinSharedAccount(code.trim()).then((success) => {
+          if (!success) Alert.alert('Error', t('sharedAccount.joinError'));
+        }).catch(() => {
+          Alert.alert('Error', t('sharedAccount.joinError'));
+        }).finally(() => setLoading(false));
+      } else {
+        setMode('join');
+      }
     }
   }, [route.params]);
 

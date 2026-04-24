@@ -1,4 +1,4 @@
-import auth, { firebase } from '@react-native-firebase/auth';
+import auth from '@react-native-firebase/auth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 export const signInWithApple = async (): Promise<boolean> => {
@@ -13,7 +13,7 @@ export const signInWithApple = async (): Promise<boolean> => {
     const { identityToken, fullName } = credential;
     if (!identityToken) throw new Error('No identity token');
 
-    const appleCredential = firebase.auth.OAuthProvider.credential('apple.com', identityToken);
+    const appleCredential = auth.AppleAuthProvider.credential(identityToken);
     const userCredential = await auth().signInWithCredential(appleCredential);
 
     if (fullName?.givenName && userCredential.additionalUserInfo?.isNewUser) {

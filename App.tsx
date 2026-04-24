@@ -9,7 +9,7 @@ import {
 } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import RootNavigator from './src/navigation/RootNavigator';
+import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
 import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
 
@@ -67,10 +67,30 @@ export default function App() {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    const handleUrl = (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
+    const processDeepLink = (url: string) => {
+      const match = url.match(/[?&]code=([A-Z0-9]{6})/i);
+      if (!match) return;
+      const code = match[1].toUpperCase();
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('SharedAccount', { code, fromDeepLink: true });
+      }
     };
-    const subscription = Linking.addEventListener('url', handleUrl);
+
+    const subscription = Linking.addEventListener('url', (event) => processDeepLink(event.url));
+
+    // Cold start: app abierta desde el link
+    Linking.getInitialURL().then((url) => {
+      if (!url) return;
+      const tryNavigate = (retries = 0) => {
+        if (navigationRef.isReady()) {
+          processDeepLink(url);
+        } else if (retries < 20) {
+          setTimeout(() => tryNavigate(retries + 1), 100);
+        }
+      };
+      tryNavigate();
+    });
+
     return () => subscription.remove();
   }, []);
 
