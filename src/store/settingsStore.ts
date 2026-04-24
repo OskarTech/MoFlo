@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 import i18n from '../i18n';
 import {
   saveSettingsToFirestore,
@@ -84,18 +85,26 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         if (parsed.language) await i18n.changeLanguage(parsed.language);
       }
 
-      const firestoreSettings = await fetchSettingsFromFirestore();
-      if (firestoreSettings) {
-        const typedSettings = {
-          ...firestoreSettings,
-          themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
-          dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
-          colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
-        };
-        set(typedSettings);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
-        if (typedSettings.language) {
-          await i18n.changeLanguage(typedSettings.language);
+      if (!auth().currentUser) return;
+
+      try {
+        const firestoreSettings = await fetchSettingsFromFirestore();
+        if (firestoreSettings) {
+          const typedSettings = {
+            ...firestoreSettings,
+            themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
+            dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
+            colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
+          };
+          set(typedSettings);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
+          if (typedSettings.language) {
+            await i18n.changeLanguage(typedSettings.language);
+          }
+        }
+      } catch (firestoreError: any) {
+        if (firestoreError?.code !== 'firestore/permission-denied') {
+          console.error('Error syncing settings from Firestore:', firestoreError);
         }
       }
     } catch (e) {
