@@ -64,13 +64,16 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
             {hucha.name}
           </Text>
           {(hucha.targetDate || hucha.isAutomatic) && (
-            <Text style={[styles.cardMeta, { color: dc.textSecondary }]}>
-              {hucha.targetDate ? formatTargetDate(hucha.targetDate) : ''}
-              {hucha.targetDate && hucha.isAutomatic ? ' · ' : ''}
-              {hucha.isAutomatic && hucha.monthlyAmount
-                ? `${hucha.monthlyAmount} €/mes`
-                : ''}
-            </Text>
+            <View style={styles.cardMetaRow}>
+              <Ionicons name="calendar-outline" size={11} color={dc.textSecondary} />
+              <Text style={[styles.cardMeta, { color: dc.textSecondary }]}>
+                {hucha.targetDate ? formatTargetDate(hucha.targetDate) : ''}
+                {hucha.targetDate && hucha.isAutomatic ? ' · ' : ''}
+                {hucha.isAutomatic && hucha.monthlyAmount
+                  ? `${hucha.monthlyAmount} €/mes`
+                  : ''}
+              </Text>
+            </View>
           )}
         </View>
         <Text style={[styles.cardPct, { color: hucha.color }]}>{pct}%</Text>
@@ -278,38 +281,65 @@ const HuchaScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { huchas, getTotalSaved, getTotalTarget, showCreateModal, setShowCreateModal } = useSavingsStore();
+  const { huchas, huchaMovements, getTotalSaved, getTotalTarget, showCreateModal, setShowCreateModal } = useSavingsStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
-
   const totalSaved = getTotalSaved();
   const totalTarget = getTotalTarget();
   const overallPct = totalTarget > 0
     ? Math.min(Math.round((totalSaved / totalTarget) * 100), 100)
     : 0;
 
+  const now = new Date();
+  const thisMonthDeposited = huchaMovements
+    .filter(m => {
+      const d = new Date(m.date);
+      return m.type === 'deposit'
+        && d.getMonth() === now.getMonth()
+        && d.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, m) => sum + m.amount, 0);
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('hucha.title')} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Cabecera */}
+        <View style={styles.pageHeader}>
+          <Text style={[styles.pageSubtitle, { color: dc.textSecondary }]}>TUS METAS</Text>
+          <Text style={[styles.pageTitle, { color: dc.textPrimary }]}>Huchas</Text>
+        </View>
+
         {/* Tarjeta totales */}
         {huchas.length > 0 && (
-          <View style={[styles.totalCard, { backgroundColor: dc.balanceCard }]}>
-            <Text style={styles.totalLabel}>{t('hucha.totalSaved')}</Text>
-            <Text style={styles.totalAmount}>
+          <View style={[styles.totalCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+            <View style={styles.totalCardTop}>
+              <Text style={[styles.totalLabel, { color: dc.textSecondary }]}>
+                {t('hucha.totalSaved').toUpperCase()}
+              </Text>
+              {thisMonthDeposited > 0 && (
+                <Text style={styles.thisMonthText}>
+                  +{currencySymbol}{formatAmount(thisMonthDeposited)} este mes
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.totalAmount, { color: dc.textPrimary }]}>
               {formatAmount(totalSaved)} {currencySymbol}
             </Text>
-            <View style={styles.totalProgressBar}>
-              <View style={[styles.totalProgressFill, { width: `${overallPct}%` as any }]} />
+            <View style={[styles.totalProgressBar, { backgroundColor: dc.border }]}>
+              <View style={[styles.totalProgressFill, { width: `${overallPct}%` as any, backgroundColor: dc.primary }]} />
             </View>
             <View style={styles.totalProgressRow}>
-              <Text style={styles.totalGoalsCount}>
+              <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
                 {overallPct}% {t('hucha.of')} {formatAmount(totalTarget)} {currencySymbol}
               </Text>
-              <Text style={styles.totalGoalsCount}>
-                {t('hucha.activeGoals', { count: huchas.length })}
+              <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
+                {huchas.length} metas activas
               </Text>
             </View>
           </View>
@@ -325,17 +355,42 @@ const HuchaScreen = () => {
             <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
               {t('hucha.noGoalsSubtitle')}
             </Text>
+            <TouchableOpacity
+              style={[styles.createCardBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+              onPress={() => setShowCreateModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.createBtnIconBox, { borderColor: dc.border }]}>
+                <Ionicons name="add" size={20} color={dc.textSecondary} />
+              </View>
+              <Text style={[styles.createCardBtnText, { color: dc.textPrimary }]}>
+                {t('hucha.createGoal')}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          huchas.map(hucha => (
-            <HuchaCard
-              key={hucha.id}
-              hucha={hucha}
-              onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
-            />
-          ))
+          <>
+            {huchas.map(hucha => (
+              <HuchaCard
+                key={hucha.id}
+                hucha={hucha}
+                onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
+              />
+            ))}
+            <TouchableOpacity
+              style={[styles.createCardBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+              onPress={() => setShowCreateModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.createBtnIconBox, { borderColor: dc.border }]}>
+                <Ionicons name="add" size={20} color={dc.textSecondary} />
+              </View>
+              <Text style={[styles.createCardBtnText, { color: dc.textPrimary }]}>
+                {t('hucha.createGoal')}
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
-
       </ScrollView>
 
       <CreateHuchaModal
@@ -348,30 +403,41 @@ const HuchaScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 100 },
+
+  pageHeader: { marginBottom: 20 },
+  pageSubtitle: {
+    fontSize: 11, fontFamily: 'Poppins_600SemiBold',
+    textTransform: 'uppercase', letterSpacing: 1.5,
+  },
+  pageTitle: { fontSize: 32, fontFamily: 'Poppins_700Bold', marginTop: 2 },
 
   totalCard: {
-    borderRadius: 20, padding: 24, marginBottom: 16, alignItems: 'center',
+    borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 0.5,
+  },
+  totalCardTop: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2,
   },
   totalLabel: {
-    fontSize: 13, fontFamily: 'Poppins_400Regular',
-    color: 'rgba(255,255,255,0.8)', marginBottom: 4,
+    fontSize: 11, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8,
+  },
+  thisMonthText: {
+    fontSize: 12, fontFamily: 'Poppins_600SemiBold', color: '#22c55e',
   },
   totalAmount: {
-    fontSize: 36, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', marginBottom: 12,
+    fontSize: 34, fontFamily: 'Poppins_700Bold', marginBottom: 12, marginTop: 4,
   },
   totalProgressBar: {
-    width: '100%', height: 6, borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 8,
+    width: '100%', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8,
   },
   totalProgressFill: {
-    height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.9)',
+    height: 8, borderRadius: 4,
   },
   totalProgressRow: {
     flexDirection: 'row', justifyContent: 'space-between', width: '100%',
   },
   totalGoalsCount: {
-    fontSize: 12, fontFamily: 'Poppins_400Regular', color: 'rgba(255,255,255,0.7)',
+    fontSize: 12, fontFamily: 'Poppins_400Regular',
   },
 
   card: {
@@ -384,9 +450,10 @@ const styles = StyleSheet.create({
   },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
-  cardMeta: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  cardMeta: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
   cardPct: { fontSize: 16, fontFamily: 'Poppins_700Bold', flexShrink: 0 },
-  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 8 },
+  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
   progressFill: { height: 6, borderRadius: 3 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
@@ -397,8 +464,17 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
   emptySubtext: {
     fontSize: 13, fontFamily: 'Poppins_400Regular',
-    textAlign: 'center', paddingHorizontal: 32,
+    textAlign: 'center', paddingHorizontal: 32, marginBottom: 24,
   },
+  createCardBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 16, borderRadius: 16, marginTop: 4, borderWidth: 0.5,
+  },
+  createBtnIconBox: {
+    width: 36, height: 36, borderRadius: 10, borderWidth: 1.5,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  createCardBtnText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {

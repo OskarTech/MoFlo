@@ -51,7 +51,8 @@
     "month_11": "Diciembre",
     "hello": "Hola",
     "availableBalance": "Balance disponible",
-    "ofIncomeSpent": "del ingreso gastado"
+    "ofIncomeSpent": "del ingreso gastado",
+    "add": "Añadir"
   },
   "movements": {
   "add": "Añadir Movimiento",
@@ -160,11 +161,6 @@
   "selectColorPalette": "Elige un color",
   "paletteGreen": "Verde",
   "paletteBlue": "Azul",
-  "palettePurple": "Morado",
-  "paletteWood": "Marrón",
-  "paletteRose": "Rosa",
-  "paletteTeal": "Turquesa",
-  "paletteOrange": "Naranja",
   "paletteEarth": "Tierra",
   "paletteMint": "Menta",
   "notifications": "Notificaciones",  
@@ -301,10 +297,10 @@
   },
   "tabs": {
   "home": "Inicio",
-  "historial": "Movimientos",
-  "annual": "Resumen",
+  "historial": "Movim.",
+  "annual": "Análisis",
   "recurring": "Fijos",
-  "hucha": "Hucha",
+  "hucha": "Huchas",
   "reminders": "Notificaciones"
   },
   "header": {
@@ -313,6 +309,7 @@
   "home": "Inicio",
   "movements": "Movimientos",
   "historial": "Movimientos",
+  "movementsSubtitle": "Todo tu dinero",
   "annual": "Resumen",
   "profile": "Perfil",
   "settings_screen": "Ajustes",

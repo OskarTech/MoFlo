@@ -51,7 +51,8 @@
     "month_11": "Grudzień",
     "hello": "Cześć",
     "availableBalance": "Dostępne saldo",
-    "ofIncomeSpent": "dochodu wydane"
+    "ofIncomeSpent": "dochodu wydane",
+    "add": "Dodaj"
   },
   "movements": {
   "add": "Dodaj Transakcję",
@@ -226,11 +227,6 @@
   "selectColorPalette": "Wybierz kolor",
   "paletteGreen": "Zielony",
   "paletteBlue": "Niebieski",
-  "palettePurple": "Fioletowy",
-  "paletteWood": "Brązowy",
-  "paletteRose": "Różowy",
-  "paletteTeal": "Turkusowy",
-  "paletteOrange": "Pomarańczowy",
   "paletteEarth": "Ziemia",
   "paletteMint": "Mięta",
   "language": "Język",
@@ -300,11 +296,11 @@
   "totalWithdrawals": "Wypłaty"
   },
   "tabs": {
-  "home": "Główna",
-  "historial": "Operacje",
-  "annual": "Raport",
+  "home": "Dziś",
+  "historial": "Operac.",
+  "annual": "Analiza",
   "recurring": "Stałe",
-  "hucha": "Skarbonka",
+  "hucha": "Skarbonki",
   "reminders": "Powiadomienia"
   },
   "header": {

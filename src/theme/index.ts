@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'purple' | 'wood' | 'rose' | 'teal' | 'orange' | 'earth' | 'mint';
+export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint';
 
 interface PaletteEntry {
   primary: string;
@@ -69,31 +69,6 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     primary: '#1D4ED8', primaryLight: '#60A5FA', primaryDark: '#1E40AF',
     lightBg: '#EFF6FF', lightBorder: '#BFDBFE', lightBalanceCard: '#1D4ED8',
     darkBg: '#0F172A', darkSurface: '#1E293B', darkBorder: '#1E3A5F', darkBalanceCard: '#1E40AF',
-  },
-  purple: {
-    primary: '#7C3AED', primaryLight: '#A78BFA', primaryDark: '#5B21B6',
-    lightBg: '#F5F3FF', lightBorder: '#DDD6FE', lightBalanceCard: '#7C3AED',
-    darkBg: '#120D1E', darkSurface: '#1E1533', darkBorder: '#2D1F52', darkBalanceCard: '#5B21B6',
-  },
-  wood: {
-    primary: '#92400E', primaryLight: '#D97706', primaryDark: '#78350F',
-    lightBg: '#FFF7ED', lightBorder: '#FED7AA', lightBalanceCard: '#92400E',
-    darkBg: '#1A0D00', darkSurface: '#2C1800', darkBorder: '#3D2200', darkBalanceCard: '#78350F',
-  },
-  rose: {
-    primary: '#BE185D', primaryLight: '#F472B6', primaryDark: '#9D174D',
-    lightBg: '#FFF1F2', lightBorder: '#FECDD3', lightBalanceCard: '#BE185D',
-    darkBg: '#1A000D', darkSurface: '#2D0018', darkBorder: '#4A0028', darkBalanceCard: '#9D174D',
-  },
-  teal: {
-    primary: '#0891B2', primaryLight: '#22D3EE', primaryDark: '#0E7490',
-    lightBg: '#ECFEFF', lightBorder: '#A5F3FC', lightBalanceCard: '#0891B2',
-    darkBg: '#020D10', darkSurface: '#0D1F26', darkBorder: '#134152', darkBalanceCard: '#0E7490',
-  },
-  orange: {
-    primary: '#EA580C', primaryLight: '#FB923C', primaryDark: '#C2410C',
-    lightBg: '#FFF7ED', lightBorder: '#FED7AA', lightBalanceCard: '#EA580C',
-    darkBg: '#1A0500', darkSurface: '#2A0D00', darkBorder: '#3D1500', darkBalanceCard: '#C2410C',
   },
   earth: {
     primary: '#2D4A3E', primaryLight: '#8FB8A0', primaryDark: '#1E3329',

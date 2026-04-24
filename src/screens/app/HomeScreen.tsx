@@ -1,5 +1,5 @@
-﻿import React, { useMemo } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+﻿import React, { useMemo, useState } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import AddMovementModal from '../../components/movements/AddMovementModal';
 
 const BalanceCard = ({
   balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense,
@@ -50,7 +51,7 @@ const BalanceCard = ({
       <View style={styles.statsRow}>
         <TouchableOpacity onPress={onPressIncome} activeOpacity={0.7}>
           <View style={styles.statLabelRow}>
-            <View style={[styles.statDot, { backgroundColor: '#4ADE80' }]} />
+            <View style={[styles.statDot, { backgroundColor: colors.income }]} />
             <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
           </View>
           <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
@@ -76,6 +77,9 @@ const HomeScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
+
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addModalType, setAddModalType] = useState<MovementType>('expense');
 
   const { getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
   const { huchaMovements } = useSavingsStore();
@@ -158,6 +162,36 @@ const HomeScreen = () => {
           onPressExpense={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
         />
 
+        {/* ACCIONES RÁPIDAS */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+            onPress={() => { setAddModalType('income'); setAddModalVisible(true); }}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.quickBtnIcon, { backgroundColor: colors.income + '20' }]}>
+              <Ionicons name="arrow-down-outline" size={20} color={colors.income} />
+            </View>
+            <View>
+              <Text style={[styles.quickBtnLabel, { color: dc.textSecondary }]}>{t('home.add').toUpperCase()}</Text>
+              <Text style={[styles.quickBtnType, { color: dc.textPrimary }]}>{t('movements.income')}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+            onPress={() => { setAddModalType('expense'); setAddModalVisible(true); }}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.quickBtnIcon, { backgroundColor: colors.expense + '20' }]}>
+              <Ionicons name="arrow-up-outline" size={20} color={colors.expense} />
+            </View>
+            <View>
+              <Text style={[styles.quickBtnLabel, { color: dc.textSecondary }]}>{t('home.add').toUpperCase()}</Text>
+              <Text style={[styles.quickBtnType, { color: dc.textPrimary }]}>{t('movements.expense')}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* TOP CATEGORÍAS DE GASTO */}
         <View style={styles.topSection}>
           <View style={styles.sectionHeader}>
@@ -206,6 +240,12 @@ const HomeScreen = () => {
           )}
         </View>
       </ScrollView>
+
+      <AddMovementModal
+        visible={addModalVisible}
+        onDismiss={() => setAddModalVisible(false)}
+        initialType={addModalType}
+      />
     </View>
   );
 };
@@ -236,7 +276,7 @@ const styles = StyleSheet.create({
   },
   balanceInt: {
     color: '#FFFFFF', fontSize: 52, fontFamily: 'Poppins_700Bold',
-    letterSpacing: -2, lineHeight: 56, flexShrink: 1,
+    letterSpacing: -2, lineHeight: Platform.OS === 'ios' ? 66 : 56, flexShrink: 1,
   },
   balanceDec: {
     color: 'rgba(255,255,255,0.8)', fontSize: 26,
@@ -251,7 +291,7 @@ const styles = StyleSheet.create({
     height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
     marginBottom: 20, overflow: 'hidden',
   },
-  progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.expense },
+  progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.income },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
   statDot: { width: 6, height: 6, borderRadius: 3 },
@@ -276,6 +316,22 @@ const styles = StyleSheet.create({
   categoryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3 },
+
+  // Quick actions
+  quickActions: {
+    flexDirection: 'row', gap: 12,
+    paddingHorizontal: 16, marginBottom: 20,
+  },
+  quickBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 16, borderWidth: 0.5, padding: 14,
+  },
+  quickBtnIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  quickBtnLabel: { fontSize: 10, fontFamily: 'Poppins_500Medium', letterSpacing: 0.5 },
+  quickBtnType: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default HomeScreen;

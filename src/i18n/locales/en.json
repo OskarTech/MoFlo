@@ -51,7 +51,8 @@
     "month_11": "December",
     "hello": "Hello",
     "availableBalance": "Available balance",
-    "ofIncomeSpent": "of income spent"
+    "ofIncomeSpent": "of income spent",
+    "add": "Add"
   },
   "movements": {
   "add": "Add Movement",
@@ -191,11 +192,6 @@
   "selectColorPalette": "Choose a color",
   "paletteGreen": "Green",
   "paletteBlue": "Blue",
-  "palettePurple": "Purple",
-  "paletteWood": "Wood",
-  "paletteRose": "Rose",
-  "paletteTeal": "Teal",
-  "paletteOrange": "Orange",
   "paletteEarth": "Earth",
   "paletteMint": "Mint",
   "pinErrorMessage": "Try again. Attempts: {{attempts}}/3",
@@ -300,9 +296,9 @@
   "totalWithdrawals": "Withdrawals"
   },
   "tabs": {
-  "home": "Home",
-  "historial": "Movements",
-  "annual": "Summary",
+  "home": "Today",
+  "historial": "Movem.",
+  "annual": "Analysis",
   "recurring": "Fixed",
   "hucha": "Savings",
   "reminders": "Notifications"

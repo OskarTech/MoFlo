@@ -19,9 +19,10 @@ import { MovementType, Movement } from '../../types';
 interface Props {
   visible: boolean;
   onDismiss: () => void;
+  initialType?: MovementType;
 }
 
-const AddMovementModal = ({ visible, onDismiss }: Props) => {
+const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
   const { addMovement } = useMovementStore();
@@ -31,7 +32,11 @@ const AddMovementModal = ({ visible, onDismiss }: Props) => {
   const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
   const insets = useSafeAreaInsets();
 
-  const [type, setType] = useState<MovementType>('expense');
+  const [type, setType] = useState<MovementType>(initialType ?? 'expense');
+
+  useEffect(() => {
+    if (visible && initialType) setType(initialType);
+  }, [visible, initialType]);
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
 
