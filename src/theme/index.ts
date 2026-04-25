@@ -77,7 +77,7 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
   },
   earth: {
     primary: '#2D4A3E', primaryLight: '#8FB8A0', primaryDark: '#1E3329',
-    lightBg: '#F3EDE2', lightBorder: '#DDD0BC', lightBalanceCard: '#C85A3C',
+    lightBg: '#F3EDE2', lightBorder: '#DDD0BC', lightBalanceCard: '#2D4A3E',
     darkBg: '#141210', darkSurface: '#24211D', darkBorder: '#3A302A', darkBalanceCard: '#2D4A3E',
     income: '#4A7C59', expense: '#C85A3C', savings: '#D4A373',
   },
