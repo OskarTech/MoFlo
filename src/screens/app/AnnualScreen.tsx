@@ -53,14 +53,14 @@ const HuchaMovRow = ({
   const { colors: dc } = useTheme();
   const { t } = useTranslation();
   const isDeposit = movement.type === 'deposit';
-  const movColor = isDeposit ? colors.income : colors.expense;
+  const movColor = isDeposit ? dc.income : dc.expense;
   return (
     <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.movementIcon, { backgroundColor: movement.huchaColor + '20' }]}>
+      <View style={[styles.movementIcon, { backgroundColor: dc.savings + '20' }]}>
         <Ionicons
           name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
           size={18}
-          color={movement.huchaColor}
+          color={dc.savings}
         />
       </View>
       <View style={styles.movementInfo}>
@@ -270,9 +270,9 @@ const AnnualScreen = () => {
     type: AnnualFilterType; label: string;
     color: string; icon: keyof typeof Ionicons.glyphMap;
   }[] = [
-    { type: 'income', label: t('movements.income'), color: colors.income, icon: 'arrow-down-circle' },
-    { type: 'expense', label: t('movements.expense'), color: colors.expense, icon: 'arrow-up-circle' },
-    { type: 'hucha', label: t('tabs.hucha'), color: colors.savings, icon: 'wallet' },
+    { type: 'income', label: t('movements.income'), color: dc.income, icon: 'arrow-down-circle' },
+    { type: 'expense', label: t('movements.expense'), color: dc.expense, icon: 'arrow-up-circle' },
+    { type: 'hucha', label: t('tabs.hucha'), color: dc.savings, icon: 'wallet' },
   ];
 
   const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
@@ -281,9 +281,9 @@ const AnnualScreen = () => {
     ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
   ];
 
-  const typeColor = annualTypeFilter === 'income' ? colors.income
-    : annualTypeFilter === 'expense' ? colors.expense
-    : annualTypeFilter === 'hucha' ? colors.savings
+  const typeColor = annualTypeFilter === 'income' ? dc.income
+    : annualTypeFilter === 'expense' ? dc.expense
+    : annualTypeFilter === 'hucha' ? dc.savings
     : dc.primary;
 
   const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
@@ -337,12 +337,12 @@ const AnnualScreen = () => {
                 </Text>
 
                 {/* RESUMEN DEL MES */}
-                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
                 <AnnualCard
                   label={t('annual.netBalance')}
                   amount={monthSummary.income - monthSummary.expense}
-                  color={(monthSummary.income - monthSummary.expense) >= 0 ? colors.income : colors.expense}
+                  color={(monthSummary.income - monthSummary.expense) >= 0 ? dc.income : dc.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
 
@@ -431,7 +431,7 @@ const AnnualScreen = () => {
                     {filteredMonthMovements.map((m) => {
                       const isIncome = m.type === 'income';
                       const isSaving = (m.type as string) === 'saving';
-                      const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
+                      const color = isIncome ? dc.income : isSaving ? dc.savings : dc.expense;
                       const icon: keyof typeof Ionicons.glyphMap = isIncome
                         ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
                       return (
@@ -488,27 +488,27 @@ const AnnualScreen = () => {
                 </Text>
 
                 {/* RESUMEN ANUAL */}
-                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
                 <AnnualCard
                   label={t('annual.netBalance')}
                   amount={totals.balance}
-                  color={totals.balance >= 0 ? colors.income : colors.expense}
+                  color={totals.balance >= 0 ? dc.income : dc.expense}
                   icon="wallet" currencySymbol={currencySymbol}
                 />
 
                 {/* HIGHLIGHTS */}
                 <View style={styles.highlightsRow}>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.income }]}>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: dc.income }]}>
                     <Text style={styles.highlightEmoji}>🏆</Text>
                     <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.bestMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: colors.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightMonth, { color: dc.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
                     <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>+{bestMonth.balance.toFixed(0)} {currencySymbol}</Text>
                   </View>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: colors.expense }]}>
+                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: dc.expense }]}>
                     <Text style={styles.highlightEmoji}>📉</Text>
                     <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.worstMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: colors.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
+                    <Text style={[styles.highlightMonth, { color: dc.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
                     <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>-{worstMonth.expense.toFixed(0)} {currencySymbol}</Text>
                   </View>
                 </View>
@@ -609,8 +609,8 @@ const AnnualScreen = () => {
                   <>
                     {huchaYearMovements.length > 0 ? (
                       <>
-                        <AnnualCard label={t('hucha.totalDeposits')} amount={huchaYearTotals.deposits} color={colors.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                        <AnnualCard label={t('hucha.totalWithdrawals')} amount={huchaYearTotals.withdrawals} color={colors.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
+                        <AnnualCard label={t('hucha.totalDeposits')} amount={huchaYearTotals.deposits} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
+                        <AnnualCard label={t('hucha.totalWithdrawals')} amount={huchaYearTotals.withdrawals} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
                         {huchaYearMovements.map((m) => (
                           <HuchaMovRow key={m.id} movement={m} currencySymbol={currencySymbol} />
                         ))}

@@ -11,7 +11,6 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 
 const BalanceCard = ({
@@ -44,19 +43,19 @@ const BalanceCard = ({
         )}
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${spentPct}%` as any }]} />
+        <View style={[styles.progressFill, { width: `${spentPct}%` as any, backgroundColor: dc.income }]} />
       </View>
       <View style={styles.statsRow}>
         <TouchableOpacity onPress={onPressIncome} activeOpacity={0.7}>
           <View style={styles.statLabelRow}>
-            <View style={[styles.statDot, { backgroundColor: colors.income }]} />
+            <View style={[styles.statDot, { backgroundColor: dc.income }]} />
             <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
           </View>
           <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onPressExpense} activeOpacity={0.7}>
           <View style={styles.statLabelRow}>
-            <View style={[styles.statDot, { backgroundColor: colors.expense }]} />
+            <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
             <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
           </View>
           <Text style={styles.statAmount}>-{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
@@ -251,7 +250,7 @@ const styles = StyleSheet.create({
     height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
     marginBottom: 20, overflow: 'hidden',
   },
-  progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.income },
+  progressFill: { height: 4, borderRadius: 2 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
   statDot: { width: 6, height: 6, borderRadius: 3 },

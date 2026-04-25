@@ -97,7 +97,7 @@ const AddMoneyModal = ({
 
   const parsed = parseFloat(amount.replace(',', '.'));
   const isValid = parsed > 0 && (mode === 'deposit' || parsed <= huchaCurrentAmount);
-  const activeColor = mode === 'deposit' ? huchaColor : colors.expense;
+  const activeColor = mode === 'deposit' ? huchaColor : dc.expense;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleDismiss}>
@@ -119,7 +119,7 @@ const AddMoneyModal = ({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modeTab, mode === 'withdrawal' && { backgroundColor: colors.expense }]}
+              style={[styles.modeTab, mode === 'withdrawal' && { backgroundColor: dc.expense }]}
               onPress={() => setMode('withdrawal')}
               activeOpacity={0.8}
             >
@@ -381,7 +381,7 @@ const HuchaDetailScreen = () => {
             </Text>
             {recentMovements.map((m, idx) => {
               const isDeposit = m.type === 'deposit';
-              const movColor = isDeposit ? colors.income : colors.expense;
+              const movColor = isDeposit ? dc.income : dc.expense;
               return (
                 <View
                   key={m.id}

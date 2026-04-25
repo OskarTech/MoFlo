@@ -15,11 +15,6 @@ import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 
-const TYPE_COLORS: Record<string, string> = {
-  income: colors.income,
-  expense: colors.expense,
-};
-
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   income: 'arrow-down-circle',
   expense: 'arrow-up-circle',
@@ -34,6 +29,7 @@ const RecurringCard = ({
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
+  const TYPE_COLORS: Record<string, string> = { income: dc.income, expense: dc.expense };
 
   const color = TYPE_COLORS[item.type];
   const icon = TYPE_ICONS[item.type];

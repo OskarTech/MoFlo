@@ -317,7 +317,7 @@ const HuchaScreen = () => {
                 {t('hucha.totalSaved').toUpperCase()}
               </Text>
               {thisMonthDeposited > 0 && (
-                <Text style={styles.thisMonthText}>
+                <Text style={[styles.thisMonthText, { color: dc.savings }]}>
                   +{currencySymbol}{formatAmount(thisMonthDeposited)} este mes
                 </Text>
               )}
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     fontSize: 11, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8,
   },
   thisMonthText: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold', color: '#22c55e',
+    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
   },
   totalAmount: {
     fontSize: 34, fontFamily: 'Poppins_700Bold', marginBottom: 12, marginTop: 4,

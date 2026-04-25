@@ -46,17 +46,12 @@ const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] 
   { name: 'ellipsis-horizontal', icon: 'ellipsis-horizontal' },
 ];
 
-const TYPE_COLORS = {
-  income: colors.income,
-  expense: colors.expense,
-  saving: colors.savings,
-};
-
 type RouteParams = { SharedCategories: { accountId: string } };
 
 const SharedCategoriesScreen = () => {
   const { t } = useTranslation();
   const { colors: dc, isDark } = useTheme();
+  const TYPE_COLORS = { income: dc.income, expense: dc.expense, saving: dc.savings };
   const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<RouteParams, 'SharedCategories'>>();
   const accountId = route.params?.accountId;
@@ -122,7 +117,7 @@ const SharedCategoriesScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('categories.title')} showBell={false} />
+      <AppHeader title={t('categories.title')} showBack showBell={false} />
 
       <View style={[styles.typeTabs, { backgroundColor: dc.surface, borderBottomColor: dc.border }]}>
         {(['expense', 'income'] as MovementType[]).map((tp) => (

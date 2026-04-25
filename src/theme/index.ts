@@ -7,8 +7,8 @@ export const colors = {
   primaryDark: '#065F46',
 
   // ── SEMÁNTICOS ─────────────────────────────────────────────
-  income: '#84D175',
-  expense: '#E8735A',
+  income: '#10B981',
+  expense: '#EF4444',
   savings: '#F59E0B',
 
   // ── MODO CLARO ─────────────────────────────────────────────
@@ -52,6 +52,9 @@ interface PaletteEntry {
   darkSurface: string;
   darkBorder: string;
   darkBalanceCard: string;
+  income: string;
+  expense: string;
+  savings: string;
   // Optional palette-specific overrides
   lightSurface?: string;
   lightTextPrimary?: string;
@@ -64,32 +67,36 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     primary: '#166534', primaryLight: '#4ADE80', primaryDark: '#065F46',
     lightBg: '#F0FAF4', lightBorder: '#D1FAE5', lightBalanceCard: '#166534',
     darkBg: '#0F1110', darkSurface: '#1C2120', darkBorder: '#2E3330', darkBalanceCard: '#065F46',
+    income: '#10B981', expense: '#EF4444', savings: '#F59E0B',
   },
   blue: {
     primary: '#1D4ED8', primaryLight: '#60A5FA', primaryDark: '#1E40AF',
     lightBg: '#EFF6FF', lightBorder: '#BFDBFE', lightBalanceCard: '#1D4ED8',
     darkBg: '#0F172A', darkSurface: '#1E293B', darkBorder: '#1E3A5F', darkBalanceCard: '#1E40AF',
+    income: '#3B82F6', expense: '#F43F5E', savings: '#F97316',
   },
   earth: {
     primary: '#2D4A3E', primaryLight: '#8FB8A0', primaryDark: '#1E3329',
     lightBg: '#F3EDE2', lightBorder: '#DDD0BC', lightBalanceCard: '#C85A3C',
     darkBg: '#141210', darkSurface: '#24211D', darkBorder: '#3A302A', darkBalanceCard: '#2D4A3E',
+    income: '#4A7C59', expense: '#C85A3C', savings: '#D4A373',
   },
   mint: {
-    primary: '#3E5BA3',         // Dusk Blue
-    primaryLight: '#84D175',    // Moss Green
-    primaryDark: '#0C2D45',     // Deep Space Blue
-    lightBg: '#E6FBDA',         // Frosted Mint
-    lightSurface: '#ffffff',    // Lemon Chiffon
-    lightBorder: '#C5EDB0',     // Soft mint border
-    lightBalanceCard: '#3E5BA3',// Dusk Blue
-    lightTextPrimary: '#0C2D45',// Deep Space Blue
+    primary: '#3E5BA3',
+    primaryLight: '#84D175',
+    primaryDark: '#0C2D45',
+    lightBg: '#E6FBDA',
+    lightSurface: '#ffffff',
+    lightBorder: '#C5EDB0',
+    lightBalanceCard: '#3E5BA3',
+    lightTextPrimary: '#0C2D45',
     lightTextSecondary: '#3E5BA3',
-    darkBg: '#0C2D45',          // Deep Space Blue
-    darkSurface: '#1A4466',     // Dusk Blue darkened
+    darkBg: '#0C2D45',
+    darkSurface: '#1A4466',
     darkBorder: '#1E3A5F',
     darkBalanceCard: '#c5edb0c0',
-    darkTextPrimary: '#fafafa', // Frosted Mint text on dark
+    darkTextPrimary: '#fafafa',
+    income: '#84D175', expense: '#E8735A', savings: '#E8A25A',
   },
 };
 
@@ -106,6 +113,9 @@ export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'g
     border: isDark ? p.darkBorder : p.lightBorder,
     cardBackground: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
     balanceCard: isDark ? p.darkBalanceCard : p.lightBalanceCard,
+    income: p.income,
+    expense: p.expense,
+    savings: p.savings,
   };
 };
 

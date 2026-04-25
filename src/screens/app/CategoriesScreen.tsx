@@ -45,10 +45,6 @@ const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] 
   { name: 'ellipsis-horizontal', icon: 'ellipsis-horizontal' },
 ];
 
-const TYPE_COLORS = {
-  income: colors.income,
-  expense: colors.expense,
-};
 
 interface AddCategoryModalProps {
   visible: boolean;
@@ -60,6 +56,7 @@ interface AddCategoryModalProps {
 const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCategoryModalProps) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
+  const TYPE_COLORS = { income: dc.income, expense: dc.expense };
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('ellipsis-horizontal');
@@ -192,6 +189,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
 const CategoriesScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
+  const TYPE_COLORS = { income: dc.income, expense: dc.expense };
   const {
     customCategories,
     addCategory,
@@ -241,7 +239,7 @@ const CategoriesScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('categories.title')} showBell={false} />
+      <AppHeader title={t('categories.title')} showBack showBell={false} />
 
       {/* TABS DE TIPO */}
       <View style={[styles.typeTabs, {

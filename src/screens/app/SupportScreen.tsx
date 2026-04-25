@@ -77,7 +77,7 @@ const SupportScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('settings.supportTitle')} />
+      <AppHeader title={t('settings.supportTitle')} showBack showBell={false} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

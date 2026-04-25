@@ -27,12 +27,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 const HuchaStack = createNativeStackNavigator();
+const SettingsStack = createNativeStackNavigator();
 
 const HuchaNavigator = () => (
   <HuchaStack.Navigator screenOptions={{ headerShown: false }}>
     <HuchaStack.Screen name="HuchaMain" component={HuchaScreen} />
     <HuchaStack.Screen name="HuchaDetail" component={HuchaDetailScreen} />
   </HuchaStack.Navigator>
+);
+
+const SettingsNavigator = () => (
+  <SettingsStack.Navigator screenOptions={{ headerShown: false }}>
+    <SettingsStack.Screen name="SettingsMain" component={SettingsScreen} />
+    <SettingsStack.Screen name="Support" component={SupportScreen} />
+    <SettingsStack.Screen name="Categories" component={CategoriesScreen} />
+    <SettingsStack.Screen name="SharedAccount" component={SharedAccountScreen} />
+    <SettingsStack.Screen name="Recurring" component={RecurringScreen} />
+    <SettingsStack.Screen name="SharedCategories" component={SharedCategoriesScreen} />
+  </SettingsStack.Navigator>
 );
 
 const AppNavigator = () => {
@@ -155,7 +167,7 @@ const AppNavigator = () => {
         {/* TABS OCULTOS */}
         <Tab.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={SettingsNavigator}
           options={{
             tabBarButton: () => null,
             tabBarLabel: '',
@@ -171,51 +183,6 @@ const AppNavigator = () => {
               onModalDismiss={() => setReminderModalVisible(false)}
             />
           )}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="Support"
-          component={SupportScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="Categories"
-          component={CategoriesScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="SharedAccount"
-          component={SharedAccountScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="Recurring"
-          component={RecurringScreen}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
-        <Tab.Screen
-          name="SharedCategories"
-          component={SharedCategoriesScreen}
           options={{
             tabBarButton: () => null,
             tabBarLabel: '',

@@ -13,7 +13,6 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import { MovementType, Movement } from '../../types';
 
 interface Props {
@@ -83,7 +82,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
       ? getSharedCategoryName(id, tp, t)
       : getCategoryName(id, tp, t);
 
-  const typeColor = type === 'income' ? colors.income : colors.expense;
+  const typeColor = type === 'income' ? dc.income : dc.expense;
   const sheetBg = dc.surface;
   const inputBg = isDark ? dc.background : '#FFFFFF';
   const chipBg = isDark ? dc.border : '#F8F8F8';
@@ -161,7 +160,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
                     styles.typeButton,
                     { backgroundColor: isDark ? dc.border : '#F0F0F0' },
                     type === t_ && {
-                      backgroundColor: t_ === 'income' ? colors.income : colors.expense,
+                      backgroundColor: t_ === 'income' ? dc.income : dc.expense,
                     },
                   ]}
                   onPress={() => handleTypeChange(t_)}

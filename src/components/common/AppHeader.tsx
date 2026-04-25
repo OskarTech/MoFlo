@@ -22,6 +22,7 @@ interface Props {
   title: string;
   onBellPress?: () => void;
   showBell?: boolean;
+  showBack?: boolean;
   showAccountSelector?: boolean;
 }
 
@@ -29,6 +30,7 @@ const AppHeader = ({
   title,
   onBellPress,
   showBell = true,
+  showBack = false,
   showAccountSelector = false,
 }: Props) => {
   const { colors: dc, isDark } = useTheme();
@@ -111,7 +113,15 @@ const AppHeader = ({
   return (
     <>
       <View style={[styles.container, { backgroundColor: headerBg, paddingTop }]}>
-        {showBell ? (
+        {showBack ? (
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: iconBg }]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={iconColor} />
+          </TouchableOpacity>
+        ) : showBell ? (
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: bellIconBg }]}
             onPress={handleBellPress}
@@ -198,8 +208,8 @@ const AppHeader = ({
               style={styles.accountOption}
               onPress={handleSelectShared}
             >
-              <View style={[styles.accountOptionIcon, { backgroundColor: colors.savings + '20' }]}>
-                <Ionicons name="people" size={20} color={colors.savings} />
+              <View style={[styles.accountOptionIcon, { backgroundColor: dc.savings + '20' }]}>
+                <Ionicons name="people" size={20} color={dc.savings} />
               </View>
               <View style={styles.accountOptionInfo}>
                 <View style={styles.accountOptionTitleRow}>
@@ -207,8 +217,8 @@ const AppHeader = ({
                     {sharedAccount?.name ?? t('sharedAccount.switchToShared')}
                   </Text>
                   {!isPremium && (
-                    <View style={styles.premiumBadge}>
-                      <Text style={styles.premiumBadgeText}>⭐ PREMIUM</Text>
+                    <View style={[styles.premiumBadge, { backgroundColor: dc.savings + '20' }]}>
+                      <Text style={[styles.premiumBadgeText, { color: dc.savings }]}>⭐ PREMIUM</Text>
                     </View>
                   )}
                 </View>
@@ -219,7 +229,7 @@ const AppHeader = ({
                 </Text>
               </View>
               {isSharedMode && (
-                <Ionicons name="checkmark-circle" size={22} color={colors.savings} />
+                <Ionicons name="checkmark-circle" size={22} color={dc.savings} />
               )}
             </TouchableOpacity>
           </View>
@@ -259,8 +269,8 @@ const styles = StyleSheet.create({
   accountOptionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accountOptionTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   accountOptionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  premiumBadge: { backgroundColor: colors.savings + '20', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  premiumBadgeText: { fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings },
+  premiumBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  premiumBadgeText: { fontSize: 10, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default AppHeader;

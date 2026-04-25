@@ -41,7 +41,7 @@ const MovementRow = ({
 
   const isIncome = movement.type === 'income';
   const isSaving = (movement.type as string) === 'saving';
-  const color = isIncome ? colors.income : isSaving ? colors.savings : colors.expense;
+  const color = isIncome ? dc.income : isSaving ? dc.savings : dc.expense;
   const icon: keyof typeof Ionicons.glyphMap = isIncome
     ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
 
@@ -94,15 +94,15 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
   const isDeposit = movement.type === 'deposit';
-  const movColor = isDeposit ? colors.income : colors.expense;
+  const movColor = isDeposit ? dc.income : dc.expense;
 
   return (
     <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.movementIcon, { backgroundColor: movement.huchaColor + '20' }]}>
+      <View style={[styles.movementIcon, { backgroundColor: dc.savings + '20' }]}>
         <Ionicons
           name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
           size={22}
-          color={movement.huchaColor}
+          color={dc.savings}
         />
       </View>
       <View style={styles.movementInfo}>
@@ -110,8 +110,8 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
           <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
             {movement.huchaName}
           </Text>
-          <View style={[styles.recurringBadge, { backgroundColor: movement.huchaColor + '20' }]}>
-            <Ionicons name="wallet" size={10} color={movement.huchaColor} />
+          <View style={[styles.recurringBadge, { backgroundColor: dc.savings + '20' }]}>
+            <Ionicons name="wallet" size={10} color={dc.savings} />
           </View>
         </View>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
@@ -135,7 +135,7 @@ const RecurringCard = ({
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
 
-  const color = item.type === 'income' ? colors.income : colors.expense;
+  const color = item.type === 'income' ? dc.income : dc.expense;
   const icon: keyof typeof Ionicons.glyphMap = item.type === 'income'
     ? 'arrow-down-circle' : 'arrow-up-circle';
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -211,9 +211,9 @@ const MovementsScreen = () => {
     .sort((a, b) => a.recurringDay - b.recurringDay);
 
   const filters: { key: FilterType; label: string; color: string }[] = [
-    { key: 'income', label: t('movementsList.income'), color: colors.income },
-    { key: 'expense', label: t('movementsList.expenses'), color: colors.expense },
-    { key: 'hucha', label: t('movementsList.hucha'), color: colors.savings },
+    { key: 'income', label: t('movementsList.income'), color: dc.income },
+    { key: 'expense', label: t('movementsList.expenses'), color: dc.expense },
+    { key: 'hucha', label: t('movementsList.hucha'), color: dc.savings },
     { key: 'recurring', label: t('movementsList.fixed'), color: dc.primary },
   ];
 
