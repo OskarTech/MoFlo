@@ -197,6 +197,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
               ref={categoryScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               style={styles.categoryScroll}
             >
               {categoryList.map((cat) => (

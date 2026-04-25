@@ -183,7 +183,7 @@ const CreateHuchaModal = ({
         />
         <View style={[styles.sheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 16 }]}>
           <View style={[styles.sheetHandle, { backgroundColor: dc.border }]} />
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.sheetTitle, { color: dc.textPrimary }]}>
               {t('hucha.createGoal')}
             </Text>
