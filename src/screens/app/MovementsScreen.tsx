@@ -28,7 +28,7 @@ const MovementRow = ({
   movement: Movement; onDelete: (id: string) => void;
 }) => {
   const { t } = useTranslation();
-  const { getCurrencySymbol } = useSettingsStore();
+  const { getCurrencySymbol, language } = useSettingsStore();
   const { getCategoryName } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
@@ -39,11 +39,33 @@ const MovementRow = ({
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
+  const formatRelativeTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayMidnight = new Date(todayMidnight);
+    yesterdayMidnight.setDate(yesterdayMidnight.getDate() - 1);
+    const movMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (movMidnight.getTime() === todayMidnight.getTime()) {
+      const hh = date.getHours().toString().padStart(2, '0');
+      const mm = date.getMinutes().toString().padStart(2, '0');
+      return `${t('home.today')}, ${hh}:${mm}`;
+    }
+    if (movMidnight.getTime() === yesterdayMidnight.getTime()) return t('home.yesterday');
+    const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  };
+
   const isIncome = movement.type === 'income';
   const isSaving = (movement.type as string) === 'saving';
   const color = isIncome ? dc.income : isSaving ? dc.savings : dc.expense;
   const icon: keyof typeof Ionicons.glyphMap = isIncome
     ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
+
+  const catName = getCatName(movement.category, movement.type);
+  const title = movement.note || catName;
+  const timeLabel = formatRelativeTime(movement.date);
+  const subtitle = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
 
   const handleDelete = () => {
     Alert.alert(
@@ -67,7 +89,7 @@ const MovementRow = ({
       <View style={styles.movementInfo}>
         <View style={styles.movementTitleRow}>
           <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
-            {getCatName(movement.category, movement.type)}
+            {title}
           </Text>
           {movement.isRecurring && (
             <View style={[styles.recurringBadge, { backgroundColor: dc.primary + '15' }]}>
@@ -75,8 +97,8 @@ const MovementRow = ({
             </View>
           )}
         </View>
-        <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-          {formatDate(movement.date)}
+        <Text style={[styles.movementDate, { color: dc.textSecondary }]} numberOfLines={1}>
+          {subtitle}
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color }]}>
@@ -344,7 +366,7 @@ const styles = StyleSheet.create({
   movementTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   movementCategory: { fontSize: 14, fontFamily: 'Poppins_500Medium', flexShrink: 1 },
   recurringBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 3 },
+  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8 },
   recurringCard: {
     flexDirection: 'row', alignItems: 'center',

@@ -52,7 +52,10 @@
     "hello": "Hola",
     "availableBalance": "Balance disponible",
     "ofIncomeSpent": "del ingreso gastado",
-    "add": "Añadir"
+    "add": "Añadir",
+    "seeAll": "Ver todo",
+    "today": "Hoy",
+    "yesterday": "Ayer"
   },
   "movements": {
   "add": "Añadir Movimiento",
@@ -63,7 +66,7 @@
   "amount": "Importe",
   "category": "Categoría",
   "description": "Descripción",
-  "descriptionPlaceholder": "Ej. Supermercado, Netflix...",
+  "descriptionPlaceholder": "Ej. Gasolina, Netflix...",
   "save": "Guardar",
   "cancel": "Cancelar",
   "recurringQuestion": "¿Es un movimiento recurrente?",

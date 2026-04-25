@@ -52,7 +52,10 @@
     "hello": "Hello",
     "availableBalance": "Available balance",
     "ofIncomeSpent": "of income spent",
-    "add": "Add"
+    "add": "Add",
+    "seeAll": "See all",
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "movements": {
   "add": "Add Movement",
@@ -63,7 +66,7 @@
   "amount": "Amount",
   "category": "Category",
   "description": "Description",
-  "descriptionPlaceholder": "E.g. Supermarket, Netflix...",
+  "descriptionPlaceholder": "E.g. Fuel, Netflix...",
   "save": "Save",
   "cancel": "Cancel",
   "recurringQuestion": "Is this a recurring movement?",

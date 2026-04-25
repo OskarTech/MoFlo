@@ -37,6 +37,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
     if (visible && initialType) setType(initialType);
   }, [visible, initialType]);
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
 
   const sheetOffset = useRef(new Animated.Value(0)).current;
@@ -91,12 +92,14 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const handleDismiss = () => {
     setType('expense');
     setAmount('');
+    setNote('');
     setCategoryId('housing');
     onDismiss();
   };
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
+    if (newType === 'income') setNote('');
     const cats = isSharedMode
       ? getSharedCategoriesForType(newType)
       : getCategoriesForType(newType);
@@ -120,6 +123,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
       amount: parsedAmount,
       category: categoryId as any,
       description: getCatName(categoryId, type),
+      note: note.trim() || undefined,
       date: new Date().toISOString(),
       isRecurring: false,
       currency: currencySymbol,
@@ -188,6 +192,21 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
               activeOutlineColor={typeColor}
               left={<TextInput.Affix text={currencySymbol} />}
             />
+
+            {/* NOTA — solo en gastos */}
+            {type === 'expense' && (
+              <TextInput
+                label={t('movements.description')}
+                value={note}
+                onChangeText={setNote}
+                mode="outlined"
+                placeholder={t('movements.descriptionPlaceholder')}
+                style={[styles.input, { backgroundColor: inputBg }]}
+                outlineColor={dc.border}
+                activeOutlineColor={typeColor}
+                maxLength={80}
+              />
+            )}
 
             {/* CATEGORÍAS */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>

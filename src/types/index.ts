@@ -34,6 +34,7 @@ export interface Movement {
   isRecurring: boolean; // ¿Es un movimiento recurrente?
   recurringDay?: number; // Día del mes que se repite (1-31)
   currency: string; // "EUR", "USD", "PLN"
+  note?: string;
   createdAt: string;
   addedBy?: string;
 }

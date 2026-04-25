@@ -11,6 +11,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
+import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 const BalanceCard = ({
@@ -75,7 +76,7 @@ const HomeScreen = () => {
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
-  const { getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
+  const { movements, getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
   const { huchaMovements } = useSavingsStore();
 
   const summary = getMonthlySummary();
@@ -102,6 +103,44 @@ const HomeScreen = () => {
       : getCategoriesForType('expense');
     return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
   };
+
+  const getCatIconForType = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
+    const cats = isSharedMode
+      ? getSharedCategoriesForType(type)
+      : getCategoriesForType(type);
+    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+  };
+
+  const formatMovementTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayMidnight = new Date(todayMidnight);
+    yesterdayMidnight.setDate(yesterdayMidnight.getDate() - 1);
+    const movMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (movMidnight.getTime() === todayMidnight.getTime()) {
+      const hh = date.getHours().toString().padStart(2, '0');
+      const mm = date.getMinutes().toString().padStart(2, '0');
+      return `${t('home.today')}, ${hh}:${mm}`;
+    }
+    if (movMidnight.getTime() === yesterdayMidnight.getTime()) {
+      return t('home.yesterday');
+    }
+    const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  };
+
+  const catColorHash = (cat: string) => {
+    let h = 0;
+    for (let i = 0; i < cat.length; i++) h = cat.charCodeAt(i) + ((h << 5) - h);
+    return Math.abs(h) % CAT_COLORS.length;
+  };
+
+  const recentMovements = useMemo(() =>
+    [...movements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
+    [movements],
+  );
 
   const CAT_COLORS = ['#E8735A', '#4A6FD9', '#7BC67E', '#F5A623', '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12'];
 
@@ -203,6 +242,59 @@ const HomeScreen = () => {
             </View>
           )}
         </View>
+
+        {/* ÚLTIMOS MOVIMIENTOS */}
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
+              {t('home.recentMovements')}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('HistorialTab')} activeOpacity={0.7}>
+              <Text style={[styles.seeAllText, { color: dc.primary }]}>{t('home.seeAll')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentMovements.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <Text style={[styles.emptyText, { color: dc.textSecondary }]}>{t('home.noMovements')}</Text>
+            </View>
+          ) : (
+            <View style={[styles.recentCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              {recentMovements.map((mov, index) => {
+                const isIncome = mov.type === 'income';
+                const color = isIncome ? dc.income : dc.expense;
+                const icon = getCatIconForType(mov.category, mov.type as MovementType);
+                const title = mov.note || getCatName(mov.category, mov.type as MovementType);
+                const hasNote = !!mov.note;
+                const catLabel = getCatName(mov.category, mov.type as MovementType);
+                const timeLabel = formatMovementTime(mov.date);
+                const subtitle = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
+                const amountColor = isIncome ? dc.income : dc.expense;
+                const amountStr = `${isIncome ? '+' : '-'}${mov.amount.toFixed(2).replace('.', ',')} ${currencySymbol}`;
+
+                return (
+                  <View key={mov.id}>
+                    {index > 0 && <View style={[styles.recentDivider, { backgroundColor: dc.border }]} />}
+                    <View style={styles.recentRow}>
+                      <View style={[styles.recentIcon, { backgroundColor: color + '18' }]}>
+                        <Ionicons name={icon} size={18} color={color} />
+                      </View>
+                      <View style={styles.recentInfo}>
+                        <Text style={[styles.recentTitle, { color: dc.textPrimary }]} numberOfLines={1}>
+                          {title}
+                        </Text>
+                        <Text style={[styles.recentSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
+                          {subtitle}
+                        </Text>
+                      </View>
+                      <Text style={[styles.recentAmount, { color: amountColor }]}>{amountStr}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
     </View>
@@ -276,6 +368,16 @@ const styles = StyleSheet.create({
   barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3 },
 
+  recentSection: { paddingHorizontal: 16, marginTop: 24 },
+  seeAllText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  recentCard: { borderRadius: 16, borderWidth: 0.5, overflow: 'hidden' },
+  recentRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
+  recentIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  recentInfo: { flex: 1 },
+  recentTitle: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  recentSubtitle: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  recentAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', marginLeft: 4 },
+  recentDivider: { height: 0.5, marginLeft: 66 },
 });
 
 export default HomeScreen;

@@ -52,7 +52,10 @@
     "hello": "Cześć",
     "availableBalance": "Dostępne saldo",
     "ofIncomeSpent": "dochodu wydane",
-    "add": "Dodaj"
+    "add": "Dodaj",
+    "seeAll": "Zobacz wszystko",
+    "today": "Hoy",
+    "yesterday": "Wczoraj"
   },
   "movements": {
   "add": "Dodaj Transakcję",
@@ -63,7 +66,7 @@
   "amount": "Kwota",
   "category": "Kategoria",
   "description": "Opis",
-  "descriptionPlaceholder": "Np. Supermarket, Netflix...",
+  "descriptionPlaceholder": "Np. Paliwo, Netflix...",
   "save": "Zapisz",
   "cancel": "Anuluj",
   "recurringQuestion": "Czy to cykliczna transakcja?",
