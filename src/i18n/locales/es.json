@@ -298,9 +298,9 @@
   "tabs": {
   "home": "Inicio",
   "historial": "Movim.",
-  "annual": "Análisis",
+  "annual": "Resumen",
   "recurring": "Fijos",
-  "hucha": "Huchas",
+  "hucha": "Hucha",
   "reminders": "Notificaciones"
   },
   "header": {
@@ -309,7 +309,7 @@
   "home": "Inicio",
   "movements": "Movimientos",
   "historial": "Movimientos",
-  "movementsSubtitle": "Todo tu dinero",
+
   "annual": "Resumen",
   "profile": "Perfil",
   "settings_screen": "Ajustes",

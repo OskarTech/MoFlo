@@ -1,5 +1,5 @@
 import { useColorScheme } from 'react-native';
-import { getDynamicColors, colors } from '../theme';
+import { getDynamicColors, colors, COLOR_PALETTES, ColorPaletteId } from '../theme';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 
@@ -15,9 +15,10 @@ export const useTheme = () => {
       ? false
       : colorScheme === 'dark';
 
-  const effectivePalette = isSharedMode
-    ? (sharedColorPalette ?? 'blue')
-    : (colorPalette ?? 'green');
+  const effectivePalette: ColorPaletteId = (() => {
+    const raw = isSharedMode ? sharedColorPalette : colorPalette;
+    return raw && raw in COLOR_PALETTES ? raw : (isSharedMode ? 'blue' : 'green');
+  })();
 
   const dynamic = getDynamicColors(isDark, effectivePalette);
 

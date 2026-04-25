@@ -278,6 +278,7 @@ const MovementsScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.historial')} />
+
       {filterChips}
 
       {filter === 'hucha' ? (
@@ -324,6 +325,7 @@ const MovementsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
   filtersRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, flexDirection: 'row' },
   filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5 },
   filterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },

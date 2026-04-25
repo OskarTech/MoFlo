@@ -296,9 +296,9 @@
   "totalWithdrawals": "Withdrawals"
   },
   "tabs": {
-  "home": "Today",
-  "historial": "Movem.",
-  "annual": "Analysis",
+  "home": "Home",
+  "historial": "Movements",
+  "annual": "Summary",
   "recurring": "Fixed",
   "hucha": "Savings",
   "reminders": "Notifications"
@@ -308,7 +308,8 @@
   "settings": "Settings",
   "home": "Home",
   "movements": "Movements",
-  "historial": "Movements",   
+  "historial": "Movements",
+
   "annual": "Summary",
   "profile": "Profile",
   "settings_screen": "Settings",

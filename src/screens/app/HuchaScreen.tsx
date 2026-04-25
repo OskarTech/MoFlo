@@ -309,12 +309,6 @@ const HuchaScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Cabecera */}
-        <View style={styles.pageHeader}>
-          <Text style={[styles.pageSubtitle, { color: dc.textSecondary }]}>TUS METAS</Text>
-          <Text style={[styles.pageTitle, { color: dc.textPrimary }]}>Huchas</Text>
-        </View>
-
         {/* Tarjeta totales */}
         {huchas.length > 0 && (
           <View style={[styles.totalCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
@@ -355,41 +349,15 @@ const HuchaScreen = () => {
             <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
               {t('hucha.noGoalsSubtitle')}
             </Text>
-            <TouchableOpacity
-              style={[styles.createCardBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => setShowCreateModal(true)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.createBtnIconBox, { borderColor: dc.border }]}>
-                <Ionicons name="add" size={20} color={dc.textSecondary} />
-              </View>
-              <Text style={[styles.createCardBtnText, { color: dc.textPrimary }]}>
-                {t('hucha.createGoal')}
-              </Text>
-            </TouchableOpacity>
           </View>
         ) : (
-          <>
-            {huchas.map(hucha => (
-              <HuchaCard
-                key={hucha.id}
-                hucha={hucha}
-                onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
-              />
-            ))}
-            <TouchableOpacity
-              style={[styles.createCardBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => setShowCreateModal(true)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.createBtnIconBox, { borderColor: dc.border }]}>
-                <Ionicons name="add" size={20} color={dc.textSecondary} />
-              </View>
-              <Text style={[styles.createCardBtnText, { color: dc.textPrimary }]}>
-                {t('hucha.createGoal')}
-              </Text>
-            </TouchableOpacity>
-          </>
+          huchas.map(hucha => (
+            <HuchaCard
+              key={hucha.id}
+              hucha={hucha}
+              onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
+            />
+          ))
         )}
       </ScrollView>
 
@@ -403,7 +371,7 @@ const HuchaScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
 
   pageHeader: { marginBottom: 20 },
   pageSubtitle: {

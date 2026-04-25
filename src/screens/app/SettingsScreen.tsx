@@ -506,11 +506,11 @@ const SettingsScreen = () => {
   const selectedLanguageLabel = LANGUAGES.find(l => l.code === language)?.label ?? 'English';
   const selectedThemeLabel = THEME_OPTIONS.find(o => o.code === themeMode)?.label ?? t('settings.themeAuto');
   const selectedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === dateFormat)?.label ?? 'DD/MM/YYYY';
-  const selectedPaletteId = (colorPalette ?? 'green') as ColorPaletteId;
+  const selectedPaletteId: ColorPaletteId = colorPalette && colorPalette in COLOR_PALETTES ? colorPalette : 'green';
   const selectedPaletteLabel = t(`settings.palette${selectedPaletteId.charAt(0).toUpperCase() + selectedPaletteId.slice(1)}`);
 
   const selectedSharedCurrencyLabel = CURRENCIES.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
-  const selectedSharedPaletteId = (sharedColorPalette ?? 'blue') as ColorPaletteId;
+  const selectedSharedPaletteId: ColorPaletteId = sharedColorPalette && sharedColorPalette in COLOR_PALETTES ? sharedColorPalette : 'blue';
   const selectedSharedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === sharedDateFormat)?.label ?? 'DD/MM/YYYY';
 
   const initials = displayName

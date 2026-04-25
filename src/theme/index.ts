@@ -94,7 +94,7 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
 };
 
 export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'green') => {
-  const p = COLOR_PALETTES[paletteId];
+  const p = COLOR_PALETTES[paletteId] ?? COLOR_PALETTES['green'];
   return {
     primary: p.primary,
     primaryLight: p.primaryLight,

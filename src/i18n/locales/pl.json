@@ -296,11 +296,11 @@
   "totalWithdrawals": "Wypłaty"
   },
   "tabs": {
-  "home": "Dziś",
-  "historial": "Operac.",
-  "annual": "Analiza",
+  "home": "Główna",
+  "historial": "Operacje",
+  "annual": "Raport",
   "recurring": "Stałe",
-  "hucha": "Skarbonki",
+  "hucha": "Skarbonka",
   "reminders": "Powiadomienia"
   },
   "header": {
@@ -311,6 +311,7 @@
   "annual": "Raport",
   "profile": "Profil",
   "historial": "Operacje",
+
   "settings_screen": "Ustawienia",
   "individualAccount": "Konto Indywidualne",
   "sharedAccount": "Konto Współdzielone",
