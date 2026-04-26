@@ -1,11 +1,11 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  View, StyleSheet, ScrollView,
-  TouchableOpacity, Modal, FlatList,
+  View, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
@@ -13,723 +13,988 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
-import { MovementType, HuchaMovement } from '../../types';
+import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
-import { formatDate } from '../../utils/dateFormat';
 
-type AnnualFilterType = MovementType | 'hucha';
+type SummaryTab = 'expense' | 'income' | 'hucha';
 
+const CAT_COLORS = [
+  '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
+  '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12',
+  '#1ABC9C', '#E67E22', '#3498DB', '#8E44AD',
+];
 
-const AnnualCard = ({
-  label, amount, color, icon, currencySymbol,
+const FLOW_BAR_H = 72;
+const STACK_BAR_H = 80;
+
+// ── DONUT CHART ──────────────────────────────────────────────────────────────
+const DonutChart = ({
+  data, size = 152, innerRadius = 50, children,
 }: {
-  label: string; amount: number; color: string;
-  icon: keyof typeof Ionicons.glyphMap; currencySymbol: string;
+  data: { value: number; color: string }[];
+  size?: number;
+  innerRadius?: number;
+  children?: React.ReactNode;
 }) => {
-  const { colors: dc } = useTheme();
-  return (
-    <View style={[styles.annualCard, {
-      backgroundColor: dc.surface, borderLeftColor: color, borderColor: dc.border,
-    }]}>
-      <View style={[styles.annualCardIcon, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      <View>
-        <Text style={[styles.annualCardAmount, { color: dc.textPrimary }]}>
-          {amount.toFixed(2)} {currencySymbol}
-        </Text>
-        <Text style={[styles.annualCardLabel, { color: dc.textSecondary }]}>{label}</Text>
-      </View>
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return null;
+
+  const r = size / 2 - 2;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const centerOverlay = children ? (
+    <View style={{
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      justifyContent: 'center', alignItems: 'center',
+    }}>
+      {children}
     </View>
-  );
-};
+  ) : null;
 
-const HuchaMovRow = ({
-  movement, currencySymbol,
-}: {
-  movement: HuchaMovement; currencySymbol: string;
-}) => {
-  const { colors: dc } = useTheme();
-  const { t } = useTranslation();
-  const isDeposit = movement.type === 'deposit';
-  const movColor = isDeposit ? dc.income : dc.expense;
-  return (
-    <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.movementIcon, { backgroundColor: dc.savings + '20' }]}>
-        <Ionicons
-          name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
-          size={18}
-          color={dc.savings}
-        />
-      </View>
-      <View style={styles.movementInfo}>
-        <Text style={[styles.movementDesc, { color: dc.textPrimary }]}>{movement.huchaName}</Text>
-        <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-          {t(isDeposit ? 'hucha.depositLabel' : 'hucha.withdrawalLabel')} · {formatDate(movement.date)}
-        </Text>
-      </View>
-      <Text style={[styles.movementAmount, { color: movColor }]}>
-        {isDeposit ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
-      </Text>
-    </View>
-  );
-};
-
-const DropdownModal = ({
-  visible, title, options, selectedValue, onSelect, onDismiss,
-}: {
-  visible: boolean;
-  title: string;
-  options: { value: string | null; label: string }[];
-  selectedValue: string | null;
-  onSelect: (value: string | null) => void;
-  onDismiss: () => void;
-}) => {
-  const { colors: dc } = useTheme();
-  return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.dropdownOverlay}>
-        <TouchableOpacity style={styles.dropdownBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.dropdownSheet, { backgroundColor: dc.surface }]}>
-          <View style={[styles.dropdownHandle, { backgroundColor: dc.border }]} />
-          <Text style={[styles.dropdownTitle, { color: dc.textPrimary }]}>{title}</Text>
-          <FlatList
-            data={options}
-            keyExtractor={(item) => String(item.value)}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.dropdownOption, { borderBottomColor: dc.border }]}
-                onPress={() => { onSelect(item.value); onDismiss(); }}
-              >
-                <Text style={[
-                  styles.dropdownOptionText, { color: dc.textPrimary },
-                  item.value === selectedValue && { color: dc.primary, fontFamily: 'Poppins_600SemiBold' },
-                ]}>
-                  {item.label}
-                </Text>
-                {item.value === selectedValue && (
-                  <Ionicons name="checkmark" size={20} color={dc.primary} />
-                )}
-              </TouchableOpacity>
-            )}
+  if (data.length === 1) {
+    const strokeW = r - innerRadius;
+    return (
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={cx} cy={cy}
+            r={(r + innerRadius) / 2}
+            fill="none"
+            stroke={data[0].color}
+            strokeWidth={strokeW}
           />
-        </View>
+        </Svg>
+        {centerOverlay}
       </View>
-    </Modal>
+    );
+  }
+
+  let angle = -Math.PI / 2;
+  const paths = data.map((item) => {
+    const portion = item.value / total;
+    const startA = angle;
+    const endA = angle + portion * 2 * Math.PI;
+    angle = endA;
+
+    const x1 = cx + r * Math.cos(startA);
+    const y1 = cy + r * Math.sin(startA);
+    const x2 = cx + r * Math.cos(endA);
+    const y2 = cy + r * Math.sin(endA);
+    const x3 = cx + innerRadius * Math.cos(endA);
+    const y3 = cy + innerRadius * Math.sin(endA);
+    const x4 = cx + innerRadius * Math.cos(startA);
+    const y4 = cy + innerRadius * Math.sin(startA);
+    const large = portion > 0.5 ? 1 : 0;
+
+    return {
+      color: item.color,
+      d: `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} L${x3.toFixed(2)},${y3.toFixed(2)} A${innerRadius},${innerRadius} 0 ${large},0 ${x4.toFixed(2)},${y4.toFixed(2)} Z`,
+    };
+  });
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        {paths.map((p, i) => <Path key={i} d={p.d} fill={p.color} />)}
+      </Svg>
+      {centerOverlay}
+    </View>
   );
 };
 
+// ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 const AnnualScreen = () => {
   const { t } = useTranslation();
-  const {
-    selectedAnnualYear, setSelectedAnnualYear,
-    getAnnualSummary, movements,
-  } = useMovementStore();
-  const { getCurrencySymbol } = useSettingsStore();
-  const { getCategoryName } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
-  const { getSharedCategoryName } = useSharedCategoryStore();
-  const { huchaMovements } = useSavingsStore();
   const { colors: dc } = useTheme();
+  const { getCurrencySymbol, colorPalette } = useSettingsStore();
+  const { getCategoryName, getCategoriesForType } = useCategoryStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
+  const { huchas, huchaMovements } = useSavingsStore();
+  const { movements } = useMovementStore();
+
+  // Local period state — independent of HomeScreen
+  const nowDate = new Date();
+  const [selectedMonth, setSelectedMonthLocal] = useState(nowDate.getMonth() + 1);
+  const [selectedYear, setSelectedYearLocal] = useState(nowDate.getFullYear());
+  const [activeTab, setActiveTab] = useState<SummaryTab>('expense');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const selectPeriod = (month: number, year: number) => {
+    setSelectedMonthLocal(month);
+    setSelectedYearLocal(year);
+  };
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(
-    new Date().getMonth() + 1
-  );
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<AnnualFilterType | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [annualTypeFilter, setAnnualTypeFilter] = useState<AnnualFilterType | null>(null);
-  const [annualCategoryFilter, setAnnualCategoryFilter] = useState<string | null>(null);
-  const [showYearModal, setShowYearModal] = useState(false);
-  const [showMonthModal, setShowMonthModal] = useState(false);
+  const getCatIcon = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
+    const cats = isSharedMode ? getSharedCategoriesForType(type) : getCategoriesForType(type);
+    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+  };
 
-  const annualData = getAnnualSummary();
+  const shortMonth = (m: number) => t(`home.month_${m - 1}`).slice(0, 3);
+  const fullMonth = (m: number) => t(`home.month_${m - 1}`);
 
-  const MONTH_NAMES = [
-    t('home.month_0'), t('home.month_1'), t('home.month_2'),
-    t('home.month_3'), t('home.month_4'), t('home.month_5'),
-    t('home.month_6'), t('home.month_7'), t('home.month_8'),
-    t('home.month_9'), t('home.month_10'), t('home.month_11'),
-  ];
+  // ── MONTH CHIPS (last 12) ─────────────────────────────────────────────────
+  const monthChips = useMemo(() => {
+    const result: { month: number; year: number }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - i, 1);
+      result.push({ month: d.getMonth() + 1, year: d.getFullYear() });
+    }
+    return result;
+  }, []);
 
-  const SHORT_MONTHS = MONTH_NAMES.map(m => m[0].toUpperCase());
-
-  const currentYear = new Date().getFullYear();
-  const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
-
-  // ── MOVIMIENTOS DEL MES SELECCIONADO ──────────────────────────
-  const monthMovements = useMemo(() => {
-    if (!selectedMonth) return [];
-    return movements.filter((m) => {
+  // ── SELECTED MONTH DATA ────────────────────────────────────────────────────
+  const monthMovements = useMemo(() =>
+    movements.filter(m => {
       const d = new Date(m.date);
-      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedAnnualYear;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [selectedMonth, movements, selectedAnnualYear]);
-
-  const typeFilteredMovements = useMemo(() => {
-    if (!selectedTypeFilter || selectedTypeFilter === 'hucha') return monthMovements;
-    return monthMovements.filter(m => m.type === selectedTypeFilter);
-  }, [monthMovements, selectedTypeFilter]);
-
-  const filteredMonthMovements = useMemo(() => {
-    if (!selectedCategory) return typeFilteredMovements;
-    return typeFilteredMovements.filter(m => m.category === selectedCategory);
-  }, [typeFilteredMovements, selectedCategory]);
-
-  const monthCategories = useMemo(() => {
-    const source = selectedTypeFilter && selectedTypeFilter !== 'hucha'
-      ? monthMovements.filter(m => m.type === selectedTypeFilter)
-      : monthMovements;
-    const cats = new Set(source.map(m => m.category));
-    return Array.from(cats);
-  }, [monthMovements, selectedTypeFilter]);
-
-  const monthSummary = useMemo(() => ({
-    income: monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
-    expense: monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
-  }), [monthMovements]);
-
-  // ── HUCHA MOVIMIENTOS MES ──────────────────────────────────────
-  const huchaMonthMovements = useMemo(() => {
-    if (!selectedMonth || selectedTypeFilter !== 'hucha') return [];
-    return huchaMovements.filter(m => {
-      const d = new Date(m.date);
-      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedAnnualYear;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [selectedMonth, huchaMovements, selectedAnnualYear, selectedTypeFilter]);
-
-  // ── MOVIMIENTOS DEL AÑO COMPLETO ───────────────────────────────
-  const yearMovements = useMemo(() => {
-    return movements.filter(m => {
-      const d = new Date(m.date);
-      return d.getFullYear() === selectedAnnualYear;
-    });
-  }, [movements, selectedAnnualYear]);
-
-  const annualTypeMovements = useMemo(() => {
-    if (!annualTypeFilter || annualTypeFilter === 'hucha') return yearMovements;
-    return yearMovements.filter(m => m.type === annualTypeFilter);
-  }, [yearMovements, annualTypeFilter]);
-
-  const annualFilteredMovements = useMemo(() => {
-    if (!annualCategoryFilter) return annualTypeMovements;
-    return annualTypeMovements.filter(m => m.category === annualCategoryFilter);
-  }, [annualTypeMovements, annualCategoryFilter]);
-
-  const annualCategories = useMemo(() => {
-    const cats = new Set(annualTypeMovements.map(m => m.category));
-    return Array.from(cats);
-  }, [annualTypeMovements]);
-
-  const annualFilteredTotal = useMemo(() => {
-    return annualFilteredMovements.reduce((s, m) => s + m.amount, 0);
-  }, [annualFilteredMovements]);
-
-  // ── HUCHA MOVIMIENTOS AÑO ─────────────────────────────────────
-  const huchaYearMovements = useMemo(() => {
-    if (annualTypeFilter !== 'hucha') return [];
-    return huchaMovements.filter(m => {
-      const d = new Date(m.date);
-      return d.getFullYear() === selectedAnnualYear;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [annualTypeFilter, huchaMovements, selectedAnnualYear]);
-
-  const huchaYearTotals = useMemo(() => ({
-    deposits: huchaYearMovements.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0),
-    withdrawals: huchaYearMovements.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0),
-  }), [huchaYearMovements]);
-
-  // ── TOTALES GLOBALES ───────────────────────────────────────────
-  const totals = useMemo(() => annualData.reduce(
-    (acc, m) => ({
-      income: acc.income + m.income,
-      expense: acc.expense + m.expense,
-      balance: acc.balance + m.balance,
+      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
     }),
-    { income: 0, expense: 0, balance: 0 }
-  ), [annualData]);
-
-  const bestMonth = useMemo(() =>
-    annualData.reduce((best, m) => m.balance > best.balance ? m : best, annualData[0]),
-    [annualData]
+    [movements, selectedMonth, selectedYear],
   );
 
-  const worstMonth = useMemo(() =>
-    annualData.reduce((worst, m) => m.expense > worst.expense ? m : worst, annualData[0]),
-    [annualData]
+  const totalIncome = useMemo(() =>
+    monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0),
+    [monthMovements],
+  );
+  const totalExpense = useMemo(() =>
+    monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
+    [monthMovements],
+  );
+  const balance = totalIncome - totalExpense;
+  const savedPct = totalIncome > 0
+    ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
+    : 0;
+
+  // ── EXPENSE BREAKDOWN ─────────────────────────────────────────────────────
+  const expenseBreakdown = useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    monthMovements
+      .filter(m => m.type === 'expense')
+      .forEach(m => { byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount; });
+    return Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, amount], i) => ({
+        category,
+        amount,
+        percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
+        color: CAT_COLORS[i % CAT_COLORS.length],
+      }));
+  }, [monthMovements, totalExpense]);
+
+  // ── INCOME MOVEMENTS ──────────────────────────────────────────────────────
+  const incomeMovements = useMemo(() =>
+    monthMovements
+      .filter(m => m.type === 'income')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [monthMovements],
   );
 
-  const hasData = totals.income > 0 || totals.expense > 0;
+  // ── MONTHLY FLOW (last 12 months) ─────────────────────────────────────────
+  const flowData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (11 - i), 1);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const mMovs = movements.filter(mv => {
+        const md = new Date(mv.date);
+        return md.getMonth() + 1 === m && md.getFullYear() === y;
+      });
+      return {
+        month: m, year: y,
+        income: mMovs.filter(mv => mv.type === 'income').reduce((s, mv) => s + mv.amount, 0),
+        expense: mMovs.filter(mv => mv.type === 'expense').reduce((s, mv) => s + mv.amount, 0),
+        label: shortMonth(m),
+        isSelected: m === selectedMonth && y === selectedYear,
+      };
+    });
+  }, [movements, selectedMonth, selectedYear]);
 
-  const TYPE_OPTIONS: {
-    type: AnnualFilterType; label: string;
-    color: string; icon: keyof typeof Ionicons.glyphMap;
-  }[] = [
-    { type: 'income', label: t('movements.income'), color: dc.income, icon: 'arrow-down-circle' },
-    { type: 'expense', label: t('movements.expense'), color: dc.expense, icon: 'arrow-up-circle' },
-    { type: 'hucha', label: t('tabs.hucha'), color: dc.savings, icon: 'wallet' },
-  ];
+  const flowMax = useMemo(() =>
+    Math.max(1, ...flowData.map(d => Math.max(d.income, d.expense))),
+    [flowData],
+  );
 
-  const yearOptions = availableYears.map(y => ({ value: String(y), label: String(y) }));
-  const monthOptions = [
-    { value: null, label: t('annual.allYear') },
-    ...MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
-  ];
+  // ── HUCHAS DATA ────────────────────────────────────────────────────────────
+  const currentMonth = nowDate.getMonth() + 1;
+  const currentYear = nowDate.getFullYear();
 
-  const typeColor = annualTypeFilter === 'income' ? dc.income
-    : annualTypeFilter === 'expense' ? dc.expense
-    : annualTypeFilter === 'hucha' ? dc.savings
-    : dc.primary;
+  const getHuchaThisMonth = (huchaId: string) =>
+    huchaMovements
+      .filter(m => m.huchaId === huchaId && m.type === 'deposit')
+      .filter(m => {
+        const d = new Date(m.date);
+        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((s, m) => s + m.amount, 0);
 
-  const typeIcon: keyof typeof Ionicons.glyphMap = annualTypeFilter === 'income'
-    ? 'arrow-down-circle' : annualTypeFilter === 'hucha' ? 'wallet' : 'arrow-up-circle';
+  const getHuchaThisYear = (huchaId: string) =>
+    huchaMovements
+      .filter(m => m.huchaId === huchaId && m.type === 'deposit' && new Date(m.date).getFullYear() === currentYear)
+      .reduce((s, m) => s + m.amount, 0);
+
+  const getHuchaStreak = (huchaId: string): number => {
+    let streak = 0;
+    let mo = nowDate.getMonth();
+    let yr = nowDate.getFullYear();
+    for (let i = 0; i < 24; i++) {
+      const hasDeposit = huchaMovements.some(m => {
+        if (m.huchaId !== huchaId || m.type !== 'deposit') return false;
+        const d = new Date(m.date);
+        return d.getMonth() === mo && d.getFullYear() === yr;
+      });
+      if (!hasDeposit) break;
+      streak++;
+      mo--;
+      if (mo < 0) { mo = 11; yr--; }
+    }
+    return streak;
+  };
+
+  // Stacked bar data: last 6 months
+  const huchasFlowData = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (5 - i), 1);
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const deposits: Record<string, number> = {};
+      huchaMovements
+        .filter(mv => mv.type === 'deposit')
+        .filter(mv => {
+          const md = new Date(mv.date);
+          return md.getMonth() + 1 === m && md.getFullYear() === y;
+        })
+        .forEach(mv => { deposits[mv.huchaId] = (deposits[mv.huchaId] ?? 0) + mv.amount; });
+      return { month: m, year: y, label: shortMonth(m), deposits };
+    });
+  }, [huchaMovements]);
+
+  const huchasBarMax = useMemo(() =>
+    Math.max(1, ...huchasFlowData.map(d =>
+      Object.values(d.deposits).reduce((s, v) => s + v, 0)
+    )),
+    [huchasFlowData],
+  );
+
+  const huchasTotalThisMonth = huchas.reduce((acc, h) => acc + getHuchaThisMonth(h.id), 0);
+  const huchasTotalThisYear = huchas.reduce((acc, h) => acc + getHuchaThisYear(h.id), 0);
+
+  // ── PIE DATA ──────────────────────────────────────────────────────────────
+  const pieData = expenseBreakdown.length > 0
+    ? expenseBreakdown.map(item => ({ value: item.amount, color: item.color }))
+    : [{ value: 1, color: dc.border }];
+
+  // ── CATEGORY DETAIL ────────────────────────────────────────────────────────
+  const selectedCategoryItem = useMemo(
+    () => expenseBreakdown.find(e => e.category === selectedCategory) ?? null,
+    [expenseBreakdown, selectedCategory],
+  );
+
+  const categoryMonthlyData = useMemo(() => {
+    if (!selectedCategory) return null;
+    const catMovs = movements.filter(m => m.type === 'expense' && m.category === selectedCategory);
+
+    const bars = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (5 - i), 1);
+      const mo = d.getMonth() + 1;
+      const yr = d.getFullYear();
+      const amt = catMovs
+        .filter(m => { const md = new Date(m.date); return md.getMonth() + 1 === mo && md.getFullYear() === yr; })
+        .reduce((s, m) => s + m.amount, 0);
+      return { month: mo, year: yr, amt, label: shortMonth(mo) };
+    });
+
+    const monthlyAvg = bars.reduce((s, b) => s + b.amt, 0) / 6;
+    const barMax = Math.max(1, ...bars.map(b => b.amt));
+
+    const byYear: Record<number, number> = {};
+    catMovs.forEach(m => {
+      const y = new Date(m.date).getFullYear();
+      byYear[y] = (byYear[y] ?? 0) + m.amount;
+    });
+    const total = catMovs.reduce((s, m) => s + m.amount, 0);
+    const sortedYears = Object.entries(byYear)
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .slice(0, 2);
+
+    return { bars, monthlyAvg, barMax, sortedYears, total };
+  }, [selectedCategory, movements]);
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
+  const balanceBg = colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard;
+  const subTabs: SummaryTab[] = ['expense', 'income', 'hucha'];
+  const subTabLabel = (tab: SummaryTab) =>
+    tab === 'expense' ? t('resumen.gastos')
+    : tab === 'income' ? t('resumen.ingresos')
+    : t('resumen.huchas');
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.annual')} />
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* SELECTORES AÑO Y MES */}
-        <View style={styles.filtersRow}>
-          <TouchableOpacity
-            style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            onPress={() => setShowYearModal(true)}
-          >
-            <Ionicons name="calendar-outline" size={16} color={dc.primary} />
-            <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]}>
-              {selectedAnnualYear}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={dc.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.selectorDropdown, { backgroundColor: dc.surface, borderColor: dc.border }]}
-            onPress={() => setShowMonthModal(true)}
-          >
-            <Ionicons name="calendar" size={16} color={dc.primary} />
-            <Text style={[styles.selectorDropdownText, { color: dc.textPrimary }]} numberOfLines={1}>
-              {selectedMonth ? MONTH_NAMES[selectedMonth - 1] : t('annual.allYear')}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={dc.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {!hasData ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('annual.noData')}</Text>
-            <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
-              {t('annual.noDataSubtitle')}
-            </Text>
-          </View>
-        ) : (
-          <>
-            {selectedMonth ? (
-              <>
-                {/* ── VISTA MENSUAL ── */}
-                <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
-                  {MONTH_NAMES[selectedMonth - 1]} {selectedAnnualYear}
-                </Text>
-
-                {/* RESUMEN DEL MES */}
-                <AnnualCard label={t('annual.totalIncome')} amount={monthSummary.income} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={monthSummary.expense} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                <AnnualCard
-                  label={t('annual.netBalance')}
-                  amount={monthSummary.income - monthSummary.expense}
-                  color={(monthSummary.income - monthSummary.expense) >= 0 ? dc.income : dc.expense}
-                  icon="wallet" currencySymbol={currencySymbol}
-                />
-
-                {/* FILTRO POR TIPO */}
-                <View style={styles.typeFilterRow}>
-                  {TYPE_OPTIONS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.type}
-                      style={[
-                        styles.typeFilterChip,
-                        { backgroundColor: dc.surface, borderColor: dc.border },
-                        selectedTypeFilter === opt.type && {
-                          backgroundColor: opt.color,
-                          borderColor: opt.color,
-                        },
-                      ]}
-                      onPress={() => {
-                        if (selectedTypeFilter === opt.type) {
-                          setSelectedTypeFilter(null);
-                          setSelectedCategory(null);
-                        } else {
-                          setSelectedTypeFilter(opt.type);
-                          setSelectedCategory(null);
-                        }
-                      }}
-                    >
-                      <Ionicons
-                        name={opt.icon}
-                        size={14}
-                        color={selectedTypeFilter === opt.type ? '#FFFFFF' : opt.color}
-                      />
-                      <Text style={[
-                        styles.typeFilterChipText, { color: dc.textSecondary },
-                        selectedTypeFilter === opt.type && { color: '#FFFFFF' },
-                      ]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* FILTRO CATEGORÍA — solo si hay tipo income/expense */}
-                {selectedTypeFilter && selectedTypeFilter !== 'hucha' && monthCategories.length > 0 && (
-                  <View style={styles.categoryFilterSection}>
-                    <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
-                      {t('annual.filterByCategory')}
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={styles.categoryChips}>
-                        {monthCategories.map((cat) => {
-                          const catMovement = monthMovements.find(m => m.category === cat);
-                          const catType = catMovement?.type ?? 'expense';
-                          return (
-                            <TouchableOpacity
-                              key={cat}
-                              style={[
-                                styles.categoryChip,
-                                { backgroundColor: dc.surface, borderColor: dc.border },
-                                selectedCategory === cat && {
-                                  backgroundColor: dc.primary,
-                                  borderColor: dc.primary,
-                                },
-                              ]}
-                              onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                            >
-                              <Text style={[
-                                styles.categoryChipText, { color: dc.textSecondary },
-                                selectedCategory === cat && { color: '#FFFFFF' },
-                              ]}>
-                                {getCatName(cat, catType as MovementType)}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
+        {/* MONTH SELECTOR */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.monthRow}
+        >
+          {monthChips.map(({ month, year }, i) => {
+            const isSelected = month === selectedMonth && year === selectedYear;
+            const prev = monthChips[i - 1];
+            const showYear = i > 0 && prev && prev.year !== year;
+            return (
+              <React.Fragment key={`${year}-${month}`}>
+                {showYear && (
+                  <View style={[styles.monthChip, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                    <Text style={[styles.monthChipText, { color: dc.textSecondary }]}>{year}</Text>
                   </View>
                 )}
+                <TouchableOpacity
+                  style={[
+                    styles.monthChip,
+                    { backgroundColor: dc.surface, borderColor: dc.border },
+                    isSelected && { backgroundColor: dc.textPrimary, borderColor: dc.textPrimary },
+                  ]}
+                  onPress={() => selectPeriod(month, year)}
+                >
+                  <Text style={[
+                    styles.monthChipText,
+                    { color: dc.textSecondary },
+                    isSelected && { color: '#FFFFFF' },
+                  ]}>
+                    {shortMonth(month)}
+                  </Text>
+                </TouchableOpacity>
+              </React.Fragment>
+            );
+          })}
+        </ScrollView>
 
-                {/* MOVIMIENTOS DEL MES (income/expense) */}
-                {filteredMonthMovements.length > 0 && selectedTypeFilter !== 'hucha' && (
-                  <>
-                    <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
-                      {t('annual.movements')}
+        {/* BALANCE CARD */}
+        <View style={[styles.balanceCard, { backgroundColor: balanceBg }]}>
+          <View style={styles.balanceTopRow}>
+            <Text style={styles.balancePeriodLabel}>
+              {t('resumen.balance').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+            </Text>
+            {totalIncome > 0 && (
+              <Text style={styles.savedPctText}>{savedPct}% {t('resumen.saved')}</Text>
+            )}
+          </View>
+          <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+            {balance >= 0 ? '+' : ''}{balance.toFixed(2).replace('.', ',')} {currencySymbol}
+          </Text>
+          <View style={styles.balanceStatsRow}>
+            <View>
+              <Text style={styles.balanceStatLabel}>{t('resumen.ingresos').toUpperCase()}</Text>
+              <Text style={styles.balanceStatValue}>
+                +{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.balanceStatLabel}>{t('resumen.gastos').toUpperCase()}</Text>
+              <Text style={styles.balanceStatValue}>
+                -{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* MONTHLY FLOW CHART */}
+        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.cardTitle, { color: dc.textPrimary }]}>
+              {t('resumen.monthlyFlow')}
+            </Text>
+            <View style={styles.chartLegend}>
+              <View style={[styles.legendDot, { backgroundColor: dc.income }]} />
+              <Text style={[styles.legendText, { color: dc.textSecondary }]}>{t('resumen.ing')}</Text>
+              <View style={[styles.legendDot, { backgroundColor: dc.expense }]} />
+              <Text style={[styles.legendText, { color: dc.textSecondary }]}>{t('resumen.gasto')}</Text>
+            </View>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.flowChartContent}
+          >
+            {flowData.map((item) => {
+              const incH = Math.max(4, (item.income / flowMax) * FLOW_BAR_H);
+              const expH = Math.max(4, (item.expense / flowMax) * FLOW_BAR_H);
+              const op = item.isSelected ? 1 : 0.4;
+              return (
+                <TouchableOpacity
+                  key={`${item.year}-${item.month}`}
+                  style={styles.flowBarGroup}
+                  onPress={() => selectPeriod(item.month, item.year)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.flowBarPair, { height: FLOW_BAR_H }]}>
+                    <View style={[styles.flowBar, { height: incH, backgroundColor: dc.income, opacity: op }]} />
+                    <View style={[styles.flowBar, { height: expH, backgroundColor: dc.expense, opacity: op }]} />
+                  </View>
+                  <Text style={[
+                    styles.flowBarLabel,
+                    { color: item.isSelected ? dc.textPrimary : dc.textSecondary },
+                    item.isSelected && { fontFamily: 'Poppins_600SemiBold' },
+                  ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* SUB-TABS */}
+        <View style={styles.subTabsRow}>
+          {subTabs.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.subTab,
+                { backgroundColor: dc.surface, borderColor: dc.border },
+                activeTab === tab && { backgroundColor: dc.textPrimary, borderColor: dc.textPrimary },
+              ]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[
+                styles.subTabText,
+                { color: dc.textSecondary },
+                activeTab === tab && { color: '#FFFFFF' },
+              ]}>
+                {subTabLabel(tab)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── GASTOS TAB ──────────────────────────────────────────────────── */}
+        {activeTab === 'expense' && (
+          expenseBreakdown.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <Ionicons name="receipt-outline" size={32} color={dc.textSecondary} style={{ marginBottom: 8 }} />
+              <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
+                {t('resumen.noExpenses')}
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Donut + info */}
+              <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                <View style={styles.pieRow}>
+                  <DonutChart data={pieData} size={152} innerRadius={50}>
+                    <View style={styles.pieCenterBox}>
+                      <Text style={[styles.pieCenterNum, { color: dc.textPrimary }]}>
+                        {expenseBreakdown.length}
+                      </Text>
+                      <Text style={[styles.pieCenterSub, { color: dc.textSecondary }]}>
+                        CATEG.
+                      </Text>
+                    </View>
+                  </DonutChart>
+                  <View style={styles.pieInfoCol}>
+                    <Text style={[styles.pieInfoLabel, { color: dc.textSecondary }]}>
+                      {t('resumen.gastos').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
                     </Text>
-                    {filteredMonthMovements.map((m) => {
-                      const isIncome = m.type === 'income';
-                      const isSaving = (m.type as string) === 'saving';
-                      const color = isIncome ? dc.income : isSaving ? dc.savings : dc.expense;
-                      const icon: keyof typeof Ionicons.glyphMap = isIncome
-                        ? 'arrow-down-circle' : isSaving ? 'save' : 'arrow-up-circle';
+                    <Text style={[styles.pieInfoAmount, { color: dc.textPrimary }]}>
+                      {totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}
+                    </Text>
+                    <Text style={[styles.pieInfoSub, { color: dc.textSecondary }]}>
+                      {expenseBreakdown.length} {t('resumen.categories')}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Category detail — appears when a row is tapped */}
+              {selectedCategory && categoryMonthlyData && selectedCategoryItem && (
+                <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                  <View style={styles.catDetailHeader}>
+                    <View style={[styles.catIcon, { backgroundColor: selectedCategoryItem.color + '20' }]}>
+                      <Ionicons name={getCatIcon(selectedCategory, 'expense')} size={18} color={selectedCategoryItem.color} />
+                    </View>
+                    <View style={styles.catDetailMeta}>
+                      <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>
+                        EVOLUCIÓN · 6 MESES
+                      </Text>
+                      <Text style={[styles.catDetailName, { color: dc.textPrimary }]}>
+                        {getCatName(selectedCategory, 'expense')}
+                      </Text>
+                    </View>
+                    <View style={styles.catDetailAvgBox}>
+                      <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>MEDIA/MES</Text>
+                      <Text style={[styles.catDetailAvg, { color: dc.textPrimary }]}>
+                        {categoryMonthlyData.monthlyAvg.toFixed(0)} {currencySymbol}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.catDetailBarsRow}>
+                    {categoryMonthlyData.bars.map((bar, i) => {
+                      const bh = Math.max(4, (bar.amt / categoryMonthlyData.barMax) * 60);
+                      const isCurrent = bar.month === nowDate.getMonth() + 1 && bar.year === nowDate.getFullYear();
                       return (
-                        <View key={m.id} style={[styles.movementRow, {
-                          backgroundColor: dc.surface, borderColor: dc.border,
-                        }]}>
-                          <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
-                            <Ionicons name={icon} size={18} color={color} />
-                          </View>
-                          <View style={styles.movementInfo}>
-                            <Text style={[styles.movementDesc, { color: dc.textPrimary }]}>
-                              {getCatName(m.category, m.type)}
-                            </Text>
-                            <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
-                              {formatDate(m.date)}
-                            </Text>
-                          </View>
-                          <Text style={[styles.movementAmount, { color }]}>
-                            {isIncome ? '+' : '-'}{m.amount.toFixed(2)} {currencySymbol}
+                        <View key={i} style={styles.catDetailBarGroup}>
+                          <Text style={[styles.catDetailBarVal, { color: dc.textSecondary }]}>
+                            {bar.amt > 0 ? bar.amt.toFixed(0) : ''}
                           </Text>
+                          <View style={[styles.catDetailBarTrack, { height: 60 }]}>
+                            <View style={[
+                              styles.catDetailBar,
+                              { height: bh, backgroundColor: isCurrent ? selectedCategoryItem.color : dc.textSecondary + '30' },
+                            ]} />
+                          </View>
+                          <Text style={[styles.flowBarLabel, { color: dc.textSecondary }]}>{bar.label}</Text>
                         </View>
                       );
                     })}
-                  </>
-                )}
+                  </View>
 
-                {/* MOVIMIENTOS HUCHA DEL MES */}
-                {selectedTypeFilter === 'hucha' && (
-                  <>
-                    {huchaMonthMovements.length > 0 ? (
-                      <>
-                        <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
-                          {t('annual.movements')}
-                        </Text>
-                        {huchaMonthMovements.map((m) => (
-                          <HuchaMovRow key={m.id} movement={m} currencySymbol={currencySymbol} />
-                        ))}
-                      </>
-                    ) : (
-                      <View style={styles.huchaEmpty}>
-                        <Text style={[styles.huchaEmptyText, { color: dc.textSecondary }]}>
-                          {t('hucha.noHistoryMonth')}
+                  <View style={[styles.rowDivider, { backgroundColor: dc.border, marginLeft: 0, marginTop: 12 }]} />
+                  <View style={styles.catDetailYearsRow}>
+                    {categoryMonthlyData.sortedYears.map(([yr, amt]) => (
+                      <View key={yr}>
+                        <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{yr}</Text>
+                        <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
+                          {(amt as number).toFixed(0)} {currencySymbol}
                         </Text>
                       </View>
-                    )}
-                  </>
-                )}
-              </>
+                    ))}
+                    <View>
+                      <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>TOTAL</Text>
+                      <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
+                        {categoryMonthlyData.total.toFixed(0)} {currencySymbol}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Desglose */}
+              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                {t('resumen.desglose').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+              </Text>
+              <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                {expenseBreakdown.map((item, i) => {
+                  const isSelected = selectedCategory === item.category;
+                  return (
+                    <View key={item.category}>
+                      {i > 0 && <View style={[styles.rowDivider, { backgroundColor: dc.border }]} />}
+                      <TouchableOpacity
+                        style={[styles.catRow, isSelected && { backgroundColor: item.color + '12', borderRadius: 10 }]}
+                        onPress={() => setSelectedCategory(prev => prev === item.category ? null : item.category)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.catIcon, { backgroundColor: item.color + '20' }]}>
+                          <Ionicons name={getCatIcon(item.category, 'expense')} size={18} color={item.color} />
+                        </View>
+                        <View style={styles.catContent}>
+                          <View style={styles.catTitleRow}>
+                            <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
+                              {getCatName(item.category, 'expense')}
+                            </Text>
+                            <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
+                              {item.amount.toFixed(0)} {currencySymbol}
+                            </Text>
+                          </View>
+                          <Text style={[styles.catPct, { color: dc.textSecondary }]}>
+                            {Math.round(item.percentage)}% {t('resumen.ofExpense')}
+                          </Text>
+                          <View style={[styles.catBarTrack, { backgroundColor: dc.border }]}>
+                            <View style={[
+                              styles.catBarFill,
+                              { width: `${item.percentage}%` as any, backgroundColor: item.color },
+                            ]} />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )
+        )}
+
+        {/* ── INGRESOS TAB ─────────────────────────────────────────────────── */}
+        {activeTab === 'income' && (
+          <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+            <Text style={[styles.incomeHeaderLabel, { color: dc.textSecondary }]}>
+              {t('resumen.ingresos').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+            </Text>
+            <Text style={[styles.incomeTotalAmount, { color: dc.textPrimary }]}>
+              {totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}
+            </Text>
+
+            {incomeMovements.length === 0 ? (
+              <View style={styles.emptyInline}>
+                <Ionicons name="trending-up-outline" size={28} color={dc.textSecondary} style={{ marginBottom: 6 }} />
+                <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
+                  {t('resumen.noIncome')}
+                </Text>
+              </View>
             ) : (
               <>
-                {/* ── VISTA ANUAL COMPLETA ── */}
-                <Text style={[styles.sectionTitle, { color: dc.textPrimary, marginBottom: 12 }]}>
-                  {t('annual.year')} {selectedAnnualYear}
-                </Text>
-
-                {/* RESUMEN ANUAL */}
-                <AnnualCard label={t('annual.totalIncome')} amount={totals.income} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                <AnnualCard label={t('annual.totalExpenses')} amount={totals.expense} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                <AnnualCard
-                  label={t('annual.netBalance')}
-                  amount={totals.balance}
-                  color={totals.balance >= 0 ? dc.income : dc.expense}
-                  icon="wallet" currencySymbol={currencySymbol}
-                />
-
-                {/* HIGHLIGHTS */}
-                <View style={styles.highlightsRow}>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: dc.income }]}>
-                    <Text style={styles.highlightEmoji}>🏆</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.bestMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: dc.income }]}>{t(`home.month_${bestMonth.month - 1}`)}</Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>+{bestMonth.balance.toFixed(0)} {currencySymbol}</Text>
-                  </View>
-                  <View style={[styles.highlightCard, { backgroundColor: dc.surface, borderColor: dc.expense }]}>
-                    <Text style={styles.highlightEmoji}>📉</Text>
-                    <Text style={[styles.highlightLabel, { color: dc.textSecondary }]}>{t('annual.worstMonth')}</Text>
-                    <Text style={[styles.highlightMonth, { color: dc.expense }]}>{t(`home.month_${worstMonth.month - 1}`)}</Text>
-                    <Text style={[styles.highlightAmount, { color: dc.textSecondary }]}>-{worstMonth.expense.toFixed(0)} {currencySymbol}</Text>
-                  </View>
-                </View>
-
-                {/* FILTRO POR TIPO ANUAL */}
-                <View style={styles.typeFilterRow}>
-                  {TYPE_OPTIONS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.type}
-                      style={[
-                        styles.typeFilterChip,
-                        { backgroundColor: dc.surface, borderColor: dc.border },
-                        annualTypeFilter === opt.type && {
-                          backgroundColor: opt.color,
-                          borderColor: opt.color,
-                        },
-                      ]}
-                      onPress={() => {
-                        if (annualTypeFilter === opt.type) {
-                          setAnnualTypeFilter(null);
-                          setAnnualCategoryFilter(null);
-                        } else {
-                          setAnnualTypeFilter(opt.type);
-                          setAnnualCategoryFilter(null);
-                        }
-                      }}
-                    >
-                      <Ionicons
-                        name={opt.icon}
-                        size={14}
-                        color={annualTypeFilter === opt.type ? '#FFFFFF' : opt.color}
-                      />
-                      <Text style={[
-                        styles.typeFilterChipText, { color: dc.textSecondary },
-                        annualTypeFilter === opt.type && { color: '#FFFFFF' },
-                      ]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* FILTRO CATEGORÍA ANUAL — solo si hay tipo income/expense */}
-                {annualTypeFilter && annualTypeFilter !== 'hucha' && annualCategories.length > 0 && (
-                  <View style={styles.categoryFilterSection}>
-                    <Text style={[styles.categoryFilterTitle, { color: dc.textSecondary }]}>
-                      {t('annual.filterByCategory')}
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={styles.categoryChips}>
-                        {annualCategories.map((cat) => {
-                          const catMovement = annualTypeMovements.find(m => m.category === cat);
-                          const catType = catMovement?.type ?? annualTypeFilter;
-                          return (
-                            <TouchableOpacity
-                              key={cat}
-                              style={[
-                                styles.categoryChip,
-                                { backgroundColor: dc.surface, borderColor: dc.border },
-                                annualCategoryFilter === cat && {
-                                  backgroundColor: dc.primary,
-                                  borderColor: dc.primary,
-                                },
-                              ]}
-                              onPress={() => setAnnualCategoryFilter(annualCategoryFilter === cat ? null : cat)}
-                            >
-                              <Text style={[
-                                styles.categoryChipText, { color: dc.textSecondary },
-                                annualCategoryFilter === cat && { color: '#FFFFFF' },
-                              ]}>
-                                {getCatName(cat, catType as MovementType)}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )}
-
-                {/* TOTAL FILTRADO ANUAL (solo income/expense) */}
-                {annualTypeFilter && annualTypeFilter !== 'hucha' && (
-                  <AnnualCard
-                    label={
-                      annualCategoryFilter
-                        ? `${TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label} — ${getCatName(annualCategoryFilter, annualTypeFilter as MovementType)}`
-                        : TYPE_OPTIONS.find(o => o.type === annualTypeFilter)?.label ?? ''
-                    }
-                    amount={annualFilteredTotal}
-                    color={typeColor}
-                    icon={typeIcon}
-                    currencySymbol={currencySymbol}
-                  />
-                )}
-
-                {/* MOVIMIENTOS HUCHA DEL AÑO */}
-                {annualTypeFilter === 'hucha' && (
-                  <>
-                    {huchaYearMovements.length > 0 ? (
-                      <>
-                        <AnnualCard label={t('hucha.totalDeposits')} amount={huchaYearTotals.deposits} color={dc.income} icon="arrow-down-circle" currencySymbol={currencySymbol} />
-                        <AnnualCard label={t('hucha.totalWithdrawals')} amount={huchaYearTotals.withdrawals} color={dc.expense} icon="arrow-up-circle" currencySymbol={currencySymbol} />
-                        {huchaYearMovements.map((m) => (
-                          <HuchaMovRow key={m.id} movement={m} currencySymbol={currencySymbol} />
-                        ))}
-                      </>
-                    ) : (
-                      <View style={styles.huchaEmpty}>
-                        <Text style={[styles.huchaEmptyText, { color: dc.textSecondary }]}>
-                          {t('hucha.noHistory')}
+                <View style={[styles.rowDivider, { backgroundColor: dc.border, marginLeft: 0, marginTop: 14 }]} />
+                {incomeMovements.map((m, i) => {
+                  const catName = getCatName(m.category, 'income');
+                  const icon = getCatIcon(m.category, 'income');
+                  const subtitle = m.isRecurring && m.recurringDay
+                    ? `${t('resumen.recurring')} · ${t('resumen.day')} ${m.recurringDay}`
+                    : catName;
+                  const title = m.description || catName;
+                  return (
+                    <View key={m.id}>
+                      {i > 0 && <View style={[styles.rowDivider, { backgroundColor: dc.border }]} />}
+                      <View style={styles.movRow}>
+                        <View style={[styles.movIcon, { backgroundColor: dc.income + '20' }]}>
+                          <Ionicons name={icon} size={18} color={dc.income} />
+                        </View>
+                        <View style={styles.movInfo}>
+                          <Text style={[styles.movTitle, { color: dc.textPrimary }]} numberOfLines={1}>
+                            {title}
+                          </Text>
+                          <Text style={[styles.movSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
+                            {subtitle}
+                          </Text>
+                        </View>
+                        <Text style={[styles.movAmount, { color: dc.income }]}>
+                          +{m.amount.toFixed(2).replace('.', ',')} {currencySymbol}
                         </Text>
                       </View>
-                    )}
-                  </>
-                )}
+                    </View>
+                  );
+                })}
               </>
             )}
+          </View>
+        )}
 
+        {/* ── HUCHAS TAB ───────────────────────────────────────────────────── */}
+        {activeTab === 'hucha' && (
+          <>
+            {/* Year total header + stacked bar chart — single card */}
+            <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <Text style={[styles.incomeHeaderLabel, { color: dc.textSecondary }]}>
+                {t('resumen.aportadoHuchas').toUpperCase()} · {currentYear}
+              </Text>
+              <View style={styles.huchaTotalRow}>
+                <Text style={[styles.incomeTotalAmount, { color: dc.textPrimary }]}>
+                  {huchasTotalThisYear.toFixed(0)} {currencySymbol}
+                </Text>
+                {huchasTotalThisMonth > 0 && (
+                  <Text style={[styles.huchaThisMonthBadge, { color: dc.income }]}>
+                    +{huchasTotalThisMonth.toFixed(0)} {t('resumen.thisMonth')}
+                  </Text>
+                )}
+              </View>
+
+              {huchas.length > 0 && (
+                <>
+                  <View style={[styles.rowDivider, { backgroundColor: dc.border, marginLeft: 0, marginTop: 14, marginBottom: 14 }]} />
+                  <View style={styles.huchasChartRow}>
+                    {huchasFlowData.map((item) => (
+                      <View key={`${item.year}-${item.month}`} style={styles.huchaBarGroup}>
+                        <View style={[styles.huchaStack, { height: STACK_BAR_H }]}>
+                          {huchas.map(h => {
+                            const amt = item.deposits[h.id] ?? 0;
+                            if (amt === 0) return null;
+                            const segH = Math.max(2, (amt / huchasBarMax) * STACK_BAR_H);
+                            return (
+                              <View
+                                key={h.id}
+                                style={[styles.huchaStackSeg, { height: segH, backgroundColor: h.color }]}
+                              />
+                            );
+                          })}
+                        </View>
+                        <Text style={[styles.flowBarLabel, { color: dc.textSecondary }]}>
+                          {item.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.huchasLegendRow}>
+                    {huchas.map(h => (
+                      <View key={h.id} style={styles.huchaLegendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: h.color }]} />
+                        <Text style={[styles.legendText, { color: dc.textSecondary }]} numberOfLines={1}>
+                          {h.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* Per-hucha contribution cards */}
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('resumen.huchaContrib').toUpperCase()}
+            </Text>
+
+            {huchas.length === 0 ? (
+              <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                <Ionicons name="wallet-outline" size={32} color={dc.textSecondary} style={{ marginBottom: 8 }} />
+                <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
+                  {t('resumen.noHuchaMovements')}
+                </Text>
+              </View>
+            ) : (
+              huchas.map(h => {
+                const thisMonth = getHuchaThisMonth(h.id);
+                const thisYear = getHuchaThisYear(h.id);
+                const streak = getHuchaStreak(h.id);
+                return (
+                  <View key={h.id} style={[styles.huchaCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                    <View style={styles.huchaCardHeader}>
+                      <View style={[styles.huchaCardIcon, { backgroundColor: h.color + '20' }]}>
+                        <Ionicons name={h.icon as keyof typeof Ionicons.glyphMap} size={22} color={h.color} />
+                      </View>
+                      <View style={styles.huchaCardMeta}>
+                        <Text style={[styles.huchaCardName, { color: dc.textPrimary }]}>
+                          {h.name}
+                        </Text>
+                        {streak > 0 && (
+                          <View style={styles.streakRow}>
+                            <Text style={styles.streakFire}>🔥</Text>
+                            <Text style={[styles.streakText, { color: dc.textSecondary }]}>
+                              {t('resumen.streak', { count: streak })}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={[styles.huchaStatsRow, { borderTopColor: dc.border }]}>
+                      <View style={styles.huchaStat}>
+                        <Text style={[styles.huchaStatLabel, { color: dc.textSecondary }]}>
+                          {t('resumen.thisMonthLabel').toUpperCase()}
+                        </Text>
+                        <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
+                          {thisMonth.toFixed(0)} {currencySymbol}
+                        </Text>
+                      </View>
+                      <View style={[styles.huchaStatSep, { backgroundColor: dc.border }]} />
+                      <View style={styles.huchaStat}>
+                        <Text style={[styles.huchaStatLabel, { color: dc.textSecondary }]}>
+                          {t('resumen.enYear', { year: currentYear }).toUpperCase()}
+                        </Text>
+                        <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
+                          {thisYear.toFixed(0)} {currencySymbol}
+                        </Text>
+                      </View>
+                      <View style={[styles.huchaStatSep, { backgroundColor: dc.border }]} />
+                      <View style={styles.huchaStat}>
+                        <Text style={[styles.huchaStatLabel, { color: dc.textSecondary }]}>
+                          {t('resumen.automatic').toUpperCase()}
+                        </Text>
+                        <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
+                          {h.isAutomatic && h.monthlyAmount
+                            ? `${h.monthlyAmount.toFixed(0)} ${currencySymbol}`
+                            : t('resumen.manual')
+                          }
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
           </>
         )}
+
       </ScrollView>
-
-      {/* MODAL AÑO */}
-      <DropdownModal
-        visible={showYearModal}
-        title={t('annual.selectYear')}
-        options={yearOptions}
-        selectedValue={String(selectedAnnualYear)}
-        onSelect={(val) => {
-          if (val) setSelectedAnnualYear(Number(val));
-          setSelectedMonth(null);
-          setSelectedTypeFilter(null);
-          setSelectedCategory(null);
-          setAnnualTypeFilter(null);
-          setAnnualCategoryFilter(null);
-        }}
-        onDismiss={() => setShowYearModal(false)}
-      />
-
-      {/* MODAL MES */}
-      <DropdownModal
-        visible={showMonthModal}
-        title={t('annual.selectMonth')}
-        options={monthOptions}
-        selectedValue={selectedMonth ? String(selectedMonth) : null}
-        onSelect={(val) => {
-          setSelectedMonth(val ? Number(val) : null);
-          setSelectedTypeFilter(null);
-          setSelectedCategory(null);
-          setAnnualTypeFilter(null);
-          setAnnualCategoryFilter(null);
-        }}
-        onDismiss={() => setShowMonthModal(false)}
-      />
-
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  filtersRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  selectorDropdown: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    gap: 8, borderRadius: 12, borderWidth: 0.5,
-    paddingHorizontal: 12, paddingVertical: 10,
+  scrollContent: { paddingBottom: 100 },
+
+  // Month selector
+  monthRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, flexDirection: 'row' },
+  monthChip: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 0.5,
   },
-  selectorDropdownText: { flex: 1, fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  chartCard: { borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 0.5 },
-  sectionTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold', marginBottom: 12 },
-  chartHint: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12 },
-  legend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
-  typeFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  typeFilterChip: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6,
-    paddingVertical: 8, borderRadius: 12, borderWidth: 0.5,
+  monthChipText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+
+  // Balance card
+  balanceCard: {
+    marginHorizontal: 16, marginBottom: 12, borderRadius: 20, padding: 20,
+    elevation: 4, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4,
   },
-  typeFilterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  categoryFilterSection: { marginBottom: 16 },
-  categoryFilterHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  categoryFilterTitle: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8 },
-  premiumBadge: { backgroundColor: colors.savings + '20', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  premiumBadgeText: { fontSize: 10, fontFamily: 'Poppins_600SemiBold', color: colors.savings },
-  categoryChips: { flexDirection: 'row', gap: 8 },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5 },
-  categoryChipLocked: { opacity: 0.6 },
-  categoryChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  annualCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, marginBottom: 10, borderLeftWidth: 4, borderWidth: 0.5, gap: 14 },
-  annualCardIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  annualCardAmount: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
-  annualCardLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  highlightsRow: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 20 },
-  highlightCard: { flex: 1, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1.5 },
-  highlightEmoji: { fontSize: 28, marginBottom: 8 },
-  highlightLabel: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 4, textAlign: 'center' },
-  highlightMonth: { fontSize: 16, fontFamily: 'Poppins_700Bold', marginBottom: 4 },
-  highlightAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  movementRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 0.5 },
-  movementIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  movementInfo: { flex: 1 },
-  movementDesc: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
-  movementDate: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  movementAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  huchaEmpty: { alignItems: 'center', paddingVertical: 24 },
-  huchaEmptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  emptyState: { alignItems: 'center', paddingVertical: 80 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
-  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', paddingHorizontal: 32 },
-  dropdownOverlay: { flex: 1, justifyContent: 'flex-end' },
-  dropdownBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  dropdownSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
-  dropdownHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  dropdownTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
-  dropdownOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
-  dropdownOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
+  balanceTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 8,
+  },
+  balancePeriodLabel: {
+    color: 'rgba(255,255,255,0.6)', fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold', letterSpacing: 1,
+  },
+  savedPctText: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 12,
+    fontFamily: 'Poppins_500Medium',
+  },
+  balanceAmount: {
+    color: '#FFFFFF', fontSize: 38, fontFamily: 'Poppins_700Bold',
+    letterSpacing: -1, marginBottom: 16,
+  },
+  balanceStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  balanceStatLabel: {
+    color: 'rgba(255,255,255,0.6)', fontSize: 10,
+    fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8, marginBottom: 2,
+  },
+  balanceStatValue: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Poppins_700Bold' },
+
+  // Generic card
+  card: {
+    marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 16, borderWidth: 0.5,
+    padding: 16, overflow: 'hidden',
+  },
+
+  // Chart header
+  chartHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
+  },
+  cardTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  chartLegend: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 11, fontFamily: 'Poppins_400Regular' },
+
+  // Flow chart
+  flowChartContent: { paddingRight: 8, alignItems: 'flex-end' },
+  flowBarGroup: { alignItems: 'center', marginHorizontal: 5 },
+  flowBarPair: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  flowBar: { width: 8, borderRadius: 3 },
+  flowBarLabel: { fontSize: 9, fontFamily: 'Poppins_400Regular', marginTop: 5 },
+
+  // Sub-tabs
+  subTabsRow: {
+    marginHorizontal: 16, marginBottom: 12,
+    flexDirection: 'row', gap: 8,
+  },
+  subTab: {
+    flex: 1, paddingVertical: 10, borderRadius: 24, borderWidth: 0.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  subTabText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+
+  // Empty state
+  emptyCard: {
+    marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 16, borderWidth: 0.5,
+    padding: 40, alignItems: 'center',
+  },
+  emptyInline: { alignItems: 'center', paddingTop: 24, paddingBottom: 8 },
+  emptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+
+  // Section label
+  sectionLabel: {
+    marginHorizontal: 16, marginBottom: 8,
+    fontSize: 11, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8,
+  },
+
+  // Pie
+  pieRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  pieCenterBox: { alignItems: 'center' },
+  pieCenterNum: { fontSize: 22, fontFamily: 'Poppins_700Bold', lineHeight: 26 },
+  pieCenterSub: { fontSize: 9, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.5 },
+  pieInfoCol: { flex: 1 },
+  pieInfoLabel: { fontSize: 9, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.5, marginBottom: 4 },
+  pieInfoAmount: { fontSize: 24, fontFamily: 'Poppins_700Bold', marginBottom: 2 },
+  pieInfoSub: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
+
+  // Category breakdown
+  catRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  catIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  catContent: { flex: 1 },
+  catTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  catName: { fontSize: 14, fontFamily: 'Poppins_500Medium', flex: 1, marginRight: 8 },
+  catAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  catPct: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginBottom: 6 },
+  catBarTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  catBarFill: { height: 5, borderRadius: 3 },
+  rowDivider: { height: 0.5, marginLeft: 52 },
+
+  // Income
+  incomeHeaderLabel: {
+    fontSize: 10, fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.8, marginBottom: 6,
+  },
+  incomeTotalAmount: { fontSize: 30, fontFamily: 'Poppins_700Bold' },
+  movRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  movIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  movInfo: { flex: 1 },
+  movTitle: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  movSubtitle: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  movAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 4 },
+
+  // Huchas
+  huchaTotalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  huchaThisMonthBadge: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
+  huchasChartRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end', marginBottom: 12 },
+  huchaBarGroup: { alignItems: 'center', gap: 4 },
+  huchaStack: {
+    width: 20, borderRadius: 4, overflow: 'hidden',
+    flexDirection: 'column-reverse', justifyContent: 'flex-start',
+  },
+  huchaStackSeg: { width: '100%' },
+  huchasLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  huchaLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+
+  // Category detail
+  catDetailHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  catDetailMeta: { flex: 1 },
+  catDetailEvol: { fontSize: 9, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.5, marginBottom: 2 },
+  catDetailName: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
+  catDetailAvgBox: { alignItems: 'flex-end' },
+  catDetailAvg: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
+  catDetailBarsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  catDetailBarGroup: { alignItems: 'center', flex: 1 },
+  catDetailBarVal: { fontSize: 9, fontFamily: 'Poppins_400Regular', marginBottom: 4 },
+  catDetailBarTrack: { width: '100%', justifyContent: 'flex-end', paddingHorizontal: 3 },
+  catDetailBar: { borderTopLeftRadius: 3, borderTopRightRadius: 3, width: '100%' },
+  catDetailYearsRow: { flexDirection: 'row', gap: 20, paddingTop: 12 },
+  catDetailYearLbl: { fontSize: 11, fontFamily: 'Poppins_500Medium', marginBottom: 2 },
+  catDetailYearVal: { fontSize: 15, fontFamily: 'Poppins_700Bold' },
+
+  // Hucha card
+  huchaCard: {
+    marginHorizontal: 16, marginBottom: 10,
+    borderRadius: 16, borderWidth: 0.5, overflow: 'hidden',
+  },
+  huchaCardHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 12, padding: 14,
+  },
+  huchaCardIcon: {
+    width: 46, height: 46, borderRadius: 23,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  huchaCardMeta: { flex: 1 },
+  huchaCardName: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  streakFire: { fontSize: 12 },
+  streakText: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  huchaStatsRow: {
+    flexDirection: 'row', borderTopWidth: 0.5, paddingVertical: 12,
+  },
+  huchaStat: { flex: 1, alignItems: 'center' },
+  huchaStatSep: { width: 0.5, marginVertical: 4 },
+  huchaStatLabel: { fontSize: 9, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.5, marginBottom: 4 },
+  huchaStatValue: { fontSize: 14, fontFamily: 'Poppins_700Bold' },
 });
 
 export default AnnualScreen;
