@@ -13,6 +13,7 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 
 const BalanceCard = ({
   balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense,
@@ -24,13 +25,14 @@ const BalanceCard = ({
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const { colorPalette } = useSettingsStore();
+  const balanceRef = useWalkthroughTarget('home_balance');
 
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
   const absBalance = Math.abs(balance);
   const [intPart, decPart] = absBalance.toFixed(2).replace('.', ',').split(',');
 
   return (
-    <View style={[styles.balanceCard, { backgroundColor: colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard }]}>
+    <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard }]}>
       <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
       <View style={styles.balanceAmountRow}>
         {balance < 0 && <Text style={styles.balanceSign}>-</Text>}

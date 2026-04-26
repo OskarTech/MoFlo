@@ -298,16 +298,32 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const { huchas, sharedAccountId } = get();
     const now = new Date();
     const toUpdate: Hucha[] = [];
+    const newMovements: HuchaMovement[] = [];
 
     for (const h of huchas) {
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
       if (new Date(h.nextContributionDate) > now) continue;
       if (h.currentAmount >= h.targetAmount) continue;
 
+      const contribution = Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount);
+      if (contribution <= 0) continue;
+
       toUpdate.push({
         ...h,
-        currentAmount: Math.min(h.currentAmount + h.monthlyAmount, h.targetAmount),
+        currentAmount: h.currentAmount + contribution,
         nextContributionDate: advanceOneMonth(h.nextContributionDate),
+      });
+
+      const nowIso = new Date().toISOString();
+      newMovements.push({
+        id: `hm_auto_${h.id}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+        huchaId: h.id,
+        huchaName: h.name,
+        huchaColor: h.color,
+        type: 'deposit',
+        amount: contribution,
+        date: h.nextContributionDate,
+        createdAt: nowIso,
       });
     }
 
@@ -320,6 +336,13 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     set({ huchas: updated });
     const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
     await AsyncStorage.setItem(key, JSON.stringify(updated));
+
+    if (newMovements.length > 0) {
+      const allMovements = [...newMovements, ...get().huchaMovements];
+      set({ huchaMovements: allMovements });
+      const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+      await AsyncStorage.setItem(movKey, JSON.stringify(allMovements));
+    }
 
     for (const u of toUpdate) {
       try {
@@ -336,6 +359,17 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         }
       } catch (e) {
         console.error('Error applying automatic contribution:', e);
+      }
+    }
+
+    const movementsCol = sharedAccountId
+      ? getSharedMovementsCol(sharedAccountId)
+      : getUserMovementsCol();
+    for (const m of newMovements) {
+      try {
+        await movementsCol.doc(m.id).set(m);
+      } catch (e) {
+        console.error('Error saving automatic hucha movement:', e);
       }
     }
   },

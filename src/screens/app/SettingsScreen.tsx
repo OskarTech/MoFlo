@@ -23,6 +23,7 @@ import { usePremium } from '../../hooks/usePremium';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useWalkthroughStore } from '../../store/walkthroughStore';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
@@ -852,6 +853,15 @@ const SettingsScreen = () => {
           {t('settings.appSection')}
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <OptionRow
+            icon="compass-outline" iconColor={dc.primary}
+            label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
+            onPress={() => {
+              navigation.navigate('HomeTab' as never);
+              setTimeout(() => useWalkthroughStore.getState().start(), 250);
+            }}
+          />
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
             icon="star-outline" iconColor={dc.primary}
             label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}

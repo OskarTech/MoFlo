@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -19,6 +19,8 @@ import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
 import PremiumModal from '../components/common/PremiumModal';
+import WalkthroughOverlay from '../components/walkthrough/WalkthroughOverlay';
+import { useWalkthroughStore } from '../store/walkthroughStore';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +59,10 @@ const AppNavigator = () => {
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
   const activeTabRef = useRef('HomeTab');
+
+  useEffect(() => {
+    useWalkthroughStore.getState().checkAndStartIfNew();
+  }, []);
 
   const tabBarBg = dc.surface;
   const tabBarBorder = isDark ? dc.border : '#E5E7EB';
@@ -200,6 +206,7 @@ const AppNavigator = () => {
         onDismiss={() => setPremiumModalVisible(false)}
         onPurchase={() => setPremiumModalVisible(false)}
       />
+      <WalkthroughOverlay />
     </>
   );
 };

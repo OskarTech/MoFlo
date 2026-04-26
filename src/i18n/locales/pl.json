@@ -486,5 +486,38 @@
     "askYes": "Oceń",
     "askLater": "Później",
     "askNever": "Nie, dziękuję"
+  },
+  "walkthrough": {
+    "skip": "Pomiń",
+    "next": "Dalej",
+    "prev": "Wstecz",
+    "done": "Zakończ",
+    "stepOf": "{{current}} z {{total}}",
+    "balance": {
+      "title": "Twoje miesięczne saldo",
+      "body": "Tutaj widzisz swoje dostępne saldo. Dotknij 'Przychody' lub 'Wydatki', aby zobaczyć szczegóły."
+    },
+    "fab": {
+      "title": "Dodaj transakcje",
+      "body": "Naciśnij przycisk +, aby dodać nowy wydatek, przychód, wpłatę do skarbonki lub transakcję cykliczną."
+    },
+    "recurring": {
+      "title": "Transakcje cykliczne",
+      "body": "Przejdź do zakładki Transakcje i wybierz filtr 'Stałe'. Stamtąd możesz tworzyć automatyczne wydatki lub przychody, takie jak czynsz, subskrypcje lub pensja."
+    },
+    "hucha": {
+      "title": "Twoje skarbonki",
+      "body": "Twórz niezależne cele oszczędnościowe (wakacje, samochód, prezenty...) z własnym postępem i automatycznymi wpłatami."
+    },
+    "annual": {
+      "title": "Podsumowanie roczne",
+      "body": "Przeglądaj swoje wydatki według kategorii, przychody i wpłaty do skarbonek w ciągu roku."
+    },
+    "account": {
+      "title": "Konto osobiste lub wspólne",
+      "body": "Dotknij tutaj, aby przełączać się między swoim kontem osobistym a kontem wspólnym z inną osobą."
+    },
+    "settingsLabel": "Samouczek",
+    "settingsSubtitle": "Zobacz interaktywny przewodnik ponownie"
   }
 }

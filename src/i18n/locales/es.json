@@ -486,5 +486,38 @@
     "askYes": "Valorar",
     "askLater": "Más tarde",
     "askNever": "No, gracias"
+  },
+  "walkthrough": {
+    "skip": "Saltar",
+    "next": "Siguiente",
+    "prev": "Anterior",
+    "done": "Terminar",
+    "stepOf": "{{current}} de {{total}}",
+    "balance": {
+      "title": "Tu balance del mes",
+      "body": "Aquí ves tu saldo disponible. Toca 'Ingresos' o 'Gastos' para ver el detalle de cada uno."
+    },
+    "fab": {
+      "title": "Añade movimientos",
+      "body": "Pulsa el botón + para registrar un nuevo gasto, ingreso, hucha o movimiento recurrente."
+    },
+    "recurring": {
+      "title": "Movimientos recurrentes",
+      "body": "Entra en la pestaña Movimientos y elige el filtro 'Fijos'. Desde ahí puedes crear gastos o ingresos automáticos como alquiler, suscripciones o nómina."
+    },
+    "hucha": {
+      "title": "Tus huchas",
+      "body": "Crea metas de ahorro independientes (vacaciones, coche, regalos...) con su propio progreso y aportaciones automáticas."
+    },
+    "annual": {
+      "title": "Resumen anual",
+      "body": "Consulta tus gastos por categoría, ingresos y aportaciones a huchas a lo largo del año."
+    },
+    "account": {
+      "title": "Cuenta individual o compartida",
+      "body": "Toca aquí para alternar entre tu cuenta personal y una cuenta compartida con otra persona."
+    },
+    "settingsLabel": "Tutorial",
+    "settingsSubtitle": "Volver a ver la guía interactiva"
   }
 }

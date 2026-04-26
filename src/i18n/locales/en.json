@@ -486,5 +486,38 @@
     "askYes": "Rate",
     "askLater": "Later",
     "askNever": "No, thanks"
+  },
+  "walkthrough": {
+    "skip": "Skip",
+    "next": "Next",
+    "prev": "Back",
+    "done": "Finish",
+    "stepOf": "{{current}} of {{total}}",
+    "balance": {
+      "title": "Your monthly balance",
+      "body": "Here you see your available balance. Tap 'Income' or 'Expenses' to view details."
+    },
+    "fab": {
+      "title": "Add movements",
+      "body": "Tap the + button to register a new expense, income, savings deposit or recurring movement."
+    },
+    "recurring": {
+      "title": "Recurring movements",
+      "body": "Go to the Movements tab and choose the 'Fixed' filter. From there you can create automatic expenses or incomes like rent, subscriptions or salary."
+    },
+    "hucha": {
+      "title": "Your savings goals",
+      "body": "Create independent savings goals (vacation, car, gifts...) each with its own progress and automatic contributions."
+    },
+    "annual": {
+      "title": "Annual summary",
+      "body": "Review your expenses by category, income and savings contributions throughout the year."
+    },
+    "account": {
+      "title": "Personal or shared account",
+      "body": "Tap here to switch between your personal account and a shared account with someone else."
+    },
+    "settingsLabel": "Tutorial",
+    "settingsSubtitle": "Watch the interactive walkthrough again"
   }
 }

@@ -166,9 +166,18 @@ const AnnualScreen = () => {
     monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
     [monthMovements],
   );
-  const balance = totalIncome - totalExpense;
+  const huchaNetForMonth = useMemo(() =>
+    huchaMovements
+      .filter(m => {
+        const d = new Date(m.date);
+        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+      })
+      .reduce((acc, m) => acc + (m.type === 'withdrawal' ? m.amount : -m.amount), 0),
+    [huchaMovements, selectedMonth, selectedYear],
+  );
+  const balance = totalIncome - totalExpense + huchaNetForMonth;
   const savedPct = totalIncome > 0
-    ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100)
+    ? Math.round((balance / totalIncome) * 100)
     : 0;
 
   // ── EXPENSE BREAKDOWN ─────────────────────────────────────────────────────
