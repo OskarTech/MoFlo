@@ -1,9 +1,10 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
+  View, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, Animated, Platform, StatusBar, Keyboard, Switch,
+  TextInput as RNTextInput, KeyboardAvoidingView, Dimensions,
 } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -45,17 +46,19 @@ const AddMoneyModal = ({
   visible,
   huchaColor,
   huchaCurrentAmount,
+  currencySymbol,
   onConfirm,
   onDismiss,
 }: {
   visible: boolean;
   huchaColor: string;
   huchaCurrentAmount: number;
+  currencySymbol: string;
   onConfirm: (amount: number, type: HuchaMovementType) => void;
   onDismiss: () => void;
 }) => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const [amount, setAmount] = useState('');
@@ -98,73 +101,106 @@ const AddMoneyModal = ({
   const parsed = parseFloat(amount.replace(',', '.'));
   const isValid = parsed > 0 && (mode === 'deposit' || parsed <= huchaCurrentAmount);
   const activeColor = mode === 'deposit' ? huchaColor : dc.expense;
+  const inputBg = isDark ? dc.background : '#FFFFFF';
+  const projectedAmount = !isNaN(parsed) && parsed > 0
+    ? mode === 'deposit'
+      ? huchaCurrentAmount + parsed
+      : Math.max(0, huchaCurrentAmount - parsed)
+    : null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleDismiss}>
       <Animated.View style={[styles.modalOverlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={handleDismiss} />
-        <View style={[styles.sheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.sheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 24 }]}>
           <View style={[styles.sheetHandle, { backgroundColor: dc.border }]} />
 
-          {/* Mode tabs */}
-          <View style={[styles.modeTabs, { backgroundColor: dc.background, borderColor: dc.border }]}>
-            <TouchableOpacity
-              style={[styles.modeTab, mode === 'deposit' && { backgroundColor: huchaColor }]}
-              onPress={() => setMode('deposit')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={15} color={mode === 'deposit' ? '#fff' : dc.textSecondary} />
-              <Text style={[styles.modeTabText, { color: mode === 'deposit' ? '#fff' : dc.textSecondary }]}>
-                {t('hucha.deposit')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeTab, mode === 'withdrawal' && { backgroundColor: dc.expense }]}
-              onPress={() => setMode('withdrawal')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="remove" size={15} color={mode === 'withdrawal' ? '#fff' : dc.textSecondary} />
-              <Text style={[styles.modeTabText, { color: mode === 'withdrawal' ? '#fff' : dc.textSecondary }]}>
-                {t('hucha.withdraw')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <Text style={[styles.sheetTitle, { color: dc.textPrimary }]}>
+              {mode === 'deposit' ? t('hucha.addMoneyTitle') : t('hucha.withdrawMoneyTitle')}
+            </Text>
 
-          <TextInput
-            style={[styles.input, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
-            placeholder={t('hucha.amount')}
-            placeholderTextColor={dc.textSecondary}
-            keyboardType="decimal-pad"
-            value={amount}
-            onChangeText={setAmount}
-            autoFocus
-          />
+            {/* Mode tabs */}
+            <View style={styles.modeTabs}>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  { backgroundColor: isDark ? dc.border : '#F0F0F0' },
+                  mode === 'deposit' && { backgroundColor: huchaColor },
+                ]}
+                onPress={() => setMode('deposit')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={15} color={mode === 'deposit' ? '#fff' : dc.textSecondary} />
+                <Text style={[styles.modeTabText, { color: mode === 'deposit' ? '#fff' : dc.textSecondary }]}>
+                  {t('hucha.deposit')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  { backgroundColor: isDark ? dc.border : '#F0F0F0' },
+                  mode === 'withdrawal' && { backgroundColor: dc.expense },
+                ]}
+                onPress={() => setMode('withdrawal')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="remove" size={15} color={mode === 'withdrawal' ? '#fff' : dc.textSecondary} />
+                <Text style={[styles.modeTabText, { color: mode === 'withdrawal' ? '#fff' : dc.textSecondary }]}>
+                  {t('hucha.withdraw')}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          {mode === 'withdrawal' && parsed > 0 && parsed > huchaCurrentAmount && (
-            <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
-          )}
-
-
-          <View style={styles.sheetButtons}>
-            <Button
+            <TextInput
+              label={t('hucha.amount')}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
               mode="outlined"
-              onPress={handleDismiss}
-              style={[styles.cancelButton, { borderColor: dc.border }]}
-              textColor={dc.textSecondary}
-            >
-              {t('hucha.cancel')}
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleConfirm}
-              disabled={!isValid}
-              style={styles.saveButton}
-              buttonColor={activeColor}
-              textColor="#FFFFFF"
-            >
-              {t('hucha.save')}
-            </Button>
-          </View>
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={activeColor}
+              left={<TextInput.Affix text={currencySymbol} />}
+            />
+
+            {projectedAmount !== null && (
+              <View style={[styles.previewRow, { backgroundColor: activeColor + '15', borderColor: activeColor + '30' }]}>
+                <Text style={[styles.previewLabel, { color: dc.textSecondary }]}>
+                  {huchaCurrentAmount.toFixed(2)} {currencySymbol}
+                </Text>
+                <Ionicons name="arrow-forward" size={14} color={activeColor} />
+                <Text style={[styles.previewNew, { color: activeColor }]}>
+                  {projectedAmount.toFixed(2)} {currencySymbol}
+                </Text>
+              </View>
+            )}
+
+            {mode === 'withdrawal' && parsed > 0 && parsed > huchaCurrentAmount && (
+              <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
+            )}
+
+            <View style={styles.sheetButtons}>
+              <Button
+                mode="outlined"
+                onPress={handleDismiss}
+                style={[styles.cancelButton, { borderColor: dc.border }]}
+                textColor={dc.textSecondary}
+              >
+                {t('hucha.cancel')}
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleConfirm}
+                disabled={!isValid}
+                style={styles.saveButton}
+                buttonColor={activeColor}
+                textColor="#FFFFFF"
+              >
+                {t('hucha.save')}
+              </Button>
+            </View>
+          </ScrollView>
         </View>
       </Animated.View>
     </Modal>
@@ -190,6 +226,14 @@ const HuchaDetailScreen = () => {
   const hucha = huchas.find(h => h.id === route.params.huchaId);
 
   const fillAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const headerH = useRef(0);
+  const autoInputRowRef = useRef<View>(null);
+  const showAutoInputRef = useRef(false);
+
+  const [showAutoInput, setShowAutoInput] = useState(false);
+  const [autoAmount, setAutoAmount] = useState('');
 
   const pct = hucha && hucha.targetAmount > 0
     ? Math.min((hucha.currentAmount / hucha.targetAmount) * 100, 100)
@@ -202,6 +246,28 @@ const HuchaDetailScreen = () => {
       useNativeDriver: false,
     }).start();
   }, [pct]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      if (!showAutoInputRef.current || !autoInputRowRef.current) return;
+      // screenY = top del teclado en coordenadas absolutas de pantalla
+      const keyboardTop = e.endCoordinates.screenY;
+      setTimeout(() => {
+        // measure() da pageY = posición absoluta en la pantalla
+        autoInputRowRef.current?.measure((x, y, w, h, _pageX, pageY) => {
+          const inputBottom = pageY + h + 24;
+          if (inputBottom > keyboardTop) {
+            const delta = inputBottom - keyboardTop;
+            scrollRef.current?.scrollTo({ y: scrollY.current + delta, animated: true });
+          }
+        });
+      }, 100);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {});
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const fillHeight = fillAnim.interpolate({
     inputRange: [0, 100],
@@ -258,21 +324,37 @@ const HuchaDetailScreen = () => {
   };
 
   const handleToggleAutomatic = async (value: boolean) => {
-    const nextDate = value
-      ? (() => {
-          const d = new Date();
-          d.setDate(1);
-          d.setMonth(d.getMonth() + 1);
-          return d.toISOString();
-        })()
-      : undefined;
-    await updateHucha(hucha.id, { isAutomatic: value, nextContributionDate: nextDate });
+    if (value) {
+      showAutoInputRef.current = true;
+      setAutoAmount(hucha.monthlyAmount ? String(hucha.monthlyAmount) : '');
+      setShowAutoInput(true);
+    } else {
+      showAutoInputRef.current = false;
+      setShowAutoInput(false);
+      setAutoAmount('');
+      await updateHucha(hucha.id, { isAutomatic: false, monthlyAmount: undefined, nextContributionDate: undefined });
+    }
+  };
+
+  const handleSaveAutomatic = async () => {
+    const parsed = parseFloat(autoAmount.replace(',', '.'));
+    if (!parsed || parsed <= 0) return;
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    await updateHucha(hucha.id, { isAutomatic: true, monthlyAmount: parsed, nextContributionDate: d.toISOString() });
+    showAutoInputRef.current = false;
+    setShowAutoInput(false);
+    setAutoAmount('');
   };
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       {/* Custom header */}
-      <View style={[styles.header, { backgroundColor: headerBg, paddingTop }]}>
+      <View
+        style={[styles.header, { backgroundColor: headerBg, paddingTop }]}
+        onLayout={(e) => { headerH.current = e.nativeEvent.layout.height; }}
+      >
         <TouchableOpacity
           style={[styles.headerBtn, { backgroundColor: isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)' }]}
           onPress={() => navigation.goBack()}
@@ -297,7 +379,13 @@ const HuchaDetailScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         {/* Liquid fill */}
         <View style={styles.fillWrapper}>
           <View style={[styles.fillContainer, { backgroundColor: dc.border }]}>
@@ -355,7 +443,7 @@ const HuchaDetailScreen = () => {
               <Text style={[styles.automaticLabel, { color: dc.textPrimary }]}>
                 {t('hucha.automatic')}
               </Text>
-              {hucha.isAutomatic && hucha.monthlyAmount && (
+              {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
                 <Text style={[styles.automaticMeta, { color: dc.textSecondary }]}>
                   {hucha.monthlyAmount} {t('hucha.everyMonth')}
                   {hucha.nextContributionDate
@@ -365,12 +453,40 @@ const HuchaDetailScreen = () => {
               )}
             </View>
             <Switch
-              value={hucha.isAutomatic}
+              value={hucha.isAutomatic || showAutoInput}
               onValueChange={handleToggleAutomatic}
               trackColor={{ false: dc.border, true: hucha.color }}
               thumbColor="#fff"
             />
           </View>
+
+          {showAutoInput && (
+            <View
+              ref={autoInputRowRef}
+              style={[styles.autoInputRow, { borderTopColor: dc.border }]}
+            >
+              <RNTextInput
+                style={[styles.autoInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                placeholder={t('hucha.automaticAmount')}
+                placeholderTextColor={dc.textSecondary}
+                keyboardType="decimal-pad"
+                value={autoAmount}
+                onChangeText={setAutoAmount}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.autoSaveBtn,
+                  { backgroundColor: hucha.color },
+                  (!autoAmount || parseFloat(autoAmount.replace(',', '.')) <= 0) && { opacity: 0.4 },
+                ]}
+                onPress={handleSaveAutomatic}
+                activeOpacity={0.8}
+                disabled={!autoAmount || parseFloat(autoAmount.replace(',', '.')) <= 0}
+              >
+                <Text style={styles.autoSaveBtnText}>{t('hucha.save')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Mini historial de movimientos */}
@@ -419,6 +535,7 @@ const HuchaDetailScreen = () => {
         visible={showAddMoneyModal}
         huchaColor={hucha.color}
         huchaCurrentAmount={hucha.currentAmount}
+        currencySymbol={currencySymbol}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
       />
@@ -466,6 +583,14 @@ const styles = StyleSheet.create({
 
   automaticCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 16 },
   automaticRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  autoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingTop: 14, borderTopWidth: 0.5 },
+  autoInput: {
+    flex: 1, borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 14, fontFamily: 'Poppins_400Regular',
+  },
+  autoSaveBtn: { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 11 },
+  autoSaveBtnText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', color: '#fff' },
   automaticIconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   automaticInfo: { flex: 1 },
   automaticLabel: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
@@ -480,23 +605,27 @@ const styles = StyleSheet.create({
   historyAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheetTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
 
-  modeTabs: {
-    flexDirection: 'row', borderRadius: 12, borderWidth: 0.5,
-    padding: 4, gap: 4, marginBottom: 16,
-  },
+  modeTabs: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   modeTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 9, borderRadius: 9,
+    gap: 6, paddingVertical: 10, borderRadius: 12,
   },
   modeTabText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
 
-  input: {
-    borderWidth: 1, borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 15, fontFamily: 'Poppins_400Regular', marginBottom: 8,
+  input: { marginBottom: 12 },
+
+  previewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10,
+    marginBottom: 12,
   },
+  previewLabel: { fontSize: 13, fontFamily: 'Poppins_400Regular', flex: 1 },
+  previewNew: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+
   errorText: {
     fontSize: 12, fontFamily: 'Poppins_400Regular',
     color: '#EF4444', marginBottom: 8, paddingHorizontal: 4,

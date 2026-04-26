@@ -355,20 +355,13 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
     const batch = firestore().batch();
 
-    const movementsSnap = await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('movements').get();
-    movementsSnap.docs.forEach(doc => batch.delete(doc.ref));
+    const ref = firestore().collection('sharedAccounts').doc(sharedAccount.id);
+    const subcollections = ['movements', 'recurring', 'categories', 'huchas', 'huchaMovements', 'savings'];
 
-    const recurringSnap = await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('recurring').get();
-    recurringSnap.docs.forEach(doc => batch.delete(doc.ref));
-
-    const categoriesSnap = await firestore()
-      .collection('sharedAccounts').doc(sharedAccount.id)
-      .collection('categories').get();
-    categoriesSnap.docs.forEach(doc => batch.delete(doc.ref));
+    for (const sub of subcollections) {
+      const snap = await ref.collection(sub).get();
+      snap.docs.forEach(doc => batch.delete(doc.ref));
+    }
 
     await batch.commit();
 

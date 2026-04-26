@@ -303,6 +303,7 @@
   "everyMonth": "€ every 1st of month",
   "addMoney": "+ Add to goal",
   "addMoneyTitle": "Add money",
+  "withdrawMoneyTitle": "Withdraw money",
   "quickAdd": "Quick add",
   "remaining": "{{amount}} € remaining",
   "monthsEstimate": "~{{months}} months at current pace",

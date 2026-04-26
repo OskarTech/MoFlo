@@ -303,6 +303,7 @@
   "everyMonth": "€ cada 1 de mes",
   "addMoney": "+ Añadir a la hucha",
   "addMoneyTitle": "Añadir dinero",
+  "withdrawMoneyTitle": "Sacar dinero",
   "quickAdd": "Añadir rápido",
   "remaining": "Te faltan {{amount}} €",
   "monthsEstimate": "~{{months}} meses al ritmo actual",

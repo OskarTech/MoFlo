@@ -303,6 +303,7 @@
   "everyMonth": "€ każdego 1. dnia miesiąca",
   "addMoney": "+ Dodaj do celu",
   "addMoneyTitle": "Dodaj pieniądze",
+  "withdrawMoneyTitle": "Wypłać środki",
   "quickAdd": "Szybkie dodawanie",
   "remaining": "Brakuje {{amount}} €",
   "monthsEstimate": "~{{months}} miesięcy w obecnym tempie",
