@@ -478,5 +478,13 @@
   "noMembersToKick": "No hay miembros que expulsar",
   "kickSuccess": "Miembro expulsado correctamente",
   "kickWarning": "Esta persona perderá acceso a la cuenta compartida"
+  },
+  "rate": {
+    "askTitle": "¿Disfrutas MoFlo?",
+    "askMessageSecondHucha": "¡Veo que estás organizando tus metas de ahorro! ¿Te gustaría valorar la app en la Store?",
+    "askMessageGoalComplete": "¡Felicidades por completar una meta! Si te está siendo útil, ¿te gustaría valorarnos en la Store?",
+    "askYes": "Valorar",
+    "askLater": "Más tarde",
+    "askNever": "No, gracias"
   }
 }

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Hucha, HuchaMovement, HuchaMovementType } from '../types';
+import { maybePromptForRating } from '../utils/rateAppPrompt';
 
 const STORAGE_KEY = '@moflo_huchas';
 const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
@@ -175,6 +176,9 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         const updated = [hucha, ...get().huchas];
         set({ huchas: updated });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        if (updated.length === 2) {
+          setTimeout(() => maybePromptForRating('second_hucha'), 600);
+        }
       }
     } catch (e) {
       console.error('Error creating hucha:', e);
@@ -206,9 +210,14 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const hucha = huchas.find(h => h.id === huchaId);
     if (!hucha) return;
 
+    const previousAmount = hucha.currentAmount;
     const newAmount = type === 'deposit'
       ? hucha.currentAmount + amount
       : Math.max(0, hucha.currentAmount - amount);
+    const justCompleted = type === 'deposit'
+      && hucha.targetAmount > 0
+      && previousAmount < hucha.targetAmount
+      && newAmount >= hucha.targetAmount;
 
     const updatedHuchas = huchas.map(h =>
       h.id === huchaId ? { ...h, currentAmount: newAmount } : h
@@ -247,6 +256,10 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       await movementsCol.doc(movId).set(huchaMovement);
     } catch (e) {
       console.error('Error adding to hucha:', e);
+    }
+
+    if (justCompleted && !sharedAccountId) {
+      setTimeout(() => maybePromptForRating('goal_complete'), 600);
     }
   },
 

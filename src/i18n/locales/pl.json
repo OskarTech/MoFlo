@@ -478,5 +478,13 @@
   "noMembersToKick": "Brak członków do usunięcia",
   "kickSuccess": "Członek został usunięty",
   "kickWarning": "Ta osoba straci dostęp do wspólnego konta"
+  },
+  "rate": {
+    "askTitle": "Podoba Ci się MoFlo?",
+    "askMessageSecondHucha": "Widzę, że organizujesz swoje cele oszczędnościowe! Czy chciałbyś ocenić aplikację w sklepie?",
+    "askMessageGoalComplete": "Gratulujemy osiągnięcia celu! Jeśli MoFlo Ci pomaga, czy chciałbyś wystawić ocenę?",
+    "askYes": "Oceń",
+    "askLater": "Później",
+    "askNever": "Nie, dziękuję"
   }
 }

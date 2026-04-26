@@ -478,5 +478,13 @@
   "noMembersToKick": "No members to remove",
   "kickSuccess": "Member removed successfully",
   "kickWarning": "This person will lose access to the shared account"
+  },
+  "rate": {
+    "askTitle": "Enjoying MoFlo?",
+    "askMessageSecondHucha": "Looks like you're organizing your savings goals! Would you like to rate the app on the store?",
+    "askMessageGoalComplete": "Congrats on reaching a goal! If MoFlo is helping you, would you like to leave us a rating?",
+    "askYes": "Rate",
+    "askLater": "Later",
+    "askNever": "No, thanks"
   }
 }
