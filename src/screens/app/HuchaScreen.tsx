@@ -79,7 +79,7 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
         <Text style={[styles.cardPct, { color: hucha.color }]}>{pct}%</Text>
       </View>
 
-      <View style={[styles.progressBar, { backgroundColor: dc.border }]}>
+      <View style={[styles.progressBar, { backgroundColor: hucha.color + '25' }]}>
         <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: hucha.color }]} />
       </View>
 

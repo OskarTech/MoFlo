@@ -50,7 +50,7 @@ const AppHeader = ({
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
-  const isInSettings = route.name === 'Settings';
+  const isInSettings = route.name === 'Settings' || route.name === 'SettingsMain';
   const isInReminders = route.name === 'Reminders';
 
   const headerBg = isDark ? dc.surface : dc.secondary;

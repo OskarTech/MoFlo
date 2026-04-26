@@ -44,7 +44,7 @@ const BalanceCard = ({
         )}
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${spentPct}%` as any, backgroundColor: dc.income }]} />
+        <View style={[styles.progressFill, { width: `${spentPct}%` as any, backgroundColor: dc.expense }]} />
       </View>
       <View style={styles.statsRow}>
         <TouchableOpacity onPress={onPressIncome} activeOpacity={0.7}>
@@ -231,7 +231,7 @@ const HomeScreen = () => {
                             {amount.toFixed(2)} {currencySymbol}
                           </Text>
                         </View>
-                        <View style={[styles.barTrack, { backgroundColor: dc.border }]}>
+                        <View style={[styles.barTrack, { backgroundColor: catColor + '25' }]}>
                           <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: catColor }]} />
                         </View>
                       </View>
@@ -250,7 +250,7 @@ const HomeScreen = () => {
               {t('home.recentMovements')}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('HistorialTab')} activeOpacity={0.7}>
-              <Text style={[styles.seeAllText, { color: dc.primary }]}>{t('home.seeAll')}</Text>
+              <Text style={[styles.seeAllText, { color: dc.textSecondary }]}>{t('home.seeAll')}</Text>
             </TouchableOpacity>
           </View>
 

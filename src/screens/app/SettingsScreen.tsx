@@ -595,7 +595,7 @@ const SettingsScreen = () => {
                 <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
                   <OptionRow
                     icon="people-outline"
-                    iconColor={colors.savings}
+                    iconColor={dc.primary}
                     label={sharedAccount?.name ?? t('sharedAccount.title')}
                     subtitle={sharedAccount
                       ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
@@ -741,7 +741,7 @@ const SettingsScreen = () => {
           {!isSharedMode ? (
             <>
               <OptionRow
-                icon="cash-outline" iconColor={colors.income}
+                icon="cash-outline" iconColor={dc.primary}
                 label={t('settings.currency')} value={selectedCurrencyLabel}
                 onPress={() => setShowCurrencyModal(true)}
               />
@@ -773,7 +773,7 @@ const SettingsScreen = () => {
               />
               <View style={[styles.divider, { backgroundColor: dc.border }]} />
               <OptionRow
-                icon="pricetag-outline" iconColor={colors.savings}
+                icon="pricetag-outline" iconColor={dc.primary}
                 label={t('categories.title')}
                 subtitle={!isPremium
                   ? `⭐ ${t('premium.badge')}`
@@ -799,7 +799,7 @@ const SettingsScreen = () => {
           ) : (
             <>
               <OptionRow
-                icon="cash-outline" iconColor={colors.income}
+                icon="cash-outline" iconColor={dc.primary}
                 label={t('settings.currency')} value={selectedSharedCurrencyLabel}
                 onPress={() => setShowSharedCurrencyModal(true)}
               />
@@ -823,7 +823,7 @@ const SettingsScreen = () => {
               />
               <View style={[styles.divider, { backgroundColor: dc.border }]} />
               <OptionRow
-                icon="pricetag-outline" iconColor={colors.savings}
+                icon="pricetag-outline" iconColor={dc.primary}
                 label={t('categories.title')}
                 subtitle={t('sharedAccount.sharedCategoriesSubtitle')}
                 onPress={() => sharedAccount && navigation.navigate('SharedCategories', { accountId: sharedAccount.id })}
@@ -853,19 +853,19 @@ const SettingsScreen = () => {
         </Text>
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <OptionRow
-            icon="star-outline" iconColor="#F59E0B"
+            icon="star-outline" iconColor={dc.primary}
             label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}
             onPress={handleRateApp}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="share-social-outline" iconColor={colors.income}
+            icon="share-social-outline" iconColor={dc.primary}
             label={t('settings.shareApp')} subtitle={t('settings.shareAppSubtitle')}
             onPress={handleShare}
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
-            icon="download-outline" iconColor={colors.savings}
+            icon="download-outline" iconColor={dc.primary}
             label={t('export.title')}
             subtitle={!isSharedMode && !isPremium
               ? `⭐ ${t('premium.badge')}`
@@ -876,7 +876,7 @@ const SettingsScreen = () => {
             <>
               <View style={[styles.divider, { backgroundColor: dc.border }]} />
               <OptionRow
-                icon="moon-outline" iconColor={dc.primaryDark}
+                icon="moon-outline" iconColor={dc.primary}
                 label={t('settings.theme')} value={selectedThemeLabel}
                 onPress={() => setShowThemeModal(true)}
               />

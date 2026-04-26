@@ -360,7 +360,7 @@ const AnnualScreen = () => {
                   style={[
                     styles.monthChip,
                     { backgroundColor: dc.surface, borderColor: dc.border },
-                    isSelected && { backgroundColor: dc.textPrimary, borderColor: dc.textPrimary },
+                    isSelected && { backgroundColor: dc.primary, borderColor: dc.primary },
                   ]}
                   onPress={() => selectPeriod(month, year)}
                 >
@@ -460,7 +460,7 @@ const AnnualScreen = () => {
               style={[
                 styles.subTab,
                 { backgroundColor: dc.surface, borderColor: dc.border },
-                activeTab === tab && { backgroundColor: dc.textPrimary, borderColor: dc.textPrimary },
+                activeTab === tab && { backgroundColor: dc.primary, borderColor: dc.primary },
               ]}
               onPress={() => setActiveTab(tab)}
             >
@@ -607,7 +607,7 @@ const AnnualScreen = () => {
                           <Text style={[styles.catPct, { color: dc.textSecondary }]}>
                             {Math.round(item.percentage)}% {t('resumen.ofExpense')}
                           </Text>
-                          <View style={[styles.catBarTrack, { backgroundColor: dc.border }]}>
+                          <View style={[styles.catBarTrack, { backgroundColor: item.color + '25' }]}>
                             <View style={[
                               styles.catBarFill,
                               { width: `${item.percentage}%` as any, backgroundColor: item.color },

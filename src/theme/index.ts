@@ -60,6 +60,7 @@ interface PaletteEntry {
   lightTextPrimary?: string;
   lightTextSecondary?: string;
   darkTextPrimary?: string;
+  darkTextSecondary?: string;
 }
 
 export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
@@ -91,10 +92,10 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     lightBalanceCard: '#3E5BA3',
     lightTextPrimary: '#0C2D45',
     lightTextSecondary: '#3E5BA3',
-    darkBg: '#0C2D45',
-    darkSurface: '#1A4466',
-    darkBorder: '#1E3A5F',
-    darkBalanceCard: '#c5edb0c0',
+    darkBg: '#071829',
+    darkSurface: '#0C2D45',
+    darkBorder: '#1B4030',
+    darkBalanceCard: '#3E5BA3',
     darkTextPrimary: '#fafafa',
     income: '#84D175', expense: '#E8735A', savings: '#E8A25A',
   },
@@ -109,7 +110,7 @@ export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'g
     background: isDark ? p.darkBg : p.lightBg,
     surface: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
     textPrimary: isDark ? (p.darkTextPrimary ?? '#F9FAFB') : (p.lightTextPrimary ?? '#1F2937'),
-    textSecondary: isDark ? '#9CA3AF' : (p.lightTextSecondary ?? '#6B7280'),
+    textSecondary: isDark ? (p.darkTextSecondary ?? '#9CA3AF') : (p.lightTextSecondary ?? '#6B7280'),
     border: isDark ? p.darkBorder : p.lightBorder,
     cardBackground: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
     balanceCard: isDark ? p.darkBalanceCard : p.lightBalanceCard,
