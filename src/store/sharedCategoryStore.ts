@@ -42,31 +42,57 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
     try {
       // Cache local
       const customRaw = await AsyncStorage.getItem(`${SHARED_CUSTOM_KEY}_${accountId}`);
-      if (customRaw) set({ sharedCustomCategories: JSON.parse(customRaw) });
+      const localCustom: Category[] = customRaw ? JSON.parse(customRaw) : [];
+      if (localCustom.length) set({ sharedCustomCategories: localCustom });
 
       const hiddenRaw = await AsyncStorage.getItem(`${SHARED_HIDDEN_KEY}_${accountId}`);
-      if (hiddenRaw) set({ sharedHiddenCategories: JSON.parse(hiddenRaw) });
+      const localHidden: string[] = hiddenRaw ? JSON.parse(hiddenRaw) : [];
+      if (localHidden.length) set({ sharedHiddenCategories: localHidden });
 
-      // Firestore
+      // ── CUSTOM: sync up local-only items, then merge with remote ────
       const snap = await firestore()
         .collection('sharedAccounts').doc(accountId)
         .collection('categories').get();
+      const remoteCustom = snap.docs.map(d => d.data() as Category);
+      const remoteIds = new Set(remoteCustom.map(c => c.id));
 
-      const categories = snap.docs.map(d => d.data() as Category);
-      set({ sharedCustomCategories: categories });
+      const missing = localCustom.filter(c => !remoteIds.has(c.id));
+      const merged = [...remoteCustom];
+      for (const cat of missing) {
+        try {
+          await firestore()
+            .collection('sharedAccounts').doc(accountId)
+            .collection('categories').doc(cat.id)
+            .set(cat);
+          merged.push(cat);
+        } catch (e) {
+          console.error('Error backfilling shared category:', e);
+        }
+      }
+      set({ sharedCustomCategories: merged });
       await AsyncStorage.setItem(
         `${SHARED_CUSTOM_KEY}_${accountId}`,
-        JSON.stringify(categories)
+        JSON.stringify(merged)
       );
 
-      // Ocultas
+      // ── HIDDEN: union local + remote ────────────────────────────────
       const accountDoc = await firestore()
         .collection('sharedAccounts').doc(accountId).get();
-      const hidden: string[] = accountDoc.data()?.hiddenCategories ?? [];
-      set({ sharedHiddenCategories: hidden });
+      const remoteHidden: string[] = accountDoc.data()?.hiddenCategories ?? [];
+      const mergedHidden = Array.from(new Set([...remoteHidden, ...localHidden]));
+      if (mergedHidden.length > remoteHidden.length) {
+        try {
+          await firestore()
+            .collection('sharedAccounts').doc(accountId)
+            .set({ hiddenCategories: mergedHidden }, { merge: true });
+        } catch (e) {
+          console.error('Error backfilling shared hidden categories:', e);
+        }
+      }
+      set({ sharedHiddenCategories: mergedHidden });
       await AsyncStorage.setItem(
         `${SHARED_HIDDEN_KEY}_${accountId}`,
-        JSON.stringify(hidden)
+        JSON.stringify(mergedHidden)
       );
     } catch (e) {
       console.error('Error loading shared categories:', e);

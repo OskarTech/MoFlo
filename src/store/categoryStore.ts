@@ -46,32 +46,55 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
 
       // Carga local primero
       const customRaw = await AsyncStorage.getItem(CUSTOM_KEY);
-      if (customRaw) set({ customCategories: JSON.parse(customRaw) });
+      const localCustom: Category[] = customRaw ? JSON.parse(customRaw) : [];
+      if (localCustom.length) set({ customCategories: localCustom });
 
       const hiddenRaw = await AsyncStorage.getItem(`${HIDDEN_KEY}_${uid}`);
-      if (hiddenRaw) set({ hiddenBaseCategories: JSON.parse(hiddenRaw) });
+      const localHidden: string[] = hiddenRaw ? JSON.parse(hiddenRaw) : [];
+      if (localHidden.length) set({ hiddenBaseCategories: localHidden });
 
-      // SIEMPRE sincroniza con Firestore
       const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        // Carga categorías custom
-        const snap = await firestore()
-          .collection('users').doc(uid)
-          .collection('categories').get();
-        const firestoreCategories = snap.docs.map(d => d.data() as Category);
-        set({ customCategories: firestoreCategories });
-        await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(firestoreCategories));
+      if (!netState.isConnected) return;
 
-        // Carga categorías ocultas desde Firestore
-        const userDoc = await firestore()
-          .collection('users').doc(uid).get();
-        const hiddenFromFirestore: string[] = userDoc.data()?.hiddenCategories ?? [];
-        set({ hiddenBaseCategories: hiddenFromFirestore });
-        await AsyncStorage.setItem(
-          `${HIDDEN_KEY}_${uid}`,
-          JSON.stringify(hiddenFromFirestore)
-        );
+      // ── CUSTOM CATEGORIES: sync up local-only items, then download ───
+      const snap = await firestore()
+        .collection('users').doc(uid)
+        .collection('categories').get();
+      const remoteCustom = snap.docs.map(d => d.data() as Category);
+      const remoteIds = new Set(remoteCustom.map(c => c.id));
+
+      // Backfill: any local category missing remotely was never persisted — push it.
+      const missing = localCustom.filter(c => !remoteIds.has(c.id));
+      const merged = [...remoteCustom];
+      for (const cat of missing) {
+        try {
+          await firestore()
+            .collection('users').doc(uid)
+            .collection('categories').doc(cat.id)
+            .set(cat);
+          merged.push(cat);
+        } catch (e) {
+          console.error('Error backfilling category:', e);
+        }
       }
+      set({ customCategories: merged });
+      await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(merged));
+
+      // ── HIDDEN BASE CATEGORIES: union local + remote ────────────────
+      const userDoc = await firestore().collection('users').doc(uid).get();
+      const remoteHidden: string[] = userDoc.data()?.hiddenCategories ?? [];
+      const mergedHidden = Array.from(new Set([...remoteHidden, ...localHidden]));
+      if (mergedHidden.length > remoteHidden.length) {
+        try {
+          await firestore()
+            .collection('users').doc(uid)
+            .set({ hiddenCategories: mergedHidden }, { merge: true });
+        } catch (e) {
+          console.error('Error backfilling hidden categories:', e);
+        }
+      }
+      set({ hiddenBaseCategories: mergedHidden });
+      await AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(mergedHidden));
     } catch (e) {
       console.error('Error loading categories:', e);
     } finally {
