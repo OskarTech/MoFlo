@@ -250,6 +250,7 @@ const HuchaDetailScreen = () => {
 
   const [showAutoInput, setShowAutoInput] = useState(false);
   const [autoAmount, setAutoAmount] = useState('');
+  const [autoDay, setAutoDay] = useState('');
 
   const pct = hucha && hucha.targetAmount > 0
     ? Math.min((hucha.currentAmount / hucha.targetAmount) * 100, 100)
@@ -351,25 +352,44 @@ const HuchaDetailScreen = () => {
     if (value) {
       showAutoInputRef.current = true;
       setAutoAmount(hucha.monthlyAmount ? String(hucha.monthlyAmount) : '');
+      setAutoDay(hucha.recurringDay ? String(hucha.recurringDay) : '1');
       setShowAutoInput(true);
     } else {
       showAutoInputRef.current = false;
       setShowAutoInput(false);
       setAutoAmount('');
-      await updateHucha(hucha.id, { isAutomatic: false, monthlyAmount: undefined, nextContributionDate: undefined });
+      setAutoDay('');
+      await updateHucha(hucha.id, {
+        isAutomatic: false,
+        monthlyAmount: undefined,
+        recurringDay: undefined,
+        nextContributionDate: undefined,
+      });
     }
   };
 
   const handleSaveAutomatic = async () => {
     const parsed = parseFloat(autoAmount.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + 1);
-    await updateHucha(hucha.id, { isAutomatic: true, monthlyAmount: parsed, nextContributionDate: d.toISOString() });
+    const dayParsed = parseInt(autoDay, 10);
+    if (!dayParsed || dayParsed < 1 || dayParsed > 31) return;
+    const today = new Date();
+    let monthIdx = today.getMonth();
+    if (today.getDate() >= dayParsed) monthIdx += 1;
+    const year = today.getFullYear();
+    const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+    const actualDay = Math.min(dayParsed, lastDay);
+    const next = new Date(year, monthIdx, actualDay);
+    await updateHucha(hucha.id, {
+      isAutomatic: true,
+      monthlyAmount: parsed,
+      recurringDay: dayParsed,
+      nextContributionDate: next.toISOString(),
+    });
     showAutoInputRef.current = false;
     setShowAutoInput(false);
     setAutoAmount('');
+    setAutoDay('');
   };
 
   return (
@@ -478,6 +498,9 @@ const HuchaDetailScreen = () => {
               {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
                 <Text style={[styles.automaticMeta, { color: dc.textSecondary }]}>
                   {hucha.monthlyAmount} {t('hucha.everyMonth')}
+                  {hucha.recurringDay
+                    ? ` · ${t('hucha.dayN', { day: hucha.recurringDay })}`
+                    : ''}
                   {hucha.nextContributionDate
                     ? ` · ${t('hucha.nextContribution', { date: formatNextDate(hucha.nextContributionDate) })}`
                     : ''}
@@ -492,33 +515,55 @@ const HuchaDetailScreen = () => {
             />
           </View>
 
-          {showAutoInput && (
-            <View
-              ref={autoInputRowRef}
-              style={[styles.autoInputRow, { borderTopColor: dc.border }]}
-            >
-              <RNTextInput
-                style={[styles.autoInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
-                placeholder={t('hucha.automaticAmount')}
-                placeholderTextColor={dc.textSecondary}
-                keyboardType="decimal-pad"
-                value={autoAmount}
-                onChangeText={setAutoAmount}
-              />
-              <TouchableOpacity
-                style={[
-                  styles.autoSaveBtn,
-                  { backgroundColor: hucha.color },
-                  (!autoAmount || parseFloat(autoAmount.replace(',', '.')) <= 0) && { opacity: 0.4 },
-                ]}
-                onPress={handleSaveAutomatic}
-                activeOpacity={0.8}
-                disabled={!autoAmount || parseFloat(autoAmount.replace(',', '.')) <= 0}
+          {showAutoInput && (() => {
+            const amountValid = !!autoAmount && parseFloat(autoAmount.replace(',', '.')) > 0;
+            const dayParsed = parseInt(autoDay, 10);
+            const dayValid = !!autoDay && dayParsed >= 1 && dayParsed <= 31;
+            const canSave = amountValid && dayValid;
+            return (
+              <View
+                ref={autoInputRowRef}
+                style={[styles.autoInputBlock, { borderTopColor: dc.border }]}
               >
-                <Text style={styles.autoSaveBtnText}>{t('hucha.save')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                <View style={styles.autoDayRow}>
+                  <Text style={[styles.autoDayLabel, { color: dc.textSecondary }]}>
+                    {t('hucha.chooseDayOfMonth')}
+                  </Text>
+                  <RNTextInput
+                    style={[styles.autoDayInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                    placeholder={t('hucha.dayOfMonth')}
+                    placeholderTextColor={dc.textSecondary}
+                    keyboardType="number-pad"
+                    value={autoDay}
+                    onChangeText={(v) => setAutoDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
+                    maxLength={2}
+                  />
+                </View>
+                <View style={styles.autoAmountRow}>
+                  <RNTextInput
+                    style={[styles.autoInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                    placeholder={t('hucha.automaticAmount')}
+                    placeholderTextColor={dc.textSecondary}
+                    keyboardType="decimal-pad"
+                    value={autoAmount}
+                    onChangeText={setAutoAmount}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.autoSaveBtn,
+                      { backgroundColor: hucha.color },
+                      !canSave && { opacity: 0.4 },
+                    ]}
+                    onPress={handleSaveAutomatic}
+                    activeOpacity={0.8}
+                    disabled={!canSave}
+                  >
+                    <Text style={styles.autoSaveBtnText}>{t('hucha.save')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
         </View>
 
         {/* Mini historial de movimientos */}
@@ -590,7 +635,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 10, fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8, textTransform: 'uppercase' },
   headerTitle: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
 
-  scrollContent: { padding: 24, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 100 },
 
   fillWrapper: { alignItems: 'center', marginBottom: 24 },
   fillContainer: {
@@ -616,11 +661,25 @@ const styles = StyleSheet.create({
 
   automaticCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 16 },
   automaticRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  autoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingTop: 14, borderTopWidth: 0.5 },
+  autoInputBlock: {
+    marginTop: 14, paddingTop: 14, borderTopWidth: 0.5,
+    gap: 12,
+  },
+  autoDayRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  autoDayLabel: {
+    flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular',
+  },
+  autoAmountRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   autoInput: {
     flex: 1, borderWidth: 1, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10,
     fontSize: 14, fontFamily: 'Poppins_400Regular',
+  },
+  autoDayInput: {
+    width: 64, borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 10,
+    fontSize: 14, fontFamily: 'Poppins_400Regular',
+    textAlign: 'center',
   },
   autoSaveBtn: { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 11 },
   autoSaveBtnText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', color: '#fff' },

@@ -63,6 +63,7 @@ export interface Hucha {
   targetDate?: string;        // 'YYYY-MM'
   isAutomatic: boolean;
   monthlyAmount?: number;
+  recurringDay?: number;         // 1-31, día del mes para aportar
   nextContributionDate?: string; // ISO date
   createdAt: string;
   addedBy?: string;

@@ -31,10 +31,31 @@ const getUserMovementsCol = () => {
 const getSharedMovementsCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('huchaMovements');
 
-const advanceOneMonth = (isoDate: string): string => {
+const clampDayToMonth = (year: number, monthIdx: number, day: number): number => {
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+  return Math.min(day, lastDay);
+};
+
+// Computes the next ISO date for a given day-of-month (1-31).
+// If today is before the chosen day, it lands on this month; otherwise next month.
+const computeNextContributionDate = (recurringDay: number, from: Date = new Date()): string => {
+  const day = Math.max(1, Math.min(31, Math.round(recurringDay)));
+  let year = from.getFullYear();
+  let monthIdx = from.getMonth();
+  if (from.getDate() >= day) monthIdx += 1;
+  const actualDay = clampDayToMonth(year, monthIdx, day);
+  return new Date(year, monthIdx, actualDay).toISOString();
+};
+
+// Advance to the next month while respecting the original recurringDay
+// (clamped to month length), instead of letting JS overflow Feb 31 -> Mar 3.
+const advanceToNextMonth = (isoDate: string, recurringDay?: number): string => {
   const d = new Date(isoDate);
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString();
+  const day = recurringDay ?? d.getDate();
+  const monthIdx = d.getMonth() + 1;
+  const year = d.getFullYear();
+  const actualDay = clampDayToMonth(year, monthIdx, day);
+  return new Date(year, monthIdx, actualDay).toISOString();
 };
 
 interface SavingsStore {
@@ -161,12 +182,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const id = `hucha_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
     const nextContribDate = data.isAutomatic
-      ? (() => {
-          const d = new Date();
-          d.setDate(1);
-          d.setMonth(d.getMonth() + 1);
-          return d.toISOString();
-        })()
+      ? computeNextContributionDate(data.recurringDay ?? 1)
       : undefined;
 
     const hucha: Hucha = {
@@ -330,7 +346,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       toUpdate.push({
         ...h,
         currentAmount: h.currentAmount + contribution,
-        nextContributionDate: advanceOneMonth(h.nextContributionDate),
+        nextContributionDate: advanceToNextMonth(h.nextContributionDate, h.recurringDay),
       });
 
       const nowIso = new Date().toISOString();
