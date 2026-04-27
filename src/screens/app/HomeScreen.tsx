@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+﻿import React, { useMemo, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
+import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
 const BalanceCard = ({
   balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense,
@@ -72,6 +73,18 @@ const BalanceCard = ({
 const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+  const wtIsActive = useWalkthroughStore(s => s.isActive);
+  const wtCurrentStep = useWalkthroughStore(s => s.currentStep);
+
+  useEffect(() => {
+    if (!wtIsActive) return;
+    const step = WALKTHROUGH_STEPS[wtCurrentStep];
+    if (step?.tab === 'HomeTab') {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [wtIsActive, wtCurrentStep]);
+
   const { getCurrencySymbol, displayName, language } = useSettingsStore();
   const { getCategoryName, getCategoriesForType } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
@@ -167,6 +180,7 @@ const HomeScreen = () => {
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.home')} showAccountSelector={true} />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >

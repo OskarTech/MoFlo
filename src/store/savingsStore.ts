@@ -4,6 +4,7 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Hucha, HuchaMovement, HuchaMovementType } from '../types';
 import { maybePromptForRating } from '../utils/rateAppPrompt';
+import { useMovementStore } from './movementStore';
 
 const STORAGE_KEY = '@moflo_huchas';
 const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
@@ -59,6 +60,7 @@ interface SavingsStore {
   setShowAddMoneyModal: (show: boolean) => void;
   getTotalSaved: () => number;
   getTotalTarget: () => number;
+  getAvailableBalance: () => number;
   resetStore: () => void;
 }
 
@@ -79,6 +81,18 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
   getTotalTarget: () =>
     get().huchas.reduce((acc, h) => acc + h.targetAmount, 0),
+
+  getAvailableBalance: () => {
+    const movements = useMovementStore.getState().movements;
+    let total = 0;
+    for (const m of movements) {
+      total += m.type === 'income' ? m.amount : -m.amount;
+    }
+    for (const m of get().huchaMovements) {
+      total += m.type === 'withdrawal' ? m.amount : -m.amount;
+    }
+    return total;
+  },
 
   loadHuchaMovements: async (accountId) => {
     const resolvedId = accountId !== undefined ? accountId : get().sharedAccountId;
@@ -210,6 +224,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const hucha = huchas.find(h => h.id === huchaId);
     if (!hucha) return;
 
+    if (type === 'deposit' && amount > get().getAvailableBalance()) return;
+
     const previousAmount = hucha.currentAmount;
     const newAmount = type === 'deposit'
       ? hucha.currentAmount + amount
@@ -299,6 +315,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const now = new Date();
     const toUpdate: Hucha[] = [];
     const newMovements: HuchaMovement[] = [];
+    let availableBalance = get().getAvailableBalance();
 
     for (const h of huchas) {
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
@@ -307,6 +324,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
       const contribution = Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount);
       if (contribution <= 0) continue;
+      if (contribution > availableBalance) continue;
+      availableBalance -= contribution;
 
       toUpdate.push({
         ...h,

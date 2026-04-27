@@ -46,6 +46,7 @@ const AddMoneyModal = ({
   visible,
   huchaColor,
   huchaCurrentAmount,
+  availableBalance,
   currencySymbol,
   onConfirm,
   onDismiss,
@@ -53,6 +54,7 @@ const AddMoneyModal = ({
   visible: boolean;
   huchaColor: string;
   huchaCurrentAmount: number;
+  availableBalance: number;
   currencySymbol: string;
   onConfirm: (amount: number, type: HuchaMovementType) => void;
   onDismiss: () => void;
@@ -87,6 +89,7 @@ const AddMoneyModal = ({
     const parsed = parseFloat(amount.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
     if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
+    if (mode === 'deposit' && parsed > availableBalance) return;
     onConfirm(parsed, mode);
     setAmount('');
     setMode('deposit');
@@ -99,7 +102,8 @@ const AddMoneyModal = ({
   };
 
   const parsed = parseFloat(amount.replace(',', '.'));
-  const isValid = parsed > 0 && (mode === 'deposit' || parsed <= huchaCurrentAmount);
+  const isValid = parsed > 0
+    && (mode === 'deposit' ? parsed <= availableBalance : parsed <= huchaCurrentAmount);
   const activeColor = mode === 'deposit' ? huchaColor : dc.expense;
   const inputBg = isDark ? dc.background : '#FFFFFF';
   const projectedAmount = !isNaN(parsed) && parsed > 0
@@ -180,6 +184,16 @@ const AddMoneyModal = ({
               <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
             )}
 
+            {mode === 'deposit' && parsed > 0 && parsed > availableBalance && (
+              <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
+            )}
+
+            {mode === 'deposit' && (
+              <Text style={[styles.balanceHint, { color: dc.textSecondary }]}>
+                {t('home.availableBalance')}: {availableBalance.toFixed(2)} {currencySymbol}
+              </Text>
+            )}
+
             <View style={styles.sheetButtons}>
               <Button
                 mode="outlined"
@@ -218,7 +232,9 @@ const HuchaDetailScreen = () => {
     huchas, huchaMovements,
     addToHucha, deleteHucha, updateHucha,
     showAddMoneyModal, setShowAddMoneyModal,
+    getAvailableBalance,
   } = useSavingsStore();
+  const availableBalance = getAvailableBalance();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -315,10 +331,18 @@ const HuchaDetailScreen = () => {
   };
 
   const handleQuickAdd = async (amount: number) => {
+    if (amount > availableBalance) {
+      Alert.alert(t('hucha.insufficientFunds'));
+      return;
+    }
     await addToHucha(hucha.id, amount, 'deposit');
   };
 
   const handleAddMoney = async (amount: number, type: HuchaMovementType) => {
+    if (type === 'deposit' && amount > availableBalance) {
+      Alert.alert(t('hucha.insufficientFunds'));
+      return;
+    }
     setShowAddMoneyModal(false);
     await addToHucha(hucha.id, amount, type);
   };
@@ -421,16 +445,24 @@ const HuchaDetailScreen = () => {
           {t('hucha.quickAdd')}
         </Text>
         <View style={styles.quickRow}>
-          {QUICK_AMOUNTS.map(a => (
-            <TouchableOpacity
-              key={a}
-              style={[styles.quickBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => handleQuickAdd(a)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}€</Text>
-            </TouchableOpacity>
-          ))}
+          {QUICK_AMOUNTS.map(a => {
+            const disabled = a > availableBalance;
+            return (
+              <TouchableOpacity
+                key={a}
+                style={[
+                  styles.quickBtn,
+                  { backgroundColor: dc.surface, borderColor: dc.border },
+                  disabled && { opacity: 0.4 },
+                ]}
+                onPress={() => handleQuickAdd(a)}
+                activeOpacity={0.7}
+                disabled={disabled}
+              >
+                <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}€</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Automático */}
@@ -535,6 +567,7 @@ const HuchaDetailScreen = () => {
         visible={showAddMoneyModal}
         huchaColor={hucha.color}
         huchaCurrentAmount={hucha.currentAmount}
+        availableBalance={availableBalance}
         currencySymbol={currencySymbol}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
@@ -629,6 +662,10 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12, fontFamily: 'Poppins_400Regular',
     color: '#EF4444', marginBottom: 8, paddingHorizontal: 4,
+  },
+  balanceHint: {
+    fontSize: 12, fontFamily: 'Poppins_400Regular',
+    marginBottom: 8, paddingHorizontal: 4,
   },
   sheetButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },

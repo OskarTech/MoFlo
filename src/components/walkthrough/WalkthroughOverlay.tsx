@@ -135,18 +135,20 @@ const WalkthroughOverlay = () => {
   const spaceAbove = targetRect ? padY - insets.top - TOOLTIP_GAP : 0;
   const placeBelow = targetRect ? spaceBelow >= spaceAbove : true;
 
-  // Posición del tooltip: usamos `bottom` cuando va ARRIBA del spotlight para
-  // que se ancle al borde superior del recorte sin importar su altura real.
+  // Posición del tooltip:
+  // - Si va ABAJO: anclado al borde superior del recorte con un gap moderado (~28px),
+  //   sin estirar hasta el fondo (así no queda demasiado bajo).
+  // - Si va ARRIBA: anclado por `bottom` para que el borde inferior quede sobre el recorte.
   const tooltipPlacement: { top?: number; bottom?: number } = !targetRect
     ? { top: screenH / 2 - 100 }
     : placeBelow
-      ? { top: padY + padH + TOOLTIP_GAP }
+      ? { top: padY + padH + 28 }
       : { bottom: screenH - (padY - TOOLTIP_GAP) };
 
   const overlayColor = 'rgba(0,0,0,0.78)';
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={skip}>
+    <Modal visible transparent animationType="fade" onRequestClose={skip}>
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
         {/* SPOTLIGHT SVG */}
         <Svg width={screenW} height={screenH} style={StyleSheet.absoluteFill} pointerEvents="none">
