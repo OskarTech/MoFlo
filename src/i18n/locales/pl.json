@@ -482,6 +482,12 @@
   "kickSuccess": "Członek został usunięty",
   "kickWarning": "Ta osoba straci dostęp do wspólnego konta"
   },
+  "inviteShared": {
+    "askTitle": "Zarządzasz finansami z kimś jeszcze?",
+    "askMessage": "Zaproś swojego partnera lub współlokatora do wspólnego konta i prowadźcie rachunki razem.",
+    "askYes": "Zaproś",
+    "askLater": "Nie teraz"
+  },
   "rate": {
     "askTitle": "Podoba Ci się MoFlo?",
     "askMessageSecondHucha": "Widzę, że organizujesz swoje cele oszczędnościowe! Czy chciałbyś ocenić aplikację w sklepie?",

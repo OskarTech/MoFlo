@@ -482,6 +482,12 @@
   "kickSuccess": "Miembro expulsado correctamente",
   "kickWarning": "Esta persona perderá acceso a la cuenta compartida"
   },
+  "inviteShared": {
+    "askTitle": "¿Gestionas las finanzas con alguien más?",
+    "askMessage": "Invita a tu pareja o compañero de piso a una cuenta compartida y llevad las cuentas juntos.",
+    "askYes": "Invitar",
+    "askLater": "Ahora no"
+  },
   "rate": {
     "askTitle": "¿Disfrutas MoFlo?",
     "askMessageSecondHucha": "¡Veo que estás organizando tus metas de ahorro! ¿Te gustaría valorar la app en la Store?",

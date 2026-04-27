@@ -9,13 +9,16 @@ import {
 import { Movement, RecurringMovement } from '../types';
 
 const QUEUE_KEY = '@moflo_sync_queue';
+const MAX_ATTEMPTS = 5;
 
 // Tipos de operaciones en cola
-export type QueueOperation =
+type QueueOperationData =
   | { type: 'ADD_MOVEMENT'; payload: Movement }
   | { type: 'DELETE_MOVEMENT'; payload: string }
   | { type: 'ADD_RECURRING'; payload: RecurringMovement }
   | { type: 'DELETE_RECURRING'; payload: string };
+
+export type QueueOperation = QueueOperationData & { attempts?: number };
 
 // ── CARGAR COLA ────────────────────────────────────────────────
 export const loadQueue = async (): Promise<QueueOperation[]> => {
@@ -51,6 +54,8 @@ export const processQueue = async (): Promise<void> => {
 
   const failed: QueueOperation[] = [];
 
+  let dropped = 0;
+
   for (const operation of queue) {
     try {
       switch (operation.type) {
@@ -68,18 +73,25 @@ export const processQueue = async (): Promise<void> => {
           break;
       }
     } catch (e) {
-      // Si falla, lo volvemos a añadir a la cola
-      console.error('Queue operation failed:', e);
-      failed.push(operation);
+      const attempts = (operation.attempts ?? 0) + 1;
+      if (attempts >= MAX_ATTEMPTS) {
+        // Tras MAX_ATTEMPTS intentos descartamos para que la cola no crezca infinita
+        // (ej. doc borrado en otro dispositivo, payload corrupto, etc.)
+        console.error(`Dropping queue op after ${MAX_ATTEMPTS} attempts:`, operation.type, e);
+        dropped += 1;
+      } else {
+        console.error(`Queue op failed (attempt ${attempts}/${MAX_ATTEMPTS}):`, operation.type, e);
+        failed.push({ ...operation, attempts } as QueueOperation);
+      }
     }
   }
 
   // Guarda solo las operaciones que fallaron
   await saveQueue(failed);
 
-  if (failed.length === 0) {
+  if (failed.length === 0 && dropped === 0) {
     console.log('Sync queue processed successfully');
   } else {
-    console.log(`${failed.length} operations remaining in queue`);
+    console.log(`${failed.length} pending, ${dropped} dropped`);
   }
 };

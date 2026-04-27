@@ -21,6 +21,9 @@ import AddTabButton from '../components/common/AddTabButton';
 import PremiumModal from '../components/common/PremiumModal';
 import WalkthroughOverlay from '../components/walkthrough/WalkthroughOverlay';
 import { useWalkthroughStore } from '../store/walkthroughStore';
+import { recordFirstLaunch } from '../utils/firstLaunch';
+import { maybePromptForSharedInvite } from '../utils/inviteSharedPrompt';
+import { navigationRef } from './RootNavigator';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +65,17 @@ const AppNavigator = () => {
 
   useEffect(() => {
     useWalkthroughStore.getState().checkAndStartIfNew();
+    recordFirstLaunch();
+    // Disparamos el prompt de invitación compartida con un retraso para no competir
+    // con la animación de entrada de la app ni con el walkthrough de nuevos usuarios.
+    const timer = setTimeout(() => {
+      maybePromptForSharedInvite(() => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('Settings', { screen: 'SharedAccount' });
+        }
+      });
+    }, 2500);
+    return () => clearTimeout(timer);
   }, []);
 
   const tabBarBg = dc.surface;

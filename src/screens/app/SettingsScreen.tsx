@@ -266,7 +266,7 @@ const SettingsScreen = () => {
                         const accountId = sa.id;
                         if (sa.createdBy === uid) {
                           const batch = firestore().batch();
-                          for (const col of ['movements', 'recurring', 'categories', 'savings']) {
+                          for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements']) {
                             const snap = await firestore()
                               .collection('sharedAccounts').doc(accountId)
                               .collection(col).get();
@@ -286,7 +286,7 @@ const SettingsScreen = () => {
 
                       const userRef = firestore().collection('users').doc(uid);
                       const batch2 = firestore().batch();
-                      for (const col of ['movements', 'recurring', 'categories', 'savings']) {
+                      for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements']) {
                         const snap = await userRef.collection(col).get();
                         snap.docs.forEach(doc => batch2.delete(doc.ref));
                       }

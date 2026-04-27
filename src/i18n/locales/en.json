@@ -482,6 +482,12 @@
   "kickSuccess": "Member removed successfully",
   "kickWarning": "This person will lose access to the shared account"
   },
+  "inviteShared": {
+    "askTitle": "Managing finances with someone else?",
+    "askMessage": "Invite your partner or roommate to a shared account and keep track of expenses together.",
+    "askYes": "Invite",
+    "askLater": "Not now"
+  },
   "rate": {
     "askTitle": "Enjoying MoFlo?",
     "askMessageSecondHucha": "Looks like you're organizing your savings goals! Would you like to rate the app on the store?",
