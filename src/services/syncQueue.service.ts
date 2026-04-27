@@ -5,6 +5,10 @@ import {
   deleteMovementFromFirestore,
   addRecurringToFirestore,
   deleteRecurringFromFirestore,
+  addSharedMovementToFirestore,
+  deleteSharedMovementFromFirestore,
+  addSharedRecurringToFirestore,
+  deleteSharedRecurringFromFirestore,
 } from './firebase/firestore.service';
 import { Movement, RecurringMovement } from '../types';
 
@@ -16,7 +20,11 @@ type QueueOperationData =
   | { type: 'ADD_MOVEMENT'; payload: Movement }
   | { type: 'DELETE_MOVEMENT'; payload: string }
   | { type: 'ADD_RECURRING'; payload: RecurringMovement }
-  | { type: 'DELETE_RECURRING'; payload: string };
+  | { type: 'DELETE_RECURRING'; payload: string }
+  | { type: 'ADD_SHARED_MOVEMENT'; payload: Movement & { addedBy: string }; accountId: string }
+  | { type: 'DELETE_SHARED_MOVEMENT'; payload: string; accountId: string }
+  | { type: 'ADD_SHARED_RECURRING'; payload: RecurringMovement; accountId: string }
+  | { type: 'DELETE_SHARED_RECURRING'; payload: string; accountId: string };
 
 export type QueueOperation = QueueOperationData & { attempts?: number };
 
@@ -70,6 +78,18 @@ export const processQueue = async (): Promise<void> => {
           break;
         case 'DELETE_RECURRING':
           await deleteRecurringFromFirestore(operation.payload);
+          break;
+        case 'ADD_SHARED_MOVEMENT':
+          await addSharedMovementToFirestore(operation.accountId, operation.payload);
+          break;
+        case 'DELETE_SHARED_MOVEMENT':
+          await deleteSharedMovementFromFirestore(operation.accountId, operation.payload);
+          break;
+        case 'ADD_SHARED_RECURRING':
+          await addSharedRecurringToFirestore(operation.accountId, operation.payload);
+          break;
+        case 'DELETE_SHARED_RECURRING':
+          await deleteSharedRecurringFromFirestore(operation.accountId, operation.payload);
           break;
       }
     } catch (e) {

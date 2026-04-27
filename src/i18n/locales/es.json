@@ -528,5 +528,10 @@
     },
     "settingsLabel": "Tutorial",
     "settingsSubtitle": "Volver a ver la guía interactiva"
+  },
+  "errors": {
+    "boundaryTitle": "Algo ha fallado",
+    "boundarySubtitle": "Hemos guardado el error para poder corregirlo. Pulsa para reintentarlo.",
+    "boundaryRetry": "Reintentar"
   }
 }

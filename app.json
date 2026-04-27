@@ -50,7 +50,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "MoFlo needs access to your photos to set a profile picture."
+          "photosPermission": "MoFlo needs access to your photos to set a profile picture.",
+          "microphonePermission": false,
+          "cameraPermission": false
         }
       ],
       [

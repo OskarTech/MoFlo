@@ -106,6 +106,45 @@ export const fetchSettingsFromFirestore = async (): Promise<UserSettings | null>
   return data?.settings ?? null;
 };
 
+// ── CUENTAS COMPARTIDAS ────────────────────────────────────────
+
+const sharedMovementsCol = (accountId: string) =>
+  firestore().collection('sharedAccounts').doc(accountId).collection('movements');
+
+const sharedRecurringCol = (accountId: string) =>
+  firestore().collection('sharedAccounts').doc(accountId).collection('recurring');
+
+export const addSharedMovementToFirestore = async (
+  accountId: string,
+  movement: Movement & { addedBy: string }
+): Promise<void> => {
+  const sanitized = Object.fromEntries(
+    Object.entries(movement).filter(([_, v]) => v !== undefined)
+  );
+  await sharedMovementsCol(accountId).doc(movement.id).set(sanitized);
+};
+
+export const deleteSharedMovementFromFirestore = async (
+  accountId: string,
+  id: string
+): Promise<void> => {
+  await sharedMovementsCol(accountId).doc(id).delete();
+};
+
+export const addSharedRecurringToFirestore = async (
+  accountId: string,
+  recurring: RecurringMovement
+): Promise<void> => {
+  await sharedRecurringCol(accountId).doc(recurring.id).set(recurring);
+};
+
+export const deleteSharedRecurringFromFirestore = async (
+  accountId: string,
+  id: string
+): Promise<void> => {
+  await sharedRecurringCol(accountId).doc(id).delete();
+};
+
 // ── INICIALIZAR USUARIO NUEVO ──────────────────────────────────
 
 export const initializeNewUser = async (displayName: string): Promise<void> => {

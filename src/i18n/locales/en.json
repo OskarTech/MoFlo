@@ -528,5 +528,10 @@
     },
     "settingsLabel": "Tutorial",
     "settingsSubtitle": "Watch the interactive walkthrough again"
+  },
+  "errors": {
+    "boundaryTitle": "Something went wrong",
+    "boundarySubtitle": "We've logged the error so we can fix it. Tap to try again.",
+    "boundaryRetry": "Try again"
   }
 }

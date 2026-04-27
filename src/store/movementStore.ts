@@ -195,14 +195,29 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     if (sharedAccountId) {
       const newMovements = [movement, ...get().movements];
       set({ movements: [...newMovements] });
-      try {
-        const uid = auth().currentUser?.uid ?? '';
-        await getSharedMovementsCol(sharedAccountId)
-          .doc(movement.id)
-          .set({ ...movement, addedBy: uid });
-      } catch (e) {
-        set({ movements: get().movements.filter(m => m.id !== movement.id) });
-        console.error('Error saving shared movement:', e);
+      await get().saveMovements(newMovements);
+
+      const uid = auth().currentUser?.uid ?? '';
+      const sharedMovement = { ...movement, addedBy: uid };
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedMovementsCol(sharedAccountId)
+            .doc(movement.id)
+            .set(sharedMovement);
+        } catch (e) {
+          await enqueue({
+            type: 'ADD_SHARED_MOVEMENT',
+            payload: sharedMovement,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'ADD_SHARED_MOVEMENT',
+          payload: sharedMovement,
+          accountId: sharedAccountId,
+        });
       }
       return;
     }
@@ -225,13 +240,27 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      const previous = get().movements;
-      set({ movements: [...previous.filter(m => m.id !== id)] });
-      try {
-        await getSharedMovementsCol(sharedAccountId).doc(id).delete();
-      } catch (e) {
-        set({ movements: previous });
-        console.error('Error deleting shared movement:', e);
+      const updated = get().movements.filter(m => m.id !== id);
+      set({ movements: [...updated] });
+      await get().saveMovements(updated);
+
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedMovementsCol(sharedAccountId).doc(id).delete();
+        } catch (e) {
+          await enqueue({
+            type: 'DELETE_SHARED_MOVEMENT',
+            payload: id,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'DELETE_SHARED_MOVEMENT',
+          payload: id,
+          accountId: sharedAccountId,
+        });
       }
       return;
     }
@@ -257,11 +286,25 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const newRecurring = [...get().recurringMovements, movement]
         .sort((a, b) => a.recurringDay - b.recurringDay);
       set({ recurringMovements: [...newRecurring] });
-      try {
-        await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
-      } catch (e) {
-        set({ recurringMovements: get().recurringMovements.filter(m => m.id !== movement.id) });
-        console.error('Error saving shared recurring:', e);
+      await get().saveRecurring(newRecurring);
+
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
+        } catch (e) {
+          await enqueue({
+            type: 'ADD_SHARED_RECURRING',
+            payload: movement,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'ADD_SHARED_RECURRING',
+          payload: movement,
+          accountId: sharedAccountId,
+        });
       }
       return;
     }
@@ -284,13 +327,27 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const { sharedAccountId } = get();
 
     if (sharedAccountId) {
-      const previous = get().recurringMovements;
-      set({ recurringMovements: [...previous.filter(m => m.id !== id)] });
-      try {
-        await getSharedRecurringCol(sharedAccountId).doc(id).delete();
-      } catch (e) {
-        set({ recurringMovements: previous });
-        console.error('Error deleting shared recurring:', e);
+      const updated = get().recurringMovements.filter(m => m.id !== id);
+      set({ recurringMovements: [...updated] });
+      await get().saveRecurring(updated);
+
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedRecurringCol(sharedAccountId).doc(id).delete();
+        } catch (e) {
+          await enqueue({
+            type: 'DELETE_SHARED_RECURRING',
+            payload: id,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'DELETE_SHARED_RECURRING',
+          payload: id,
+          accountId: sharedAccountId,
+        });
       }
       return;
     }

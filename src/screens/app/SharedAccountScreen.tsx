@@ -1,9 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Share, Clipboard,
+  TouchableOpacity, Alert, Share,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,9 +96,9 @@ const SharedAccountScreen = () => {
     navigation.navigate('HomeTab');
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     const link = getInviteLink();
-    Clipboard.setString(link);
+    await Clipboard.setStringAsync(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };

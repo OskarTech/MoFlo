@@ -528,5 +528,10 @@
     },
     "settingsLabel": "Samouczek",
     "settingsSubtitle": "Zobacz interaktywny przewodnik ponownie"
+  },
+  "errors": {
+    "boundaryTitle": "Coś poszło nie tak",
+    "boundarySubtitle": "Zapisaliśmy błąd, aby go naprawić. Dotknij, aby spróbować ponownie.",
+    "boundaryRetry": "Spróbuj ponownie"
   }
 }

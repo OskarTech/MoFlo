@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Movement, Hucha } from '../types';
 import { useCategoryStore } from '../store/categoryStore';
@@ -98,13 +98,14 @@ export const exportMovementsToCSV = async (
 
   const csv = lines.join('\n');
   const fileName = `moflo_export_${new Date().toISOString().split('T')[0]}.csv`;
-  const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-  await FileSystem.writeAsStringAsync(fileUri, csv, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const file = new File(Paths.cache, fileName);
+  // Idempotente: si existe de un export previo lo sobreescribimos.
+  if (file.exists) file.delete();
+  file.create();
+  file.write(csv);
 
-  await Sharing.shareAsync(fileUri, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
     dialogTitle: 'MoFlo — Export CSV',
     UTI: 'public.comma-separated-values-text',
