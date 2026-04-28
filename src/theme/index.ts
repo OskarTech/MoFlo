@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint';
+export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose' | 'teal' | 'sky';
 
 interface PaletteEntry {
   primary: string;
@@ -98,6 +98,60 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     darkBalanceCard: '#3E5BA3',
     darkTextPrimary: '#fafafa',
     income: '#84D175', expense: '#E8735A', savings: '#E8A25A',
+  },
+  rose: {
+    primary: '#81036A',
+    primaryLight: '#FC7EE5',
+    primaryDark: '#4A013D',
+    lightBg: '#FFEBFA',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#F5CEE9',
+    lightBalanceCard: '#81036A',
+    lightTextPrimary: '#28011F',
+    lightTextSecondary: '#6B1F5A',
+    darkBg: '#14000F',
+    darkSurface: '#1F0218',
+    darkBorder: '#3D0530',
+    darkBalanceCard: '#81036A',
+    darkTextPrimary: '#FED7F5',
+    darkTextSecondary: '#C98ABB',
+    income: '#10B981', expense: '#FB905B', savings: '#E6B905',
+  },
+  teal: {
+    primary: '#126F78',
+    primaryLight: '#87E5ED',
+    primaryDark: '#0A4047',
+    lightBg: '#E0F8FA',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#B8E8EC',
+    lightBalanceCard: '#126F78',
+    lightTextPrimary: '#051D1F',
+    lightTextSecondary: '#2D5559',
+    darkBg: '#051D1F',
+    darkSurface: '#0A2A2D',
+    darkBorder: '#143F44',
+    darkBalanceCard: '#126F78',
+    darkTextPrimary: '#E0F8FA',
+    darkTextSecondary: '#8FB8BC',
+    income: '#10B981', expense: '#EB709B', savings: '#B6731B',
+  },
+  sky: {
+    primary: '#0C608D',
+    primaryLight: '#72C6F3',
+    primaryDark: '#073A56',
+    lightBg: '#E2F3FD',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#B8DEF1',
+    lightBalanceCard: '#0C608D',
+    lightTextPrimary: '#031726',
+    lightTextSecondary: '#2D4A66',
+    darkBg: '#02131D',
+    darkSurface: '#0A2231',
+    darkBorder: '#143A50',
+    darkBalanceCard: '#0C608D',
+    darkTextPrimary: '#D9EDFC',
+    darkTextSecondary: '#8FB5D1',
+    income: '#10B981', expense: '#E672F3', savings: '#C5118F',
   },
 };
 

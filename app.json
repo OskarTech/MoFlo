@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoFlo",
     "slug": "moflo",
-    "version": "1.2.8",
+    "version": "1.30",
     "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
-      "buildNumber": "18",
+      "buildNumber": "30",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -31,7 +31,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.oskartech.moflo",
-      "versionCode": 18,
+      "versionCode": 30,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.INTERNET",
@@ -44,7 +44,6 @@
     },
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics",
       "@react-native-google-signin/google-signin",
       "expo-apple-authentication",
       [
@@ -59,7 +58,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage", "RNFBCrashlytics"],
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage"],
             "useFrameworks": "static"
           },
           "android": {

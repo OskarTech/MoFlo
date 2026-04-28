@@ -1,6 +1,5 @@
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import crashlytics from '@react-native-firebase/crashlytics';
 import i18n from '../../i18n';
 
 interface Props {
@@ -27,15 +26,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    try {
-      if (info?.componentStack) {
-        crashlytics().log(`componentStack: ${info.componentStack}`);
-      }
-      crashlytics().recordError(error);
-    } catch {
-      // Crashlytics no disponible (dev sin config nativo) — silencioso
-    }
+  componentDidCatch(error: Error, _info: ErrorInfo) {
+    if (__DEV__) console.error('ErrorBoundary caught:', error);
   }
 
   reset = () => this.setState({ hasError: false });

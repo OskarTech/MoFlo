@@ -2,9 +2,8 @@
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Linking, Share,
-  Switch, Modal, FlatList, Platform,
+  Switch, Modal, FlatList, Platform, Clipboard,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -367,8 +366,8 @@ const SettingsScreen = () => {
     }
   };
 
-  const handleCopyLink = async () => {
-    await Clipboard.setStringAsync(getInviteLink());
+  const handleCopyLink = () => {
+    Clipboard.setString(getInviteLink());
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
