@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose';
+export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose' | 'mono';
 
 interface PaletteEntry {
   primary: string;
@@ -64,6 +64,7 @@ interface PaletteEntry {
   darkIncome?: string;
   darkExpense?: string;
   darkSavings?: string;
+  darkPrimary?: string;
 }
 
 export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
@@ -106,27 +107,46 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     primary: '#81036A',
     primaryLight: '#FC7EE5',
     primaryDark: '#4A013D',
-    lightBg: '#FFEBFA',
+    lightBg: '#FFF8D4',
     lightSurface: '#FFFFFF',
     lightBorder: '#F5CEE9',
-    lightBalanceCard: '#81036A',
+    lightBalanceCard: '#A6087F',
     lightTextPrimary: '#28011F',
     lightTextSecondary: '#6B1F5A',
-    darkBg: '#14000F',
-    darkSurface: '#2E0826',
+    darkBg: '#0F0E0B',
+    darkSurface: '#1E1B16',
     darkBorder: '#5C1349',
     darkBalanceCard: '#A6087F',
-    darkTextPrimary: '#FED7F5',
-    darkTextSecondary: '#D4A0C5',
+    darkTextPrimary: '#FFF6D0',
+    darkTextSecondary: '#A89D82',
     income: '#10B981', expense: '#FB905B', savings: '#E6B905',
     darkSavings: '#FACD19',
+  },
+  mono: {
+    primary: '#1F2937',
+    primaryLight: '#9CA3AF',
+    primaryDark: '#000000',
+    lightBg: '#F5F5F5',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#E4E4E7',
+    lightBalanceCard: '#1F2937',
+    lightTextPrimary: '#111827',
+    lightTextSecondary: '#6B7280',
+    darkBg: '#0A0A0A',
+    darkSurface: '#1C1C1C',
+    darkBorder: '#3F3F46',
+    darkBalanceCard: '#3F3F46',
+    darkTextPrimary: '#F4F4F5',
+    darkTextSecondary: '#A1A1AA',
+    darkPrimary: '#A1A1AA',
+    income: '#10B981', expense: '#EF4444', savings: '#F59E0B',
   },
 };
 
 export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'green') => {
   const p = COLOR_PALETTES[paletteId] ?? COLOR_PALETTES['green'];
   return {
-    primary: p.primary,
+    primary: isDark ? (p.darkPrimary ?? p.primary) : p.primary,
     primaryLight: p.primaryLight,
     primaryDark: p.primaryDark,
     background: isDark ? p.darkBg : p.lightBg,

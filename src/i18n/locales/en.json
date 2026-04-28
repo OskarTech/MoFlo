@@ -225,6 +225,7 @@
   "paletteEarth": "Earth",
   "paletteMint": "Mint",
   "paletteRose": "Rose",
+  "paletteMono": "Monochrome",
   "pinErrorMessage": "Try again. Attempts: {{attempts}}/3",
   "pinTooManyAttempts": "Too many attempts",
   "pinTooManyAttemptsMessage": "You have failed 3 times. Please try again in a few seconds.",
