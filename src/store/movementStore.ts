@@ -379,6 +379,12 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (!recurring.isActive) continue;
       if (currentDay < recurring.recurringDay) continue;
 
+      const createdAt = new Date(recurring.createdAt);
+      const createdInCurrentMonth =
+        createdAt.getFullYear() === currentYear &&
+        createdAt.getMonth() + 1 === currentMonth;
+      if (createdInCurrentMonth && createdAt.getDate() > recurring.recurringDay) continue;
+
       const alreadyExists = movements.some(m =>
         m.isRecurring &&
         m.description === recurring.description &&

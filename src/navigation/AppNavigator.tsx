@@ -98,7 +98,13 @@ const AppNavigator = () => {
     } else if (current === 'HuchaDetail') {
       useSavingsStore.getState().setShowAddMoneyModal(true);
     } else if (current === 'HistorialTab' && useMovementStore.getState().activeHistorialFilter === 'recurring') {
-      useMovementStore.getState().setShowRecurringModal(true);
+      const { recurringMovements } = useMovementStore.getState();
+      const { isPremium } = usePremiumStore.getState();
+      if (!isPremium && recurringMovements.length >= 5) {
+        setPremiumModalVisible(true);
+      } else {
+        useMovementStore.getState().setShowRecurringModal(true);
+      }
     } else {
       setMovementModalVisible(true);
     }

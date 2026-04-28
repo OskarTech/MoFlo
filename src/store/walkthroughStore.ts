@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 
-const COMPLETED_KEY = '@moflo_walkthrough_completed';
+const getCompletedKey = (uid: string) => `@moflo_walkthrough_completed_${uid}`;
 
 export interface TargetRect {
   x: number;
@@ -73,7 +74,9 @@ export const useWalkthroughStore = create<WalkthroughStore>((set, get) => ({
 
   finish: async () => {
     set({ isActive: false, currentStep: 0, targets: {} });
-    try { await AsyncStorage.setItem(COMPLETED_KEY, '1'); } catch {}
+    const uid = auth().currentUser?.uid;
+    if (!uid) return;
+    try { await AsyncStorage.setItem(getCompletedKey(uid), '1'); } catch {}
   },
 
   registerTarget: (id, rect) => {
@@ -83,8 +86,10 @@ export const useWalkthroughStore = create<WalkthroughStore>((set, get) => ({
   clearTargets: () => set({ targets: {} }),
 
   checkAndStartIfNew: async () => {
+    const uid = auth().currentUser?.uid;
+    if (!uid) return;
     try {
-      const done = await AsyncStorage.getItem(COMPLETED_KEY);
+      const done = await AsyncStorage.getItem(getCompletedKey(uid));
       if (done !== '1') {
         setTimeout(() => set({ isActive: true, currentStep: 0, targets: {} }), 800);
       }

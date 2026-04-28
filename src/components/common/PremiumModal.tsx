@@ -26,7 +26,7 @@ const FEATURES = [
   'premium.featureSharedAccount',
   'premium.featureCustomCategories',
   'premium.featureExportCSV',
-  'premium.featureCategoryFilter',
+  'premium.featureUnlimitedRecurring',
   'premium.featureUnlimitedHuchas',
   'premium.featureCustomColor',
 ];

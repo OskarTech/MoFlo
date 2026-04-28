@@ -2,6 +2,7 @@ import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 export { signInWithApple } from './appleAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { usePremiumStore } from '../../store/premiumStore';
@@ -56,7 +57,10 @@ export const logout = async () => {
   useSharedAccountStore.getState().resetStore();
   useSavingsStore.getState().resetStore();
 
-  // 3. Limpia AsyncStorage
+  // 3. Cancela todas las notificaciones programadas en iOS/Android (recordatorio diario + reminders)
+  try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
+
+  // 4. Limpia AsyncStorage
   const keysToRemove = [
     '@moflo_movements',
     '@moflo_recurring',
@@ -70,6 +74,7 @@ export const logout = async () => {
     '@moflo_shared_recurring',
     '@moflo_huchas',
     '@moflo_shared_huchas',
+    '@moflo_daily_notif',
   ];
 
   if (uid) {

@@ -193,6 +193,7 @@ const SettingsScreen = () => {
         Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
         return;
       }
+      await Notifications.cancelAllScheduledNotificationsAsync();
       await Notifications.scheduleNotificationAsync({
         content: { title: '💰 MoFlo', body: t('settings.notifMovementsSubtitle'), sound: true },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 0 },
@@ -292,6 +293,8 @@ const SettingsScreen = () => {
                       }
                       await batch2.commit();
                       await userRef.delete();
+
+                      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
 
                       await AsyncStorage.multiRemove([
                         '@moflo_movements', '@moflo_recurring', '@moflo_settings',
