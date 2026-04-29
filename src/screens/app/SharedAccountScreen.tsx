@@ -13,6 +13,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
+import { useSavingsStore } from '../../store/savingsStore';
+import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import AppHeader from '../../components/common/AppHeader';
@@ -38,8 +40,9 @@ const SharedAccountScreen = () => {
     pendingJoinRequest, incomingRequests,
     cancelJoinRequest, clearRejectedRequest,
     approveJoinRequest, rejectJoinRequest,
+    subscribeToSharedMovements, loadSharedSettings,
   } = useSharedAccountStore();
-  const { loadSharedData } = useMovementStore();
+  const { loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
   const currentUid = require('@react-native-firebase/auth').default().currentUser?.uid;
   const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
   const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
@@ -75,11 +78,29 @@ const SharedAccountScreen = () => {
     }
   }, [route.params]);
 
+  const activateSharedMode = async (accountId: string) => {
+    setSharedAccountId(accountId);
+    useSavingsStore.getState().setSharedAccountId(accountId);
+    await setSharedMode(true);
+    subscribeToSharedMovements(accountId);
+    await loadSharedData(accountId);
+    await useSavingsStore.getState().loadSharedHuchas(accountId);
+    await applyRecurringMovements();
+    await useSharedCategoryStore.getState().loadSharedCategories(accountId);
+    useSharedCategoryStore.getState().subscribeToSharedCategories(accountId);
+    await loadSharedSettings(accountId);
+  };
+
   const handleCreate = async () => {
     if (!accountName.trim()) return;
     setLoading(true);
     try {
       await createSharedAccount(accountName.trim());
+      const created = useSharedAccountStore.getState().sharedAccount;
+      if (created) {
+        await activateSharedMode(created.id);
+        navigation.navigate('HomeTab');
+      }
     } catch (e) {
       Alert.alert('Error', 'No se pudo crear la cuenta.');
     } finally {
@@ -366,15 +387,6 @@ const SharedAccountScreen = () => {
                 textColor="#FFFFFF"
               >
                 {t('sharedAccount.openShared')}
-              </Button>
-
-              <Button
-                mode="outlined"
-                onPress={() => navigation.navigate('SharedAccountSettings')}
-                style={styles.settingsButton}
-                textColor={dc.textSecondary}
-              >
-                {t('sharedAccount.settings')}
               </Button>
             </>
           ) : pendingJoinRequest ? (
