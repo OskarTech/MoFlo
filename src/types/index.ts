@@ -67,6 +67,7 @@ export interface Hucha {
   nextContributionDate?: string; // ISO date
   createdAt: string;
   addedBy?: string;
+  closedAt?: string;             // ISO date — set when the hucha is closed/completed
 }
 
 export type HuchaMovementType = 'deposit' | 'withdrawal';

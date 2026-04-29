@@ -90,7 +90,8 @@ const AppNavigator = () => {
     } else if (current === 'HuchaTab') {
       const { huchas } = useSavingsStore.getState();
       const { isPremium } = usePremiumStore.getState();
-      if (!isPremium && huchas.length >= 1) {
+      const activeCount = huchas.filter(h => !h.closedAt).length;
+      if (!isPremium && activeCount >= 1) {
         setPremiumModalVisible(true);
       } else {
         useSavingsStore.getState().setShowCreateModal(true);

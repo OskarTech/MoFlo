@@ -329,7 +329,17 @@
   "noHistory": "No movements yet",
   "noHistoryMonth": "No goal movements this month",
   "totalDeposits": "Contributions",
-  "totalWithdrawals": "Withdrawals"
+  "totalWithdrawals": "Withdrawals",
+  "close": "Close goal",
+  "closeConfirmTitle": "Close goal",
+  "closeConfirmMsg": "The goal will be archived and will no longer accept contributions, but its history will be preserved. You can reopen it any time.",
+  "reopen": "Reopen goal",
+  "reopenConfirmTitle": "Reopen goal",
+  "reopenConfirmMsg": "The goal will become active again and you'll be able to add contributions to it.",
+  "closedBanner": "Goal closed on {{date}}",
+  "closedBadge": "Closed",
+  "completedSection": "Completed",
+  "activeGoals": "active goals"
   },
   "tabs": {
   "home": "Home",

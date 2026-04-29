@@ -329,7 +329,17 @@
   "noHistory": "Brak ruchów",
   "noHistoryMonth": "Brak ruchów oszczędnościowych w tym miesiącu",
   "totalDeposits": "Wpłaty",
-  "totalWithdrawals": "Wypłaty"
+  "totalWithdrawals": "Wypłaty",
+  "close": "Zamknij cel",
+  "closeConfirmTitle": "Zamknij cel",
+  "closeConfirmMsg": "Cel zostanie zarchiwizowany i nie będzie już przyjmował wpłat, ale historia zostanie zachowana. Możesz go ponownie otworzyć w dowolnym momencie.",
+  "reopen": "Otwórz ponownie",
+  "reopenConfirmTitle": "Otwórz cel ponownie",
+  "reopenConfirmMsg": "Cel ponownie stanie się aktywny i będziesz mógł dodawać do niego wpłaty.",
+  "closedBanner": "Cel zamknięty {{date}}",
+  "closedBadge": "Zamknięty",
+  "completedSection": "Ukończone",
+  "activeGoals": "aktywnych celów"
   },
   "tabs": {
   "home": "Główna",

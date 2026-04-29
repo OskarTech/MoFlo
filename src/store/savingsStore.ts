@@ -73,6 +73,8 @@ interface SavingsStore {
   updateHucha: (id: string, data: Partial<Hucha>) => Promise<void>;
   addToHucha: (huchaId: string, amount: number, type?: HuchaMovementType) => Promise<void>;
   deleteHucha: (id: string) => Promise<void>;
+  closeHucha: (id: string) => Promise<void>;
+  reopenHucha: (id: string) => Promise<void>;
   applyAutomaticContributions: () => Promise<void>;
   subscribeToSharedHuchas: (accountId: string) => void;
   unsubscribeSharedHuchas: () => void;
@@ -101,7 +103,9 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     get().huchas.reduce((acc, h) => acc + h.currentAmount, 0),
 
   getTotalTarget: () =>
-    get().huchas.reduce((acc, h) => acc + h.targetAmount, 0),
+    get().huchas
+      .filter(h => !h.closedAt)
+      .reduce((acc, h) => acc + h.targetAmount, 0),
 
   getAvailableBalance: () => {
     const movements = useMovementStore.getState().movements;
@@ -336,6 +340,58 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     }
   },
 
+  closeHucha: async (id) => {
+    const { sharedAccountId, huchas } = get();
+    const closedAt = new Date().toISOString();
+    const updated = huchas.map(h => h.id === id ? {
+      ...h,
+      closedAt,
+      isAutomatic: false,
+      monthlyAmount: undefined,
+      recurringDay: undefined,
+      nextContributionDate: undefined,
+    } : h);
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    try {
+      const ref = sharedAccountId
+        ? getSharedHuchasCol(sharedAccountId).doc(id)
+        : getUserHuchasCol().doc(id);
+      await ref.set({
+        closedAt,
+        isAutomatic: false,
+        monthlyAmount: firestore.FieldValue.delete(),
+        recurringDay: firestore.FieldValue.delete(),
+        nextContributionDate: firestore.FieldValue.delete(),
+      } as any, { merge: true });
+    } catch (e) {
+      console.error('Error closing hucha:', e);
+    }
+  },
+
+  reopenHucha: async (id) => {
+    const { sharedAccountId, huchas } = get();
+    const updated = huchas.map(h => {
+      if (h.id !== id) return h;
+      const { closedAt: _omit, ...rest } = h;
+      return rest as Hucha;
+    });
+    set({ huchas: updated });
+    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    try {
+      const ref = sharedAccountId
+        ? getSharedHuchasCol(sharedAccountId).doc(id)
+        : getUserHuchasCol().doc(id);
+      await ref.set({
+        closedAt: firestore.FieldValue.delete(),
+      } as any, { merge: true });
+    } catch (e) {
+      console.error('Error reopening hucha:', e);
+    }
+  },
+
   applyAutomaticContributions: async () => {
     const { huchas, sharedAccountId } = get();
     const now = new Date();
@@ -344,6 +400,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     let availableBalance = get().getAvailableBalance();
 
     for (const h of huchas) {
+      if (h.closedAt) continue;
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
       if (new Date(h.nextContributionDate) > now) continue;
       if (h.currentAmount >= h.targetAmount) continue;

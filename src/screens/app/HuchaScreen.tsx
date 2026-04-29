@@ -49,21 +49,38 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
     ? Math.min(Math.round((hucha.currentAmount / hucha.targetAmount) * 100), 100)
     : 0;
 
+  const isClosed = !!hucha.closedAt;
+
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}
+      style={[
+        styles.card,
+        { backgroundColor: dc.surface, borderColor: dc.border },
+        isClosed && { opacity: 0.65 },
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={styles.cardHeader}>
         <View style={[styles.cardIcon, { backgroundColor: hucha.color + '20' }]}>
-          <Ionicons name={hucha.icon as keyof typeof Ionicons.glyphMap} size={24} color={hucha.color} />
+          <Ionicons
+            name={isClosed ? 'checkmark-circle' : (hucha.icon as keyof typeof Ionicons.glyphMap)}
+            size={24}
+            color={hucha.color}
+          />
         </View>
         <View style={styles.cardInfo}>
           <Text style={[styles.cardName, { color: dc.textPrimary }]} numberOfLines={1}>
             {hucha.name}
           </Text>
-          {(hucha.targetDate || hucha.isAutomatic) && (
+          {isClosed ? (
+            <View style={styles.cardMetaRow}>
+              <Ionicons name="lock-closed" size={11} color={dc.textSecondary} />
+              <Text style={[styles.cardMeta, { color: dc.textSecondary }]}>
+                {t('hucha.closedBadge')}
+              </Text>
+            </View>
+          ) : (hucha.targetDate || hucha.isAutomatic) && (
             <View style={styles.cardMetaRow}>
               <Ionicons name="calendar-outline" size={11} color={dc.textSecondary} />
               <Text style={[styles.cardMeta, { color: dc.textSecondary }]}>
@@ -281,11 +298,13 @@ const HuchaScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { huchas, huchaMovements, getTotalSaved, getTotalTarget, showCreateModal, setShowCreateModal } = useSavingsStore();
+  const { huchas, huchaMovements, getTotalTarget, showCreateModal, setShowCreateModal } = useSavingsStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
-  const totalSaved = getTotalSaved();
+  const activeHuchas = huchas.filter(h => !h.closedAt);
+  const closedHuchas = huchas.filter(h => !!h.closedAt);
+  const totalSaved = activeHuchas.reduce((acc, h) => acc + h.currentAmount, 0);
   const totalTarget = getTotalTarget();
   const overallPct = totalTarget > 0
     ? Math.min(Math.round((totalSaved / totalTarget) * 100), 100)
@@ -310,7 +329,7 @@ const HuchaScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Tarjeta totales */}
-        {huchas.length > 0 && (
+        {activeHuchas.length > 0 && (
           <View style={[styles.totalCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
             <View style={styles.totalCardTop}>
               <Text style={[styles.totalLabel, { color: dc.textSecondary }]}>
@@ -333,14 +352,14 @@ const HuchaScreen = () => {
                 {overallPct}% {t('hucha.of')} {formatAmount(totalTarget)} {currencySymbol}
               </Text>
               <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
-                {huchas.length} metas activas
+                {activeHuchas.length} {t('hucha.activeGoals')}
               </Text>
             </View>
           </View>
         )}
 
-        {/* Lista de huchas */}
-        {huchas.length === 0 ? (
+        {/* Lista de huchas activas */}
+        {activeHuchas.length === 0 && closedHuchas.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🐷</Text>
             <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
@@ -351,13 +370,28 @@ const HuchaScreen = () => {
             </Text>
           </View>
         ) : (
-          huchas.map(hucha => (
+          activeHuchas.map(hucha => (
             <HuchaCard
               key={hucha.id}
               hucha={hucha}
               onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
             />
           ))
+        )}
+
+        {closedHuchas.length > 0 && (
+          <>
+            <Text style={[styles.closedSectionLabel, { color: dc.textSecondary }]}>
+              {t('hucha.completedSection')}
+            </Text>
+            {closedHuchas.map(hucha => (
+              <HuchaCard
+                key={hucha.id}
+                hucha={hucha}
+                onPress={() => navigation.navigate('HuchaDetail', { huchaId: hucha.id })}
+              />
+            ))}
+          </>
         )}
       </ScrollView>
 
@@ -406,6 +440,11 @@ const styles = StyleSheet.create({
   },
   totalGoalsCount: {
     fontSize: 12, fontFamily: 'Poppins_400Regular',
+  },
+  closedSectionLabel: {
+    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginTop: 16, marginBottom: 8, marginLeft: 4,
   },
 
   card: {

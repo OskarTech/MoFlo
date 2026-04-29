@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { usePremium } from '../../hooks/usePremium';
+import PremiumModal from '../../components/common/PremiumModal';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { HuchaMovementType } from '../../types';
@@ -231,6 +233,7 @@ const HuchaDetailScreen = () => {
   const {
     huchas, huchaMovements,
     addToHucha, deleteHucha, updateHucha,
+    closeHucha, reopenHucha,
     showAddMoneyModal, setShowAddMoneyModal,
     getAvailableBalance,
   } = useSavingsStore();
@@ -238,6 +241,7 @@ const HuchaDetailScreen = () => {
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const { isPremium, showModal: showPremiumModal, setShowModal: setShowPremiumModal } = usePremium();
 
   const hucha = huchas.find(h => h.id === route.params.huchaId);
 
@@ -314,6 +318,8 @@ const HuchaDetailScreen = () => {
     ? (StatusBar.currentHeight ?? 0) + 12
     : insets.top + 12;
 
+  const isClosed = !!hucha.closedAt;
+
   const handleDelete = () => {
     Alert.alert(
       t('hucha.deleteConfirm'),
@@ -327,6 +333,57 @@ const HuchaDetailScreen = () => {
             navigation.goBack();
           },
         },
+      ]
+    );
+  };
+
+  const handleClose = () => {
+    Alert.alert(
+      t('hucha.closeConfirmTitle'),
+      t('hucha.closeConfirmMsg'),
+      [
+        { text: t('hucha.cancel'), style: 'cancel' },
+        {
+          text: t('hucha.close'),
+          onPress: async () => {
+            await closeHucha(hucha.id);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReopen = () => {
+    const activeCount = huchas.filter(h => !h.closedAt && h.id !== hucha.id).length;
+    if (!isPremium && !isSharedMode && activeCount >= 1) {
+      setShowPremiumModal(true);
+      return;
+    }
+    Alert.alert(
+      t('hucha.reopenConfirmTitle'),
+      t('hucha.reopenConfirmMsg'),
+      [
+        { text: t('hucha.cancel'), style: 'cancel' },
+        {
+          text: t('hucha.reopen'),
+          onPress: async () => {
+            await reopenHucha(hucha.id);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMoreMenu = () => {
+    Alert.alert(
+      hucha.name,
+      undefined,
+      [
+        isClosed
+          ? { text: t('hucha.reopen'), onPress: handleReopen }
+          : { text: t('hucha.close'), onPress: handleClose },
+        { text: t('hucha.delete'), style: 'destructive', onPress: handleDelete },
+        { text: t('hucha.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -417,9 +474,9 @@ const HuchaDetailScreen = () => {
         </View>
         <TouchableOpacity
           style={[styles.headerBtn, { backgroundColor: isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)' }]}
-          onPress={handleDelete}
+          onPress={handleMoreMenu}
         >
-          <Ionicons name="trash-outline" size={20} color={headerColor} />
+          <Ionicons name="ellipsis-horizontal" size={20} color={headerColor} />
         </TouchableOpacity>
       </View>
 
@@ -442,6 +499,15 @@ const HuchaDetailScreen = () => {
           </View>
         </View>
 
+        {isClosed && (
+          <View style={[styles.closedBanner, { backgroundColor: dc.income + '15', borderColor: dc.income + '40' }]}>
+            <Ionicons name="checkmark-circle" size={18} color={dc.income} />
+            <Text style={[styles.closedBannerText, { color: dc.income }]}>
+              {t('hucha.closedBanner', { date: formatDate(hucha.closedAt!) })}
+            </Text>
+          </View>
+        )}
+
         {/* Importes */}
         <View style={styles.amountsRow}>
           <Text style={[styles.currentAmount, { color: dc.textPrimary }]}>
@@ -461,31 +527,36 @@ const HuchaDetailScreen = () => {
         )}
 
         {/* Quick add */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('hucha.quickAdd')}
-        </Text>
-        <View style={styles.quickRow}>
-          {QUICK_AMOUNTS.map(a => {
-            const disabled = a > availableBalance;
-            return (
-              <TouchableOpacity
-                key={a}
-                style={[
-                  styles.quickBtn,
-                  { backgroundColor: dc.surface, borderColor: dc.border },
-                  disabled && { opacity: 0.4 },
-                ]}
-                onPress={() => handleQuickAdd(a)}
-                activeOpacity={0.7}
-                disabled={disabled}
-              >
-                <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}€</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {!isClosed && (
+          <>
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('hucha.quickAdd')}
+            </Text>
+            <View style={styles.quickRow}>
+              {QUICK_AMOUNTS.map(a => {
+                const disabled = a > availableBalance;
+                return (
+                  <TouchableOpacity
+                    key={a}
+                    style={[
+                      styles.quickBtn,
+                      { backgroundColor: dc.surface, borderColor: dc.border },
+                      disabled && { opacity: 0.4 },
+                    ]}
+                    onPress={() => handleQuickAdd(a)}
+                    activeOpacity={0.7}
+                    disabled={disabled}
+                  >
+                    <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}€</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* Automático */}
+        {!isClosed && (
         <View style={[styles.automaticCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <View style={styles.automaticRow}>
             <View style={[styles.automaticIconWrap, { backgroundColor: hucha.color + '20' }]}>
@@ -565,6 +636,7 @@ const HuchaDetailScreen = () => {
             );
           })()}
         </View>
+        )}
 
         {/* Mini historial de movimientos */}
         {recentMovements.length > 0 && (
@@ -609,13 +681,19 @@ const HuchaDetailScreen = () => {
       </ScrollView>
 
       <AddMoneyModal
-        visible={showAddMoneyModal}
+        visible={showAddMoneyModal && !isClosed}
         huchaColor={hucha.color}
         huchaCurrentAmount={hucha.currentAmount}
         availableBalance={availableBalance}
         currencySymbol={currencySymbol}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
+      />
+
+      <PremiumModal
+        visible={showPremiumModal}
+        onDismiss={() => setShowPremiumModal(false)}
+        onPurchase={() => setShowPremiumModal(false)}
       />
     </View>
   );
@@ -649,6 +727,13 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
 
+  closedBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 0.5,
+    marginBottom: 16,
+  },
+  closedBannerText: { fontSize: 13, fontFamily: 'Poppins_500Medium', flex: 1 },
   amountsRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginBottom: 6 },
   currentAmount: { fontSize: 32, fontFamily: 'Poppins_700Bold' },
   targetAmount: { fontSize: 18, fontFamily: 'Poppins_400Regular', marginLeft: 4 },

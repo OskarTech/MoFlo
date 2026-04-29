@@ -329,7 +329,17 @@
   "noHistory": "Sin movimientos aún",
   "noHistoryMonth": "Sin movimientos de hucha este mes",
   "totalDeposits": "Aportaciones",
-  "totalWithdrawals": "Retiradas"
+  "totalWithdrawals": "Retiradas",
+  "close": "Cerrar hucha",
+  "closeConfirmTitle": "Cerrar hucha",
+  "closeConfirmMsg": "La hucha quedará archivada y dejará de aceptar aportaciones, pero se mantendrá el historial. Podrás reabrirla cuando quieras.",
+  "reopen": "Reabrir hucha",
+  "reopenConfirmTitle": "Reabrir hucha",
+  "reopenConfirmMsg": "La hucha volverá a estar activa y podrás añadirle aportaciones de nuevo.",
+  "closedBanner": "Hucha cerrada el {{date}}",
+  "closedBadge": "Cerrada",
+  "completedSection": "Completadas",
+  "activeGoals": "metas activas"
   },
   "tabs": {
   "home": "Inicio",
