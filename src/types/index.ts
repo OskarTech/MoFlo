@@ -126,3 +126,19 @@ export interface SharedAccount {
   createdAt: string;
   currencyCode?: string;
 }
+
+export type JoinRequestStatus = 'pending' | 'rejected';
+
+export interface JoinRequest {
+  uid: string;
+  displayName: string;
+  status: JoinRequestStatus;
+  requestedAt: string;
+}
+
+export interface PendingJoinRequest {
+  accountId: string;
+  accountName: string;
+  status: JoinRequestStatus;
+  requestedAt: string;
+}

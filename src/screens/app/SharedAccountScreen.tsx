@@ -35,8 +35,14 @@ const SharedAccountScreen = () => {
     sharedAccount, isLoading,
     createSharedAccount, joinSharedAccount,
     setSharedMode, getInviteLink,
+    pendingJoinRequest, incomingRequests,
+    cancelJoinRequest, clearRejectedRequest,
+    approveJoinRequest, rejectJoinRequest,
   } = useSharedAccountStore();
   const { loadSharedData } = useMovementStore();
+  const currentUid = require('@react-native-firebase/auth').default().currentUser?.uid;
+  const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
+  const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
 
   const [accountName, setAccountName] = useState('');
   const [inviteCode, setInviteCode] = useState(route.params?.code ?? '');
@@ -45,14 +51,21 @@ const SharedAccountScreen = () => {
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    if (route.params?.code && !sharedAccount) {
+    if (route.params?.code && !sharedAccount && !pendingJoinRequest) {
       const code = route.params.code;
       setInviteCode(code);
       if (route.params?.fromDeepLink) {
-        // Auto-unirse directamente desde el link de invitación
         setLoading(true);
-        joinSharedAccount(code.trim()).then((success) => {
-          if (!success) Alert.alert('Error', t('sharedAccount.joinError'));
+        joinSharedAccount(code.trim()).then((result) => {
+          if (result === 'pending') {
+            Alert.alert('⏳', t('sharedAccount.requestSent'));
+          } else if (result === 'invalid') {
+            Alert.alert('Error', t('sharedAccount.joinError'));
+          } else if (result === 'has_pending') {
+            Alert.alert('', t('sharedAccount.alreadyHasPending'));
+          } else if (result === 'error') {
+            Alert.alert('Error', t('sharedAccount.joinError'));
+          }
         }).catch(() => {
           Alert.alert('Error', t('sharedAccount.joinError'));
         }).finally(() => setLoading(false));
@@ -78,9 +91,15 @@ const SharedAccountScreen = () => {
     if (!inviteCode.trim()) return;
     setLoading(true);
     try {
-      const success = await joinSharedAccount(inviteCode.trim());
-      if (success) {
-        Alert.alert('✅', t('sharedAccount.joinSuccess'));
+      const result = await joinSharedAccount(inviteCode.trim());
+      if (result === 'pending') {
+        Alert.alert('⏳', t('sharedAccount.requestSent'));
+        setInviteCode('');
+        setMode('menu');
+      } else if (result === 'already_member') {
+        Alert.alert('', t('sharedAccount.alreadyMember'));
+      } else if (result === 'has_pending') {
+        Alert.alert('', t('sharedAccount.alreadyHasPending'));
       } else {
         Alert.alert('Error', t('sharedAccount.joinError'));
       }
@@ -89,6 +108,50 @@ const SharedAccountScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelRequest = () => {
+    Alert.alert(
+      t('sharedAccount.cancelRequestConfirmTitle'),
+      t('sharedAccount.cancelRequestConfirmBody'),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.cancelRequestConfirm'),
+          style: 'destructive',
+          onPress: () => { cancelJoinRequest().catch(() => {}); },
+        },
+      ]
+    );
+  };
+
+  const handleApprove = (uid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.approveConfirmTitle'),
+      t('sharedAccount.approveConfirmBody', { name }),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.approve'),
+          onPress: () => { approveJoinRequest(uid).catch(() => {}); },
+        },
+      ]
+    );
+  };
+
+  const handleReject = (uid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.rejectConfirmTitle'),
+      t('sharedAccount.rejectConfirmBody', { name }),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.reject'),
+          style: 'destructive',
+          onPress: () => { rejectJoinRequest(uid).catch(() => {}); },
+        },
+      ]
+    );
   };
 
   const handleOpenShared = async () => {
@@ -207,6 +270,58 @@ const SharedAccountScreen = () => {
                 </View>
               </View>
 
+              {isCreator && visibleRequests.length > 0 && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                    {t('sharedAccount.pendingRequests')}
+                  </Text>
+                  <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                    {visibleRequests.map((req, idx) => (
+                      <View key={req.uid}>
+                        <View style={styles.requestRow}>
+                          <View style={[styles.memberAvatar, { backgroundColor: dc.savings + '20' }]}>
+                            <Text style={[styles.memberInitial, { color: dc.savings }]}>
+                              {req.displayName[0]?.toUpperCase() ?? '?'}
+                            </Text>
+                          </View>
+                          <View style={styles.memberInfo}>
+                            <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                              {req.displayName}
+                            </Text>
+                            <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                              {t('sharedAccount.wantsToJoin')}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.requestActions}>
+                          <TouchableOpacity
+                            style={[styles.requestBtn, { backgroundColor: dc.expense + '15' }]}
+                            onPress={() => handleReject(req.uid, req.displayName)}
+                          >
+                            <Ionicons name="close" size={16} color={dc.expense} />
+                            <Text style={[styles.requestBtnText, { color: dc.expense }]}>
+                              {t('sharedAccount.reject')}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.requestBtn, { backgroundColor: dc.income + '15' }]}
+                            onPress={() => handleApprove(req.uid, req.displayName)}
+                          >
+                            <Ionicons name="checkmark" size={16} color={dc.income} />
+                            <Text style={[styles.requestBtnText, { color: dc.income }]}>
+                              {t('sharedAccount.approve')}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {idx < visibleRequests.length - 1 && (
+                          <View style={[styles.divider, { backgroundColor: dc.border, marginLeft: 0 }]} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+
               <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
                 {t('sharedAccount.members')}
               </Text>
@@ -261,6 +376,47 @@ const SharedAccountScreen = () => {
               >
                 {t('sharedAccount.settings')}
               </Button>
+            </>
+          ) : pendingJoinRequest ? (
+            <>
+              <View style={styles.introSection}>
+                <Text style={styles.introEmoji}>
+                  {pendingJoinRequest.status === 'rejected' ? '❌' : '⏳'}
+                </Text>
+                <Text style={[styles.introTitle, { color: dc.textPrimary }]}>
+                  {pendingJoinRequest.status === 'rejected'
+                    ? t('sharedAccount.rejectedTitle')
+                    : t('sharedAccount.waitingApprovalTitle')}
+                </Text>
+                <Text style={[styles.introText, { color: dc.textSecondary }]}>
+                  {pendingJoinRequest.status === 'rejected'
+                    ? t('sharedAccount.rejectedBody', { name: pendingJoinRequest.accountName })
+                    : t('sharedAccount.waitingApprovalBody', { name: pendingJoinRequest.accountName })}
+                </Text>
+              </View>
+
+              {pendingJoinRequest.status === 'rejected' ? (
+                <Button
+                  mode="contained"
+                  onPress={() => { clearRejectedRequest().catch(() => {}); }}
+                  style={styles.actionButton}
+                  contentStyle={styles.actionButtonContent}
+                  buttonColor={dc.primary}
+                  textColor="#FFFFFF"
+                >
+                  {t('sharedAccount.acceptRejection')}
+                </Button>
+              ) : (
+                <Button
+                  mode="outlined"
+                  onPress={handleCancelRequest}
+                  style={styles.actionButton}
+                  contentStyle={styles.actionButtonContent}
+                  textColor={dc.expense}
+                >
+                  {t('sharedAccount.cancelRequest')}
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -436,6 +592,13 @@ const styles = StyleSheet.create({
   formButtons: { flexDirection: 'row', gap: 12 },
   cancelBtn: { flex: 1 },
   confirmBtn: { flex: 2 },
+  requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  requestActions: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 },
+  requestBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+  },
+  requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default SharedAccountScreen;
