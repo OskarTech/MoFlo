@@ -157,7 +157,7 @@ const AppHeader = ({
 
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: settingsIconBg }]}
-          onPress={() => { if (!isInSettings) navigation.navigate('Settings'); }}
+          onPress={() => { if (!isInSettings) navigation.navigate('Settings', { screen: 'SettingsMain' }); }}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={20} color={settingsIconColor} />
