@@ -470,8 +470,11 @@ const SettingsScreen = () => {
 
   const handleShare = async () => {
     try {
+      const url = Platform.OS === 'ios'
+        ? 'https://apps.apple.com/app/id6762832281'
+        : 'https://play.google.com/store/apps/details?id=com.oskartech.moflo';
       await Share.share({
-        message: '💰 Descarga MoFlo: https://play.google.com/store/apps/details?id=com.oskartech.moflo',
+        message: `💰 Descarga MoFlo: ${url}`,
         title: 'MoFlo — Control de finanzas',
       });
     } catch (e) {}

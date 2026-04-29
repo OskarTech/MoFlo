@@ -224,11 +224,17 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const firestoreData = Object.fromEntries(
       Object.entries(data).filter(([, v]) => v !== undefined)
     ) as Record<string, unknown>;
+    const fullHucha = updated.find(h => h.id === id);
+    const upsertData = fullHucha
+      ? Object.fromEntries(
+          Object.entries(fullHucha).filter(([, v]) => v !== undefined)
+        )
+      : firestoreData;
     try {
       if (sharedAccountId) {
-        await getSharedHuchasCol(sharedAccountId).doc(id).update(firestoreData);
+        await getSharedHuchasCol(sharedAccountId).doc(id).set(upsertData, { merge: true });
       } else {
-        await getUserHuchasCol().doc(id).update(firestoreData);
+        await getUserHuchasCol().doc(id).set(upsertData, { merge: true });
       }
     } catch (e) {
       console.error('Error updating hucha:', e);
@@ -280,7 +286,11 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       const huchasCol = sharedAccountId
         ? getSharedHuchasCol(sharedAccountId)
         : getUserHuchasCol();
-      await huchasCol.doc(huchaId).update({ currentAmount: newAmount });
+      const updatedHucha = updatedHuchas.find(h => h.id === huchaId);
+      const huchaUpsert = updatedHucha
+        ? Object.fromEntries(Object.entries(updatedHucha).filter(([, v]) => v !== undefined))
+        : { currentAmount: newAmount };
+      await huchasCol.doc(huchaId).set(huchaUpsert, { merge: true });
 
       const movementsCol = sharedAccountId
         ? getSharedMovementsCol(sharedAccountId)
@@ -381,16 +391,13 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
     for (const u of toUpdate) {
       try {
+        const upsertData = Object.fromEntries(
+          Object.entries(u).filter(([, v]) => v !== undefined)
+        );
         if (sharedAccountId) {
-          await getSharedHuchasCol(sharedAccountId).doc(u.id).update({
-            currentAmount: u.currentAmount,
-            nextContributionDate: u.nextContributionDate,
-          });
+          await getSharedHuchasCol(sharedAccountId).doc(u.id).set(upsertData, { merge: true });
         } else {
-          await getUserHuchasCol().doc(u.id).update({
-            currentAmount: u.currentAmount,
-            nextContributionDate: u.nextContributionDate,
-          });
+          await getUserHuchasCol().doc(u.id).set(upsertData, { merge: true });
         }
       } catch (e) {
         console.error('Error applying automatic contribution:', e);

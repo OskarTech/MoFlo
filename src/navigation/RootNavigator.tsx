@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 export const navigationRef = createNavigationContainerRef<any>();
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
@@ -13,6 +14,7 @@ import { useCategoryStore } from '../store/categoryStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useSavingsStore } from '../store/savingsStore';
+import { processQueue } from '../services/syncQueue.service';
 
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
@@ -53,14 +55,27 @@ const RootNavigator = () => {
   };
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribeAuth = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
       if (firebaseUser) {
         await initUser();
       }
     });
-    return unsubscribe;
+
+    let wasConnected: boolean | null = null;
+    const unsubscribeNet = NetInfo.addEventListener((state) => {
+      const isConnected = !!state.isConnected;
+      if (wasConnected === false && isConnected && auth().currentUser) {
+        processQueue().catch(() => {});
+      }
+      wasConnected = isConnected;
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeNet();
+    };
   }, []);
 
   if (loading) {

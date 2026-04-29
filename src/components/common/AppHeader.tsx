@@ -106,7 +106,7 @@ const AppHeader = ({
       await loadSharedSettings(sharedAccount.id);
       navigation.navigate('HomeTab');
     } else {
-      setTimeout(() => navigation.navigate('SharedAccount'), 300);
+      setTimeout(() => navigation.navigate('Settings', { screen: 'SharedAccount' }), 300);
     }
   };
 

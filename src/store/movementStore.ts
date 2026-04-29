@@ -148,6 +148,8 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (cachedMovements) set({ movements: JSON.parse(cachedMovements) });
       if (cachedRecurring) set({ recurringMovements: JSON.parse(cachedRecurring) });
 
+      await processQueue();
+
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         const [movementsSnap, recurringSnap] = await Promise.all([

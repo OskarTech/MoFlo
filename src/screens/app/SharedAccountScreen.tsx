@@ -3,17 +3,18 @@ import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share,
   KeyboardAvoidingView, Platform, Clipboard,
+  StatusBar,
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 
@@ -23,10 +24,12 @@ type RouteParams = {
 
 const SharedAccountScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc, isDark } = useTheme();
+  const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'SharedAccount'>>();
   const { isPremium, showModal, setShowModal } = usePremium();
+  const insets = useSafeAreaInsets();
+  const headerHeight = (Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight ?? 0)) + 62;
 
   const {
     sharedAccount, isLoading,
@@ -126,7 +129,7 @@ const SharedAccountScreen = () => {
             mode="contained"
             onPress={() => setShowModal(true)}
             style={styles.premiumButton}
-            buttonColor={colors.primary}
+            buttonColor={dc.primary}
             textColor="#FFFFFF"
           >
             {t('premium.purchase')}
@@ -146,21 +149,22 @@ const SharedAccountScreen = () => {
       <AppHeader title={t('sharedAccount.title')} showBell={false} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
         >
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator color={colors.primary} size="large" />
+              <ActivityIndicator color={dc.primary} size="large" />
             </View>
           ) : sharedAccount ? (
             <>
-              <View style={[styles.accountCard, { backgroundColor: colors.primary }]}>
+              <View style={[styles.accountCard, { backgroundColor: dc.primary }]}>
                 <Text style={styles.accountEmoji}>👥</Text>
                 <Text style={styles.accountCardName}>{sharedAccount.name}</Text>
                 <Text style={styles.accountCardCode}>
@@ -177,16 +181,16 @@ const SharedAccountScreen = () => {
                 </Text>
                 <View style={styles.linkButtons}>
                   <TouchableOpacity
-                    style={[styles.linkButton, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
+                    style={[styles.linkButton, { backgroundColor: linkCopied ? dc.income + '20' : dc.background }]}
                     onPress={handleCopyLink}
                   >
                     <Ionicons
                       name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
                       size={18}
-                      color={linkCopied ? colors.income : colors.primary}
+                      color={linkCopied ? dc.income : dc.primary}
                     />
                     <Text style={[styles.linkButtonText, {
-                      color: linkCopied ? colors.income : colors.primary,
+                      color: linkCopied ? dc.income : dc.primary,
                     }]}>
                       {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
                     </Text>
@@ -195,8 +199,8 @@ const SharedAccountScreen = () => {
                     style={[styles.linkButton, { backgroundColor: dc.background }]}
                     onPress={handleShareLink}
                   >
-                    <Ionicons name="share-social-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.linkButtonText, { color: colors.primary }]}>
+                    <Ionicons name="share-social-outline" size={18} color={dc.primary} />
+                    <Text style={[styles.linkButtonText, { color: dc.primary }]}>
                       {t('sharedAccount.shareLink')}
                     </Text>
                   </TouchableOpacity>
@@ -214,8 +218,8 @@ const SharedAccountScreen = () => {
                   return (
                     <View key={uid}>
                       <View style={styles.memberRow}>
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary + '20' }]}>
-                          <Text style={[styles.memberInitial, { color: colors.primary }]}>
+                        <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
+                          <Text style={[styles.memberInitial, { color: dc.primary }]}>
                             {name[0].toUpperCase()}
                           </Text>
                         </View>
@@ -243,7 +247,7 @@ const SharedAccountScreen = () => {
                 onPress={handleOpenShared}
                 style={styles.openButton}
                 contentStyle={styles.openButtonContent}
-                buttonColor={colors.primary}
+                buttonColor={dc.primary}
                 textColor="#FFFFFF"
               >
                 {t('sharedAccount.openShared')}
@@ -277,7 +281,7 @@ const SharedAccountScreen = () => {
                     onPress={() => setMode('create')}
                     style={styles.actionButton}
                     contentStyle={styles.actionButtonContent}
-                    buttonColor={colors.primary}
+                    buttonColor={dc.primary}
                     textColor="#FFFFFF"
                     icon="plus-circle-outline"
                   >
@@ -287,7 +291,7 @@ const SharedAccountScreen = () => {
                     onPress={() => setMode('join')}
                     style={styles.secondaryLink}
                   >
-                    <Text style={[styles.secondaryLinkText, { color: colors.primary }]}>
+                    <Text style={[styles.secondaryLinkText, { color: dc.primary }]}>
                       {t('sharedAccount.orJoin')}
                     </Text>
                   </TouchableOpacity>
@@ -305,9 +309,9 @@ const SharedAccountScreen = () => {
                     onChangeText={setAccountName}
                     mode="outlined"
                     placeholder={t('sharedAccount.accountNamePlaceholder')}
-                    style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
-                    outlineColor={colors.primary}
-                    activeOutlineColor={colors.primary}
+                    style={[styles.input, { backgroundColor: dc.surface }]}
+                    outlineColor={dc.primary}
+                    activeOutlineColor={dc.primary}
                   />
                   <View style={styles.formButtons}>
                     <Button
@@ -324,7 +328,7 @@ const SharedAccountScreen = () => {
                       loading={loading}
                       disabled={!accountName.trim() || loading}
                       style={styles.confirmBtn}
-                      buttonColor={colors.primary}
+                      buttonColor={dc.primary}
                       textColor="#FFFFFF"
                     >
                       {t('sharedAccount.createButton')}
@@ -346,9 +350,9 @@ const SharedAccountScreen = () => {
                     placeholder={t('sharedAccount.enterCodePlaceholder')}
                     autoCapitalize="characters"
                     maxLength={6}
-                    style={[styles.input, { backgroundColor: isDark ? colors.backgroundDark : '#FFFFFF' }]}
-                    outlineColor={colors.primary}
-                    activeOutlineColor={colors.primary}
+                    style={[styles.input, { backgroundColor: dc.surface }]}
+                    outlineColor={dc.primary}
+                    activeOutlineColor={dc.primary}
                   />
                   <View style={styles.formButtons}>
                     <Button
@@ -365,7 +369,7 @@ const SharedAccountScreen = () => {
                       loading={loading}
                       disabled={inviteCode.length < 6 || loading}
                       style={styles.confirmBtn}
-                      buttonColor={colors.primary}
+                      buttonColor={dc.primary}
                       textColor="#FFFFFF"
                     >
                       {t('sharedAccount.joinButton')}

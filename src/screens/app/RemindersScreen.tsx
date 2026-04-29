@@ -235,6 +235,8 @@ const AddReminderModal = ({
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 minimumDate={new Date()}
+                textColor={dc.textPrimary}
+                themeVariant={isDark ? 'dark' : 'light'}
                 onChange={(_, date) => {
                   setShowDatePicker(false);
                   if (date) {
@@ -252,6 +254,8 @@ const AddReminderModal = ({
                 mode="time"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 is24Hour={i18n.language !== 'en'}
+                textColor={dc.textPrimary}
+                themeVariant={isDark ? 'dark' : 'light'}
                 onChange={(_, time) => {
                   setShowTimePicker(false);
                   if (time) {

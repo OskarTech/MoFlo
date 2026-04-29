@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoFlo",
     "slug": "moflo",
-    "version": "1.30",
+    "version": "1.3.0",
     "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
