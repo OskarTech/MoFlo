@@ -123,8 +123,8 @@ const AppNavigator = () => {
             borderTopWidth: 0.5,
             borderTopColor: tabBarBorder,
             elevation: 0,
-            height: 64 + insets.bottom,
-            paddingBottom: insets.bottom + 8,
+            height: 58 + insets.bottom,
+            paddingBottom: insets.bottom + 4,
           },
           tabBarLabelStyle: {
             fontFamily: 'Poppins_500Medium',
