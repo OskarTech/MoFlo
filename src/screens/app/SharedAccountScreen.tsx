@@ -179,7 +179,7 @@ const SharedAccountScreen = () => {
   if (!isPremium) {
     return (
       <View style={[styles.container, { backgroundColor: dc.background }]}>
-        <AppHeader title={t('sharedAccount.title')} showBell={false} />
+        <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
         <View style={styles.premiumGate}>
           <Text style={styles.premiumEmoji}>⭐</Text>
           <Text style={[styles.premiumTitle, { color: dc.textPrimary }]}>
@@ -209,7 +209,7 @@ const SharedAccountScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('sharedAccount.title')} showBell={false} />
+      <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
