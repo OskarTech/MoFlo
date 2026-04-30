@@ -1,9 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share,
-  KeyboardAvoidingView, Platform, Clipboard,
-  StatusBar,
+  Clipboard, Keyboard, Platform,
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +30,6 @@ const SharedAccountScreen = () => {
   const route = useRoute<RouteProp<RouteParams, 'SharedAccount'>>();
   const { isPremium, showModal, setShowModal } = usePremium();
   const insets = useSafeAreaInsets();
-  const headerHeight = (Platform.OS === 'ios' ? insets.top : (StatusBar.currentHeight ?? 0)) + 62;
 
   const {
     sharedAccount, isLoading,
@@ -52,6 +50,15 @@ const SharedAccountScreen = () => {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [loading, setLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const sub = Keyboard.addListener('keyboardWillShow', () => {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (route.params?.code && !sharedAccount && !pendingJoinRequest) {
@@ -231,12 +238,8 @@ const SharedAccountScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
-      >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -548,7 +551,6 @@ const SharedAccountScreen = () => {
             </>
           )}
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 };

@@ -121,6 +121,8 @@ const AddReminderModal = ({
     // ANDROID — no tocar
     if (Platform.OS === 'android') {
       const show = Keyboard.addListener('keyboardDidShow', (e) => {
+        setShowDatePicker(false);
+        setShowTimePicker(false);
         Animated.timing(sheetOffset, {
           toValue: -e.endCoordinates.height,
           duration: 200,
@@ -139,6 +141,8 @@ const AddReminderModal = ({
 
     // iOS — fix margen con insets
     const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      setShowDatePicker(false);
+      setShowTimePicker(false);
       Animated.timing(sheetOffset, {
         toValue: -(e.endCoordinates.height - insets.bottom),
         duration: e.duration ?? 250,
@@ -206,7 +210,7 @@ const AddReminderModal = ({
             </Text>
             <TouchableOpacity
               style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => { setShowDatePicker(prev => !prev); setShowTimePicker(false); }}
             >
               <Ionicons name="calendar-outline" size={20} color={dc.primary} />
               <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
@@ -220,7 +224,7 @@ const AddReminderModal = ({
             </Text>
             <TouchableOpacity
               style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => setShowTimePicker(true)}
+              onPress={() => { setShowTimePicker(prev => !prev); setShowDatePicker(false); }}
             >
               <Ionicons name="time-outline" size={20} color={dc.primary} />
               <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
@@ -238,7 +242,7 @@ const AddReminderModal = ({
                 textColor={dc.textPrimary}
                 themeVariant={isDark ? 'dark' : 'light'}
                 onChange={(_, date) => {
-                  setShowDatePicker(false);
+                  if (Platform.OS === 'android') setShowDatePicker(false);
                   if (date) {
                     const updated = new Date(selectedDate);
                     updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
@@ -257,7 +261,7 @@ const AddReminderModal = ({
                 textColor={dc.textPrimary}
                 themeVariant={isDark ? 'dark' : 'light'}
                 onChange={(_, time) => {
-                  setShowTimePicker(false);
+                  if (Platform.OS === 'android') setShowTimePicker(false);
                   if (time) {
                     const updated = new Date(selectedDate);
                     updated.setHours(time.getHours(), time.getMinutes());
