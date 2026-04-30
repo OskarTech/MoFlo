@@ -66,9 +66,20 @@ const RecurringCard = ({
         <Ionicons name={icon} size={22} color={color} />
       </View>
       <View style={styles.cardInfo}>
-        <Text style={[styles.cardDescription, { color: dc.textPrimary }]}>
-          {item.description}
+        <Text
+          style={[styles.cardDescription, { color: dc.textPrimary }]}
+          numberOfLines={1}
+        >
+          {item.note || item.description}
         </Text>
+        {!!item.note && (
+          <Text
+            style={[styles.cardCategory, { color: dc.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.description}
+          </Text>
+        )}
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>

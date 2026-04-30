@@ -32,6 +32,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const [type, setType] = useState<MovementType>('expense');
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
   const [recurringDay, setRecurringDay] = useState('1');
 
@@ -87,6 +88,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const handleDismiss = () => {
     setType('expense');
     setAmount('');
+    setNote('');
     setCategoryId('housing');
     setRecurringDay('1');
     onDismiss();
@@ -94,6 +96,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
+    if (newType === 'income') setNote('');
     const cats = isSharedMode
       ? getSharedCategoriesForType(newType)
       : getCategoriesForType(newType);
@@ -122,6 +125,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       recurringDay: day,
       currency: currencySymbol,
       isActive: true,
+      note: type === 'expense' ? (note.trim() || undefined) : undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -208,6 +212,21 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               activeOutlineColor={typeColor}
               right={<TextInput.Affix text="/ mes" />}
             />
+
+            {/* NOTA — solo en gastos */}
+            {type === 'expense' && (
+              <TextInput
+                label={t('movements.description')}
+                value={note}
+                onChangeText={setNote}
+                mode="outlined"
+                placeholder={t('movements.descriptionPlaceholder')}
+                style={[styles.input, { backgroundColor: inputBg }]}
+                outlineColor={dc.border}
+                activeOutlineColor={typeColor}
+                maxLength={80}
+              />
+            )}
 
             {/* INFO */}
             <View style={[styles.infoBox, { backgroundColor: dc.primary + '15' }]}>

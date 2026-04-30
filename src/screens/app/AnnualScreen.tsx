@@ -107,7 +107,7 @@ const DonutChart = ({
 const AnnualScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const { getCurrencySymbol, colorPalette } = useSettingsStore();
+  const { getCurrencySymbol } = useSettingsStore();
   const { getCategoryName, getCategoriesForType } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
@@ -335,7 +335,7 @@ const AnnualScreen = () => {
   }, [selectedCategory, movements]);
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
-  const balanceBg = colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard;
+  const balanceBg = dc.balanceCard;
   const subTabs: SummaryTab[] = ['expense', 'income', 'hucha'];
   const subTabLabel = (tab: SummaryTab) =>
     tab === 'expense' ? t('resumen.gastos')

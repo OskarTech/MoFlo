@@ -25,7 +25,6 @@ const BalanceCard = ({
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const { colorPalette } = useSettingsStore();
   const balanceRef = useWalkthroughTarget('home_balance');
 
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
@@ -33,7 +32,7 @@ const BalanceCard = ({
   const [intPart, decPart] = absBalance.toFixed(2).replace('.', ',').split(',');
 
   return (
-    <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: colorPalette === 'earth' ? '#2D4A3E' : dc.balanceCard }]}>
+    <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: dc.balanceCard }]}>
       <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
       <View style={styles.balanceAmountRow}>
         {balance < 0 && <Text style={styles.balanceSign}>-</Text>}

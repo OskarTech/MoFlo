@@ -408,6 +408,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           isRecurring: true,
           recurringDay: recurring.recurringDay,
           currency: recurring.currency,
+          note: recurring.note,
           createdAt: new Date().toISOString(),
         });
       }

@@ -49,6 +49,7 @@ export interface RecurringMovement {
   recurringDay: number; // Día del mes
   currency: string;
   isActive: boolean;
+  note?: string;
   createdAt: string;
 }
 
