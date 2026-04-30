@@ -424,6 +424,7 @@
   "date": "Date",
   "type": "Type",
   "category": "Category",
+  "note": "Description",
   "amount": "Amount",
   "currency": "Currency",
   "recurring": "Recurring",

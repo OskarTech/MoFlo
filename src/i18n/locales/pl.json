@@ -424,6 +424,7 @@
   "date": "Data",
   "type": "Typ",
   "category": "Kategoria",
+  "note": "Opis",
   "amount": "Kwota",
   "currency": "Waluta",
   "recurring": "Cykliczny",

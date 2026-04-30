@@ -188,7 +188,7 @@ const RecurringCard = ({
       </View>
       <View style={styles.movementInfo}>
         <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
-          {item.description}
+          {item.description}{item.note ? ` · ${item.note}` : ''}
         </Text>
         <Text style={[styles.movementAmount, { color, fontSize: 12 }]}>
           {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}

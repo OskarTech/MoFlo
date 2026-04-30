@@ -25,6 +25,7 @@ export const exportMovementsToCSV = async (
     t('export.date'),
     t('export.type'),
     t('export.category'),
+    t('export.note'),
     t('export.amount'),
     t('export.currency'),
     t('export.recurring'),
@@ -41,6 +42,7 @@ export const exportMovementsToCSV = async (
         : `-${m.amount.toFixed(2)}`;
       const currency = m.currency ?? 'EUR';
       const recurring = m.isRecurring ? t('export.yes') : t('export.no');
+      const note = m.note ?? '';
       const user = includeUser ? (m.addedBy ? memberNames![m.addedBy] ?? '' : '') : null;
 
       return [
@@ -48,6 +50,7 @@ export const exportMovementsToCSV = async (
         escapeCSV(date),
         escapeCSV(type),
         escapeCSV(category),
+        escapeCSV(note),
         escapeCSV(amount),
         escapeCSV(currency),
         escapeCSV(recurring),

@@ -424,6 +424,7 @@
   "date": "Fecha",
   "type": "Tipo",
   "category": "Categoría",
+  "note": "Descripción",
   "amount": "Importe",
   "currency": "Moneda",
   "recurring": "Recurrente",
