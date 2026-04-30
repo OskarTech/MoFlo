@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert,
@@ -15,8 +15,15 @@ import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 
+const TYPE_COLORS = {
+  income: colors.income,
+  saving: colors.savings,
+  expense: colors.expense,
+};
+
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   income: 'arrow-down-circle',
+  saving: 'save',
   expense: 'arrow-up-circle',
 };
 
@@ -29,7 +36,6 @@ const RecurringCard = ({
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
-  const TYPE_COLORS: Record<string, string> = { income: dc.income, expense: dc.expense };
 
   const color = TYPE_COLORS[item.type];
   const icon = TYPE_ICONS[item.type];
@@ -54,11 +60,11 @@ const RecurringCard = ({
 
   return (
     <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.dayBadge, { backgroundColor: dc.primary + '20' }]}>
-        <Text style={[styles.dayNumber, { color: dc.primary }]}>
+      <View style={[styles.dayBadge, { backgroundColor: colors.primary + '20' }]}>
+        <Text style={[styles.dayNumber, { color: colors.primary }]}>
           {item.recurringDay}
         </Text>
-        <Text style={[styles.dayLabel, { color: dc.primary }]}>
+        <Text style={[styles.dayLabel, { color: colors.primary }]}>
           {t('recurring.dayShort') ?? 'día'}
         </Text>
       </View>
@@ -66,20 +72,9 @@ const RecurringCard = ({
         <Ionicons name={icon} size={22} color={color} />
       </View>
       <View style={styles.cardInfo}>
-        <Text
-          style={[styles.cardDescription, { color: dc.textPrimary }]}
-          numberOfLines={1}
-        >
-          {item.note || item.description}
+        <Text style={[styles.cardDescription, { color: dc.textPrimary }]}>
+          {item.description}
         </Text>
-        {!!item.note && (
-          <Text
-            style={[styles.cardCategory, { color: dc.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.description}
-          </Text>
-        )}
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>
@@ -163,7 +158,6 @@ const styles = StyleSheet.create({
   },
   cardInfo: { flex: 1 },
   cardDescription: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  cardCategory: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   cardRight: { alignItems: 'flex-end', gap: 6 },
   cardAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
   deleteButton: { padding: 4 },
