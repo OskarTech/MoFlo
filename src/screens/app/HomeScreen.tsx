@@ -86,7 +86,7 @@ const HomeScreen = () => {
 
   const { getCurrencySymbol, displayName, language } = useSettingsStore();
   const { getCategoryName, getCategoriesForType } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
@@ -283,7 +283,11 @@ const HomeScreen = () => {
                 const hasNote = !!mov.note;
                 const catLabel = getCatName(mov.category, mov.type as MovementType);
                 const timeLabel = formatMovementTime(mov.date);
-                const subtitle = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
+                const userName = isSharedMode && mov.addedBy
+                  ? sharedAccount?.memberNames?.[mov.addedBy]
+                  : undefined;
+                const dateAndCat = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
+                const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
                 const amountColor = isIncome ? dc.income : dc.expense;
                 const amountStr = `${isIncome ? '+' : '-'}${mov.amount.toFixed(2).replace('.', ',')} ${currencySymbol}`;
 

@@ -77,6 +77,11 @@ const WalkthroughOverlay = () => {
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const step = WALKTHROUGH_STEPS[currentStep];
 
+  // Tamaño real del área del Modal. En Android con gesture nav, el Modal
+  // se renderiza edge-to-edge y es más alto que Dimensions.get('window'),
+  // así que medimos con onLayout para que el SVG cubra todo el área.
+  const [overlaySize, setOverlaySize] = React.useState({ w: screenW, h: screenH });
+
   useEffect(() => {
     if (!isActive || !step) return;
     // Navegar a la pestaña correspondiente
@@ -149,12 +154,20 @@ const WalkthroughOverlay = () => {
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={skip}>
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+      <Animated.View
+        style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          if (width !== overlaySize.w || height !== overlaySize.h) {
+            setOverlaySize({ w: width, h: height });
+          }
+        }}
+      >
         {/* SPOTLIGHT SVG */}
-        <Svg width={screenW} height={screenH} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Svg width={overlaySize.w} height={overlaySize.h} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>
             <Mask id="walkthrough-mask">
-              <Rect x={0} y={0} width={screenW} height={screenH} fill="white" />
+              <Rect x={0} y={0} width={overlaySize.w} height={overlaySize.h} fill="white" />
               {targetRect && (
                 <Rect
                   x={padX}
@@ -171,8 +184,8 @@ const WalkthroughOverlay = () => {
           <Rect
             x={0}
             y={0}
-            width={screenW}
-            height={screenH}
+            width={overlaySize.w}
+            height={overlaySize.h}
             fill={overlayColor}
             mask="url(#walkthrough-mask)"
           />

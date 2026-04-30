@@ -420,6 +420,7 @@
   "export": {
   "title": "Exportar CSV",
   "subtitle": "Descarga todos tus movimientos",
+  "user": "Usuario",
   "date": "Fecha",
   "type": "Tipo",
   "category": "Categoría",

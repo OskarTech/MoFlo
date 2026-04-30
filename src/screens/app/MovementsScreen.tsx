@@ -30,11 +30,14 @@ const MovementRow = ({
   const { t } = useTranslation();
   const { getCurrencySymbol, language } = useSettingsStore();
   const { getCategoryName } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
   const { getSharedCategoryName } = useSharedCategoryStore();
   const { colors: dc } = useTheme();
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const userName = isSharedMode && movement.addedBy
+    ? sharedAccount?.memberNames?.[movement.addedBy]
+    : undefined;
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
@@ -65,7 +68,8 @@ const MovementRow = ({
   const catName = getCatName(movement.category, movement.type);
   const title = movement.note || catName;
   const timeLabel = formatRelativeTime(movement.date);
-  const subtitle = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
+  const dateAndCat = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
+  const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
 
   const handleDelete = () => {
     Alert.alert(
@@ -222,11 +226,20 @@ const MovementsScreen = () => {
     setActiveHistorialFilter(filter);
   }, [filter]);
 
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const isCurrentMonth = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  };
+
   const filteredMovements = [...movements]
-    .filter((m) => m.type === filter)
+    .filter((m) => m.type === filter && isCurrentMonth(m.date))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const sortedHuchaMovements = [...huchaMovements]
+    .filter((m) => isCurrentMonth(m.date))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const sortedRecurring = [...recurringMovements]

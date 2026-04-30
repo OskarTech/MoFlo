@@ -420,6 +420,7 @@
   "export": {
   "title": "Eksport CSV",
   "subtitle": "Pobierz wszystkie swoje ruchy",
+  "user": "Użytkownik",
   "date": "Data",
   "type": "Typ",
   "category": "Kategoria",

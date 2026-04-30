@@ -13,12 +13,15 @@ const escapeCSV = (value: string) => {
 export const exportMovementsToCSV = async (
   movements: Movement[],
   huchas: Hucha[],
-  t: (key: string) => string
+  t: (key: string) => string,
+  memberNames?: { [uid: string]: string }
 ): Promise<void> => {
   const { getCategoryName } = useCategoryStore.getState();
+  const includeUser = !!memberNames;
 
   // ── MOVEMENTS ──────────────────────────────────────────────────
   const movHeaders = [
+    ...(includeUser ? [t('export.user')] : []),
     t('export.date'),
     t('export.type'),
     t('export.category'),
@@ -38,8 +41,10 @@ export const exportMovementsToCSV = async (
         : `-${m.amount.toFixed(2)}`;
       const currency = m.currency ?? 'EUR';
       const recurring = m.isRecurring ? t('export.yes') : t('export.no');
+      const user = includeUser ? (m.addedBy ? memberNames![m.addedBy] ?? '' : '') : null;
 
       return [
+        ...(includeUser ? [escapeCSV(user!)] : []),
         escapeCSV(date),
         escapeCSV(type),
         escapeCSV(category),

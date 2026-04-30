@@ -412,7 +412,7 @@ const SettingsScreen = () => {
         {
           text: t('sharedAccount.exportFirst'),
           onPress: async () => {
-            try { await exportMovementsToCSV(movements, huchas, t); } catch (e) {}
+            try { await exportMovementsToCSV(movements, huchas, t, sharedAccount?.memberNames); } catch (e) {}
             confirmDeleteShared();
           },
         },
@@ -482,7 +482,7 @@ const SettingsScreen = () => {
 
   const handleExportCSV = () => {
     if (isSharedMode) {
-      exportMovementsToCSV(movements, huchas, t).catch(() => {
+      exportMovementsToCSV(movements, huchas, t, sharedAccount?.memberNames).catch(() => {
         Alert.alert('Error', t('export.error'));
       });
     } else {
