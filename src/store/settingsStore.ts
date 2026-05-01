@@ -1,12 +1,33 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import i18n from '../i18n';
 import {
   saveSettingsToFirestore,
   fetchSettingsFromFirestore,
 } from '../services/firebase/firestore.service';
 import { ColorPaletteId } from '../theme';
+
+const syncDisplayNameToSharedAccounts = async (uid: string, displayName: string) => {
+  const snapshot = await firestore()
+    .collection('sharedAccounts')
+    .where('members', 'array-contains', uid)
+    .get();
+
+  if (snapshot.empty) return;
+
+  const batch = firestore().batch();
+  let hasChanges = false;
+  snapshot.docs.forEach((doc) => {
+    const data = doc.data();
+    if (data?.memberNames?.[uid] !== displayName) {
+      batch.update(doc.ref, { [`memberNames.${uid}`]: displayName });
+      hasChanges = true;
+    }
+  });
+  if (hasChanges) await batch.commit();
+};
 
 const STORAGE_KEY = '@moflo_settings';
 
@@ -115,6 +136,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   saveSettings: async (newSettings) => {
+    const previousDisplayName = get().displayName;
     const current = {
       displayName: get().displayName,
       currencyCode: get().currencyCode,
@@ -132,6 +154,18 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         console.error('Firestore settings sync error:', e)
       ),
     ]);
+
+    if (
+      newSettings.displayName !== undefined &&
+      newSettings.displayName !== previousDisplayName
+    ) {
+      const uid = auth().currentUser?.uid;
+      if (uid) {
+        syncDisplayNameToSharedAccounts(uid, newSettings.displayName).catch((e) =>
+          console.error('Error syncing displayName to shared accounts:', e)
+        );
+      }
+    }
 
     if (newSettings.language) {
       await i18n.changeLanguage(newSettings.language);

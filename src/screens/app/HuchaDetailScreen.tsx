@@ -255,6 +255,10 @@ const HuchaDetailScreen = () => {
   const [showAutoInput, setShowAutoInput] = useState(false);
   const [autoAmount, setAutoAmount] = useState('');
   const [autoDay, setAutoDay] = useState('');
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editTarget, setEditTarget] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const pct = hucha && hucha.targetAmount > 0
     ? Math.min((hucha.currentAmount / hucha.targetAmount) * 100, 100)
@@ -375,17 +379,26 @@ const HuchaDetailScreen = () => {
   };
 
   const handleMoreMenu = () => {
-    Alert.alert(
-      hucha.name,
-      undefined,
-      [
-        isClosed
-          ? { text: t('hucha.reopen'), onPress: handleReopen }
-          : { text: t('hucha.close'), onPress: handleClose },
-        { text: t('hucha.delete'), style: 'destructive', onPress: handleDelete },
-        { text: t('hucha.cancel'), style: 'cancel' },
-      ]
-    );
+    setEditName(hucha.name);
+    setEditTarget(String(hucha.targetAmount));
+    setShowActionsMenu(true);
+  };
+
+  const parsedEditTarget = parseFloat(editTarget.replace(',', '.'));
+  const trimmedEditName = editName.trim();
+  const editTargetTooLow = !isNaN(parsedEditTarget) && parsedEditTarget < hucha.currentAmount;
+  const editChanged = trimmedEditName !== hucha.name || parsedEditTarget !== hucha.targetAmount;
+  const editValid = trimmedEditName.length > 0 && parsedEditTarget > 0 && !editTargetTooLow && editChanged;
+
+  const handleSaveEdit = async () => {
+    if (!editValid || isSavingEdit) return;
+    setIsSavingEdit(true);
+    await updateHucha(hucha.id, {
+      name: trimmedEditName,
+      targetAmount: parsedEditTarget,
+    });
+    setIsSavingEdit(false);
+    setShowActionsMenu(false);
   };
 
   const handleQuickAdd = async (amount: number) => {
@@ -690,6 +703,137 @@ const HuchaDetailScreen = () => {
         onDismiss={() => setShowAddMoneyModal(false)}
       />
 
+      <Modal
+        visible={showActionsMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionsMenu(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.actionsOverlay}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setShowActionsMenu(false)}
+          />
+          <View style={[styles.actionsSheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 12 }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: dc.border }]} />
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.actionsHeader}>
+                <View style={[styles.actionsHeaderIcon, { backgroundColor: hucha.color + '20' }]}>
+                  <Ionicons
+                    name={isClosed ? 'checkmark-circle' : (hucha.icon as keyof typeof Ionicons.glyphMap)}
+                    size={22}
+                    color={hucha.color}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.actionsTitle, { color: dc.textPrimary }]} numberOfLines={1}>
+                    {hucha.name}
+                  </Text>
+                  <Text style={[styles.actionsSubtitle, { color: dc.textSecondary }]}>
+                    {hucha.currentAmount.toFixed(2)} / {hucha.targetAmount.toFixed(2)} {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+
+              {!isClosed && (
+                <View style={[styles.editBlock, { borderTopColor: dc.border }]}>
+                  <Text style={[styles.editLabel, { color: dc.textSecondary }]}>
+                    {t('hucha.goalName')}
+                  </Text>
+                  <RNTextInput
+                    style={[styles.editInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                    placeholder={t('hucha.goalNamePlaceholder')}
+                    placeholderTextColor={dc.textSecondary}
+                    value={editName}
+                    onChangeText={setEditName}
+                    maxLength={40}
+                  />
+
+                  <Text style={[styles.editLabel, { color: dc.textSecondary, marginTop: 12 }]}>
+                    {t('hucha.goalAmount', { symbol: currencySymbol })}
+                  </Text>
+                  <RNTextInput
+                    style={[styles.editInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                    placeholder="0"
+                    placeholderTextColor={dc.textSecondary}
+                    keyboardType="decimal-pad"
+                    value={editTarget}
+                    onChangeText={setEditTarget}
+                  />
+
+                  {editTargetTooLow && (
+                    <Text style={[styles.errorText, { marginTop: 8 }]}>
+                      {t('hucha.invalidTargetAmount')}
+                    </Text>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.editSaveBtn,
+                      { backgroundColor: hucha.color },
+                      (!editValid || isSavingEdit) && { opacity: 0.4 },
+                    ]}
+                    onPress={handleSaveEdit}
+                    activeOpacity={0.8}
+                    disabled={!editValid || isSavingEdit}
+                  >
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={styles.editSaveBtnText}>{t('hucha.save')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.actionRow, { borderTopColor: dc.border }]}
+                onPress={() => { setShowActionsMenu(false); isClosed ? handleReopen() : handleClose(); }}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: (isClosed ? dc.income : dc.savings) + '15' }]}>
+                  <Ionicons
+                    name={isClosed ? 'lock-open-outline' : 'lock-closed-outline'}
+                    size={20}
+                    color={isClosed ? dc.income : dc.savings}
+                  />
+                </View>
+                <Text style={[styles.actionText, { color: dc.textPrimary }]}>
+                  {isClosed ? t('hucha.reopen') : t('hucha.close')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionRow, { borderTopColor: dc.border }]}
+                onPress={() => { setShowActionsMenu(false); handleDelete(); }}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: dc.expense + '15' }]}>
+                  <Ionicons name="trash-outline" size={20} color={dc.expense} />
+                </View>
+                <Text style={[styles.actionText, { color: dc.expense }]}>{t('hucha.delete')}</Text>
+                <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionsCloseBtn, { backgroundColor: isDark ? dc.border + '60' : '#F2F2F7' }]}
+                onPress={() => setShowActionsMenu(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.actionsCloseBtnText, { color: dc.textPrimary }]}>
+                  {t('hucha.cancel')}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <PremiumModal
         visible={showPremiumModal}
         onDismiss={() => setShowPremiumModal(false)}
@@ -814,6 +958,60 @@ const styles = StyleSheet.create({
   sheetButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },
   saveButton: { flex: 2 },
+
+  actionsOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  actionsSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 20, paddingTop: 10,
+  },
+  actionsHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, paddingHorizontal: 4,
+  },
+  actionsHeaderIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  actionsTitle: { fontSize: 17, fontFamily: 'Poppins_600SemiBold' },
+  actionsSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+
+  actionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, paddingHorizontal: 4,
+    borderTopWidth: 0.5,
+  },
+  actionIconWrap: {
+    width: 36, height: 36, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  actionText: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
+
+  actionsCloseBtn: {
+    marginTop: 14, paddingVertical: 14,
+    borderRadius: 14, alignItems: 'center',
+  },
+  actionsCloseBtnText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+
+  editBlock: {
+    paddingTop: 16, paddingBottom: 16,
+    borderTopWidth: 0.5,
+  },
+  editLabel: {
+    fontSize: 11, fontFamily: 'Poppins_600SemiBold',
+    textTransform: 'uppercase', letterSpacing: 0.6,
+    marginBottom: 6, marginLeft: 2,
+  },
+  editInput: {
+    borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 15, fontFamily: 'Poppins_400Regular',
+  },
+  editSaveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: 14,
+    paddingVertical: 12, borderRadius: 12,
+  },
+  editSaveBtnText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', color: '#fff' },
 });
 
 export default HuchaDetailScreen;

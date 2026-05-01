@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, Modal, ScrollView,
-  TouchableOpacity, Keyboard, Animated, Platform,
+  TouchableOpacity, Keyboard, Animated, Platform, Alert,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -96,7 +96,6 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    if (newType === 'income') setNote('');
     const cats = isSharedMode
       ? getSharedCategoriesForType(newType)
       : getCategoriesForType(newType);
@@ -125,7 +124,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       recurringDay: day,
       currency: currencySymbol,
       isActive: true,
-      note: type === 'expense' ? (note.trim() || undefined) : undefined,
+      note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -153,9 +152,18 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {t('recurring.add')}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, { color: dc.textPrimary }]}>
+                {t('recurring.add')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => Alert.alert(t('recurring.add'), t('recurring.infoMessage'))}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.infoIcon}
+              >
+                <Ionicons name="information-circle-outline" size={22} color={dc.textSecondary} />
+              </TouchableOpacity>
+            </View>
 
             {/* TIPO */}
             <View style={styles.typeSelector}>
@@ -210,29 +218,21 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
               style={[styles.input, { backgroundColor: inputBg }]}
               outlineColor={typeColor}
               activeOutlineColor={typeColor}
-              right={<TextInput.Affix text="/ mes" />}
+              right={<TextInput.Affix text={t('recurring.perMonth')} />}
             />
 
-            {/* NOTA — solo en gastos */}
-            {type === 'expense' && (
-              <TextInput
-                label={t('movements.description')}
-                value={note}
-                onChangeText={setNote}
-                mode="outlined"
-                placeholder={t('movements.descriptionPlaceholder')}
-                style={[styles.input, { backgroundColor: inputBg }]}
-                outlineColor={dc.border}
-                activeOutlineColor={typeColor}
-                maxLength={80}
-              />
-            )}
-
-            {/* INFO */}
-            <View style={[styles.infoBox, { backgroundColor: dc.primary + '15' }]}>
-              <Ionicons name="information-circle-outline" size={16} color={dc.primary} />
-              <Text style={[styles.infoText, { color: dc.primary }]}>{t('recurring.infoMessage')}</Text>
-            </View>
+            {/* DESCRIPCIÓN */}
+            <TextInput
+              label={t('movements.description')}
+              value={note}
+              onChangeText={setNote}
+              mode="outlined"
+              placeholder={t('movements.descriptionPlaceholder')}
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={typeColor}
+              maxLength={80}
+            />
 
             {/* CATEGORÍAS */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
@@ -311,19 +311,16 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
   handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
+  titleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 6, marginBottom: 20,
+  },
+  title: { fontSize: 22, fontFamily: 'Poppins_700Bold' },
+  infoIcon: { padding: 2 },
   typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   typeButtonText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
   input: { marginBottom: 16 },
-  infoBox: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    gap: 8, borderRadius: 12, padding: 12, marginBottom: 20,
-  },
-  infoText: {
-    flex: 1, fontSize: 13, fontFamily: 'Poppins_400Regular',
-    lineHeight: 18,
-  },
   sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
   categoryScroll: { marginBottom: 20 },
   categoryChip: {

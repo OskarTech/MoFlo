@@ -99,7 +99,6 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    if (newType === 'income') setNote('');
     const cats = isSharedMode
       ? getSharedCategoriesForType(newType)
       : getCategoriesForType(newType);
@@ -193,20 +192,18 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
               left={<TextInput.Affix text={currencySymbol} />}
             />
 
-            {/* NOTA — solo en gastos */}
-            {type === 'expense' && (
-              <TextInput
-                label={t('movements.description')}
-                value={note}
-                onChangeText={setNote}
-                mode="outlined"
-                placeholder={t('movements.descriptionPlaceholder')}
-                style={[styles.input, { backgroundColor: inputBg }]}
-                outlineColor={dc.border}
-                activeOutlineColor={typeColor}
-                maxLength={80}
-              />
-            )}
+            {/* DESCRIPCIÓN */}
+            <TextInput
+              label={t('movements.description')}
+              value={note}
+              onChangeText={setNote}
+              mode="outlined"
+              placeholder={t('movements.descriptionPlaceholder')}
+              style={[styles.input, { backgroundColor: inputBg }]}
+              outlineColor={dc.border}
+              activeOutlineColor={typeColor}
+              maxLength={80}
+            />
 
             {/* CATEGORÍAS */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>

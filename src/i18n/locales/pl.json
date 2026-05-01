@@ -142,7 +142,8 @@
   "summaryTitle": "Podsumowanie",
   "income": "Przychody",
   "expense": "Wydatki",
-  "net": "Netto"
+  "net": "Netto",
+  "perMonth": "/ mies."
   },
   "movementsList": {
   "title": "Transakcje",
@@ -348,7 +349,8 @@
   "closedBanner": "Cel zamknięty {{date}}",
   "closedBadge": "Zamknięty",
   "completedSection": "Ukończone",
-  "activeGoals": "aktywnych celów"
+  "activeGoals": "aktywnych celów",
+  "invalidTargetAmount": "Cel nie może być niższy niż już zaoszczędzona kwota"
   },
   "tabs": {
   "home": "Główna",
