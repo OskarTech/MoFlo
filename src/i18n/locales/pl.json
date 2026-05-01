@@ -82,7 +82,11 @@
     "streak": "Seria {{count}} mies.",
     "noStreak": "Brak serii",
     "day": "dzień",
-    "recurring": "Cykliczne"
+    "recurring": "Cykliczne",
+    "evolution6Months": "Ewolucja · 6 miesięcy",
+    "avgPerMonth": "Średnia/Mies.",
+    "total": "Razem",
+    "categAbbr": "Kateg."
   },
   "movements": {
   "add": "Dodaj Transakcję",
@@ -134,7 +138,11 @@
   "dayLabelExpense": "Dzień miesiąca płatności (1-31)",
   "dayLabelIncome": "Dzień miesiąca wpływu (1-31)",
   "dayLabelSaving": "Dzień miesiąca oszczędności (1-31)",
-  "infoMessage": "Ta transakcja będzie dodawana automatycznie każdego miesiąca, dopóki jej nie usuniesz."
+  "infoMessage": "Ta transakcja będzie dodawana automatycznie każdego miesiąca, dopóki jej nie usuniesz.",
+  "summaryTitle": "Podsumowanie miesięczne",
+  "income": "Przychody",
+  "expense": "Wydatki",
+  "net": "Netto"
   },
   "movementsList": {
   "title": "Transakcje",
@@ -386,7 +394,7 @@
   "title": "MoFlo Premium",
   "price": "Tylko 2,99€ na zawsze",
   "includes": "Co zawiera",
-  "featureSharedAccount": "Wspólne konto z partnerem",
+  "featureSharedAccount": "Wspólne konto",
   "featureCustomCategories": "Niestandardowe kategorie",
   "featureExportCSV": "Eksport danych do CSV",
   "featureUnlimitedRecurring": "Nieograniczone ruchy cykliczne",
@@ -469,9 +477,10 @@
   "someone": "Ktoś",
   "leaveAccount": "Opuść konto",
   "leaveConfirm": "Czy na pewno chcesz opuścić to konto?",
-  "deleteAccount": "Usuń konto",
-  "deleteConfirm": "Ta operacja jest nieodwracalna. Wszystkie dane zostaną usunięte.",
-  "deleteWarning": "Czy chcesz wyeksportować dane przed usunięciem?",
+  "deleteAccount": "Usuń wspólne konto",
+  "deleteAccountSubtitle": "Trwale usuń wspólne konto i wszystkie jego dane",
+  "deleteConfirm": "Ta operacja jest nieodwracalna. Wszystkie dane wspólnego konta zostaną trwale usunięte.",
+  "deleteWarning": "Czy chcesz wyeksportować dane wspólnego konta przed jego usunięciem?",
   "exportFirst": "Eksportuj CSV najpierw",
   "deleteAnyway": "Usuń bez eksportu",
   "joinSuccess": "Dołączyłeś do konta!",
@@ -553,6 +562,10 @@
     "recurring": {
       "title": "Transakcje cykliczne",
       "body": "Przejdź do zakładki Transakcje i wybierz filtr 'Stałe'. Stamtąd możesz tworzyć automatyczne wydatki lub przychody, takie jak czynsz, subskrypcje lub pensja."
+    },
+    "longPressDelete": {
+      "title": "Usuń transakcję",
+      "body": "Przytrzymaj dłużej dowolną transakcję na liście, aby ją usunąć."
     },
     "hucha": {
       "title": "Twoje skarbonki",

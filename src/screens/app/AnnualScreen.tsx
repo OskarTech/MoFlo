@@ -504,7 +504,7 @@ const AnnualScreen = () => {
                         {expenseBreakdown.length}
                       </Text>
                       <Text style={[styles.pieCenterSub, { color: dc.textSecondary }]}>
-                        CATEG.
+                        {t('resumen.categAbbr').toUpperCase()}
                       </Text>
                     </View>
                   </DonutChart>
@@ -531,14 +531,14 @@ const AnnualScreen = () => {
                     </View>
                     <View style={styles.catDetailMeta}>
                       <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>
-                        EVOLUCIÓN · 6 MESES
+                        {t('resumen.evolution6Months').toUpperCase()}
                       </Text>
                       <Text style={[styles.catDetailName, { color: dc.textPrimary }]}>
                         {getCatName(selectedCategory, 'expense')}
                       </Text>
                     </View>
                     <View style={styles.catDetailAvgBox}>
-                      <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>MEDIA/MES</Text>
+                      <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>{t('resumen.avgPerMonth').toUpperCase()}</Text>
                       <Text style={[styles.catDetailAvg, { color: dc.textPrimary }]}>
                         {categoryMonthlyData.monthlyAvg.toFixed(0)} {currencySymbol}
                       </Text>
@@ -577,7 +577,7 @@ const AnnualScreen = () => {
                       </View>
                     ))}
                     <View>
-                      <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>TOTAL</Text>
+                      <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{t('resumen.total').toUpperCase()}</Text>
                       <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
                         {categoryMonthlyData.total.toFixed(0)} {currencySymbol}
                       </Text>

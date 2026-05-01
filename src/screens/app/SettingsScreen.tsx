@@ -133,7 +133,9 @@ const SettingsScreen = () => {
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
     setSharedMode, getInviteLink, sharedCurrencyCode, sharedColorPalette,
     sharedDateFormat, saveSharedSettings,
+    incomingRequests, approveJoinRequest, rejectJoinRequest,
   } = useSharedAccountStore();
+  const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
 
   const { loadData } = useMovementStore();
   const user = auth().currentUser;
@@ -445,6 +447,35 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleApproveRequest = (uid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.approveConfirmTitle'),
+      t('sharedAccount.approveConfirmBody', { name }),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.approve'),
+          onPress: () => { approveJoinRequest(uid).catch(() => {}); },
+        },
+      ]
+    );
+  };
+
+  const handleRejectRequest = (uid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.rejectConfirmTitle'),
+      t('sharedAccount.rejectConfirmBody', { name }),
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.reject'),
+          style: 'destructive',
+          onPress: () => { rejectJoinRequest(uid).catch(() => {}); },
+        },
+      ]
+    );
+  };
+
   const handleKickMember = () => {
     if (!sharedAccount) return;
     const kickableMembers = sharedAccount.members.filter(m => m !== sharedAccount.createdBy);
@@ -701,6 +732,59 @@ const SettingsScreen = () => {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Solicitudes pendientes (solo creador) */}
+            {isCreator && visibleRequests.length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                  {t('sharedAccount.pendingRequests')} ({visibleRequests.length})
+                </Text>
+                <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+                  {visibleRequests.map((req, idx) => (
+                    <View key={req.uid}>
+                      <View style={styles.requestRow}>
+                        <View style={[styles.memberAvatar, { backgroundColor: dc.savings + '20' }]}>
+                          <Text style={[styles.memberInitial, { color: dc.savings }]}>
+                            {req.displayName[0]?.toUpperCase() ?? '?'}
+                          </Text>
+                        </View>
+                        <View style={styles.memberInfo}>
+                          <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                            {req.displayName}
+                          </Text>
+                          <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                            {t('sharedAccount.wantsToJoin')}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.requestActions}>
+                        <TouchableOpacity
+                          style={[styles.requestBtn, { backgroundColor: colors.expense + '15' }]}
+                          onPress={() => handleRejectRequest(req.uid, req.displayName)}
+                        >
+                          <Ionicons name="close" size={16} color={colors.expense} />
+                          <Text style={[styles.requestBtnText, { color: colors.expense }]}>
+                            {t('sharedAccount.reject')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.requestBtn, { backgroundColor: colors.income + '15' }]}
+                          onPress={() => handleApproveRequest(req.uid, req.displayName)}
+                        >
+                          <Ionicons name="checkmark" size={16} color={colors.income} />
+                          <Text style={[styles.requestBtnText, { color: colors.income }]}>
+                            {t('sharedAccount.approve')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      {idx < visibleRequests.length - 1 && (
+                        <View style={[styles.divider, { backgroundColor: dc.border, marginLeft: 0 }]} />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
 
             {/* Miembros */}
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
@@ -968,6 +1052,7 @@ const SettingsScreen = () => {
                   <OptionRow
                     icon="trash-outline" iconColor={colors.expense}
                     label={t('sharedAccount.deleteAccount')}
+                    subtitle={t('sharedAccount.deleteAccountSubtitle')}
                     onPress={handleDeleteShared} dangerous
                   />
                   <View style={[styles.divider, { backgroundColor: dc.border }]} />
@@ -1233,6 +1318,15 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
   modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
   modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
+
+  // Pending requests
+  requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  requestActions: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 },
+  requestBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+  },
+  requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default SettingsScreen;

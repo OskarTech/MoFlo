@@ -82,7 +82,11 @@
     "streak": "Racha de {{count}} meses",
     "noStreak": "Sin racha",
     "day": "día",
-    "recurring": "Recurrente"
+    "recurring": "Recurrente",
+    "evolution6Months": "Evolución · 6 meses",
+    "avgPerMonth": "Media/Mes",
+    "total": "Total",
+    "categAbbr": "Categ."
   },
   "movements": {
   "add": "Añadir Movimiento",
@@ -135,7 +139,11 @@
   "dayLabelExpense": "Día del mes del cobro (1-31)",
   "dayLabelIncome": "Día del mes del ingreso (1-31)",
   "dayLabelSaving": "Día del mes del ahorro (1-31)",
-  "infoMessage": "Este movimiento se añadirá automáticamente cada mes hasta que lo elimines."
+  "infoMessage": "Este movimiento se añadirá automáticamente cada mes hasta que lo elimines.",
+  "summaryTitle": "Resumen mensual",
+  "income": "Ingresos",
+  "expense": "Gastos",
+  "net": "Neto"
   },
   "movementsList": {
   "title": "Movimientos",
@@ -386,7 +394,7 @@
   "title": "MoFlo Premium",
   "price": "Solo 2,99€ para siempre",
   "includes": "Qué incluye",
-  "featureSharedAccount": "Cuenta compartida con tu pareja",
+  "featureSharedAccount": "Cuenta compartida",
   "featureCustomCategories": "Categorías personalizadas",
   "featureExportCSV": "Exportar datos a CSV",
   "featureUnlimitedRecurring": "Movimientos recurrentes ilimitados",
@@ -469,9 +477,10 @@
   "someone": "Alguien",
   "leaveAccount": "Salir de la cuenta",
   "leaveConfirm": "¿Seguro que quieres salir de esta cuenta compartida?",
-  "deleteAccount": "Eliminar cuenta",
-  "deleteConfirm": "Esta acción es irreversible. Todos los datos serán eliminados permanentemente.",
-  "deleteWarning": "¿Quieres exportar tus datos antes de eliminar?",
+  "deleteAccount": "Eliminar cuenta compartida",
+  "deleteAccountSubtitle": "Borra permanentemente la cuenta compartida y todos sus datos",
+  "deleteConfirm": "Esta acción es irreversible. Todos los datos de la cuenta compartida serán eliminados permanentemente.",
+  "deleteWarning": "¿Quieres exportar los datos de la cuenta compartida antes de eliminarla?",
   "exportFirst": "Exportar CSV primero",
   "deleteAnyway": "Eliminar sin exportar",
   "joinSuccess": "¡Te has unido a la cuenta correctamente!",
@@ -553,6 +562,10 @@
     "recurring": {
       "title": "Movimientos recurrentes",
       "body": "Entra en la pestaña Movimientos y elige el filtro 'Fijos'. Desde ahí puedes crear gastos o ingresos automáticos como alquiler, suscripciones o nómina."
+    },
+    "longPressDelete": {
+      "title": "Eliminar un movimiento",
+      "body": "Mantén pulsado cualquier movimiento de la lista para eliminarlo."
     },
     "hucha": {
       "title": "Tus huchas",

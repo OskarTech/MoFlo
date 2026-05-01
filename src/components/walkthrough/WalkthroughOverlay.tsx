@@ -19,31 +19,35 @@ const TOOLTIP_GAP = 16;
 const computeTabRect = (
   index: number,
   insets: { bottom: number },
+  overlayH: number,
 ): TargetRect => {
-  const { width: screenW, height: screenH } = Dimensions.get('window');
-  const tabBarH = 64 + insets.bottom;
+  const { width: screenW } = Dimensions.get('window');
+  // Constantes que deben coincidir con AppNavigator.tsx tabBarStyle:
+  //   height: 58 + insets.bottom
+  //   paddingBottom: insets.bottom + 4
+  // Usamos overlayH (medido con onLayout del Modal) en vez de Dimensions.get('window').height
+  // porque en Android físico con gesture nav el Modal es edge-to-edge y la window
+  // reporta una altura menor que el área real del overlay.
+  const TAB_INNER_H = 54; // 58 + insets.bottom - (insets.bottom + 4)
+  const PAD_BOTTOM = insets.bottom + 4;
+  const tabTop = overlayH - PAD_BOTTOM - TAB_INNER_H;
   const tabW = screenW / 5;
   if (index === 2) {
-    // FAB elevado: AddTabButton tiene top:-16 y marginBottom:insets.bottom/2.
-    // El tab bar tiene paddingBottom: insets.bottom + 8.
-    // Calculamos el centro del botón visual (56x56) con esos offsets.
+    // FAB elevado: AddTabButton tiene top:-16, button 56x56.
     const size = 64;
-    const tabBarPaddingBottom = insets.bottom + 8;
-    const containerH = tabBarH - tabBarPaddingBottom - insets.bottom / 2;
-    const containerTop = screenH - tabBarH;
-    const buttonCenterY = containerTop + containerH / 2 - 16;
+    const itemCenterY = tabTop + TAB_INNER_H / 2 - 16;
     return {
       x: screenW / 2 - size / 2,
-      y: buttonCenterY - size / 2,
+      y: itemCenterY - size / 2,
       width: size,
       height: size,
     };
   }
   return {
     x: index * tabW + tabW * 0.18,
-    y: screenH - tabBarH + 6,
+    y: tabTop,
     width: tabW * 0.64,
-    height: tabBarH - insets.bottom - 6,
+    height: TAB_INNER_H,
   };
 };
 
@@ -106,13 +110,13 @@ const WalkthroughOverlay = () => {
   const targetRect: TargetRect | null = useMemo(() => {
     if (!step) return null;
     if (step.isTab && step.tabIndex !== undefined) {
-      return computeTabRect(step.tabIndex, insets);
+      return computeTabRect(step.tabIndex, insets, overlaySize.h);
     }
     if (step.customTarget === 'header') {
       return computeHeaderRect(insets);
     }
     return targets[step.id] ?? null;
-  }, [step, targets, insets]);
+  }, [step, targets, insets, overlaySize.h]);
 
   if (!isActive || !step) return null;
 

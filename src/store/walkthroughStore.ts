@@ -29,6 +29,7 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   { id: 'home_balance',     tab: 'HomeTab',      spotlightShape: 24, titleKey: 'walkthrough.balance.title',   bodyKey: 'walkthrough.balance.body' },
   { id: 'home_fab',         tab: 'HomeTab',      isTab: true, tabIndex: 2, spotlightShape: 'circle', titleKey: 'walkthrough.fab.title', bodyKey: 'walkthrough.fab.body' },
   { id: 'recurring',        tab: 'HistorialTab', isTab: true, tabIndex: 1, titleKey: 'walkthrough.recurring.title', bodyKey: 'walkthrough.recurring.body' },
+  { id: 'long_press_delete', tab: 'HistorialTab', titleKey: 'walkthrough.longPressDelete.title', bodyKey: 'walkthrough.longPressDelete.body' },
   { id: 'hucha_tab',        tab: 'HuchaTab',     isTab: true, tabIndex: 4, titleKey: 'walkthrough.hucha.title',     bodyKey: 'walkthrough.hucha.body' },
   { id: 'annual_tab',       tab: 'AnnualTab',    isTab: true, tabIndex: 3, titleKey: 'walkthrough.annual.title',    bodyKey: 'walkthrough.annual.body' },
   { id: 'header_account',   tab: 'HomeTab',      customTarget: 'header', titleKey: 'walkthrough.account.title',     bodyKey: 'walkthrough.account.body' },

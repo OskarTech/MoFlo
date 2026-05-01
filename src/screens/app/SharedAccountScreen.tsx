@@ -39,6 +39,7 @@ const SharedAccountScreen = () => {
     cancelJoinRequest, clearRejectedRequest,
     approveJoinRequest, rejectJoinRequest,
     subscribeToSharedMovements, loadSharedSettings,
+    subscribeToIncomingRequests,
   } = useSharedAccountStore();
   const { loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
   const currentUid = require('@react-native-firebase/auth').default().currentUser?.uid;
@@ -59,6 +60,12 @@ const SharedAccountScreen = () => {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (sharedAccount && sharedAccount.createdBy === currentUid) {
+      subscribeToIncomingRequests(sharedAccount.id);
+    }
+  }, [sharedAccount?.id, sharedAccount?.createdBy, currentUid]);
 
   useEffect(() => {
     if (route.params?.code && !sharedAccount && !pendingJoinRequest) {

@@ -82,7 +82,11 @@
     "streak": "{{count}} month streak",
     "noStreak": "No streak",
     "day": "day",
-    "recurring": "Recurring"
+    "recurring": "Recurring",
+    "evolution6Months": "Evolution · 6 months",
+    "avgPerMonth": "Avg/Month",
+    "total": "Total",
+    "categAbbr": "Categ."
   },
   "movements": {
   "add": "Add Movement",
@@ -135,7 +139,11 @@
   "dayLabelExpense": "Day of the month of charge (1-31)",
   "dayLabelIncome": "Day of the month of income (1-31)",
   "dayLabelSaving": "Day of the month of saving (1-31)",
-  "infoMessage": "This movement will be added automatically every month until you delete it."
+  "infoMessage": "This movement will be added automatically every month until you delete it.",
+  "summaryTitle": "Monthly summary",
+  "income": "Income",
+  "expense": "Expenses",
+  "net": "Net"
   },
   "movementsList": {
   "title": "Movements",
@@ -387,7 +395,7 @@
   "taxNote": "Taxes may apply depending on your country",
   "price": "Only 2,99€ forever",
   "includes": "What's included",
-  "featureSharedAccount": "Shared account with partner",
+  "featureSharedAccount": "Shared account",
   "featureCustomCategories": "Custom categories",
   "featureExportCSV": "Export data to CSV",
   "featureUnlimitedRecurring": "Unlimited recurring movements",
@@ -475,9 +483,10 @@
   "someone": "Someone",
   "leaveAccount": "Leave account",
   "leaveConfirm": "Are you sure you want to leave this shared account?",
-  "deleteAccount": "Delete account",
-  "deleteConfirm": "This is irreversible. All data will be permanently deleted.",
-  "deleteWarning": "Do you want to export your data before deleting?",
+  "deleteAccount": "Delete shared account",
+  "deleteAccountSubtitle": "Permanently delete the shared account and all its data",
+  "deleteConfirm": "This is irreversible. All shared account data will be permanently deleted.",
+  "deleteWarning": "Do you want to export the shared account data before deleting it?",
   "exportFirst": "Export CSV first",
   "deleteAnyway": "Delete without exporting",
   "joinSuccess": "You joined the account successfully!",
@@ -553,6 +562,10 @@
     "recurring": {
       "title": "Recurring movements",
       "body": "Go to the Movements tab and choose the 'Fixed' filter. From there you can create automatic expenses or incomes like rent, subscriptions or salary."
+    },
+    "longPressDelete": {
+      "title": "Delete a movement",
+      "body": "Long-press any movement in the list to delete it."
     },
     "hucha": {
       "title": "Your savings goals",

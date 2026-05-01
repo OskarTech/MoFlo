@@ -17,6 +17,7 @@ import AppHeader from '../../components/common/AppHeader';
 import { Reminder } from '../../types';
 import i18n from '../../i18n';
 import auth from '@react-native-firebase/auth';
+import { useSharedAccountStore } from '../../store/sharedAccountStore';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -311,6 +312,45 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   const uid = auth().currentUser?.uid ?? 'guest';
   const STORAGE_KEY = `@moflo_reminders_${uid}`;
 
+  const {
+    sharedAccount, incomingRequests,
+    approveJoinRequest, rejectJoinRequest,
+  } = useSharedAccountStore();
+  const currentUid = auth().currentUser?.uid;
+  const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
+  const visibleRequests = isCreator
+    ? incomingRequests.filter(r => r.status === 'pending')
+    : [];
+
+  const handleApproveRequest = (rUid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.approveConfirmTitle'),
+      t('sharedAccount.approveConfirmBody', { name }),
+      [
+        { text: t('reminders.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.approve'),
+          onPress: () => { approveJoinRequest(rUid).catch(() => {}); },
+        },
+      ]
+    );
+  };
+
+  const handleRejectRequest = (rUid: string, name: string) => {
+    Alert.alert(
+      t('sharedAccount.rejectConfirmTitle'),
+      t('sharedAccount.rejectConfirmBody', { name }),
+      [
+        { text: t('reminders.cancel'), style: 'cancel' },
+        {
+          text: t('sharedAccount.reject'),
+          style: 'destructive',
+          onPress: () => { rejectJoinRequest(rUid).catch(() => {}); },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     loadReminders();
     requestPermissions();
@@ -391,6 +431,59 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {visibleRequests.length > 0 && (
+          <>
+            <Text style={[styles.requestsLabel, { color: dc.textSecondary }]}>
+              {t('sharedAccount.pendingRequests')} ({visibleRequests.length})
+            </Text>
+            <View style={[styles.requestsCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              {visibleRequests.map((req, idx) => (
+                <View key={req.uid}>
+                  <View style={styles.requestRow}>
+                    <View style={[styles.requestAvatar, { backgroundColor: dc.savings + '20' }]}>
+                      <Text style={[styles.requestInitial, { color: dc.savings }]}>
+                        {req.displayName[0]?.toUpperCase() ?? '?'}
+                      </Text>
+                    </View>
+                    <View style={styles.requestInfo}>
+                      <Text style={[styles.requestName, { color: dc.textPrimary }]}>
+                        {req.displayName}
+                      </Text>
+                      <Text style={[styles.requestRole, { color: dc.textSecondary }]}>
+                        {t('sharedAccount.wantsToJoin')}
+                        {sharedAccount ? ` · ${sharedAccount.name}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.requestActions}>
+                    <TouchableOpacity
+                      style={[styles.requestBtn, { backgroundColor: colors.expense + '15' }]}
+                      onPress={() => handleRejectRequest(req.uid, req.displayName)}
+                    >
+                      <Ionicons name="close" size={16} color={colors.expense} />
+                      <Text style={[styles.requestBtnText, { color: colors.expense }]}>
+                        {t('sharedAccount.reject')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.requestBtn, { backgroundColor: colors.income + '15' }]}
+                      onPress={() => handleApproveRequest(req.uid, req.displayName)}
+                    >
+                      <Ionicons name="checkmark" size={16} color={colors.income} />
+                      <Text style={[styles.requestBtnText, { color: colors.income }]}>
+                        {t('sharedAccount.approve')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {idx < visibleRequests.length - 1 && (
+                    <View style={[styles.requestDivider, { backgroundColor: dc.border }]} />
+                  )}
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         {sortedReminders.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🔔</Text>
@@ -449,6 +542,30 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },
   saveButton: { flex: 2 },
+
+  // Pending join requests
+  requestsLabel: {
+    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 8, marginLeft: 4,
+  },
+  requestsCard: {
+    borderRadius: 16, marginBottom: 20,
+    overflow: 'hidden', borderWidth: 0.5,
+  },
+  requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  requestAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  requestInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
+  requestInfo: { flex: 1 },
+  requestName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  requestRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  requestActions: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 },
+  requestBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+  },
+  requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  requestDivider: { height: 0.5 },
 });
 
 export default RemindersScreen;

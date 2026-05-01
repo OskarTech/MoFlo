@@ -96,11 +96,25 @@ const RecurringScreen = () => {
     showRecurringModal,
     setShowRecurringModal,
   } = useMovementStore();
+  const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
+
+  const currencySymbol = isSharedMode
+    ? getSharedCurrencySymbol()
+    : getCurrencySymbol();
 
   const sortedRecurring = [...recurringMovements].sort(
     (a, b) => a.recurringDay - b.recurringDay
   );
+
+  const totalIncome = recurringMovements
+    .filter((m) => m.type === 'income')
+    .reduce((s, m) => s + m.amount, 0);
+  const totalExpense = recurringMovements
+    .filter((m) => m.type === 'expense')
+    .reduce((s, m) => s + m.amount, 0);
+  const net = totalIncome - totalExpense;
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -109,6 +123,46 @@ const RecurringScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
+            {t('recurring.summaryTitle').toUpperCase()}
+          </Text>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCol}>
+              <View style={styles.summaryColHeader}>
+                <Ionicons name="arrow-down-circle" size={14} color={colors.income} />
+                <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+                  {t('recurring.income')}
+                </Text>
+              </View>
+              <Text style={[styles.summaryColValue, { color: colors.income }]}>
+                +{totalIncome.toFixed(2)} {currencySymbol}
+              </Text>
+            </View>
+            <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
+            <View style={styles.summaryCol}>
+              <View style={styles.summaryColHeader}>
+                <Ionicons name="arrow-up-circle" size={14} color={colors.expense} />
+                <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+                  {t('recurring.expense')}
+                </Text>
+              </View>
+              <Text style={[styles.summaryColValue, { color: colors.expense }]}>
+                -{totalExpense.toFixed(2)} {currencySymbol}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
+          <View style={styles.summaryNetRow}>
+            <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
+              {t('recurring.net')}
+            </Text>
+            <Text style={[styles.summaryNetValue, { color: net >= 0 ? colors.income : colors.expense }]}>
+              {net >= 0 ? '+' : ''}{net.toFixed(2)} {currencySymbol}
+            </Text>
+          </View>
+        </View>
+
         {sortedRecurring.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🔄</Text>
@@ -168,6 +222,28 @@ const styles = StyleSheet.create({
     fontSize: 13, fontFamily: 'Poppins_400Regular',
     textAlign: 'center', paddingHorizontal: 32,
   },
+  summaryCard: {
+    borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 0.5,
+  },
+  summaryTitle: {
+    fontSize: 10, fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.8, marginBottom: 12,
+  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center' },
+  summaryCol: { flex: 1 },
+  summaryColHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4,
+  },
+  summaryColLabel: { fontSize: 11, fontFamily: 'Poppins_500Medium' },
+  summaryColValue: { fontSize: 17, fontFamily: 'Poppins_700Bold' },
+  summarySep: { width: 0.5, alignSelf: 'stretch', marginHorizontal: 12 },
+  summaryDivider: { height: 0.5, marginVertical: 12 },
+  summaryNetRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  summaryNetLabel: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
+  summaryNetValue: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
 });
 
 export default RecurringScreen;

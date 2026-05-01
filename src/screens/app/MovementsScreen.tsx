@@ -210,7 +210,17 @@ const MovementsScreen = () => {
     setActiveHistorialFilter,
   } = useMovementStore();
   const { huchaMovements } = useSavingsStore();
+  const { getCurrencySymbol } = useSettingsStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
+  const recurringCurrencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const recurringIncomeTotal = recurringMovements
+    .filter((m) => m.type === 'income')
+    .reduce((s, m) => s + m.amount, 0);
+  const recurringExpenseTotal = recurringMovements
+    .filter((m) => m.type === 'expense')
+    .reduce((s, m) => s + m.amount, 0);
+  const recurringNet = recurringIncomeTotal - recurringExpenseTotal;
   const route = useRoute<any>();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const scrollRef = useRef<ScrollView>(null);
@@ -330,6 +340,46 @@ const MovementsScreen = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+            <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
+              {t('recurring.summaryTitle').toUpperCase()}
+            </Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCol}>
+                <View style={styles.summaryColHeader}>
+                  <Ionicons name="arrow-down-circle" size={14} color={dc.income} />
+                  <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+                    {t('recurring.income')}
+                  </Text>
+                </View>
+                <Text style={[styles.summaryColValue, { color: dc.income }]}>
+                  +{recurringIncomeTotal.toFixed(2)} {recurringCurrencySymbol}
+                </Text>
+              </View>
+              <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
+              <View style={styles.summaryCol}>
+                <View style={styles.summaryColHeader}>
+                  <Ionicons name="arrow-up-circle" size={14} color={dc.expense} />
+                  <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+                    {t('recurring.expense')}
+                  </Text>
+                </View>
+                <Text style={[styles.summaryColValue, { color: dc.expense }]}>
+                  -{recurringExpenseTotal.toFixed(2)} {recurringCurrencySymbol}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
+            <View style={styles.summaryNetRow}>
+              <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
+                {t('recurring.net')}
+              </Text>
+              <Text style={[styles.summaryNetValue, { color: recurringNet >= 0 ? dc.income : dc.expense }]}>
+                {recurringNet >= 0 ? '+' : ''}{recurringNet.toFixed(2)} {recurringCurrencySymbol}
+              </Text>
+            </View>
+          </View>
+
           {sortedRecurring.length === 0
             ? emptyRecurring
             : sortedRecurring.map((item) => (
@@ -399,6 +449,27 @@ const styles = StyleSheet.create({
     fontSize: 13, fontFamily: 'Poppins_400Regular',
     textAlign: 'center', paddingHorizontal: 32, marginTop: 8,
   },
+  summaryCard: {
+    borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 0.5,
+  },
+  summaryTitle: {
+    fontSize: 10, fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.8, marginBottom: 12,
+  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center' },
+  summaryCol: { flex: 1 },
+  summaryColHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4,
+  },
+  summaryColLabel: { fontSize: 11, fontFamily: 'Poppins_500Medium' },
+  summaryColValue: { fontSize: 17, fontFamily: 'Poppins_700Bold' },
+  summarySep: { width: 0.5, alignSelf: 'stretch', marginHorizontal: 12 },
+  summaryDivider: { height: 0.5, marginVertical: 12 },
+  summaryNetRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  summaryNetLabel: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
+  summaryNetValue: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
 });
 
 export default MovementsScreen;

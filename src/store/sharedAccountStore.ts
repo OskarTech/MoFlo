@@ -469,6 +469,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
                     content: {
                       title: i18n.t('sharedAccount.notifJoinRequestTitle'),
                       body: i18n.t('sharedAccount.notifJoinRequestBody', { name: req.displayName }),
+                      data: { type: 'shared_join_request' },
                     },
                     trigger: null,
                   }).catch(() => {});

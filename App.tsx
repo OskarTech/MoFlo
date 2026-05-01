@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { MD3LightTheme, MD3DarkTheme, PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { Linking, useColorScheme } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import {
   useFonts, Poppins_400Regular, Poppins_500Medium,
   Poppins_600SemiBold, Poppins_700Bold,
@@ -93,6 +94,29 @@ export default function App() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data as { type?: string } | null;
+      if (data?.type === 'shared_join_request') {
+        const tryNavigate = (retries = 0) => {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('Settings', { screen: 'SharedAccount' });
+          } else if (retries < 20) {
+            setTimeout(() => tryNavigate(retries + 1), 100);
+          }
+        };
+        tryNavigate();
+      }
+    };
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
+    });
+
+    return () => sub.remove();
   }, []);
 
   if (!fontsLoaded) return null;
