@@ -72,6 +72,9 @@ const getSharedMovementsCol = (accountId: string) =>
 const getSharedRecurringCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('recurring');
 
+const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
+  Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
+
 export const useMovementStore = create<MovementStore>((set, get) => ({
   movements: [],
   recurringMovements: [],
@@ -200,7 +203,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       await get().saveMovements(newMovements);
 
       const uid = auth().currentUser?.uid ?? '';
-      const sharedMovement = { ...movement, addedBy: uid };
+      const sharedMovement = stripUndefined({ ...movement, addedBy: uid });
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         try {
@@ -290,21 +293,22 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       set({ recurringMovements: [...newRecurring] });
       await get().saveRecurring(newRecurring);
 
+      const sharedRecurring = stripUndefined({ ...movement });
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         try {
-          await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(movement);
+          await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(sharedRecurring);
         } catch (e) {
           await enqueue({
             type: 'ADD_SHARED_RECURRING',
-            payload: movement,
+            payload: sharedRecurring,
             accountId: sharedAccountId,
           });
         }
       } else {
         await enqueue({
           type: 'ADD_SHARED_RECURRING',
-          payload: movement,
+          payload: sharedRecurring,
           accountId: sharedAccountId,
         });
       }
@@ -423,7 +427,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         const uid = auth().currentUser?.uid ?? '';
         for (const m of newMovements) {
           try {
-            await getSharedMovementsCol(sharedAccountId).doc(m.id).set({ ...m, addedBy: uid });
+            await getSharedMovementsCol(sharedAccountId)
+              .doc(m.id)
+              .set(stripUndefined({ ...m, addedBy: uid }));
           } catch (e) {
             console.error('Error saving shared recurring movement:', e);
           }

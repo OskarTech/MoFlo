@@ -547,7 +547,7 @@ const HuchaDetailScreen = () => {
                     activeOpacity={0.7}
                     disabled={disabled}
                   >
-                    <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}€</Text>
+                    <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}{currencySymbol}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -568,7 +568,7 @@ const HuchaDetailScreen = () => {
               </Text>
               {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
                 <Text style={[styles.automaticMeta, { color: dc.textSecondary }]}>
-                  {hucha.monthlyAmount} {t('hucha.everyMonth')}
+                  {t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })}
                   {hucha.recurringDay
                     ? ` · ${t('hucha.dayN', { day: hucha.recurringDay })}`
                     : ''}

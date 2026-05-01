@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 export const navigationRef = createNavigationContainerRef<any>();
@@ -68,13 +68,39 @@ const RootNavigator = () => {
       const isConnected = !!state.isConnected;
       if (wasConnected === false && isConnected && auth().currentUser) {
         processQueue().catch(() => {});
+        const { isSharedMode, sharedAccount, subscribeToSharedMovements } =
+          useSharedAccountStore.getState();
+        if (isSharedMode && sharedAccount) {
+          subscribeToSharedMovements(sharedAccount.id);
+        }
       }
       wasConnected = isConnected;
+    });
+
+    let prevKey = '';
+    const unsubscribeShared = useSharedAccountStore.subscribe((state) => {
+      const key = `${state.isSharedMode ? '1' : '0'}|${state.sharedAccount?.id ?? ''}`;
+      if (key === prevKey) return;
+      prevKey = key;
+      if (state.isSharedMode && state.sharedAccount) {
+        state.subscribeToSharedMovements(state.sharedAccount.id);
+      }
+    });
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      const { isSharedMode, sharedAccount, subscribeToSharedMovements } =
+        useSharedAccountStore.getState();
+      if (isSharedMode && sharedAccount) {
+        subscribeToSharedMovements(sharedAccount.id);
+      }
     });
 
     return () => {
       unsubscribeAuth();
       unsubscribeNet();
+      unsubscribeShared();
+      appStateSub.remove();
     };
   }, []);
 

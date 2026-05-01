@@ -139,7 +139,7 @@
   "dayLabelIncome": "Dzień miesiąca wpływu (1-31)",
   "dayLabelSaving": "Dzień miesiąca oszczędności (1-31)",
   "infoMessage": "Ta transakcja będzie dodawana automatycznie każdego miesiąca, dopóki jej nie usuniesz.",
-  "summaryTitle": "Podsumowanie miesięczne",
+  "summaryTitle": "Podsumowanie",
   "income": "Przychody",
   "expense": "Wydatki",
   "net": "Netto"
@@ -313,7 +313,8 @@
   "dayN": "dzień {{day}}",
   "chooseDayOfMonth": "Wybierz dzień wpłaty",
   "nextContribution": "następny {{date}}",
-  "everyMonth": "€ miesięcznie",
+  "everyMonth": "{{amount}} {{symbol}} miesięcznie",
+  "thisMonthAdded": "+{{amount}}{{symbol}} w tym miesiącu",
   "addMoney": "+ Dodaj do celu",
   "addMoneyTitle": "Dodaj pieniądze",
   "withdrawMoneyTitle": "Wypłać środki",

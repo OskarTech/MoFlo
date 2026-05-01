@@ -140,7 +140,7 @@
   "dayLabelIncome": "Día del mes del ingreso (1-31)",
   "dayLabelSaving": "Día del mes del ahorro (1-31)",
   "infoMessage": "Este movimiento se añadirá automáticamente cada mes hasta que lo elimines.",
-  "summaryTitle": "Resumen mensual",
+  "summaryTitle": "Resumen",
   "income": "Ingresos",
   "expense": "Gastos",
   "net": "Neto"
@@ -313,7 +313,8 @@
   "dayN": "día {{day}}",
   "chooseDayOfMonth": "Elige el día para efectuar la aportación",
   "nextContribution": "próximo {{date}}",
-  "everyMonth": "€ al mes",
+  "everyMonth": "{{amount}} {{symbol}} al mes",
+  "thisMonthAdded": "+{{amount}}{{symbol}} este mes",
   "addMoney": "+ Añadir a la hucha",
   "addMoneyTitle": "Añadir dinero",
   "withdrawMoneyTitle": "Sacar dinero",

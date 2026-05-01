@@ -87,7 +87,7 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
                 {hucha.targetDate ? formatTargetDate(hucha.targetDate) : ''}
                 {hucha.targetDate && hucha.isAutomatic ? ' · ' : ''}
                 {hucha.isAutomatic && hucha.monthlyAmount
-                  ? `${hucha.monthlyAmount} €/mes`
+                  ? t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })
                   : ''}
               </Text>
             </View>
@@ -337,7 +337,7 @@ const HuchaScreen = () => {
               </Text>
               {thisMonthDeposited > 0 && (
                 <Text style={[styles.thisMonthText, { color: dc.savings }]}>
-                  +{currencySymbol}{formatAmount(thisMonthDeposited)} este mes
+                  {t('hucha.thisMonthAdded', { amount: formatAmount(thisMonthDeposited), symbol: currencySymbol })}
                 </Text>
               )}
             </View>

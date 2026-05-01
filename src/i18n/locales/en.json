@@ -140,7 +140,7 @@
   "dayLabelIncome": "Day of the month of income (1-31)",
   "dayLabelSaving": "Day of the month of saving (1-31)",
   "infoMessage": "This movement will be added automatically every month until you delete it.",
-  "summaryTitle": "Monthly summary",
+  "summaryTitle": "Summary",
   "income": "Income",
   "expense": "Expenses",
   "net": "Net"
@@ -313,7 +313,8 @@
   "dayN": "day {{day}}",
   "chooseDayOfMonth": "Choose the day to make the contribution",
   "nextContribution": "next {{date}}",
-  "everyMonth": "€ per month",
+  "everyMonth": "{{amount}} {{symbol}} per month",
+  "thisMonthAdded": "+{{amount}}{{symbol}} this month",
   "addMoney": "+ Add to goal",
   "addMoneyTitle": "Add money",
   "withdrawMoneyTitle": "Withdraw money",
