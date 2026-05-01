@@ -138,9 +138,14 @@ const WalkthroughOverlay = () => {
         ? step.spotlightShape + SPOTLIGHT_PADDING
         : SPOTLIGHT_RADIUS_DEFAULT;
 
-  // Decidir posición del tooltip (arriba o abajo del target)
+  // Decidir posición del tooltip (arriba o abajo del target).
+  // Usamos overlaySize.h (medido real del Modal) en vez de screenH porque en Android
+  // edge-to-edge el Modal es más alto que Dimensions.get('window').height, y padY/padH
+  // de los targets de tab se calculan contra overlaySize.h. Mezclar ambos hace que el
+  // anclaje por `bottom` quede fuera de pantalla y el tooltip tape la barra inferior.
+  const overlayH = overlaySize.h;
   const tooltipMaxW = screenW - TOOLTIP_MARGIN * 2;
-  const spaceBelow = targetRect ? screenH - (padY + padH) - insets.bottom - TOOLTIP_GAP : screenH;
+  const spaceBelow = targetRect ? overlayH - (padY + padH) - insets.bottom - TOOLTIP_GAP : overlayH;
   const spaceAbove = targetRect ? padY - insets.top - TOOLTIP_GAP : 0;
   const placeBelow = targetRect ? spaceBelow >= spaceAbove : true;
 
@@ -149,10 +154,10 @@ const WalkthroughOverlay = () => {
   //   sin estirar hasta el fondo (así no queda demasiado bajo).
   // - Si va ARRIBA: anclado por `bottom` para que el borde inferior quede sobre el recorte.
   const tooltipPlacement: { top?: number; bottom?: number } = !targetRect
-    ? { top: screenH / 2 - 100 }
+    ? { top: overlayH / 2 - 100 }
     : placeBelow
       ? { top: padY + padH + 28 }
-      : { bottom: screenH - (padY - TOOLTIP_GAP) };
+      : { bottom: Math.max(insets.bottom + TOOLTIP_GAP, overlayH - (padY - TOOLTIP_GAP)) };
 
   const overlayColor = 'rgba(0,0,0,0.78)';
 
