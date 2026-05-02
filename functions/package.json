@@ -1,0 +1,22 @@
+{
+  "name": "functions",
+  "description": "MoFlo Firebase Cloud Functions",
+  "private": true,
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.1.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

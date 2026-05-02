@@ -15,6 +15,7 @@ import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useSavingsStore } from '../store/savingsStore';
 import { processQueue } from '../services/syncQueue.service';
+import { setupPushTokens } from '../services/firebase/pushTokens.service';
 
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
@@ -31,6 +32,7 @@ const RootNavigator = () => {
     await loadPremium();
     await loadCategories();
     await loadSharedAccount();
+    setupPushTokens().catch((e) => console.warn('setupPushTokens error', e));
 
     const { isSharedMode: shared, sharedAccount: account } = useSharedAccountStore.getState();
 

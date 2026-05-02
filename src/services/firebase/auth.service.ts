@@ -10,6 +10,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
+import { clearPushTokens } from './pushTokens.service';
 
 GoogleSignin.configure({
   webClientId: '376703221466-iovth1ic0v85o741s0k6sms9141h35fn.apps.googleusercontent.com',
@@ -44,6 +45,11 @@ export const loginWithGoogle = async () => {
 
 export const logout = async () => {
   const uid = auth().currentUser?.uid;
+
+  // 0. Borra el token FCM de este dispositivo en Firestore para no recibir más pushes
+  if (uid) {
+    try { await clearPushTokens(uid); } catch {}
+  }
 
   // 1. Cancela listeners PRIMERO antes de todo
   useSharedAccountStore.getState().unsubscribeAll();
