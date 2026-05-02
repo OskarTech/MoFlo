@@ -69,7 +69,7 @@ interface SavingsStore {
   loadHuchas: () => Promise<void>;
   loadSharedHuchas: (accountId: string) => Promise<void>;
   loadHuchaMovements: (accountId?: string | null) => Promise<void>;
-  createHucha: (data: Omit<Hucha, 'id' | 'currentAmount' | 'createdAt'>) => Promise<void>;
+  createHucha: (data: Omit<Hucha, 'id' | 'createdAt'> & { currentAmount?: number }) => Promise<void>;
   updateHucha: (id: string, data: Partial<Hucha>) => Promise<void>;
   addToHucha: (huchaId: string, amount: number, type?: HuchaMovementType) => Promise<void>;
   deleteHucha: (id: string) => Promise<void>;
@@ -189,10 +189,14 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       ? computeNextContributionDate(data.recurringDay ?? 1)
       : undefined;
 
+    const initialAmount = typeof data.currentAmount === 'number' && data.currentAmount > 0
+      ? data.currentAmount
+      : 0;
+
     const hucha: Hucha = {
       ...data,
       id,
-      currentAmount: 0,
+      currentAmount: initialAmount,
       createdAt: new Date().toISOString(),
       ...(uid ? { addedBy: uid } : {}),
       ...(nextContribDate ? { nextContributionDate: nextContribDate } : {}),

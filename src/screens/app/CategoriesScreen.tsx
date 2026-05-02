@@ -14,34 +14,93 @@ import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { name: 'home', icon: 'home' },
+  { name: 'business', icon: 'business' },
+  { name: 'bed', icon: 'bed' },
+  { name: 'construct', icon: 'construct' },
+  { name: 'car', icon: 'car' },
+  { name: 'bicycle', icon: 'bicycle' },
+  { name: 'bus', icon: 'bus' },
+  { name: 'boat', icon: 'boat' },
+  { name: 'airplane', icon: 'airplane' },
+  { name: 'rocket', icon: 'rocket' },
+  { name: 'train', icon: 'train' },
+  { name: 'map', icon: 'map' },
+  { name: 'gift', icon: 'gift' },
+  { name: 'heart', icon: 'heart' },
+  { name: 'star', icon: 'star' },
+  { name: 'sparkles', icon: 'sparkles' },
+  { name: 'trophy', icon: 'trophy' },
+  { name: 'medal', icon: 'medal' },
+  { name: 'ribbon', icon: 'ribbon' },
+  { name: 'diamond', icon: 'diamond' },
+  { name: 'school', icon: 'school' },
+  { name: 'library', icon: 'library' },
+  { name: 'book', icon: 'book' },
   { name: 'briefcase', icon: 'briefcase' },
   { name: 'laptop', icon: 'laptop' },
-  { name: 'trending-up', icon: 'trending-up' },
-  { name: 'gift', icon: 'gift' },
-  { name: 'home', icon: 'home' },
-  { name: 'restaurant', icon: 'restaurant' },
-  { name: 'car', icon: 'car' },
-  { name: 'medical', icon: 'medical' },
-  { name: 'game-controller', icon: 'game-controller' },
-  { name: 'bag', icon: 'bag' },
-  { name: 'school', icon: 'school' },
-  { name: 'receipt', icon: 'receipt' },
-  { name: 'shield', icon: 'shield' },
-  { name: 'umbrella', icon: 'umbrella' },
-  { name: 'airplane', icon: 'airplane' },
-  { name: 'fitness', icon: 'fitness' },
-  { name: 'cafe', icon: 'cafe' },
+  { name: 'desktop', icon: 'desktop' },
+  { name: 'tablet-portrait', icon: 'tablet-portrait' },
   { name: 'phone-portrait', icon: 'phone-portrait' },
+  { name: 'watch', icon: 'watch' },
+  { name: 'headset', icon: 'headset' },
+  { name: 'game-controller', icon: 'game-controller' },
+  { name: 'tv', icon: 'tv' },
+  { name: 'camera', icon: 'camera' },
+  { name: 'videocam', icon: 'videocam' },
+  { name: 'image', icon: 'image' },
+  { name: 'film', icon: 'film' },
   { name: 'musical-notes', icon: 'musical-notes' },
-  { name: 'paw', icon: 'paw' },
-  { name: 'cut', icon: 'cut' },
+  { name: 'mic', icon: 'mic' },
+  { name: 'restaurant', icon: 'restaurant' },
+  { name: 'pizza', icon: 'pizza' },
+  { name: 'fast-food', icon: 'fast-food' },
+  { name: 'cafe', icon: 'cafe' },
   { name: 'wine', icon: 'wine' },
-  { name: 'bicycle', icon: 'bicycle' },
-  { name: 'book', icon: 'book' },
-  { name: 'heart', icon: 'heart' },
+  { name: 'beer', icon: 'beer' },
+  { name: 'ice-cream', icon: 'ice-cream' },
+  { name: 'nutrition', icon: 'nutrition' },
   { name: 'cart', icon: 'cart' },
+  { name: 'bag', icon: 'bag' },
+  { name: 'basket', icon: 'basket' },
+  { name: 'pricetag', icon: 'pricetag' },
+  { name: 'shirt', icon: 'shirt' },
+  { name: 'glasses', icon: 'glasses' },
+  { name: 'cut', icon: 'cut' },
+  { name: 'brush', icon: 'brush' },
+  { name: 'color-palette', icon: 'color-palette' },
+  { name: 'color-wand', icon: 'color-wand' },
+  { name: 'flower', icon: 'flower' },
+  { name: 'leaf', icon: 'leaf' },
+  { name: 'paw', icon: 'paw' },
+  { name: 'fish', icon: 'fish' },
+  { name: 'man', icon: 'man' },
+  { name: 'woman', icon: 'woman' },
+  { name: 'people', icon: 'people' },
+  { name: 'person', icon: 'person' },
+  { name: 'fitness', icon: 'fitness' },
+  { name: 'barbell', icon: 'barbell' },
+  { name: 'football', icon: 'football' },
+  { name: 'basketball', icon: 'basketball' },
+  { name: 'tennisball', icon: 'tennisball' },
+  { name: 'american-football', icon: 'american-football' },
+  { name: 'medical', icon: 'medical' },
+  { name: 'pulse', icon: 'pulse' },
+  { name: 'bandage', icon: 'bandage' },
+  { name: 'umbrella', icon: 'umbrella' },
+  { name: 'sunny', icon: 'sunny' },
+  { name: 'snow', icon: 'snow' },
+  { name: 'partly-sunny', icon: 'partly-sunny' },
   { name: 'cash', icon: 'cash' },
   { name: 'card', icon: 'card' },
+  { name: 'wallet', icon: 'wallet' },
+  { name: 'trending-up', icon: 'trending-up' },
+  { name: 'receipt', icon: 'receipt' },
+  { name: 'shield', icon: 'shield' },
+  { name: 'balloon', icon: 'balloon' },
+  { name: 'planet', icon: 'planet' },
+  { name: 'earth', icon: 'earth' },
+  { name: 'globe', icon: 'globe' },
   { name: 'ellipsis-horizontal', icon: 'ellipsis-horizontal' },
 ];
 
@@ -135,28 +194,35 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
             <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>
               {t('categories.icon')}
             </Text>
-            <View style={styles.iconsGrid}>
-              {AVAILABLE_ICONS.map((item) => (
-                <TouchableOpacity
-                  key={item.name}
-                  style={[
-                    styles.iconOption,
-                    { backgroundColor: dc.surface, borderColor: dc.border },
-                    selectedIcon === item.name && {
-                      backgroundColor: TYPE_COLORS[selectedType],
-                      borderColor: TYPE_COLORS[selectedType],
-                    },
-                  ]}
-                  onPress={() => setSelectedIcon(item.name)}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={22}
-                    color={selectedIcon === item.name ? '#FFFFFF' : dc.textSecondary}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.iconsScroll}
+              contentContainerStyle={styles.iconsScrollContent}
+            >
+              <View style={styles.iconsGrid}>
+                {AVAILABLE_ICONS.map((item) => (
+                  <TouchableOpacity
+                    key={item.name}
+                    style={[
+                      styles.iconOption,
+                      { backgroundColor: dc.surface, borderColor: dc.border },
+                      selectedIcon === item.name && {
+                        backgroundColor: TYPE_COLORS[selectedType],
+                        borderColor: TYPE_COLORS[selectedType],
+                      },
+                    ]}
+                    onPress={() => setSelectedIcon(item.name)}
+                  >
+                    <Ionicons
+                      name={item.icon}
+                      size={22}
+                      color={selectedIcon === item.name ? '#FFFFFF' : dc.textSecondary}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
 
             {/* BOTONES */}
             <View style={styles.buttons}>
@@ -427,7 +493,15 @@ const styles = StyleSheet.create({
   },
   typeChipText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   nameInput: { marginBottom: 20 },
-  iconsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
+  iconsScroll: { marginHorizontal: -24, marginBottom: 24 },
+  iconsScrollContent: { paddingHorizontal: 24 },
+  iconsGrid: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    height: 48 * 3 + 10 * 2,
+    alignContent: 'flex-start',
+    gap: 10,
+  },
   iconOption: {
     width: 48, height: 48, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center', borderWidth: 0.5,

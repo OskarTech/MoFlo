@@ -13,6 +13,9 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
+import { usePremium } from '../../hooks/usePremium';
+import PremiumModal from '../common/PremiumModal';
+import { navigationRef } from '../../navigation/RootNavigator';
 import { MovementType, RecurringMovement } from '../../types';
 
 interface Props {
@@ -26,8 +29,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const { addRecurringMovement } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { getCategoriesForType, getCategoryName } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  const { isSharedMode, sharedAccount, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
+  const { showModal: showPremiumModal, setShowModal: setShowPremiumModal, requirePremium } = usePremium();
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>('expense');
@@ -109,6 +113,20 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     categoryScrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
 
+  const handleAddCategoryPress = () => {
+    requirePremium(() => {
+      handleDismiss();
+      if (isSharedMode && sharedAccount) {
+        navigationRef.navigate('Settings', {
+          screen: 'SharedCategories',
+          params: { accountId: sharedAccount.id },
+        });
+      } else {
+        navigationRef.navigate('Settings', { screen: 'Categories' });
+      }
+    });
+  };
+
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount.replace(',', '.'));
     const day = parseInt(recurringDay);
@@ -138,6 +156,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     parseInt(recurringDay) <= 31;
 
   return (
+    <>
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
       <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
@@ -276,6 +295,15 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[
+                  styles.addCategoryChip,
+                  { backgroundColor: typeColor + '15', borderColor: typeColor },
+                ]}
+                onPress={handleAddCategoryPress}
+              >
+                <Ionicons name="add" size={20} color={typeColor} />
+              </TouchableOpacity>
             </ScrollView>
 
             {/* BOTONES */}
@@ -303,6 +331,12 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
         </View>
       </Animated.View>
     </Modal>
+    <PremiumModal
+      visible={showPremiumModal}
+      onDismiss={() => setShowPremiumModal(false)}
+      onPurchase={() => setShowPremiumModal(false)}
+    />
+    </>
   );
 };
 
@@ -329,6 +363,12 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, marginRight: 8,
   },
   categoryChipText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+  addCategoryChip: {
+    width: 40, height: 40,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 20, borderWidth: 1, borderStyle: 'dashed',
+    marginRight: 8,
+  },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },
   saveButton: { flex: 2 },

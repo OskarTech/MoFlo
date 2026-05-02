@@ -354,34 +354,26 @@ const AnnualScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.monthRow}
         >
-          {monthChips.map(({ month, year }, i) => {
+          {monthChips.map(({ month, year }) => {
             const isSelected = month === selectedMonth && year === selectedYear;
-            const prev = monthChips[i - 1];
-            const showYear = i > 0 && prev && prev.year !== year;
             return (
-              <React.Fragment key={`${year}-${month}`}>
-                {showYear && (
-                  <View style={[styles.monthChip, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                    <Text style={[styles.monthChipText, { color: dc.textSecondary }]}>{year}</Text>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={[
-                    styles.monthChip,
-                    { backgroundColor: dc.surface, borderColor: dc.border },
-                    isSelected && { backgroundColor: dc.primary, borderColor: dc.primary },
-                  ]}
-                  onPress={() => selectPeriod(month, year)}
-                >
-                  <Text style={[
-                    styles.monthChipText,
-                    { color: dc.textSecondary },
-                    isSelected && { color: '#FFFFFF' },
-                  ]}>
-                    {shortMonth(month)}
-                  </Text>
-                </TouchableOpacity>
-              </React.Fragment>
+              <TouchableOpacity
+                key={`${year}-${month}`}
+                style={[
+                  styles.monthChip,
+                  { backgroundColor: dc.surface, borderColor: dc.border },
+                  isSelected && { backgroundColor: dc.primary, borderColor: dc.primary },
+                ]}
+                onPress={() => selectPeriod(month, year)}
+              >
+                <Text style={[
+                  styles.monthChipText,
+                  { color: dc.textSecondary },
+                  isSelected && { color: '#FFFFFF' },
+                ]}>
+                  {shortMonth(month)}
+                </Text>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>

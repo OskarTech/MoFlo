@@ -17,8 +17,30 @@ import { Hucha } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 const PRESET_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
-  'home-outline', 'car-outline', 'airplane-outline', 'gift-outline',
-  'heart-outline', 'school-outline', 'trophy-outline', 'restaurant-outline',
+  'home-outline', 'business-outline', 'bed-outline', 'construct-outline',
+  'car-outline', 'bicycle-outline', 'bus-outline', 'boat-outline',
+  'airplane-outline', 'rocket-outline', 'train-outline', 'map-outline',
+  'gift-outline', 'heart-outline', 'star-outline', 'sparkles-outline',
+  'trophy-outline', 'medal-outline', 'ribbon-outline', 'diamond-outline',
+  'school-outline', 'library-outline', 'book-outline', 'briefcase-outline',
+  'restaurant-outline', 'pizza-outline', 'fast-food-outline', 'cafe-outline',
+  'wine-outline', 'beer-outline', 'ice-cream-outline', 'nutrition-outline',
+  'cart-outline', 'bag-outline', 'basket-outline', 'pricetag-outline',
+  'shirt-outline', 'glasses-outline', 'cut-outline', 'brush-outline',
+  'color-palette-outline', 'color-wand-outline', 'flower-outline', 'leaf-outline',
+  'paw-outline', 'fish-outline',
+  'man-outline', 'woman-outline', 'people-outline', 'person-outline',
+  'fitness-outline', 'barbell-outline', 'football-outline', 'basketball-outline',
+  'tennisball-outline', 'american-football-outline',
+  'medical-outline', 'pulse-outline', 'bandage-outline',
+  'laptop-outline', 'desktop-outline', 'tablet-portrait-outline', 'phone-portrait-outline',
+  'watch-outline', 'headset-outline', 'game-controller-outline', 'tv-outline',
+  'camera-outline', 'videocam-outline', 'image-outline', 'film-outline',
+  'musical-notes-outline', 'mic-outline',
+  'umbrella-outline', 'sunny-outline', 'snow-outline', 'partly-sunny-outline',
+  'cash-outline', 'card-outline', 'wallet-outline',
+  'planet-outline', 'earth-outline', 'globe-outline',
+  'balloon-outline',
 ];
 
 const PRESET_COLORS = [
@@ -151,6 +173,7 @@ const CreateHuchaModal = ({
   const [selectedIcon, setSelectedIcon] = useState<keyof typeof Ionicons.glyphMap>('trophy-outline');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [targetAmount, setTargetAmount] = useState('');
+  const [initialAmount, setInitialAmount] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const reset = () => {
@@ -158,6 +181,7 @@ const CreateHuchaModal = ({
     setSelectedIcon('trophy-outline');
     setSelectedColor(PRESET_COLORS[0]);
     setTargetAmount('');
+    setInitialAmount('');
     setIsSaving(false);
   };
 
@@ -166,19 +190,22 @@ const CreateHuchaModal = ({
     onDismiss();
   };
 
-  const isValid = name.trim().length > 0 &&
-    parseFloat(targetAmount.replace(',', '.')) > 0;
+  const parsedTarget = parseFloat(targetAmount.replace(',', '.'));
+  const parsedInitial = parseFloat(initialAmount.replace(',', '.'));
+  const initialValue = !isNaN(parsedInitial) && parsedInitial > 0 ? parsedInitial : 0;
+  const initialExceedsTarget = initialValue > 0 && parsedTarget > 0 && initialValue > parsedTarget;
+  const isValid = name.trim().length > 0 && parsedTarget > 0 && !initialExceedsTarget;
 
   const handleSave = async () => {
     if (isSaving) return;
     setIsSaving(true);
-    const target = parseFloat(targetAmount.replace(',', '.'));
 
     await createHucha({
       name: name.trim(),
       icon: selectedIcon,
       color: selectedColor,
-      targetAmount: target,
+      targetAmount: parsedTarget,
+      currentAmount: initialValue,
       isAutomatic: false,
     });
     setIsSaving(false);
@@ -223,28 +250,52 @@ const CreateHuchaModal = ({
               maxLength={40}
             />
 
+            <TextInput
+              style={[styles.input, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary, marginBottom: 6 }]}
+              placeholder={t('hucha.initialAmount', { symbol: currencySymbol })}
+              placeholderTextColor={dc.textSecondary}
+              keyboardType="decimal-pad"
+              value={initialAmount}
+              onChangeText={setInitialAmount}
+            />
+            <Text style={[styles.initialHint, { color: dc.textSecondary }]}>
+              {t('hucha.initialAmountHint')}
+            </Text>
+            {initialExceedsTarget && (
+              <Text style={styles.initialError}>
+                {t('hucha.invalidTargetAmount')}
+              </Text>
+            )}
+
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
               {t('hucha.chooseIcon')}
             </Text>
-            <View style={styles.iconGrid}>
-              {PRESET_ICONS.map(icon => (
-                <TouchableOpacity
-                  key={icon}
-                  style={[
-                    styles.iconOption,
-                    { backgroundColor: selectedIcon === icon ? selectedColor + '25' : dc.background,
-                      borderColor: selectedIcon === icon ? selectedColor : dc.border },
-                  ]}
-                  onPress={() => setSelectedIcon(icon)}
-                >
-                  <Ionicons
-                    name={icon}
-                    size={22}
-                    color={selectedIcon === icon ? selectedColor : dc.textSecondary}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.iconScroll}
+              contentContainerStyle={styles.iconScrollContent}
+            >
+              <View style={styles.iconGrid}>
+                {PRESET_ICONS.map(icon => (
+                  <TouchableOpacity
+                    key={icon}
+                    style={[
+                      styles.iconOption,
+                      { backgroundColor: selectedIcon === icon ? selectedColor + '25' : dc.background,
+                        borderColor: selectedIcon === icon ? selectedColor : dc.border },
+                    ]}
+                    onPress={() => setSelectedIcon(icon)}
+                  >
+                    <Ionicons
+                      name={icon}
+                      size={22}
+                      color={selectedIcon === icon ? selectedColor : dc.textSecondary}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
 
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
               {t('hucha.chooseColor')}
@@ -500,8 +551,18 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.5,
     marginBottom: 10, marginTop: 4,
   },
+  iconScroll: {
+    marginHorizontal: -24, marginBottom: 16,
+  },
+  iconScrollContent: {
+    paddingHorizontal: 24,
+  },
   iconGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16,
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    height: 48 * 3 + 8 * 2,
+    alignContent: 'flex-start',
+    gap: 8,
   },
   iconOption: {
     width: 48, height: 48, borderRadius: 12,
@@ -517,6 +578,14 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 12, paddingHorizontal: 14,
     paddingVertical: 12, fontSize: 15, fontFamily: 'Poppins_400Regular',
     marginBottom: 12,
+  },
+  initialHint: {
+    fontSize: 11, fontFamily: 'Poppins_400Regular',
+    marginBottom: 12, marginHorizontal: 4, lineHeight: 15,
+  },
+  initialError: {
+    fontSize: 12, fontFamily: 'Poppins_400Regular',
+    color: '#EF4444', marginBottom: 8, marginHorizontal: 4,
   },
   sheetButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },

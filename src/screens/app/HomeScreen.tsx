@@ -216,9 +216,11 @@ const HomeScreen = () => {
             <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
               {t('home.whereMoneyGoes')}
             </Text>
-            <Text style={[styles.sectionMonth, { color: dc.textSecondary }]}>
-              {t(`home.month_${summary.month - 1}`)}
-            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AnnualTab')} activeOpacity={0.7}>
+              <Text style={[styles.seeAllText, { color: dc.textSecondary }]}>
+                {t('home.seeAll')}
+              </Text>
+            </TouchableOpacity>
           </View>
           {topExpenseCategories.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
