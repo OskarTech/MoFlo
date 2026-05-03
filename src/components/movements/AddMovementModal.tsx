@@ -47,6 +47,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const categoryScrollRef = useRef<ScrollView>(null);
   const categoryPositions = useRef<{ [key: string]: number }>({});
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -130,9 +131,12 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    if (isSavingRef.current) return;
     const parsedAmount = parseFloat(amount.replace(',', '.'));
     if (!parsedAmount || parsedAmount <= 0) return;
+
+    isSavingRef.current = true;
 
     const movement: Movement = {
       id: Date.now().toString(),
@@ -147,7 +151,9 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
       createdAt: new Date().toISOString(),
     };
 
-    await addMovement(movement);
+    addMovement(movement).finally(() => {
+      isSavingRef.current = false;
+    });
     handleDismiss();
   };
 

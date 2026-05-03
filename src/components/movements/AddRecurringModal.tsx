@@ -43,6 +43,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
   const sheetOffset = useRef(new Animated.Value(0)).current;
   const categoryScrollRef = useRef<ScrollView>(null);
   const categoryPositions = useRef<{ [key: string]: number }>({});
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -127,11 +128,14 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    if (isSavingRef.current) return;
     const parsedAmount = parseFloat(amount.replace(',', '.'));
     const day = parseInt(recurringDay);
     if (!parsedAmount || parsedAmount <= 0) return;
     if (!day || day < 1 || day > 31) return;
+
+    isSavingRef.current = true;
 
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
@@ -146,7 +150,9 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
       createdAt: new Date().toISOString(),
     };
 
-    await addRecurringMovement(newRecurring);
+    addRecurringMovement(newRecurring).finally(() => {
+      isSavingRef.current = false;
+    });
     handleDismiss();
   };
 

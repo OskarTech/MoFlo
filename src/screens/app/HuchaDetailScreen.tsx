@@ -65,6 +65,7 @@ const AddMoneyModal = ({
   const { colors: dc, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const sheetOffset = useRef(new Animated.Value(0)).current;
+  const isSavingRef = useRef(false);
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState<HuchaMovementType>('deposit');
 
@@ -88,13 +89,16 @@ const AddMoneyModal = ({
   }, [sheetOffset, insets.bottom]);
 
   const handleConfirm = () => {
+    if (isSavingRef.current) return;
     const parsed = parseFloat(amount.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
     if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
     if (mode === 'deposit' && parsed > availableBalance) return;
+    isSavingRef.current = true;
     onConfirm(parsed, mode);
     setAmount('');
     setMode('deposit');
+    setTimeout(() => { isSavingRef.current = false; }, 600);
   };
 
   const handleDismiss = () => {
@@ -409,13 +413,13 @@ const HuchaDetailScreen = () => {
     await addToHucha(hucha.id, amount, 'deposit');
   };
 
-  const handleAddMoney = async (amount: number, type: HuchaMovementType) => {
+  const handleAddMoney = (amount: number, type: HuchaMovementType) => {
     if (type === 'deposit' && amount > availableBalance) {
       Alert.alert(t('hucha.insufficientFunds'));
       return;
     }
     setShowAddMoneyModal(false);
-    await addToHucha(hucha.id, amount, type);
+    addToHucha(hucha.id, amount, type);
   };
 
   const handleToggleAutomatic = async (value: boolean) => {

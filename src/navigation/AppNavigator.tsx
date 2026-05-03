@@ -8,6 +8,7 @@ import MovementsScreen from '../screens/app/MovementsScreen';
 import AnnualScreen from '../screens/app/AnnualScreen';
 import HuchaScreen from '../screens/app/HuchaScreen';
 import HuchaDetailScreen from '../screens/app/HuchaDetailScreen';
+import CreateHuchaScreen from '../screens/app/CreateHuchaScreen';
 import { useSavingsStore } from '../store/savingsStore';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
@@ -38,6 +39,7 @@ const HuchaNavigator = () => (
   <HuchaStack.Navigator screenOptions={{ headerShown: false }}>
     <HuchaStack.Screen name="HuchaMain" component={HuchaScreen} />
     <HuchaStack.Screen name="HuchaDetail" component={HuchaDetailScreen} />
+    <HuchaStack.Screen name="CreateHucha" component={CreateHuchaScreen} />
   </HuchaStack.Navigator>
 );
 
@@ -94,7 +96,9 @@ const AppNavigator = () => {
       if (!isPremium && activeCount >= 1) {
         setPremiumModalVisible(true);
       } else {
-        useSavingsStore.getState().setShowCreateModal(true);
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('HuchaTab', { screen: 'CreateHucha' });
+        }
       }
     } else if (current === 'HuchaDetail') {
       useSavingsStore.getState().setShowAddMoneyModal(true);
@@ -188,7 +192,7 @@ const AppNavigator = () => {
         <Tab.Screen
           name="HuchaTab"
           component={HuchaNavigator}
-          options={{ tabBarLabel: t('tabs.hucha') }}
+          options={{ tabBarLabel: t('tabs.hucha'), tabBarHideOnKeyboard: true }}
         />
 
         {/* TABS OCULTOS */}
