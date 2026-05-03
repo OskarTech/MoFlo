@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import * as Notifications from 'expo-notifications';
 import { Hucha, HuchaMovement, HuchaMovementType } from '../types';
 import { maybePromptForRating } from '../utils/rateAppPrompt';
 import { useMovementStore } from './movementStore';
+import i18n from '../i18n';
 
 const STORAGE_KEY = '@moflo_huchas';
 const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
@@ -107,7 +109,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
   getTotalTarget: () =>
     get().huchas
-      .filter(h => !h.closedAt)
+      .filter(h => !h.closedAt && h.targetAmount > 0)
       .reduce((acc, h) => acc + h.targetAmount, 0),
 
   getAvailableBalance: () => {
@@ -276,6 +278,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
     const movId = `hm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date().toISOString();
+    const uid = auth().currentUser?.uid;
     const huchaMovement: HuchaMovement = {
       id: movId,
       huchaId,
@@ -285,6 +288,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       amount,
       date: now,
       createdAt: now,
+      ...(uid ? { addedBy: uid } : {}),
     };
 
     const updatedMovements = [huchaMovement, ...get().huchaMovements];
@@ -419,9 +423,12 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       if (h.closedAt) continue;
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
       if (new Date(h.nextContributionDate) > now) continue;
-      if (h.currentAmount >= h.targetAmount) continue;
+      const hasTarget = h.targetAmount > 0;
+      if (hasTarget && h.currentAmount >= h.targetAmount) continue;
 
-      const contribution = Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount);
+      const contribution = hasTarget
+        ? Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount)
+        : h.monthlyAmount;
       if (contribution <= 0) continue;
       if (contribution > availableBalance) continue;
 
@@ -485,7 +492,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         const movRef = movementsCol.doc(c.movement.id);
         await firestore().runTransaction(async (tx) => {
           const movSnap = await tx.get(movRef);
-          if (movSnap.exists) return;
+          if (movSnap.exists()) return;
           tx.set(movRef, c.movement);
           tx.set(huchaRef, {
             currentAmount: firestore.FieldValue.increment(c.contribution),
@@ -522,12 +529,37 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
   subscribeToSharedHuchaMovements: (accountId) => {
     if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
 
+    let isFirstSnapshot = true;
     unsubscribeSharedMovements = getSharedMovementsCol(accountId)
       .orderBy('createdAt', 'desc')
       .onSnapshot((snap) => {
         const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
         set({ huchaMovements: movements });
         AsyncStorage.setItem(SHARED_MOV_STORAGE_KEY, JSON.stringify(movements));
+
+        if (!isFirstSnapshot) {
+          const currentUid = auth().currentUser?.uid;
+          // Lazy require to avoid circular import at module load time.
+          const { useSharedAccountStore } = require('./sharedAccountStore');
+          const { notificationsEnabled, sharedAccount } = useSharedAccountStore.getState();
+          if (notificationsEnabled && currentUid) {
+            snap.docChanges().forEach((change) => {
+              if (change.type !== 'added') return;
+              const movement = change.doc.data() as HuchaMovement;
+              if (!movement.addedBy || movement.addedBy === currentUid) return;
+              const authorName = sharedAccount?.memberNames?.[movement.addedBy]
+                ?? i18n.t('sharedAccount.someone');
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: i18n.t('sharedAccount.notifMovementTitle'),
+                  body: i18n.t('sharedAccount.notifMovementBody', { name: authorName }),
+                },
+                trigger: null,
+              }).catch(() => {});
+            });
+          }
+        }
+        isFirstSnapshot = false;
       }, (e) => {
         console.error('Error listening to shared hucha movements:', e);
       });

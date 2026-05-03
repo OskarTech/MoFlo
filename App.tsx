@@ -2,7 +2,7 @@ import './src/i18n';
 import React, { useEffect } from 'react';
 import { MD3LightTheme, MD3DarkTheme, PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, useColorScheme } from 'react-native';
+import { AppState, Linking, useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {
   useFonts, Poppins_400Regular, Poppins_500Medium,
@@ -116,6 +116,16 @@ export default function App() {
       if (response) handleResponse(response);
     });
 
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    Notifications.setBadgeCountAsync(0).catch(() => {});
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        Notifications.setBadgeCountAsync(0).catch(() => {});
+      }
+    });
     return () => sub.remove();
   }, []);
 

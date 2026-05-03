@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, StyleSheet, Modal, ScrollView,
   TouchableOpacity, Keyboard, Animated, Platform,
@@ -27,7 +27,7 @@ interface Props {
 const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
-  const { addMovement } = useMovementStore();
+  const { addMovement, movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const { getCategoriesForType, getCategoryName } = useCategoryStore();
   const { isSharedMode, sharedAccount, getSharedCurrencySymbol } = useSharedAccountStore();
@@ -36,10 +36,6 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>(initialType ?? 'expense');
-
-  useEffect(() => {
-    if (visible && initialType) setType(initialType);
-  }, [visible, initialType]);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
@@ -79,9 +75,33 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
 
-  const categoryList = isSharedMode
-    ? getSharedCategoriesForType(type)
-    : getCategoriesForType(type);
+  const getSortedCategoriesForType = (tp: MovementType) => {
+    const list = isSharedMode
+      ? getSharedCategoriesForType(tp)
+      : getCategoriesForType(tp);
+    const counts = new Map<string, number>();
+    for (const m of movements) {
+      if (m.type === tp) counts.set(m.category, (counts.get(m.category) ?? 0) + 1);
+    }
+    return [...list].sort(
+      (a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0)
+    );
+  };
+
+  const categoryList = useMemo(
+    () => getSortedCategoriesForType(type),
+    [movements, type, isSharedMode]
+  );
+
+  useEffect(() => {
+    if (!visible) return;
+    const newType = initialType ?? type;
+    if (initialType && initialType !== type) setType(initialType);
+    const sorted = getSortedCategoriesForType(newType);
+    setCategoryId(sorted[0]?.id ?? 'other');
+    categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, initialType]);
 
   const getCatName = (id: string, tp: MovementType) =>
     isSharedMode
@@ -104,10 +124,8 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
 
   const handleTypeChange = (newType: MovementType) => {
     setType(newType);
-    const cats = isSharedMode
-      ? getSharedCategoriesForType(newType)
-      : getCategoriesForType(newType);
-    setCategoryId(cats[0]?.id ?? 'other');
+    const sorted = getSortedCategoriesForType(newType);
+    setCategoryId(sorted[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
   };
 

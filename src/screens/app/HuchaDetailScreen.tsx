@@ -264,17 +264,18 @@ const HuchaDetailScreen = () => {
   const [editTarget, setEditTarget] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const pct = hucha && hucha.targetAmount > 0
-    ? Math.min((hucha.currentAmount / hucha.targetAmount) * 100, 100)
+  const hasTarget = !!hucha && hucha.targetAmount > 0;
+  const pct = hasTarget
+    ? Math.min((hucha!.currentAmount / hucha!.targetAmount) * 100, 100)
     : 0;
 
   useEffect(() => {
     Animated.timing(fillAnim, {
-      toValue: pct,
+      toValue: hasTarget ? pct : 100,
       duration: 900,
       useNativeDriver: false,
     }).start();
-  }, [pct]);
+  }, [pct, hasTarget]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -315,8 +316,8 @@ const HuchaDetailScreen = () => {
     .filter(m => m.huchaId === hucha.id)
     .slice(0, 4);
 
-  const remaining = Math.max(hucha.targetAmount - hucha.currentAmount, 0);
-  const monthsEstimate = hucha.isAutomatic && hucha.monthlyAmount && hucha.monthlyAmount > 0
+  const remaining = hasTarget ? Math.max(hucha.targetAmount - hucha.currentAmount, 0) : 0;
+  const monthsEstimate = hasTarget && hucha.isAutomatic && hucha.monthlyAmount && hucha.monthlyAmount > 0
     ? Math.ceil(remaining / hucha.monthlyAmount)
     : null;
 
@@ -390,17 +391,23 @@ const HuchaDetailScreen = () => {
 
   const parsedEditTarget = parseFloat(editTarget.replace(',', '.'));
   const trimmedEditName = editName.trim();
-  const editTargetTooLow = !isNaN(parsedEditTarget) && parsedEditTarget < hucha.currentAmount;
-  const editChanged = trimmedEditName !== hucha.name || parsedEditTarget !== hucha.targetAmount;
-  const editValid = trimmedEditName.length > 0 && parsedEditTarget > 0 && !editTargetTooLow && editChanged;
+  const editTargetTooLow = hasTarget
+    && !isNaN(parsedEditTarget)
+    && parsedEditTarget < hucha.currentAmount;
+  const editChanged = hasTarget
+    ? (trimmedEditName !== hucha.name || parsedEditTarget !== hucha.targetAmount)
+    : trimmedEditName !== hucha.name;
+  const editValid = hasTarget
+    ? (trimmedEditName.length > 0 && parsedEditTarget > 0 && !editTargetTooLow && editChanged)
+    : (trimmedEditName.length > 0 && editChanged);
 
   const handleSaveEdit = async () => {
     if (!editValid || isSavingEdit) return;
     setIsSavingEdit(true);
-    await updateHucha(hucha.id, {
-      name: trimmedEditName,
-      targetAmount: parsedEditTarget,
-    });
+    await updateHucha(hucha.id, hasTarget
+      ? { name: trimmedEditName, targetAmount: parsedEditTarget }
+      : { name: trimmedEditName }
+    );
     setIsSavingEdit(false);
     setShowActionsMenu(false);
   };
@@ -503,15 +510,23 @@ const HuchaDetailScreen = () => {
         showsVerticalScrollIndicator={false}
         onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Liquid fill */}
         <View style={styles.fillWrapper}>
           <View style={[styles.fillContainer, { backgroundColor: dc.border }]}>
             <Animated.View
-              style={[styles.fillBar, { height: fillHeight, backgroundColor: hucha.color }]}
+              style={[
+                styles.fillBar,
+                { height: fillHeight, backgroundColor: hucha.color, opacity: hasTarget ? 1 : 0.55 },
+              ]}
             />
             <View style={styles.fillOverlay}>
-              <Text style={styles.fillPct}>{Math.round(pct)}%</Text>
+              {hasTarget ? (
+                <Text style={styles.fillPct}>{Math.round(pct)}%</Text>
+              ) : (
+                <Ionicons name="infinite" size={48} color="#fff" />
+              )}
             </View>
           </View>
         </View>
@@ -530,9 +545,15 @@ const HuchaDetailScreen = () => {
           <Text style={[styles.currentAmount, { color: dc.textPrimary }]}>
             {hucha.currentAmount.toFixed(2)}
           </Text>
-          <Text style={[styles.targetAmount, { color: dc.textSecondary }]}>
-            {'/'}{hucha.targetAmount.toFixed(2)} {currencySymbol}
-          </Text>
+          {hasTarget ? (
+            <Text style={[styles.targetAmount, { color: dc.textSecondary }]}>
+              {'/'}{hucha.targetAmount.toFixed(2)} {currencySymbol}
+            </Text>
+          ) : (
+            <Text style={[styles.targetAmount, { color: dc.textSecondary }]}>
+              {currencySymbol} · {t('hucha.accumulating')}
+            </Text>
+          )}
         </View>
 
         {remaining > 0 && monthsEstimate !== null && (
@@ -741,7 +762,9 @@ const HuchaDetailScreen = () => {
                     {hucha.name}
                   </Text>
                   <Text style={[styles.actionsSubtitle, { color: dc.textSecondary }]}>
-                    {hucha.currentAmount.toFixed(2)} / {hucha.targetAmount.toFixed(2)} {currencySymbol}
+                    {hasTarget
+                      ? `${hucha.currentAmount.toFixed(2)} / ${hucha.targetAmount.toFixed(2)} ${currencySymbol}`
+                      : `${hucha.currentAmount.toFixed(2)} ${currencySymbol} · ${t('hucha.accumulating')}`}
                   </Text>
                 </View>
               </View>
@@ -760,22 +783,26 @@ const HuchaDetailScreen = () => {
                     maxLength={40}
                   />
 
-                  <Text style={[styles.editLabel, { color: dc.textSecondary, marginTop: 12 }]}>
-                    {t('hucha.goalAmount', { symbol: currencySymbol })}
-                  </Text>
-                  <RNTextInput
-                    style={[styles.editInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
-                    placeholder="0"
-                    placeholderTextColor={dc.textSecondary}
-                    keyboardType="decimal-pad"
-                    value={editTarget}
-                    onChangeText={setEditTarget}
-                  />
+                  {hasTarget && (
+                    <>
+                      <Text style={[styles.editLabel, { color: dc.textSecondary, marginTop: 12 }]}>
+                        {t('hucha.goalAmount', { symbol: currencySymbol })}
+                      </Text>
+                      <RNTextInput
+                        style={[styles.editInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                        placeholder="0"
+                        placeholderTextColor={dc.textSecondary}
+                        keyboardType="decimal-pad"
+                        value={editTarget}
+                        onChangeText={setEditTarget}
+                      />
 
-                  {editTargetTooLow && (
-                    <Text style={[styles.errorText, { marginTop: 8 }]}>
-                      {t('hucha.invalidTargetAmount')}
-                    </Text>
+                      {editTargetTooLow && (
+                        <Text style={[styles.errorText, { marginTop: 8 }]}>
+                          {t('hucha.invalidTargetAmount')}
+                        </Text>
+                      )}
+                    </>
                   )}
 
                   <TouchableOpacity

@@ -120,15 +120,16 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
   const isDeposit = movement.type === 'deposit';
-  const movColor = isDeposit ? dc.income : dc.expense;
+  const huchaColor = movement.huchaColor || dc.savings;
+  const amountColor = isDeposit ? huchaColor : dc.expense;
 
   return (
     <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-      <View style={[styles.movementIcon, { backgroundColor: dc.savings + '20' }]}>
+      <View style={[styles.movementIcon, { backgroundColor: huchaColor + '20' }]}>
         <Ionicons
           name={isDeposit ? 'arrow-down-circle' : 'arrow-up-circle'}
           size={22}
-          color={dc.savings}
+          color={huchaColor}
         />
       </View>
       <View style={styles.movementInfo}>
@@ -136,15 +137,15 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
           <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
             {movement.huchaName}
           </Text>
-          <View style={[styles.recurringBadge, { backgroundColor: dc.savings + '20' }]}>
-            <Ionicons name="wallet" size={10} color={dc.savings} />
+          <View style={[styles.recurringBadge, { backgroundColor: huchaColor + '20' }]}>
+            <Ionicons name="wallet" size={10} color={huchaColor} />
           </View>
         </View>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]}>
           {t(isDeposit ? 'hucha.depositLabel' : 'hucha.withdrawalLabel')} · {formatDate(movement.date)}
         </Text>
       </View>
-      <Text style={[styles.movementAmount, { color: movColor }]}>
+      <Text style={[styles.movementAmount, { color: amountColor }]}>
         {isDeposit ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
       </Text>
     </View>

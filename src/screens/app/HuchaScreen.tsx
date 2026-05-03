@@ -33,7 +33,8 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
-  const pct = hucha.targetAmount > 0
+  const hasTarget = hucha.targetAmount > 0;
+  const pct = hasTarget
     ? Math.min(Math.round((hucha.currentAmount / hucha.targetAmount) * 100), 100)
     : 0;
 
@@ -81,20 +82,34 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
             </View>
           )}
         </View>
-        <Text style={[styles.cardPct, { color: hucha.color }]}>{pct}%</Text>
+        {hasTarget ? (
+          <Text style={[styles.cardPct, { color: hucha.color }]}>{pct}%</Text>
+        ) : (
+          <Ionicons name="infinite" size={20} color={hucha.color} style={{ flexShrink: 0 }} />
+        )}
       </View>
 
-      <View style={[styles.progressBar, { backgroundColor: hucha.color + '25' }]}>
-        <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: hucha.color }]} />
-      </View>
+      {hasTarget ? (
+        <View style={[styles.progressBar, { backgroundColor: hucha.color + '25' }]}>
+          <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: hucha.color }]} />
+        </View>
+      ) : (
+        <View style={[styles.progressBar, { backgroundColor: hucha.color + '25' }]} />
+      )}
 
       <View style={styles.cardFooter}>
         <Text style={[styles.cardAmount, { color: dc.textPrimary }]}>
           {formatAmount(hucha.currentAmount)} {currencySymbol}
         </Text>
-        <Text style={[styles.cardTarget, { color: dc.textSecondary }]}>
-          {t('hucha.of')} {formatAmount(hucha.targetAmount)} {currencySymbol}
-        </Text>
+        {hasTarget ? (
+          <Text style={[styles.cardTarget, { color: dc.textSecondary }]}>
+            {t('hucha.of')} {formatAmount(hucha.targetAmount)} {currencySymbol}
+          </Text>
+        ) : (
+          <Text style={[styles.cardTarget, { color: dc.textSecondary }]}>
+            {t('hucha.accumulating')}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -111,7 +126,8 @@ const HuchaScreen = () => {
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
   const activeHuchas = huchas.filter(h => !h.closedAt);
   const closedHuchas = huchas.filter(h => !!h.closedAt);
-  const totalSaved = activeHuchas.reduce((acc, h) => acc + h.currentAmount, 0);
+  const targetedActive = activeHuchas.filter(h => h.targetAmount > 0);
+  const totalSaved = targetedActive.reduce((acc, h) => acc + h.currentAmount, 0);
   const totalTarget = getTotalTarget();
   const overallPct = totalTarget > 0
     ? Math.min(Math.round((totalSaved / totalTarget) * 100), 100)
@@ -151,13 +167,17 @@ const HuchaScreen = () => {
             <Text style={[styles.totalAmount, { color: dc.textPrimary }]}>
               {formatAmount(totalSaved)} {currencySymbol}
             </Text>
-            <View style={[styles.totalProgressBar, { backgroundColor: dc.border }]}>
-              <View style={[styles.totalProgressFill, { width: `${overallPct}%` as any, backgroundColor: dc.primary }]} />
-            </View>
+            {totalTarget > 0 && (
+              <View style={[styles.totalProgressBar, { backgroundColor: dc.border }]}>
+                <View style={[styles.totalProgressFill, { width: `${overallPct}%` as any, backgroundColor: dc.primary }]} />
+              </View>
+            )}
             <View style={styles.totalProgressRow}>
-              <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
-                {overallPct}% {t('hucha.of')} {formatAmount(totalTarget)} {currencySymbol}
-              </Text>
+              {totalTarget > 0 ? (
+                <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
+                  {overallPct}% {t('hucha.of')} {formatAmount(totalTarget)} {currencySymbol}
+                </Text>
+              ) : <View />}
               <Text style={[styles.totalGoalsCount, { color: dc.textSecondary }]}>
                 {activeHuchas.length} {t('hucha.activeGoals')}
               </Text>

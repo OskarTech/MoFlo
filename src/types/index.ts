@@ -82,6 +82,7 @@ export interface HuchaMovement {
   amount: number;
   date: string;
   createdAt: string;
+  addedBy?: string;
 }
 
 // Resumen mensual calculado

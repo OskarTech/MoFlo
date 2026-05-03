@@ -64,6 +64,7 @@ const CreateHuchaScreen = () => {
   const [selectedIcon, setSelectedIcon] = useState<keyof typeof Ionicons.glyphMap>('trophy-outline');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [targetAmount, setTargetAmount] = useState('');
+  const [noTarget, setNoTarget] = useState(false);
   const [initialAmount, setInitialAmount] = useState('');
   const [isAutomatic, setIsAutomatic] = useState(false);
   const [monthlyAmount, setMonthlyAmount] = useState('');
@@ -76,21 +77,24 @@ const CreateHuchaScreen = () => {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      if (step === 1) targetRef.current?.focus();
+      if (step === 1 && !noTarget) targetRef.current?.focus();
       else if (step === 2) nameRef.current?.focus();
       else if (step === 3) initialRef.current?.focus();
     }, 80);
     return () => clearTimeout(id);
-  }, [step]);
+  }, [step, noTarget]);
 
   const parsedTarget = parseFloat(targetAmount.replace(',', '.'));
   const parsedInitial = parseFloat(initialAmount.replace(',', '.'));
   const parsedMonthly = parseFloat(monthlyAmount.replace(',', '.'));
   const parsedDay = parseInt(recurringDay, 10);
   const initialValue = !isNaN(parsedInitial) && parsedInitial > 0 ? parsedInitial : 0;
-  const initialExceedsTarget = initialValue > 0 && parsedTarget > 0 && initialValue > parsedTarget;
+  const initialExceedsTarget = !noTarget
+    && initialValue > 0
+    && parsedTarget > 0
+    && initialValue > parsedTarget;
 
-  const step1Valid = parsedTarget > 0;
+  const step1Valid = noTarget || parsedTarget > 0;
   const step2Valid = name.trim().length > 0;
   const automaticValid = !isAutomatic
     || (parsedMonthly > 0 && parsedDay >= 1 && parsedDay <= 31);
@@ -116,7 +120,7 @@ const CreateHuchaScreen = () => {
       name: name.trim(),
       icon: selectedIcon,
       color: selectedColor,
-      targetAmount: parsedTarget,
+      targetAmount: noTarget ? 0 : parsedTarget,
       currentAmount: initialValue,
       isAutomatic,
       monthlyAmount: isAutomatic ? parsedMonthly : undefined,
@@ -188,20 +192,54 @@ const CreateHuchaScreen = () => {
               {t('hucha.step1Subtitle')}
             </Text>
 
-            <TextInput
-              ref={targetRef}
-              style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, textAlign: 'center', fontSize: 18, paddingVertical: 14 }]}
-              placeholder={t('hucha.goalAmount', { symbol: currencySymbol })}
-              placeholderTextColor={dc.textSecondary}
-              keyboardType="decimal-pad"
-              value={targetAmount}
-              onChangeText={setTargetAmount}
-            />
+            <View style={noTarget ? styles.hiddenInputWrap : undefined}>
+              <TextInput
+                ref={targetRef}
+                style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, textAlign: 'center', fontSize: 18, paddingVertical: 14 }]}
+                placeholder={t('hucha.goalAmount', { symbol: currencySymbol })}
+                placeholderTextColor={dc.textSecondary}
+                keyboardType="decimal-pad"
+                value={targetAmount}
+                onChangeText={setTargetAmount}
+                showSoftInputOnFocus
+              />
+            </View>
+
+            <View style={[styles.noTargetCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <View style={styles.noTargetRow}>
+                <View style={[styles.noTargetIconWrap, { backgroundColor: selectedColor + '20' }]}>
+                  <Ionicons name="infinite" size={18} color={selectedColor} />
+                </View>
+                <View style={styles.noTargetInfo}>
+                  <Text style={[styles.noTargetLabel, { color: dc.textPrimary }]}>
+                    {t('hucha.noTarget')}
+                  </Text>
+                  <Text style={[styles.noTargetHint, { color: dc.textSecondary }]}>
+                    {t('hucha.noTargetHint')}
+                  </Text>
+                </View>
+                <Switch
+                  value={noTarget}
+                  onValueChange={(v) => {
+                    setNoTarget(v);
+                    if (v) setTargetAmount('');
+                  }}
+                  trackColor={{ false: dc.border, true: selectedColor }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </View>
 
             <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginTop: 12 }]}>
               {t('hucha.chooseColor')}
             </Text>
-            <View style={styles.colorRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.colorScroll}
+              contentContainerStyle={styles.colorScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
               {PRESET_COLORS.map(color => (
                 <TouchableOpacity
                   key={color}
@@ -217,7 +255,7 @@ const CreateHuchaScreen = () => {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {renderActions()}
           </>
@@ -403,11 +441,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', borderWidth: 1.5,
   },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  hiddenInputWrap: { height: 0, opacity: 0, overflow: 'hidden' },
+  colorScroll: { marginHorizontal: -24, marginBottom: 16 },
+  colorScrollContent: { paddingHorizontal: 24, gap: 10, alignItems: 'center' },
   colorDot: {
     width: 32, height: 32, borderRadius: 16,
     justifyContent: 'center', alignItems: 'center',
   },
   colorDotSelected: { borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.6)' },
+  noTargetCard: {
+    borderWidth: 0.5, borderRadius: 14, padding: 14, marginBottom: 4,
+  },
+  noTargetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  noTargetIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  noTargetInfo: { flex: 1 },
+  noTargetLabel: {
+    fontSize: 14, fontFamily: 'Poppins_500Medium',
+  },
+  noTargetHint: {
+    fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2, lineHeight: 14,
+  },
   toggleCard: {
     borderWidth: 0.5, borderRadius: 14, padding: 14,
   },
