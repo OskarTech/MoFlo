@@ -12,6 +12,7 @@ const MOV_STORAGE_KEY = '@moflo_hucha_movements';
 const SHARED_MOV_STORAGE_KEY = '@moflo_shared_hucha_movements';
 
 let unsubscribeShared: (() => void) | null = null;
+let unsubscribeSharedMovements: (() => void) | null = null;
 
 const getUserHuchasCol = () => {
   const uid = auth().currentUser?.uid;
@@ -78,6 +79,8 @@ interface SavingsStore {
   applyAutomaticContributions: () => Promise<void>;
   subscribeToSharedHuchas: (accountId: string) => void;
   unsubscribeSharedHuchas: () => void;
+  subscribeToSharedHuchaMovements: (accountId: string) => void;
+  unsubscribeSharedHuchaMovements: () => void;
   setSharedAccountId: (id: string | null) => void;
   setShowCreateModal: (show: boolean) => void;
   setShowAddMoneyModal: (show: boolean) => void;
@@ -401,8 +404,15 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
   applyAutomaticContributions: async () => {
     const { huchas, sharedAccountId } = get();
     const now = new Date();
-    const toUpdate: Hucha[] = [];
-    const newMovements: HuchaMovement[] = [];
+    const existingMovementIds = new Set(get().huchaMovements.map(m => m.id));
+
+    type Candidate = {
+      huchaId: string;
+      contribution: number;
+      nextDate: string;
+      movement: HuchaMovement;
+    };
+    const candidates: Candidate[] = [];
     let availableBalance = get().getAvailableBalance();
 
     for (const h of huchas) {
@@ -414,76 +424,78 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       const contribution = Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount);
       if (contribution <= 0) continue;
       if (contribution > availableBalance) continue;
+
+      // Deterministic id per (hucha, period) so two shared-account devices
+      // running this at the same time collide on the same movement doc and
+      // the transaction below detects the duplicate instead of double-applying.
+      const periodKey = h.nextContributionDate.slice(0, 10);
+      const movementId = `hm_auto_${h.id}_${periodKey}`;
+      if (existingMovementIds.has(movementId)) continue;
+
       availableBalance -= contribution;
-
-      toUpdate.push({
-        ...h,
-        currentAmount: h.currentAmount + contribution,
-        nextContributionDate: advanceToNextMonth(h.nextContributionDate, h.recurringDay),
-      });
-
       const nowIso = new Date().toISOString();
-      newMovements.push({
-        id: `hm_auto_${h.id}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+
+      candidates.push({
         huchaId: h.id,
-        huchaName: h.name,
-        huchaColor: h.color,
-        type: 'deposit',
-        amount: contribution,
-        date: h.nextContributionDate,
-        createdAt: nowIso,
+        contribution,
+        nextDate: advanceToNextMonth(h.nextContributionDate, h.recurringDay),
+        movement: {
+          id: movementId,
+          huchaId: h.id,
+          huchaName: h.name,
+          huchaColor: h.color,
+          type: 'deposit',
+          amount: contribution,
+          date: h.nextContributionDate,
+          createdAt: nowIso,
+        },
       });
     }
 
-    if (toUpdate.length === 0) return;
+    if (candidates.length === 0) return;
 
-    const updated = huchas.map(h => {
-      const u = toUpdate.find(t => t.id === h.id);
-      return u ?? h;
+    // Optimistic local update — UI feels instant; the snapshot listener will
+    // reconcile with server state if any transaction below fails.
+    const updatedHuchas = huchas.map(h => {
+      const c = candidates.find(x => x.huchaId === h.id);
+      return c
+        ? { ...h, currentAmount: h.currentAmount + c.contribution, nextContributionDate: c.nextDate }
+        : h;
     });
-    set({ huchas: updated });
+    set({ huchas: updatedHuchas });
     const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
-    await AsyncStorage.setItem(key, JSON.stringify(updated));
+    await AsyncStorage.setItem(key, JSON.stringify(updatedHuchas));
 
-    if (newMovements.length > 0) {
-      const allMovements = [...newMovements, ...get().huchaMovements];
-      set({ huchaMovements: allMovements });
-      const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
-      await AsyncStorage.setItem(movKey, JSON.stringify(allMovements));
-    }
+    const newMovements = candidates.map(c => c.movement);
+    const allMovements = [...newMovements, ...get().huchaMovements];
+    set({ huchaMovements: allMovements });
+    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    await AsyncStorage.setItem(movKey, JSON.stringify(allMovements));
 
-    for (const u of toUpdate) {
+    const huchasCol = sharedAccountId ? getSharedHuchasCol(sharedAccountId) : getUserHuchasCol();
+    const movementsCol = sharedAccountId ? getSharedMovementsCol(sharedAccountId) : getUserMovementsCol();
+
+    // Apply each contribution in a Firestore transaction. The movement doc
+    // acts as the lock: if it already exists (another member already applied
+    // this period), we skip the write so currentAmount isn't double-incremented.
+    // Run in parallel for speed.
+    await Promise.all(candidates.map(async (c) => {
       try {
-        const original = huchas.find(h => h.id === u.id);
-        const delta = u.currentAmount - (original?.currentAmount ?? 0);
-        const upsertData: Record<string, unknown> = {};
-        if (delta !== 0) {
-          upsertData.currentAmount = firestore.FieldValue.increment(delta);
-        }
-        if (u.nextContributionDate) {
-          upsertData.nextContributionDate = u.nextContributionDate;
-        }
-        if (Object.keys(upsertData).length === 0) continue;
-        if (sharedAccountId) {
-          await getSharedHuchasCol(sharedAccountId).doc(u.id).set(upsertData, { merge: true });
-        } else {
-          await getUserHuchasCol().doc(u.id).set(upsertData, { merge: true });
-        }
+        const huchaRef = huchasCol.doc(c.huchaId);
+        const movRef = movementsCol.doc(c.movement.id);
+        await firestore().runTransaction(async (tx) => {
+          const movSnap = await tx.get(movRef);
+          if (movSnap.exists) return;
+          tx.set(movRef, c.movement);
+          tx.set(huchaRef, {
+            currentAmount: firestore.FieldValue.increment(c.contribution),
+            nextContributionDate: c.nextDate,
+          }, { merge: true });
+        });
       } catch (e) {
         console.error('Error applying automatic contribution:', e);
       }
-    }
-
-    const movementsCol = sharedAccountId
-      ? getSharedMovementsCol(sharedAccountId)
-      : getUserMovementsCol();
-    for (const m of newMovements) {
-      try {
-        await movementsCol.doc(m.id).set(m);
-      } catch (e) {
-        console.error('Error saving automatic hucha movement:', e);
-      }
-    }
+    }));
   },
 
   subscribeToSharedHuchas: (accountId) => {
@@ -498,14 +510,36 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       }, (e) => {
         console.error('Error listening to shared huchas:', e);
       });
+
+    get().subscribeToSharedHuchaMovements(accountId);
   },
 
   unsubscribeSharedHuchas: () => {
     if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    get().unsubscribeSharedHuchaMovements();
+  },
+
+  subscribeToSharedHuchaMovements: (accountId) => {
+    if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
+
+    unsubscribeSharedMovements = getSharedMovementsCol(accountId)
+      .orderBy('createdAt', 'desc')
+      .onSnapshot((snap) => {
+        const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
+        set({ huchaMovements: movements });
+        AsyncStorage.setItem(SHARED_MOV_STORAGE_KEY, JSON.stringify(movements));
+      }, (e) => {
+        console.error('Error listening to shared hucha movements:', e);
+      });
+  },
+
+  unsubscribeSharedHuchaMovements: () => {
+    if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
   },
 
   resetStore: () => {
     if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
     set({
       huchas: [],
       huchaMovements: [],
