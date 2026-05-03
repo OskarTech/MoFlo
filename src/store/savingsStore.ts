@@ -229,20 +229,19 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     set({ huchas: updated });
     const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
     await AsyncStorage.setItem(key, JSON.stringify(updated));
+    // Never write currentAmount through this path — it's mutated only by
+    // addToHucha/applyAutomaticContributions via FieldValue.increment so that
+    // offline edits don't clobber concurrent deposits from other members.
+    const { currentAmount: _omitCurrentAmount, ...safeData } = data;
     const firestoreData = Object.fromEntries(
-      Object.entries(data).filter(([, v]) => v !== undefined)
+      Object.entries(safeData).filter(([, v]) => v !== undefined)
     ) as Record<string, unknown>;
-    const fullHucha = updated.find(h => h.id === id);
-    const upsertData = fullHucha
-      ? Object.fromEntries(
-          Object.entries(fullHucha).filter(([, v]) => v !== undefined)
-        )
-      : firestoreData;
+    if (Object.keys(firestoreData).length === 0) return;
     try {
       if (sharedAccountId) {
-        await getSharedHuchasCol(sharedAccountId).doc(id).set(upsertData, { merge: true });
+        await getSharedHuchasCol(sharedAccountId).doc(id).set(firestoreData, { merge: true });
       } else {
-        await getUserHuchasCol().doc(id).set(upsertData, { merge: true });
+        await getUserHuchasCol().doc(id).set(firestoreData, { merge: true });
       }
     } catch (e) {
       console.error('Error updating hucha:', e);
@@ -294,11 +293,14 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       const huchasCol = sharedAccountId
         ? getSharedHuchasCol(sharedAccountId)
         : getUserHuchasCol();
-      const updatedHucha = updatedHuchas.find(h => h.id === huchaId);
-      const huchaUpsert = updatedHucha
-        ? Object.fromEntries(Object.entries(updatedHucha).filter(([, v]) => v !== undefined))
-        : { currentAmount: newAmount };
-      await huchasCol.doc(huchaId).set(huchaUpsert, { merge: true });
+      // Use atomic increment so concurrent writes (e.g. another member adding
+      // money while this device was offline) are summed by the server instead
+      // of overwritten with the stale local value.
+      const delta = type === 'deposit' ? amount : -amount;
+      await huchasCol.doc(huchaId).set(
+        { currentAmount: firestore.FieldValue.increment(delta) },
+        { merge: true }
+      );
 
       const movementsCol = sharedAccountId
         ? getSharedMovementsCol(sharedAccountId)
@@ -452,9 +454,16 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
     for (const u of toUpdate) {
       try {
-        const upsertData = Object.fromEntries(
-          Object.entries(u).filter(([, v]) => v !== undefined)
-        );
+        const original = huchas.find(h => h.id === u.id);
+        const delta = u.currentAmount - (original?.currentAmount ?? 0);
+        const upsertData: Record<string, unknown> = {};
+        if (delta !== 0) {
+          upsertData.currentAmount = firestore.FieldValue.increment(delta);
+        }
+        if (u.nextContributionDate) {
+          upsertData.nextContributionDate = u.nextContributionDate;
+        }
+        if (Object.keys(upsertData).length === 0) continue;
         if (sharedAccountId) {
           await getSharedHuchasCol(sharedAccountId).doc(u.id).set(upsertData, { merge: true });
         } else {

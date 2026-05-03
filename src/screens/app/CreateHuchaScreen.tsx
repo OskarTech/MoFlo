@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Platform, Switch, Keyboard,
+  Switch,
 } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppHeader from '../../components/common/AppHeader';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -73,20 +74,6 @@ const CreateHuchaScreen = () => {
   const nameRef = useRef<TextInput>(null);
   const initialRef = useRef<TextInput>(null);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, []);
-
   useEffect(() => {
     const id = setTimeout(() => {
       if (step === 1) targetRef.current?.focus();
@@ -145,234 +132,226 @@ const CreateHuchaScreen = () => {
     (step === 2 && !step2Valid) ||
     (step === 3 && (!isValid || isSaving));
 
+  const renderActions = () => (
+    <View style={styles.actionRow}>
+      <Button
+        mode="outlined"
+        onPress={handleBack}
+        style={[styles.cancelButton, { borderColor: dc.border }]}
+        textColor={dc.textSecondary}
+      >
+        {step === 1 ? t('hucha.cancel') : t('hucha.back')}
+      </Button>
+      <Button
+        mode="contained"
+        onPress={step < 3 ? handleNext : handleSave}
+        disabled={primaryDisabled}
+        style={styles.saveButton}
+        buttonColor={selectedColor}
+        textColor="#FFFFFF"
+      >
+        {step < 3 ? t('hucha.next') : t('hucha.save')}
+      </Button>
+    </View>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: dc.background, paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
-          onPress={handleBack}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons name="arrow-back" size={20} color={dc.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.stepIndicator}>
-          {[1, 2, 3].map(s => (
-            <View
-              key={s}
-              style={[
-                styles.stepDot,
-                { backgroundColor: dc.border },
-                step === s && { backgroundColor: selectedColor, width: 24 },
-                step > s && { backgroundColor: selectedColor + '80' },
-              ]}
-            />
-          ))}
-        </View>
+    <View style={[styles.container, { backgroundColor: dc.background }]}>
+      <AppHeader title={t('hucha.createGoal')} showBack showBell={false} />
+
+      <View style={styles.stepIndicator}>
+        {[1, 2, 3].map(s => (
+          <View
+            key={s}
+            style={[
+              styles.stepDot,
+              { backgroundColor: dc.border },
+              step === s && { backgroundColor: selectedColor, width: 24 },
+              step > s && { backgroundColor: selectedColor + '80' },
+            ]}
+          />
+        ))}
       </View>
 
-      <View style={styles.flex}>
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {step === 1 && (
-            <>
-              <Text style={[styles.stepTitle, { color: dc.textPrimary }]}>
-                {t('hucha.step1Title')}
-              </Text>
-              <Text style={[styles.stepSubtitle, { color: dc.textSecondary }]}>
-                {t('hucha.step1Subtitle')}
-              </Text>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {step === 1 && (
+          <>
+            <Text style={[styles.stepTitle, { color: dc.textPrimary }]}>
+              {t('hucha.step1Title')}
+            </Text>
+            <Text style={[styles.stepSubtitle, { color: dc.textSecondary }]}>
+              {t('hucha.step1Subtitle')}
+            </Text>
 
-              <TextInput
-                ref={targetRef}
-                style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, textAlign: 'center', fontSize: 18, paddingVertical: 14 }]}
-                placeholder={t('hucha.goalAmount', { symbol: currencySymbol })}
-                placeholderTextColor={dc.textSecondary}
-                keyboardType="decimal-pad"
-                value={targetAmount}
-                onChangeText={setTargetAmount}
-              />
+            <TextInput
+              ref={targetRef}
+              style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, textAlign: 'center', fontSize: 18, paddingVertical: 14 }]}
+              placeholder={t('hucha.goalAmount', { symbol: currencySymbol })}
+              placeholderTextColor={dc.textSecondary}
+              keyboardType="decimal-pad"
+              value={targetAmount}
+              onChangeText={setTargetAmount}
+            />
 
-              <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginTop: 12 }]}>
-                {t('hucha.chooseIcon')}
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.iconScroll}
-                contentContainerStyle={styles.iconScrollContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.iconGridTwoRows}>
-                  {PRESET_ICONS.map(icon => (
-                    <TouchableOpacity
-                      key={icon}
-                      style={[
-                        styles.iconOption,
-                        { backgroundColor: selectedIcon === icon ? selectedColor + '25' : dc.surface,
-                          borderColor: selectedIcon === icon ? selectedColor : dc.border },
-                      ]}
-                      onPress={() => setSelectedIcon(icon)}
-                    >
-                      <Ionicons
-                        name={icon}
-                        size={22}
-                        color={selectedIcon === icon ? selectedColor : dc.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </>
-          )}
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginTop: 12 }]}>
+              {t('hucha.chooseColor')}
+            </Text>
+            <View style={styles.colorRow}>
+              {PRESET_COLORS.map(color => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorDot,
+                    { backgroundColor: color },
+                    selectedColor === color && styles.colorDotSelected,
+                  ]}
+                  onPress={() => setSelectedColor(color)}
+                >
+                  {selectedColor === color && (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
 
-          {step === 2 && (
-            <>
-              <Text style={[styles.stepTitle, { color: dc.textPrimary }]}>
-                {t('hucha.step2Title')}
-              </Text>
-              <Text style={[styles.stepSubtitle, { color: dc.textSecondary }]}>
-                {t('hucha.step2Subtitle')}
-              </Text>
+            {renderActions()}
+          </>
+        )}
 
-              <TextInput
-                ref={nameRef}
-                style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary }]}
-                placeholder={t('hucha.goalNamePlaceholder')}
-                placeholderTextColor={dc.textSecondary}
-                value={name}
-                onChangeText={setName}
-                maxLength={40}
-              />
+        {step === 2 && (
+          <>
+            <Text style={[styles.stepTitle, { color: dc.textPrimary, marginBottom: 28 }]}>
+              {t('hucha.step2Title')}
+            </Text>
 
-              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                {t('hucha.chooseColor')}
-              </Text>
-              <View style={styles.colorRow}>
-                {PRESET_COLORS.map(color => (
+            <TextInput
+              ref={nameRef}
+              style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary }]}
+              placeholder={t('hucha.goalNamePlaceholder')}
+              placeholderTextColor={dc.textSecondary}
+              value={name}
+              onChangeText={setName}
+              maxLength={40}
+            />
+
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('hucha.chooseIcon')}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.iconScroll}
+              contentContainerStyle={styles.iconScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.iconGridTwoRows}>
+                {PRESET_ICONS.map(icon => (
                   <TouchableOpacity
-                    key={color}
+                    key={icon}
                     style={[
-                      styles.colorDot,
-                      { backgroundColor: color },
-                      selectedColor === color && styles.colorDotSelected,
+                      styles.iconOption,
+                      { backgroundColor: selectedIcon === icon ? selectedColor + '25' : dc.surface,
+                        borderColor: selectedIcon === icon ? selectedColor : dc.border },
                     ]}
-                    onPress={() => setSelectedColor(color)}
+                    onPress={() => setSelectedIcon(icon)}
                   >
-                    {selectedColor === color && (
-                      <Ionicons name="checkmark" size={14} color="#fff" />
-                    )}
+                    <Ionicons
+                      name={icon}
+                      size={22}
+                      color={selectedIcon === icon ? selectedColor : dc.textSecondary}
+                    />
                   </TouchableOpacity>
                 ))}
               </View>
-            </>
-          )}
+            </ScrollView>
 
-          {step === 3 && (
-            <>
-              <Text style={[styles.stepTitle, { color: dc.textPrimary }]}>
-                {t('hucha.step3Title')}
-              </Text>
-              <Text style={[styles.stepSubtitle, { color: dc.textSecondary }]}>
-                {t('hucha.step3Subtitle')}
-              </Text>
+            {renderActions()}
+          </>
+        )}
 
-              <View style={[styles.toggleCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                <View style={styles.toggleRow}>
-                  <View style={[styles.toggleIconWrap, { backgroundColor: selectedColor + '20' }]}>
-                    <Ionicons name="repeat" size={18} color={selectedColor} />
-                  </View>
-                  <Text style={[styles.toggleLabel, { color: dc.textPrimary }]}>
-                    {t('hucha.automatic')}
-                  </Text>
-                  <Switch
-                    value={isAutomatic}
-                    onValueChange={setIsAutomatic}
-                    trackColor={{ false: dc.border, true: selectedColor }}
-                    thumbColor="#fff"
-                  />
+        {step === 3 && (
+          <>
+            <Text style={[styles.stepTitle, { color: dc.textPrimary }]}>
+              {t('hucha.step3Title')}
+            </Text>
+            <Text style={[styles.stepSubtitle, { color: dc.textSecondary }]}>
+              {t('hucha.step3Subtitle')}
+            </Text>
+
+            <View style={[styles.toggleCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+              <View style={styles.toggleRow}>
+                <View style={[styles.toggleIconWrap, { backgroundColor: selectedColor + '20' }]}>
+                  <Ionicons name="repeat" size={18} color={selectedColor} />
                 </View>
-
-                {isAutomatic && (
-                  <View style={[styles.autoFields, { borderTopColor: dc.border }]}>
-                    <TextInput
-                      style={[styles.input, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary, marginBottom: 10 }]}
-                      placeholder={t('hucha.automaticAmount')}
-                      placeholderTextColor={dc.textSecondary}
-                      keyboardType="decimal-pad"
-                      value={monthlyAmount}
-                      onChangeText={setMonthlyAmount}
-                    />
-                    <View style={styles.dayRow}>
-                      <Text style={[styles.dayLabel, { color: dc.textSecondary }]}>
-                        {t('hucha.chooseDayOfMonth')}
-                      </Text>
-                      <TextInput
-                        style={[styles.dayInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
-                        placeholder={t('hucha.dayOfMonth')}
-                        placeholderTextColor={dc.textSecondary}
-                        keyboardType="number-pad"
-                        value={recurringDay}
-                        onChangeText={(v) => setRecurringDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
-                        maxLength={2}
-                      />
-                    </View>
-                  </View>
-                )}
+                <Text style={[styles.toggleLabel, { color: dc.textPrimary }]}>
+                  {t('hucha.automatic')}
+                </Text>
+                <Switch
+                  value={isAutomatic}
+                  onValueChange={setIsAutomatic}
+                  trackColor={{ false: dc.border, true: selectedColor }}
+                  thumbColor="#fff"
+                />
               </View>
 
-              <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginTop: 16 }]}>
-                {t('hucha.initialAmountSection')}
-              </Text>
-              <TextInput
-                ref={initialRef}
-                style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, marginBottom: 6 }]}
-                placeholder={t('hucha.initialAmount', { symbol: currencySymbol })}
-                placeholderTextColor={dc.textSecondary}
-                keyboardType="decimal-pad"
-                value={initialAmount}
-                onChangeText={setInitialAmount}
-              />
-              <Text style={[styles.initialHint, { color: dc.textSecondary }]}>
-                {t('hucha.initialAmountHint')}
-              </Text>
-              {initialExceedsTarget && (
-                <Text style={styles.initialError}>
-                  {t('hucha.invalidTargetAmount')}
-                </Text>
+              {isAutomatic && (
+                <View style={[styles.autoFields, { borderTopColor: dc.border }]}>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary, marginBottom: 10 }]}
+                    placeholder={t('hucha.automaticAmount')}
+                    placeholderTextColor={dc.textSecondary}
+                    keyboardType="decimal-pad"
+                    value={monthlyAmount}
+                    onChangeText={setMonthlyAmount}
+                  />
+                  <View style={styles.dayRow}>
+                    <Text style={[styles.dayLabel, { color: dc.textSecondary }]}>
+                      {t('hucha.chooseDayOfMonth')}
+                    </Text>
+                    <TextInput
+                      style={[styles.dayInput, { backgroundColor: dc.background, borderColor: dc.border, color: dc.textPrimary }]}
+                      placeholder={t('hucha.dayOfMonth')}
+                      placeholderTextColor={dc.textSecondary}
+                      keyboardType="number-pad"
+                      value={recurringDay}
+                      onChangeText={(v) => setRecurringDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
+                      maxLength={2}
+                    />
+                  </View>
+                </View>
               )}
-            </>
-          )}
-        </ScrollView>
+            </View>
 
-        <View style={[styles.actionBar, { backgroundColor: dc.background, borderTopColor: dc.border, paddingBottom: keyboardHeight > 0 ? 8 : (insets.bottom > 0 ? insets.bottom : 12) }]}>
-          <Button
-            mode="outlined"
-            onPress={handleBack}
-            style={[styles.cancelButton, { borderColor: dc.border }]}
-            textColor={dc.textSecondary}
-          >
-            {step === 1 ? t('hucha.cancel') : t('hucha.back')}
-          </Button>
-          <Button
-            mode="contained"
-            onPress={step < 3 ? handleNext : handleSave}
-            disabled={primaryDisabled}
-            style={styles.saveButton}
-            buttonColor={selectedColor}
-            textColor="#FFFFFF"
-          >
-            {step < 3 ? t('hucha.next') : t('hucha.save')}
-          </Button>
-        </View>
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginTop: 16 }]}>
+              {t('hucha.initialAmountSection')}
+            </Text>
+            <TextInput
+              ref={initialRef}
+              style={[styles.input, { backgroundColor: dc.surface, borderColor: dc.border, color: dc.textPrimary, marginBottom: 6 }]}
+              placeholder={t('hucha.initialAmount', { symbol: currencySymbol })}
+              placeholderTextColor={dc.textSecondary}
+              keyboardType="decimal-pad"
+              value={initialAmount}
+              onChangeText={setInitialAmount}
+            />
+            <Text style={[styles.initialHint, { color: dc.textSecondary }]}>
+              {t('hucha.initialAmountHint')}
+            </Text>
+            {initialExceedsTarget && (
+              <Text style={styles.initialError}>
+                {t('hucha.invalidTargetAmount')}
+              </Text>
+            )}
 
-        {Platform.OS === 'ios' && keyboardHeight > 0 && (
-          <View style={{ height: keyboardHeight - insets.bottom }} />
+            {renderActions()}
+          </>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -380,36 +359,21 @@ const CreateHuchaScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    position: 'relative', minHeight: 64,
-  },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 0.5,
-    justifyContent: 'center', alignItems: 'center',
-  },
   stepIndicator: {
-    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6,
+    gap: 6, paddingVertical: 14,
   },
   stepDot: {
     width: 8, height: 8, borderRadius: 4,
   },
   scrollContent: {
-    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24,
+    paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24,
   },
   stepTitle: {
     fontSize: 26, fontFamily: 'Poppins_700Bold', marginBottom: 8,
   },
   stepSubtitle: {
     fontSize: 14, fontFamily: 'Poppins_400Regular', marginBottom: 28, lineHeight: 20,
-  },
-  bigAmountInput: {
-    borderWidth: 1, borderRadius: 16, paddingHorizontal: 20,
-    paddingVertical: 22, fontSize: 28, fontFamily: 'Poppins_700Bold',
-    textAlign: 'center', marginBottom: 12,
   },
   input: {
     borderWidth: 1, borderRadius: 12, paddingHorizontal: 14,
@@ -426,13 +390,6 @@ const styles = StyleSheet.create({
   },
   iconScrollContent: {
     paddingHorizontal: 24,
-  },
-  iconGrid: {
-    flexDirection: 'column',
-    flexWrap: 'wrap',
-    height: 48 * 3 + 8 * 2,
-    alignContent: 'flex-start',
-    gap: 8,
   },
   iconGridTwoRows: {
     flexDirection: 'column',
@@ -487,9 +444,9 @@ const styles = StyleSheet.create({
     fontSize: 12, fontFamily: 'Poppins_400Regular',
     color: '#EF4444', marginBottom: 8, marginHorizontal: 4,
   },
-  actionBar: {
+  actionRow: {
     flexDirection: 'row', gap: 12,
-    paddingHorizontal: 24, paddingTop: 12, borderTopWidth: 0.5,
+    marginTop: 16,
   },
   cancelButton: { flex: 1 },
   saveButton: { flex: 2 },

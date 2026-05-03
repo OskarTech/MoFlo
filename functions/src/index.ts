@@ -115,6 +115,7 @@ const sendToUser = async (
     getUserLanguage(uid),
     getDeviceTokens(uid),
   ]);
+  console.log(`[push] uid=${uid} devices=${devices.length}`, devices.map(d => d.ref.id));
   if (devices.length === 0) return;
   const payload = buildPayload(lang);
 
@@ -135,6 +136,14 @@ const sendToUser = async (
 
   try {
     const response = await getMessaging().sendEachForMulticast(message);
+    response.responses.forEach((r, i) => {
+      const id = devices[i].ref.id;
+      if (r.success) {
+        console.log(`[push] uid=${uid} device=${id} OK messageId=${r.messageId}`);
+      } else {
+        console.warn(`[push] uid=${uid} device=${id} FAIL code=${r.error?.code} msg=${r.error?.message}`);
+      }
+    });
     if (response.failureCount > 0) {
       await cleanupInvalidTokens(response.responses, devices);
     }
