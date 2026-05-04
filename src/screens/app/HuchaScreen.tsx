@@ -134,14 +134,13 @@ const HuchaScreen = () => {
     : 0;
 
   const now = new Date();
-  const thisMonthDeposited = huchaMovements
+  const thisMonthNet = huchaMovements
     .filter(m => {
       const d = new Date(m.date);
-      return m.type === 'deposit'
-        && d.getMonth() === now.getMonth()
+      return d.getMonth() === now.getMonth()
         && d.getFullYear() === now.getFullYear();
     })
-    .reduce((sum, m) => sum + m.amount, 0);
+    .reduce((sum, m) => sum + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -158,9 +157,9 @@ const HuchaScreen = () => {
               <Text style={[styles.totalLabel, { color: dc.textSecondary }]}>
                 {t('hucha.totalSaved').toUpperCase()}
               </Text>
-              {thisMonthDeposited > 0 && (
-                <Text style={[styles.thisMonthText, { color: dc.savings }]}>
-                  {t('hucha.thisMonthAdded', { amount: formatAmount(thisMonthDeposited), symbol: currencySymbol })}
+              {thisMonthNet !== 0 && (
+                <Text style={[styles.thisMonthText, { color: thisMonthNet > 0 ? dc.savings : dc.expense }]}>
+                  {t(thisMonthNet > 0 ? 'hucha.thisMonthAdded' : 'hucha.thisMonthWithdrawn', { amount: formatAmount(Math.abs(thisMonthNet)), symbol: currencySymbol })}
                 </Text>
               )}
             </View>

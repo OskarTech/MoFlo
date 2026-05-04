@@ -21,7 +21,7 @@ const generateInviteCode = (): string => {
 
 export const generateInviteLink = (code: string, name: string): string => {
   const encoded = encodeURIComponent(name);
-  return `https://oskartech.github.io/moflo-invite/?code=${code}&name=${encoded}`;
+  return `https://oskartech.github.io/join.html?code=${code}&name=${encoded}`;
 };
 
 let accountUnsubscribe: (() => void) | null = null;

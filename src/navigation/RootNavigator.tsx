@@ -59,10 +59,15 @@ const RootNavigator = () => {
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser);
-      setLoading(false);
       if (firebaseUser) {
-        await initUser();
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 15000));
+        try {
+          await Promise.race([initUser(), timeout]);
+        } catch (e) {
+          console.warn('initUser error', e);
+        }
       }
+      setLoading(false);
     });
 
     let wasConnected: boolean | null = null;

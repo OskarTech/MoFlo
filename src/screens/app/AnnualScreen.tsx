@@ -235,17 +235,17 @@ const AnnualScreen = () => {
 
   const getHuchaThisMonth = (huchaId: string) =>
     huchaMovements
-      .filter(m => m.huchaId === huchaId && m.type === 'deposit')
+      .filter(m => m.huchaId === huchaId)
       .filter(m => {
         const d = new Date(m.date);
         return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
       })
-      .reduce((s, m) => s + m.amount, 0);
+      .reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   const getHuchaThisYear = (huchaId: string) =>
     huchaMovements
-      .filter(m => m.huchaId === huchaId && m.type === 'deposit' && new Date(m.date).getFullYear() === currentYear)
-      .reduce((s, m) => s + m.amount, 0);
+      .filter(m => m.huchaId === huchaId && new Date(m.date).getFullYear() === currentYear)
+      .reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   const getHuchaStreak = (huchaId: string): number => {
     let streak = 0;
@@ -271,21 +271,23 @@ const AnnualScreen = () => {
       const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (5 - i), 1);
       const m = d.getMonth() + 1;
       const y = d.getFullYear();
-      const deposits: Record<string, number> = {};
+      const net: Record<string, number> = {};
       huchaMovements
-        .filter(mv => mv.type === 'deposit')
         .filter(mv => {
           const md = new Date(mv.date);
           return md.getMonth() + 1 === m && md.getFullYear() === y;
         })
-        .forEach(mv => { deposits[mv.huchaId] = (deposits[mv.huchaId] ?? 0) + mv.amount; });
-      return { month: m, year: y, label: shortMonth(m), deposits };
+        .forEach(mv => {
+          const delta = mv.type === 'deposit' ? mv.amount : -mv.amount;
+          net[mv.huchaId] = (net[mv.huchaId] ?? 0) + delta;
+        });
+      return { month: m, year: y, label: shortMonth(m), net };
     });
   }, [huchaMovements]);
 
   const huchasBarMax = useMemo(() =>
     Math.max(1, ...huchasFlowData.map(d =>
-      Object.values(d.deposits).reduce((s, v) => s + v, 0)
+      Object.values(d.net).reduce((s, v) => s + Math.max(0, v), 0)
     )),
     [huchasFlowData],
   );
@@ -705,7 +707,7 @@ const AnnualScreen = () => {
                       <View key={`${item.year}-${item.month}`} style={styles.huchaBarGroup}>
                         <View style={[styles.huchaStack, { height: STACK_BAR_H }]}>
                           {huchas.map(h => {
-                            const amt = item.deposits[h.id] ?? 0;
+                            const amt = Math.max(0, item.net[h.id] ?? 0);
                             if (amt === 0) return null;
                             const segH = Math.max(2, (amt / huchasBarMax) * STACK_BAR_H);
                             return (

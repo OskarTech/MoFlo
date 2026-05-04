@@ -16,6 +16,7 @@ interface CategoryStore {
 
   loadCategories: () => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
+  updateCategory: (id: string, updates: { name: string; icon: string }) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   hideBaseCategory: (id: string, type: MovementType) => Promise<void>;
   getCategoriesForType: (type: MovementType) => {
@@ -123,6 +124,26 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
         .set(newCategory);
     } catch (e) {
       console.error('Error saving category to Firestore:', e);
+    }
+  },
+
+  updateCategory: async (id, updates) => {
+    const uid = auth().currentUser?.uid;
+    const updated = get().customCategories.map(c =>
+      c.id === id ? { ...c, ...updates } : c
+    );
+    set({ customCategories: updated });
+    await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
+
+    if (uid) {
+      try {
+        await firestore()
+          .collection('users').doc(uid)
+          .collection('categories').doc(id)
+          .update(updates);
+      } catch (e) {
+        console.error('Error updating category in Firestore:', e);
+      }
     }
   },
 

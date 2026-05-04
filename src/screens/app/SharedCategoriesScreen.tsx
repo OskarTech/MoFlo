@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal,
+  Animated, Platform, Keyboard,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -15,34 +16,93 @@ import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 
 const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { name: 'home', icon: 'home' },
+  { name: 'business', icon: 'business' },
+  { name: 'bed', icon: 'bed' },
+  { name: 'construct', icon: 'construct' },
+  { name: 'car', icon: 'car' },
+  { name: 'bicycle', icon: 'bicycle' },
+  { name: 'bus', icon: 'bus' },
+  { name: 'boat', icon: 'boat' },
+  { name: 'airplane', icon: 'airplane' },
+  { name: 'rocket', icon: 'rocket' },
+  { name: 'train', icon: 'train' },
+  { name: 'map', icon: 'map' },
+  { name: 'gift', icon: 'gift' },
+  { name: 'heart', icon: 'heart' },
+  { name: 'star', icon: 'star' },
+  { name: 'sparkles', icon: 'sparkles' },
+  { name: 'trophy', icon: 'trophy' },
+  { name: 'medal', icon: 'medal' },
+  { name: 'ribbon', icon: 'ribbon' },
+  { name: 'diamond', icon: 'diamond' },
+  { name: 'school', icon: 'school' },
+  { name: 'library', icon: 'library' },
+  { name: 'book', icon: 'book' },
   { name: 'briefcase', icon: 'briefcase' },
   { name: 'laptop', icon: 'laptop' },
-  { name: 'trending-up', icon: 'trending-up' },
-  { name: 'gift', icon: 'gift' },
-  { name: 'home', icon: 'home' },
-  { name: 'restaurant', icon: 'restaurant' },
-  { name: 'car', icon: 'car' },
-  { name: 'medical', icon: 'medical' },
-  { name: 'game-controller', icon: 'game-controller' },
-  { name: 'bag', icon: 'bag' },
-  { name: 'school', icon: 'school' },
-  { name: 'receipt', icon: 'receipt' },
-  { name: 'shield', icon: 'shield' },
-  { name: 'umbrella', icon: 'umbrella' },
-  { name: 'airplane', icon: 'airplane' },
-  { name: 'fitness', icon: 'fitness' },
-  { name: 'cafe', icon: 'cafe' },
+  { name: 'desktop', icon: 'desktop' },
+  { name: 'tablet-portrait', icon: 'tablet-portrait' },
   { name: 'phone-portrait', icon: 'phone-portrait' },
+  { name: 'watch', icon: 'watch' },
+  { name: 'headset', icon: 'headset' },
+  { name: 'game-controller', icon: 'game-controller' },
+  { name: 'tv', icon: 'tv' },
+  { name: 'camera', icon: 'camera' },
+  { name: 'videocam', icon: 'videocam' },
+  { name: 'image', icon: 'image' },
+  { name: 'film', icon: 'film' },
   { name: 'musical-notes', icon: 'musical-notes' },
-  { name: 'paw', icon: 'paw' },
-  { name: 'cut', icon: 'cut' },
+  { name: 'mic', icon: 'mic' },
+  { name: 'restaurant', icon: 'restaurant' },
+  { name: 'pizza', icon: 'pizza' },
+  { name: 'fast-food', icon: 'fast-food' },
+  { name: 'cafe', icon: 'cafe' },
   { name: 'wine', icon: 'wine' },
-  { name: 'bicycle', icon: 'bicycle' },
-  { name: 'book', icon: 'book' },
-  { name: 'heart', icon: 'heart' },
+  { name: 'beer', icon: 'beer' },
+  { name: 'ice-cream', icon: 'ice-cream' },
+  { name: 'nutrition', icon: 'nutrition' },
   { name: 'cart', icon: 'cart' },
+  { name: 'bag', icon: 'bag' },
+  { name: 'basket', icon: 'basket' },
+  { name: 'pricetag', icon: 'pricetag' },
+  { name: 'shirt', icon: 'shirt' },
+  { name: 'glasses', icon: 'glasses' },
+  { name: 'cut', icon: 'cut' },
+  { name: 'brush', icon: 'brush' },
+  { name: 'color-palette', icon: 'color-palette' },
+  { name: 'color-wand', icon: 'color-wand' },
+  { name: 'flower', icon: 'flower' },
+  { name: 'leaf', icon: 'leaf' },
+  { name: 'paw', icon: 'paw' },
+  { name: 'fish', icon: 'fish' },
+  { name: 'man', icon: 'man' },
+  { name: 'woman', icon: 'woman' },
+  { name: 'people', icon: 'people' },
+  { name: 'person', icon: 'person' },
+  { name: 'fitness', icon: 'fitness' },
+  { name: 'barbell', icon: 'barbell' },
+  { name: 'football', icon: 'football' },
+  { name: 'basketball', icon: 'basketball' },
+  { name: 'tennisball', icon: 'tennisball' },
+  { name: 'american-football', icon: 'american-football' },
+  { name: 'medical', icon: 'medical' },
+  { name: 'pulse', icon: 'pulse' },
+  { name: 'bandage', icon: 'bandage' },
+  { name: 'umbrella', icon: 'umbrella' },
+  { name: 'sunny', icon: 'sunny' },
+  { name: 'snow', icon: 'snow' },
+  { name: 'partly-sunny', icon: 'partly-sunny' },
   { name: 'cash', icon: 'cash' },
   { name: 'card', icon: 'card' },
+  { name: 'wallet', icon: 'wallet' },
+  { name: 'trending-up', icon: 'trending-up' },
+  { name: 'receipt', icon: 'receipt' },
+  { name: 'shield', icon: 'shield' },
+  { name: 'balloon', icon: 'balloon' },
+  { name: 'planet', icon: 'planet' },
+  { name: 'earth', icon: 'earth' },
+  { name: 'globe', icon: 'globe' },
   { name: 'ellipsis-horizontal', icon: 'ellipsis-horizontal' },
 ];
 
@@ -58,6 +118,7 @@ const SharedCategoriesScreen = () => {
 
   const {
     addSharedCategory,
+    updateSharedCategory,
     deleteSharedCategory,
     hideSharedBaseCategory,
     getSharedCategoriesForType,
@@ -68,6 +129,45 @@ const SharedCategoriesScreen = () => {
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('ellipsis-horizontal');
   const [selectedType, setSelectedType] = useState<MovementType>('expense');
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; icon: string; type: MovementType } | null>(null);
+  const sheetOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!showAddModal) {
+      sheetOffset.setValue(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const offset = Platform.OS === 'ios'
+        ? -(e.endCoordinates.height - insets.bottom)
+        : -e.endCoordinates.height;
+      Animated.timing(sheetOffset, {
+        toValue: offset,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(sheetOffset, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [showAddModal, sheetOffset, insets.bottom]);
+
+  useEffect(() => {
+    if (showAddModal) {
+      if (editingCategory) {
+        setName(editingCategory.name);
+        setSelectedIcon(editingCategory.icon);
+        setSelectedType(editingCategory.type);
+      } else {
+        setName('');
+        setSelectedIcon('ellipsis-horizontal');
+        setSelectedType(activeType);
+      }
+    }
+  }, [showAddModal, editingCategory]);
 
   const baseCats = getSharedCategoriesForType(activeType).filter(c => !c.isCustom);
   const customCats = getSharedCategoriesForType(activeType).filter(c => c.isCustom);
@@ -104,14 +204,19 @@ const SharedCategoriesScreen = () => {
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    await addSharedCategory(accountId, {
-      name: name.trim(),
-      icon: selectedIcon,
-      type: selectedType,
-      isCustom: true,
-    });
+    if (editingCategory) {
+      await updateSharedCategory(accountId, editingCategory.id, { name: name.trim(), icon: selectedIcon });
+    } else {
+      await addSharedCategory(accountId, {
+        name: name.trim(),
+        icon: selectedIcon,
+        type: selectedType,
+        isCustom: true,
+      });
+    }
     setName('');
     setSelectedIcon('ellipsis-horizontal');
+    setEditingCategory(null);
     setShowAddModal(false);
   };
 
@@ -196,8 +301,17 @@ const SharedCategoriesScreen = () => {
                     {cat.name}
                   </Text>
                   <TouchableOpacity
+                    onPress={() => {
+                      setEditingCategory({ id: cat.id, name: cat.name, icon: cat.icon, type: activeType });
+                      setShowAddModal(true);
+                    }}
+                    style={styles.actionButton}
+                  >
+                    <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     onPress={() => handleDeleteCustom(cat.id, cat.name)}
-                    style={styles.deleteButton}
+                    style={styles.actionButton}
                   >
                     <Ionicons name="trash-outline" size={18} color={colors.expense} />
                   </TouchableOpacity>
@@ -212,7 +326,10 @@ const SharedCategoriesScreen = () => {
 
         <Button
           mode="contained"
-          onPress={() => setShowAddModal(true)}
+          onPress={() => {
+            setEditingCategory(null);
+            setShowAddModal(true);
+          }}
           style={styles.addButton}
           contentStyle={styles.addButtonContent}
           buttonColor={TYPE_COLORS[activeType]}
@@ -224,9 +341,9 @@ const SharedCategoriesScreen = () => {
       </ScrollView>
 
       {/* MODAL AÑADIR */}
-      <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={() => setShowAddModal(false)}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowAddModal(false)} />
+      <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={() => { setShowAddModal(false); setEditingCategory(null); }}>
+        <Animated.View style={[styles.modalOverlay, { transform: [{ translateY: sheetOffset }] }]}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => { setShowAddModal(false); setEditingCategory(null); }} />
           <View style={[styles.modalSheet, {
             backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
             paddingBottom: insets.bottom + 24,
@@ -234,30 +351,34 @@ const SharedCategoriesScreen = () => {
             <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-                {t('categories.addCategory')}
+                {editingCategory ? t('categories.editCategory') : t('categories.addCategory')}
               </Text>
 
-              <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>{t('categories.type')}</Text>
-              <View style={styles.typeRow}>
-                {(['expense', 'income'] as MovementType[]).map((tp) => (
-                  <TouchableOpacity
-                    key={tp}
-                    style={[
-                      styles.typeChip,
-                      { backgroundColor: dc.surface, borderColor: dc.border },
-                      selectedType === tp && { backgroundColor: TYPE_COLORS[tp], borderColor: TYPE_COLORS[tp] },
-                    ]}
-                    onPress={() => setSelectedType(tp)}
-                  >
-                    <Text style={[
-                      styles.typeChipText, { color: dc.textSecondary },
-                      selectedType === tp && { color: '#FFFFFF' },
-                    ]}>
-                      {t(`movements.${tp}`)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {!editingCategory && (
+                <>
+                  <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>{t('categories.type')}</Text>
+                  <View style={styles.typeRow}>
+                    {(['expense', 'income'] as MovementType[]).map((tp) => (
+                      <TouchableOpacity
+                        key={tp}
+                        style={[
+                          styles.typeChip,
+                          { backgroundColor: dc.surface, borderColor: dc.border },
+                          selectedType === tp && { backgroundColor: TYPE_COLORS[tp], borderColor: TYPE_COLORS[tp] },
+                        ]}
+                        onPress={() => setSelectedType(tp)}
+                      >
+                        <Text style={[
+                          styles.typeChipText, { color: dc.textSecondary },
+                          selectedType === tp && { color: '#FFFFFF' },
+                        ]}>
+                          {t(`movements.${tp}`)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
 
               <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>{t('categories.name')}</Text>
               <TextInput
@@ -271,25 +392,33 @@ const SharedCategoriesScreen = () => {
               />
 
               <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>{t('categories.icon')}</Text>
-              <View style={styles.iconsGrid}>
-                {AVAILABLE_ICONS.map((item) => (
-                  <TouchableOpacity
-                    key={item.name}
-                    style={[
-                      styles.iconOption,
-                      { backgroundColor: dc.surface, borderColor: dc.border },
-                      selectedIcon === item.name && { backgroundColor: TYPE_COLORS[selectedType], borderColor: TYPE_COLORS[selectedType] },
-                    ]}
-                    onPress={() => setSelectedIcon(item.name)}
-                  >
-                    <Ionicons
-                      name={item.icon}
-                      size={22}
-                      color={selectedIcon === item.name ? '#FFFFFF' : dc.textSecondary}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                style={styles.iconsScroll}
+                contentContainerStyle={styles.iconsScrollContent}
+              >
+                <View style={styles.iconsGrid}>
+                  {AVAILABLE_ICONS.map((item) => (
+                    <TouchableOpacity
+                      key={item.name}
+                      style={[
+                        styles.iconOption,
+                        { backgroundColor: dc.surface, borderColor: dc.border },
+                        selectedIcon === item.name && { backgroundColor: TYPE_COLORS[selectedType], borderColor: TYPE_COLORS[selectedType] },
+                      ]}
+                      onPress={() => setSelectedIcon(item.name)}
+                    >
+                      <Ionicons
+                        name={item.icon}
+                        size={22}
+                        color={selectedIcon === item.name ? '#FFFFFF' : dc.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
 
               <View style={styles.buttons}>
                 <Button mode="outlined" onPress={() => setShowAddModal(false)} style={styles.cancelButton} textColor={dc.textSecondary}>
@@ -308,7 +437,7 @@ const SharedCategoriesScreen = () => {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </Animated.View>
       </Modal>
     </View>
   );
@@ -332,6 +461,7 @@ const styles = StyleSheet.create({
   categoryIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   categoryName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   deleteButton: { padding: 4 },
+  actionButton: { padding: 4 },
   divider: { height: 0.5, marginLeft: 66 },
   addButton: { borderRadius: 12 },
   addButtonContent: { height: 52 },
@@ -345,7 +475,15 @@ const styles = StyleSheet.create({
   typeChip: { flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: 'center', borderWidth: 0.5 },
   typeChipText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   nameInput: { marginBottom: 20 },
-  iconsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
+  iconsScroll: { marginHorizontal: -24, marginBottom: 24 },
+  iconsScrollContent: { paddingHorizontal: 24 },
+  iconsGrid: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    height: 48 * 3 + 10 * 2,
+    alignContent: 'flex-start',
+    gap: 10,
+  },
   iconOption: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 0.5 },
   buttons: { flexDirection: 'row', gap: 12 },
   cancelButton: { flex: 1 },

@@ -17,6 +17,7 @@ interface SharedCategoryStore {
 
   loadSharedCategories: (accountId: string) => Promise<void>;
   addSharedCategory: (accountId: string, category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
+  updateSharedCategory: (accountId: string, id: string, updates: { name: string; icon: string }) => Promise<void>;
   deleteSharedCategory: (accountId: string, id: string) => Promise<void>;
   hideSharedBaseCategory: (accountId: string, id: string, type: MovementType) => Promise<void>;
   getSharedCategoriesForType: (type: MovementType) => { id: string; name: string; icon: string; isCustom: boolean }[];
@@ -122,6 +123,26 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
         .set(newCategory);
     } catch (e) {
       console.error('Error saving shared category:', e);
+    }
+  },
+
+  updateSharedCategory: async (accountId, id, updates) => {
+    const updated = get().sharedCustomCategories.map(c =>
+      c.id === id ? { ...c, ...updates } : c
+    );
+    set({ sharedCustomCategories: updated });
+    await AsyncStorage.setItem(
+      `${SHARED_CUSTOM_KEY}_${accountId}`,
+      JSON.stringify(updated)
+    );
+
+    try {
+      await firestore()
+        .collection('sharedAccounts').doc(accountId)
+        .collection('categories').doc(id)
+        .update(updates);
+    } catch (e) {
+      console.error('Error updating shared category:', e);
     }
   },
 

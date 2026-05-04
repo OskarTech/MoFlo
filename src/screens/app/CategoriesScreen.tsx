@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal,
+  Animated, Platform, Keyboard,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -109,30 +110,71 @@ interface AddCategoryModalProps {
   visible: boolean;
   onDismiss: () => void;
   onSave: (name: string, icon: string, type: MovementType) => void;
+  onEdit?: (id: string, name: string, icon: string) => void;
   defaultType: MovementType;
+  editingCategory?: { id: string; name: string; icon: string; type: MovementType } | null;
 }
 
-const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCategoryModalProps) => {
+const AddCategoryModal = ({ visible, onDismiss, onSave, onEdit, defaultType, editingCategory }: AddCategoryModalProps) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
   const TYPE_COLORS = { income: dc.income, expense: dc.expense };
   const insets = useSafeAreaInsets();
+  const sheetOffset = useRef(new Animated.Value(0)).current;
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('ellipsis-horizontal');
   const [selectedType, setSelectedType] = useState<MovementType>(defaultType);
 
+  useEffect(() => {
+    if (!visible) {
+      sheetOffset.setValue(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const offset = Platform.OS === 'ios'
+        ? -(e.endCoordinates.height - insets.bottom)
+        : -e.endCoordinates.height;
+      Animated.timing(sheetOffset, {
+        toValue: offset,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(sheetOffset, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [visible, sheetOffset, insets.bottom]);
+
+  useEffect(() => {
+    if (visible) {
+      if (editingCategory) {
+        setName(editingCategory.name);
+        setSelectedIcon(editingCategory.icon);
+        setSelectedType(editingCategory.type);
+      } else {
+        setName('');
+        setSelectedIcon('ellipsis-horizontal');
+        setSelectedType(defaultType);
+      }
+    }
+  }, [visible, editingCategory]);
+
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave(name.trim(), selectedIcon, selectedType);
-    setName('');
-    setSelectedIcon('ellipsis-horizontal');
-    setSelectedType(defaultType);
+    if (editingCategory) {
+      onEdit?.(editingCategory.id, name.trim(), selectedIcon);
+    } else {
+      onSave(name.trim(), selectedIcon, selectedType);
+    }
     onDismiss();
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onDismiss}>
-      <View style={styles.modalOverlay}>
+      <Animated.View style={[styles.modalOverlay, { transform: [{ translateY: sheetOffset }] }]}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
         <View style={[styles.modalSheet, {
           backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
@@ -142,37 +184,41 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-              {t('categories.addCategory')}
+              {editingCategory ? t('categories.editCategory') : t('categories.addCategory')}
             </Text>
 
-            {/* TIPO */}
-            <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>
-              {t('categories.type')}
-            </Text>
-            <View style={styles.typeRow}>
-              {(['expense', 'income'] as MovementType[]).map((tp) => (
-                <TouchableOpacity
-                  key={tp}
-                  style={[
-                    styles.typeChip,
-                    { backgroundColor: dc.surface, borderColor: dc.border },
-                    selectedType === tp && {
-                      backgroundColor: TYPE_COLORS[tp],
-                      borderColor: TYPE_COLORS[tp],
-                    },
-                  ]}
-                  onPress={() => setSelectedType(tp)}
-                >
-                  <Text style={[
-                    styles.typeChipText,
-                    { color: dc.textSecondary },
-                    selectedType === tp && { color: '#FFFFFF' },
-                  ]}>
-                    {t(`movements.${tp}`)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* TIPO — solo visible al crear */}
+            {!editingCategory && (
+              <>
+                <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>
+                  {t('categories.type')}
+                </Text>
+                <View style={styles.typeRow}>
+                  {(['expense', 'income'] as MovementType[]).map((tp) => (
+                    <TouchableOpacity
+                      key={tp}
+                      style={[
+                        styles.typeChip,
+                        { backgroundColor: dc.surface, borderColor: dc.border },
+                        selectedType === tp && {
+                          backgroundColor: TYPE_COLORS[tp],
+                          borderColor: TYPE_COLORS[tp],
+                        },
+                      ]}
+                      onPress={() => setSelectedType(tp)}
+                    >
+                      <Text style={[
+                        styles.typeChipText,
+                        { color: dc.textSecondary },
+                        selectedType === tp && { color: '#FFFFFF' },
+                      ]}>
+                        {t(`movements.${tp}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
 
             {/* NOMBRE */}
             <Text style={[styles.fieldLabel, { color: dc.textSecondary }]}>
@@ -197,6 +243,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               style={styles.iconsScroll}
               contentContainerStyle={styles.iconsScrollContent}
             >
@@ -247,7 +294,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, defaultType }: AddCatego
             </View>
           </ScrollView>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -259,12 +306,14 @@ const CategoriesScreen = () => {
   const {
     customCategories,
     addCategory,
+    updateCategory,
     deleteCategory,
     hideBaseCategory,
     getCategoriesForType,
   } = useCategoryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeType, setActiveType] = useState<MovementType>('expense');
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; icon: string; type: MovementType } | null>(null);
 
   const baseCats = getCategoriesForType(activeType).filter(c => !c.isCustom);
   const customCats = getCategoriesForType(activeType).filter(c => c.isCustom);
@@ -301,6 +350,10 @@ const CategoriesScreen = () => {
 
   const handleSave = async (name: string, icon: string, type: MovementType) => {
     await addCategory({ name, icon, type, isCustom: true });
+  };
+
+  const handleEdit = async (id: string, name: string, icon: string) => {
+    await updateCategory(id, { name, icon });
   };
 
   return (
@@ -402,8 +455,17 @@ const CategoriesScreen = () => {
                     {cat.name}
                   </Text>
                   <TouchableOpacity
+                    onPress={() => {
+                      setEditingCategory({ id: cat.id, name: cat.name, icon: cat.icon, type: activeType });
+                      setShowAddModal(true);
+                    }}
+                    style={styles.actionButton}
+                  >
+                    <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     onPress={() => handleDeleteCustom(cat.id, cat.name)}
-                    style={styles.deleteButton}
+                    style={styles.actionButton}
                   >
                     <Ionicons name="trash-outline" size={18} color={colors.expense} />
                   </TouchableOpacity>
@@ -432,9 +494,14 @@ const CategoriesScreen = () => {
 
       <AddCategoryModal
         visible={showAddModal}
-        onDismiss={() => setShowAddModal(false)}
+        onDismiss={() => {
+          setShowAddModal(false);
+          setEditingCategory(null);
+        }}
         onSave={handleSave}
+        onEdit={handleEdit}
         defaultType={activeType}
+        editingCategory={editingCategory}
       />
     </View>
   );
@@ -464,6 +531,7 @@ const styles = StyleSheet.create({
   },
   categoryName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   deleteButton: { padding: 4 },
+  actionButton: { padding: 4 },
   divider: { height: 0.5, marginLeft: 66 },
   addButton: { borderRadius: 12 },
   addButtonContent: { height: 52 },
