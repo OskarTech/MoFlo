@@ -25,15 +25,19 @@ export const usePremiumStore = create<PremiumStore>((set) => ({
       const cached = await AsyncStorage.getItem(PREMIUM_KEY);
       if (cached === 'true') set({ isPremium: true });
 
-      // 2. Verifica con RevenueCat — fuente de verdad
+      // 2. Verifica con RevenueCat — fuente de verdad, con timeout de 5s
       const uid = auth().currentUser?.uid;
       if (uid) {
-        await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
-        await Purchases.logIn(uid);
-        const customerInfo = await Purchases.getCustomerInfo();
-        const isPremium = !!customerInfo.entitlements.active['premium'];
-        set({ isPremium });
-        await AsyncStorage.setItem(PREMIUM_KEY, String(isPremium));
+        const revenueCatCheck = async () => {
+          await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+          await Purchases.logIn(uid);
+          const customerInfo = await Purchases.getCustomerInfo();
+          const isPremium = !!customerInfo.entitlements.active['premium'];
+          set({ isPremium });
+          await AsyncStorage.setItem(PREMIUM_KEY, String(isPremium));
+        };
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+        await Promise.race([revenueCatCheck(), timeout]);
       }
     } catch (e) {
       // Si RevenueCat falla usa el valor local
