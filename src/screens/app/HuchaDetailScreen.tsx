@@ -2,7 +2,7 @@
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, Animated, Platform, StatusBar, Keyboard, Switch,
-  TextInput as RNTextInput, KeyboardAvoidingView, Dimensions,
+  TextInput as RNTextInput, Dimensions,
 } from 'react-native';
 import { Text, Button, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -250,6 +250,7 @@ const HuchaDetailScreen = () => {
   const hucha = huchas.find(h => h.id === route.params.huchaId);
 
   const fillAnim = useRef(new Animated.Value(0)).current;
+  const actionsOffset = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
   const headerH = useRef(0);
@@ -298,6 +299,29 @@ const HuchaDetailScreen = () => {
     const hide = Keyboard.addListener(hideEvent, () => {});
     return () => { show.remove(); hide.remove(); };
   }, []);
+
+  useEffect(() => {
+    if (!showActionsMenu) {
+      actionsOffset.setValue(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const offset = Platform.OS === 'ios'
+        ? -(e.endCoordinates.height - insets.bottom)
+        : -e.endCoordinates.height;
+      Animated.timing(actionsOffset, {
+        toValue: offset,
+        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(actionsOffset, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [showActionsMenu, actionsOffset, insets.bottom]);
 
   const fillHeight = fillAnim.interpolate({
     inputRange: [0, 100],
@@ -734,15 +758,13 @@ const HuchaDetailScreen = () => {
         animationType="fade"
         onRequestClose={() => setShowActionsMenu(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.actionsOverlay}
-        >
+          <View style={styles.actionsOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
             onPress={() => setShowActionsMenu(false)}
           />
+          <Animated.View style={{ transform: [{ translateY: actionsOffset }] }}>
           <View style={[styles.actionsSheet, { backgroundColor: dc.surface, paddingBottom: insets.bottom + 12 }]}>
             <View style={[styles.sheetHandle, { backgroundColor: dc.border }]} />
             <ScrollView
@@ -862,7 +884,8 @@ const HuchaDetailScreen = () => {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+          </Animated.View>
+          </View>
       </Modal>
 
       <PremiumModal
