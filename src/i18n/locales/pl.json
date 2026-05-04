@@ -232,6 +232,8 @@
   "individualCategoriesSubtitle": "Dostosuj kategorie swojego konta",
   "individualExportSubtitle": "Eksportuj ruchy swojego konta",
   "shareAppSubtitle": "Zaproś znajomych do MoFlo",
+  "shareAppTitle": "MoFlo — Finanse osobiste",
+  "shareAppMessage": "💰 Pobierz MoFlo, aplikację do zarządzania finansami:\n\n📱 iOS: {{iosUrl}}\n🤖 Android: {{androidUrl}}",
   "support": "Kontakt z pomocą",
   "supportSubtitle": "Pytania lub sugestie?",
   "legal": "Prawne",

@@ -328,12 +328,18 @@ const HuchaDetailScreen = () => {
     outputRange: [0, FILL_HEIGHT],
   });
 
+  // Si la hucha desaparece (borrada localmente, eliminada por otro miembro en
+  // modo compartido, o cambio entre modo personal/compartido con sets de
+  // huchas distintos), el id de la ruta queda apuntando a nada y el stack
+  // se quedaba atascado en este fallback sin forma de volver atrás.
+  useEffect(() => {
+    if (!hucha && navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [hucha, navigation]);
+
   if (!hucha) {
-    return (
-      <View style={[styles.container, { backgroundColor: dc.background }]}>
-        <Text style={{ color: dc.textSecondary, padding: 24 }}>Hucha no encontrada</Text>
-      </View>
-    );
+    return <View style={[styles.container, { backgroundColor: dc.background }]} />;
   }
 
   const recentMovements = huchaMovements

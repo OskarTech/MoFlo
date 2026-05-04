@@ -251,6 +251,8 @@
   "rateAppSubtitle": "¿Te gusta la app? ¡Déjanos una reseña!",
   "shareApp": "Compartir con amigos",
   "shareAppSubtitle": "Invita a tus amigos a MoFlo",
+  "shareAppTitle": "MoFlo — Control de finanzas",
+  "shareAppMessage": "💰 Descarga MoFlo, la app para controlar tus finanzas:\n\n📱 iOS: {{iosUrl}}\n🤖 Android: {{androidUrl}}",
   "support": "Contactar soporte",
   "supportSubtitle": "¿Dudas o sugerencias?",
   "supportTitle": "Contactar soporte",

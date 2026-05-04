@@ -3,6 +3,7 @@ import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share,
   Clipboard, Keyboard, Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -245,6 +246,11 @@ const SharedAccountScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -120}
+      >
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
@@ -558,13 +564,15 @@ const SharedAccountScreen = () => {
             </>
           )}
         </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  flex: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40, flexGrow: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   premiumGate: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, paddingTop: 60 },
   premiumEmoji: { fontSize: 56, marginBottom: 16 },
