@@ -9,6 +9,9 @@ import { BASE_CATEGORIES } from '../constants/categories';
 const CUSTOM_KEY = '@moflo_custom_categories';
 const HIDDEN_KEY = '@moflo_hidden_base';
 
+let categoriesUnsubscribe: (() => void) | null = null;
+let hiddenUnsubscribe: (() => void) | null = null;
+
 interface CategoryStore {
   customCategories: Category[];
   hiddenBaseCategories: string[];
@@ -26,6 +29,8 @@ interface CategoryStore {
     isCustom: boolean;
   }[];
   getCategoryName: (id: string, type: MovementType, t: (key: string) => string) => string;
+  subscribeToCategories: () => void;
+  unsubscribeCategories: () => void;
   resetStore: () => void;
 }
 
@@ -34,10 +39,14 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   hiddenBaseCategories: [],
   isLoading: false,
 
-  resetStore: () => set({
-    customCategories: [],
-    hiddenBaseCategories: [],
-  }),
+  resetStore: () => {
+    if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
+    set({
+      customCategories: [],
+      hiddenBaseCategories: [],
+    });
+  },
 
   loadCategories: async () => {
     set({ isLoading: true });
@@ -208,5 +217,40 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     const custom = get().customCategories.find(c => c.id === id);
     if (custom) return custom.name;
     return t(`movements.categories.${id}`);
+  },
+
+  unsubscribeCategories: () => {
+    if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
+  },
+
+  subscribeToCategories: () => {
+    const uid = auth().currentUser?.uid;
+    if (!uid) return;
+
+    if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
+    categoriesUnsubscribe = firestore()
+      .collection('users').doc(uid)
+      .collection('categories')
+      .onSnapshot((snap) => {
+        const categories = snap.docs.map(d => d.data() as Category);
+        set({ customCategories: categories });
+        AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(categories)).catch(() => {});
+      }, (e) => {
+        console.error('Error listening to categories:', e);
+      });
+
+    if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
+    hiddenUnsubscribe = firestore()
+      .collection('users').doc(uid)
+      .onSnapshot((doc) => {
+        if (doc.exists()) {
+          const hidden: string[] = doc.data()?.hiddenCategories ?? [];
+          set({ hiddenBaseCategories: hidden });
+          AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(hidden)).catch(() => {});
+        }
+      }, (e) => {
+        console.error('Error listening to hidden categories:', e);
+      });
   },
 }));

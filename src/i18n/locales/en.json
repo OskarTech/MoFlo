@@ -158,7 +158,9 @@
   "noMovementsSubtitle": "Try changing the filter or add a new movement",
   "deleteConfirm": "Delete this movement?",
   "recurring": "Recurring",
-  "fixed": "Fixed"
+  "fixed": "Fixed",
+  "recurringExpense": "Recurring expense",
+  "recurringIncome": "Recurring income"
   },
   "annual": {
   "title": "Annual Summary",

@@ -158,7 +158,9 @@
   "noMovementsSubtitle": "Prueba cambiando el filtro o añade un nuevo movimiento",
   "deleteConfirm": "¿Eliminar este movimiento?",
   "recurring": "Recurrente",
-  "fixed": "Fijos"
+  "fixed": "Fijos",
+  "recurringExpense": "Gasto recurrente",
+  "recurringIncome": "Ingreso recurrente"
   },
   "annual": {
   "title": "Resumen Anual",

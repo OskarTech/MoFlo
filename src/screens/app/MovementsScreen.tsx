@@ -35,9 +35,11 @@ const MovementRow = ({
   const { colors: dc } = useTheme();
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
-  const userName = isSharedMode && movement.addedBy
-    ? sharedAccount?.memberNames?.[movement.addedBy]
-    : undefined;
+  const userName = isSharedMode && movement.isRecurring
+    ? t(movement.type === 'income' ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
+    : isSharedMode && movement.addedBy
+      ? sharedAccount?.memberNames?.[movement.addedBy]
+      : undefined;
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);

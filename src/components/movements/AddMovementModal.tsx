@@ -29,9 +29,15 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
   const { isDark, colors: dc } = useTheme();
   const { addMovement, movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
-  const { getCategoriesForType, getCategoryName } = useCategoryStore();
+  const {
+    customCategories, hiddenBaseCategories,
+    getCategoriesForType, getCategoryName,
+  } = useCategoryStore();
   const { isSharedMode, sharedAccount, getSharedCurrencySymbol } = useSharedAccountStore();
-  const { getSharedCategoriesForType, getSharedCategoryName } = useSharedCategoryStore();
+  const {
+    sharedCustomCategories, sharedHiddenCategories,
+    getSharedCategoriesForType, getSharedCategoryName,
+  } = useSharedCategoryStore();
   const { showModal: showPremiumModal, setShowModal: setShowPremiumModal, requirePremium } = usePremium();
   const insets = useSafeAreaInsets();
 
@@ -90,7 +96,11 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
 
   const categoryList = useMemo(
     () => getSortedCategoriesForType(type),
-    [movements, type, isSharedMode]
+    [
+      movements, type, isSharedMode,
+      customCategories, hiddenBaseCategories,
+      sharedCustomCategories, sharedHiddenCategories,
+    ]
   );
 
   useEffect(() => {

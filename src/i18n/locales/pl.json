@@ -159,7 +159,9 @@
   "noMovementsSubtitle": "Spróbuj zmienić filtr lub dodaj nową transakcję",
   "deleteConfirm": "Usunąć tę transakcję?",
   "recurring": "Cykliczne",
-  "fixed": "Stałe"
+  "fixed": "Stałe",
+  "recurringExpense": "Wydatek cykliczny",
+  "recurringIncome": "Przychód cykliczny"
   },
   "annual": {
   "title": "Podsumowanie Roczne",

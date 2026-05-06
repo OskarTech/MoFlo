@@ -24,13 +24,14 @@ const RootNavigator = () => {
   const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
   const { loadSettings } = useSettingsStore();
   const { loadPremium } = usePremiumStore();
-  const { loadCategories } = useCategoryStore();
+  const { loadCategories, subscribeToCategories } = useCategoryStore();
   const { loadSharedAccount } = useSharedAccountStore();
 
   const initUser = async () => {
     await loadSettings();
     await loadPremium();
     await loadCategories();
+    subscribeToCategories();
     await loadSharedAccount();
     setupPushTokens().catch((e) => console.warn('setupPushTokens error', e));
 

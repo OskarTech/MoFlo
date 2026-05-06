@@ -285,9 +285,11 @@ const HomeScreen = () => {
                 const hasNote = !!mov.note;
                 const catLabel = getCatName(mov.category, mov.type as MovementType);
                 const timeLabel = formatMovementTime(mov.date);
-                const userName = isSharedMode && mov.addedBy
-                  ? sharedAccount?.memberNames?.[mov.addedBy]
-                  : undefined;
+                const userName = isSharedMode && mov.isRecurring
+                  ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
+                  : isSharedMode && mov.addedBy
+                    ? sharedAccount?.memberNames?.[mov.addedBy]
+                    : undefined;
                 const dateAndCat = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
                 const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
                 const amountColor = isIncome ? dc.income : dc.expense;

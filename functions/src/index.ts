@@ -58,13 +58,22 @@ const resolveLang = (raw: unknown): Lang => {
   return (SUPPORTED.includes(code as Lang) ? code : 'en') as Lang;
 };
 
-const getUserLanguage = async (uid: string): Promise<Lang> => {
+interface UserPrefs {
+  lang: Lang;
+  notificationsEnabled: boolean;
+}
+
+const getUserPrefs = async (uid: string): Promise<UserPrefs> => {
   try {
     const doc = await getFirestore().collection('users').doc(uid).get();
     const data = doc.data();
-    return resolveLang(data?.settings?.language);
+    return {
+      lang: resolveLang(data?.settings?.language),
+      // Default a true si no está definido (usuarios existentes sin el campo).
+      notificationsEnabled: data?.settings?.notificationsEnabled !== false,
+    };
   } catch {
-    return 'en';
+    return { lang: 'en', notificationsEnabled: true };
   }
 };
 
@@ -111,13 +120,17 @@ const sendToUser = async (
   uid: string,
   buildPayload: (lang: Lang) => { title: string; body: string; data?: Record<string, string> },
 ): Promise<void> => {
-  const [lang, devices] = await Promise.all([
-    getUserLanguage(uid),
+  const [prefs, devices] = await Promise.all([
+    getUserPrefs(uid),
     getDeviceTokens(uid),
   ]);
+  if (!prefs.notificationsEnabled) {
+    console.log(`[push] uid=${uid} skipped (notifications disabled)`);
+    return;
+  }
   console.log(`[push] uid=${uid} devices=${devices.length}`, devices.map(d => d.ref.id));
   if (devices.length === 0) return;
-  const payload = buildPayload(lang);
+  const payload = buildPayload(prefs.lang);
 
   const message: MulticastMessage = {
     tokens: devices.map(d => d.token),

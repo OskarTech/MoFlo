@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import * as Notifications from 'expo-notifications';
-import i18n from '../i18n';
 import { SharedAccount, Movement, RecurringMovement, JoinRequest, PendingJoinRequest } from '../types';
 import { CURRENCIES, ColorPaletteId } from './settingsStore';
 
@@ -124,8 +122,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().subscribeToSharedHuchas(accountId);
 
-    let isFirstSnapshot = true;
-
     movementsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('movements')
@@ -134,30 +130,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           .map(d => d.data() as Movement)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         useMovementStore.setState({ movements: [...movements] });
-
-        if (!isFirstSnapshot) {
-          const currentUid = auth().currentUser?.uid;
-          const { notificationsEnabled, sharedAccount } = get();
-          if (notificationsEnabled && currentUid) {
-            snap.docChanges().forEach((change) => {
-              if (change.type === 'added') {
-                const movement = change.doc.data() as Movement;
-                if (movement.addedBy && movement.addedBy !== currentUid) {
-                  const authorName = sharedAccount?.memberNames?.[movement.addedBy]
-                    ?? i18n.t('sharedAccount.someone');
-                  Notifications.scheduleNotificationAsync({
-                    content: {
-                      title: i18n.t('sharedAccount.notifMovementTitle'),
-                      body: i18n.t('sharedAccount.notifMovementBody', { name: authorName }),
-                    },
-                    trigger: null,
-                  }).catch(() => {});
-                }
-              }
-            });
-          }
-        }
-        isFirstSnapshot = false;
       }, (e) => {
         console.error('Error listening to shared movements:', e);
       });
@@ -186,6 +158,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       const notifPref = await AsyncStorage.getItem(`${NOTIF_KEY}_${uid}`);
       if (notifPref !== null) set({ notificationsEnabled: notifPref === 'true' });
       if (activeMode === 'shared') set({ isSharedMode: true });
+
+      // Sincroniza notificationsEnabled desde Firestore (fuente de verdad para la Cloud Function).
+      firestore().collection('users').doc(uid).get().then((doc) => {
+        const remote = doc.data()?.settings?.notificationsEnabled;
+        if (typeof remote === 'boolean') {
+          set({ notificationsEnabled: remote });
+          AsyncStorage.setItem(`${NOTIF_KEY}_${uid}`, String(remote)).catch(() => {});
+        }
+      }).catch(() => {});
 
       const cachedPending = await AsyncStorage.getItem(PENDING_REQUEST_KEY);
       if (cachedPending) {
@@ -450,35 +431,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── LISTENER SOLICITUDES ENTRANTES (creador) ───────────────────
   subscribeToIncomingRequests: (accountId) => {
     if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
-    let isFirstSnapshot = true;
     incomingRequestsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('joinRequests')
       .onSnapshot((snap) => {
         const requests = snap.docs.map(d => d.data() as JoinRequest);
         set({ incomingRequests: requests });
-
-        if (!isFirstSnapshot) {
-          const { notificationsEnabled } = get();
-          if (notificationsEnabled) {
-            snap.docChanges().forEach((change) => {
-              if (change.type === 'added') {
-                const req = change.doc.data() as JoinRequest;
-                if (req.status === 'pending') {
-                  Notifications.scheduleNotificationAsync({
-                    content: {
-                      title: i18n.t('sharedAccount.notifJoinRequestTitle'),
-                      body: i18n.t('sharedAccount.notifJoinRequestBody', { name: req.displayName }),
-                      data: { type: 'shared_join_request' },
-                    },
-                    trigger: null,
-                  }).catch(() => {});
-                }
-              }
-            });
-          }
-        }
-        isFirstSnapshot = false;
       }, (e) => {
         console.error('Error listening to join requests:', e);
       });
@@ -501,34 +459,14 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           set({ pendingJoinRequest: null });
           await AsyncStorage.removeItem(PENDING_REQUEST_KEY);
           await get().loadSharedAccount();
-          if (get().sharedAccount && get().notificationsEnabled) {
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: i18n.t('sharedAccount.notifApprovedTitle'),
-                body: i18n.t('sharedAccount.notifApprovedBody', { name: get().sharedAccount?.name ?? '' }),
-              },
-              trigger: null,
-            }).catch(() => {});
-          }
           return;
         }
         const data = doc.data() as JoinRequest;
         const current = get().pendingJoinRequest;
         if (!current) return;
-        const wasPending = current.status === 'pending';
         const updated: PendingJoinRequest = { ...current, status: data.status };
         set({ pendingJoinRequest: updated });
         await AsyncStorage.setItem(PENDING_REQUEST_KEY, JSON.stringify(updated));
-
-        if (wasPending && data.status === 'rejected' && get().notificationsEnabled) {
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: i18n.t('sharedAccount.notifRejectedTitle'),
-              body: i18n.t('sharedAccount.notifRejectedBody', { name: current.accountName }),
-            },
-            trigger: null,
-          }).catch(() => {});
-        }
       }, (e) => {
         console.error('Error listening to own join request:', e);
       });
@@ -616,7 +554,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   setNotificationsEnabled: async (enabled) => {
     const uid = auth().currentUser?.uid;
     set({ notificationsEnabled: enabled });
+    if (!uid) return;
     await AsyncStorage.setItem(`${NOTIF_KEY}_${uid}`, String(enabled));
+    try {
+      await firestore()
+        .collection('users').doc(uid)
+        .set({ settings: { notificationsEnabled: enabled } }, { merge: true });
+    } catch (e) {
+      console.warn('Failed to sync notificationsEnabled to Firestore', e);
+    }
   },
 
   getInviteLink: () => {
