@@ -109,8 +109,8 @@ const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] 
 interface AddCategoryModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onSave: (name: string, icon: string, type: MovementType) => void;
-  onEdit?: (id: string, name: string, icon: string) => void;
+  onSave: (name: string, icon: string, type: MovementType) => void | Promise<void>;
+  onEdit?: (id: string, name: string, icon: string) => void | Promise<void>;
   defaultType: MovementType;
   editingCategory?: { id: string; name: string; icon: string; type: MovementType } | null;
 }
@@ -124,6 +124,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, onEdit, defaultType, edi
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('ellipsis-horizontal');
   const [selectedType, setSelectedType] = useState<MovementType>(defaultType);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     if (!visible) {
@@ -163,12 +164,17 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, onEdit, defaultType, edi
   }, [visible, editingCategory]);
 
   const handleSave = () => {
+    if (isSavingRef.current) return;
     if (!name.trim()) return;
-    if (editingCategory) {
-      onEdit?.(editingCategory.id, name.trim(), selectedIcon);
-    } else {
-      onSave(name.trim(), selectedIcon, selectedType);
-    }
+    isSavingRef.current = true;
+
+    const result = editingCategory
+      ? onEdit?.(editingCategory.id, name.trim(), selectedIcon)
+      : onSave(name.trim(), selectedIcon, selectedType);
+
+    Promise.resolve(result).finally(() => {
+      isSavingRef.current = false;
+    });
     onDismiss();
   };
 

@@ -131,7 +131,8 @@
   "recurring": {
   "title": "Cykliczne",
   "subtitle": "Stałe miesięczne transakcje",
-  "add": "Dodaj cykliczną transakcje",
+  "add": "Cykliczną transakcje",
+  "edit": "Edytuj cykliczną transakcje",
   "noRecurring": "Brak cyklicznych transakcji",
   "noRecurringSubtitle": "Dodaj stałe wydatki lub przychody powtarzające się co miesiąc",
   "active": "Aktywne",

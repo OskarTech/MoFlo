@@ -48,6 +48,7 @@ interface MovementStore {
   deleteMovement: (id: string) => Promise<void>;
 
   addRecurringMovement: (movement: RecurringMovement) => Promise<void>;
+  updateRecurringMovement: (id: string, updates: Partial<RecurringMovement>) => Promise<void>;
   deleteRecurringMovement: (id: string) => Promise<void>;
   applyRecurringMovements: () => Promise<void>;
 
@@ -328,6 +329,53 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     }
   },
 
+  // ── EDITAR RECURRENTE ──────────────────────────────────────────
+  // Solo afecta a las generaciones futuras: las Movement ya creadas en
+  // meses pasados (y la del mes actual si ya saltó) permanecen intactas.
+  updateRecurringMovement: async (id, updates) => {
+    const { sharedAccountId } = get();
+    const existing = get().recurringMovements.find(m => m.id === id);
+    if (!existing) return;
+    const updated: RecurringMovement = { ...existing, ...updates, id: existing.id };
+
+    const newRecurring = get().recurringMovements
+      .map(m => (m.id === id ? updated : m))
+      .sort((a, b) => a.recurringDay - b.recurringDay);
+    set({ recurringMovements: [...newRecurring] });
+    await get().saveRecurring(newRecurring);
+
+    if (sharedAccountId) {
+      const sharedRecurring = stripUndefined({ ...updated });
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedRecurringCol(sharedAccountId).doc(id).set(sharedRecurring);
+        } catch (e) {
+          await enqueue({
+            type: 'ADD_SHARED_RECURRING',
+            payload: sharedRecurring,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'ADD_SHARED_RECURRING',
+          payload: sharedRecurring,
+          accountId: sharedAccountId,
+        });
+      }
+      return;
+    }
+
+    const netState = await NetInfo.fetch();
+    if (netState.isConnected) {
+      try { await addRecurringToFirestore(updated); }
+      catch (e) { await enqueue({ type: 'ADD_RECURRING', payload: updated }); }
+    } else {
+      await enqueue({ type: 'ADD_RECURRING', payload: updated });
+    }
+  },
+
   // ── ELIMINAR RECURRENTE ────────────────────────────────────────
   deleteRecurringMovement: async (id) => {
     const { sharedAccountId } = get();
@@ -391,19 +439,21 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         createdAt.getMonth() + 1 === currentMonth;
       if (createdInCurrentMonth && createdAt.getDate() > recurring.recurringDay) continue;
 
+      const expectedId = `recurring_${recurring.id}_${currentMonth}_${currentYear}`;
       const alreadyExists = movements.some(m =>
-        m.isRecurring &&
-        m.description === recurring.description &&
-        m.amount === recurring.amount &&
-        new Date(m.date).getMonth() + 1 === currentMonth &&
-        new Date(m.date).getFullYear() === currentYear
+        m.id === expectedId ||
+        (m.isRecurring &&
+          m.description === recurring.description &&
+          m.amount === recurring.amount &&
+          new Date(m.date).getMonth() + 1 === currentMonth &&
+          new Date(m.date).getFullYear() === currentYear)
       );
 
       if (!alreadyExists) {
         const day = Math.min(recurring.recurringDay, new Date(currentYear, currentMonth, 0).getDate());
         const date = new Date(currentYear, currentMonth - 1, day);
         newMovements.push({
-          id: `recurring_${recurring.id}_${currentMonth}_${currentYear}`,
+          id: expectedId,
           type: recurring.type,
           amount: recurring.amount,
           category: recurring.category,

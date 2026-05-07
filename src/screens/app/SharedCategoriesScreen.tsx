@@ -131,6 +131,7 @@ const SharedCategoriesScreen = () => {
   const [selectedType, setSelectedType] = useState<MovementType>('expense');
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; icon: string; type: MovementType } | null>(null);
   const sheetOffset = useRef(new Animated.Value(0)).current;
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     if (!showAddModal) {
@@ -202,18 +203,24 @@ const SharedCategoriesScreen = () => {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
+    if (isSavingRef.current) return;
     if (!name.trim()) return;
-    if (editingCategory) {
-      await updateSharedCategory(accountId, editingCategory.id, { name: name.trim(), icon: selectedIcon });
-    } else {
-      await addSharedCategory(accountId, {
-        name: name.trim(),
-        icon: selectedIcon,
-        type: selectedType,
-        isCustom: true,
-      });
-    }
+    isSavingRef.current = true;
+
+    const promise = editingCategory
+      ? updateSharedCategory(accountId, editingCategory.id, { name: name.trim(), icon: selectedIcon })
+      : addSharedCategory(accountId, {
+          name: name.trim(),
+          icon: selectedIcon,
+          type: selectedType,
+          isCustom: true,
+        });
+
+    Promise.resolve(promise).finally(() => {
+      isSavingRef.current = false;
+    });
+
     setName('');
     setSelectedIcon('ellipsis-horizontal');
     setEditingCategory(null);

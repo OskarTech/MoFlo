@@ -129,7 +129,8 @@
   "recurring": {
   "title": "Recurring",
   "subtitle": "Fixed monthly movements",
-  "add": "Add recurring movement",
+  "add": "Recurring movement",
+  "edit": "Edit recurring movement",
   "noRecurring": "No recurring movements",
   "noRecurringSubtitle": "Add fixed expenses or income that repeat every month",
   "active": "Active",

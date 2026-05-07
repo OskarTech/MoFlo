@@ -129,7 +129,8 @@
   "recurring": {
   "title": "Recurrentes",
   "subtitle": "Movimientos fijos mensuales",
-  "add": "Añadir movimiento recurrente",
+  "add": "Movimiento recurrente",
+  "edit": "Editar movimiento recurrente",
   "noRecurring": "Sin movimientos recurrentes",
   "noRecurringSubtitle": "Añade gastos o ingresos fijos que se repiten cada mes",
   "active": "Activo",

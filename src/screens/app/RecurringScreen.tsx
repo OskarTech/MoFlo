@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert,
@@ -28,9 +28,11 @@ const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const RecurringCard = ({
-  item, onDelete,
+  item, onDelete, onEdit,
 }: {
-  item: RecurringMovement; onDelete: (id: string) => void;
+  item: RecurringMovement;
+  onDelete: (id: string) => void;
+  onEdit: (item: RecurringMovement) => void;
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
@@ -80,9 +82,14 @@ const RecurringCard = ({
         <Text style={[styles.cardAmount, { color }]}>
           {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
         </Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={18} color={colors.expense} />
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
+            <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+            <Ionicons name="trash-outline" size={18} color={colors.expense} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -99,10 +106,16 @@ const RecurringScreen = () => {
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
+  const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
 
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
+
+  const handleEdit = (item: RecurringMovement) => {
+    setEditingRecurring(item);
+    setShowRecurringModal(true);
+  };
 
   const sortedRecurring = [...recurringMovements].sort(
     (a, b) => a.recurringDay - b.recurringDay
@@ -179,6 +192,7 @@ const RecurringScreen = () => {
               key={item.id}
               item={item}
               onDelete={deleteRecurringMovement}
+              onEdit={handleEdit}
             />
           ))
         )}
@@ -186,7 +200,11 @@ const RecurringScreen = () => {
 
       <AddRecurringModal
         visible={showRecurringModal}
-        onDismiss={() => setShowRecurringModal(false)}
+        onDismiss={() => {
+          setShowRecurringModal(false);
+          setEditingRecurring(null);
+        }}
+        editingRecurring={editingRecurring}
       />
     </View>
   );
@@ -214,6 +232,8 @@ const styles = StyleSheet.create({
   cardDescription: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
   cardRight: { alignItems: 'flex-end', gap: 6 },
   cardAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  cardActions: { flexDirection: 'row', gap: 4 },
+  actionButton: { padding: 4 },
   deleteButton: { padding: 4 },
   emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },

@@ -21,12 +21,13 @@ import { MovementType, RecurringMovement } from '../../types';
 interface Props {
   visible: boolean;
   onDismiss: () => void;
+  editingRecurring?: RecurringMovement | null;
 }
 
-const AddRecurringModal = ({ visible, onDismiss }: Props) => {
+const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
-  const { addRecurringMovement, movements } = useMovementStore();
+  const { addRecurringMovement, updateRecurringMovement, movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const {
     customCategories, hiddenBaseCategories,
@@ -105,11 +106,20 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
   useEffect(() => {
     if (!visible) return;
+    if (editingRecurring) {
+      setType(editingRecurring.type);
+      setAmount(editingRecurring.amount.toString());
+      setNote(editingRecurring.note ?? '');
+      setCategoryId(editingRecurring.category);
+      setRecurringDay(editingRecurring.recurringDay.toString());
+      categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+      return;
+    }
     const sorted = getSortedCategoriesForType(type);
     setCategoryId(sorted[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, editingRecurring]);
 
   const getCatName = (id: string, tp: MovementType) =>
     isSharedMode
@@ -167,6 +177,22 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
 
     isSavingRef.current = true;
 
+    if (editingRecurring) {
+      const updates: Partial<RecurringMovement> = {
+        type,
+        amount: parsedAmount,
+        category: categoryId as any,
+        description: getCatName(categoryId, type),
+        recurringDay: day,
+        note: note.trim() || undefined,
+      };
+      updateRecurringMovement(editingRecurring.id, updates).finally(() => {
+        isSavingRef.current = false;
+      });
+      handleDismiss();
+      return;
+    }
+
     const newRecurring: RecurringMovement = {
       id: Date.now().toString(),
       type,
@@ -209,7 +235,7 @@ const AddRecurringModal = ({ visible, onDismiss }: Props) => {
           >
             <View style={styles.titleRow}>
               <Text style={[styles.title, { color: dc.textPrimary }]}>
-                {t('recurring.add')}
+                {editingRecurring ? t('recurring.edit') : t('recurring.add')}
               </Text>
               <TouchableOpacity
                 onPress={() => Alert.alert(t('recurring.add'), t('recurring.infoMessage'))}

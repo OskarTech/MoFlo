@@ -155,9 +155,11 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
 };
 
 const RecurringCard = ({
-  item, onDelete,
+  item, onDelete, onEdit,
 }: {
-  item: RecurringMovement; onDelete: (id: string) => void;
+  item: RecurringMovement;
+  onDelete: (id: string) => void;
+  onEdit: (item: RecurringMovement) => void;
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol } = useSettingsStore();
@@ -197,9 +199,14 @@ const RecurringCard = ({
           {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
         </Text>
       </View>
-      <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-        <Ionicons name="trash-outline" size={18} color={colors.expense} />
-      </TouchableOpacity>
+      <View style={styles.recurringActions}>
+        <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
+          <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+          <Ionicons name="trash-outline" size={18} color={colors.expense} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -226,6 +233,12 @@ const MovementsScreen = () => {
   const recurringNet = recurringIncomeTotal - recurringExpenseTotal;
   const route = useRoute<any>();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
+  const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
+
+  const handleEditRecurring = (item: RecurringMovement) => {
+    setEditingRecurring(item);
+    setShowRecurringModal(true);
+  };
   const scrollRef = useRef<ScrollView>(null);
   const filterPositions = useRef<{ [key: string]: number }>({});
 
@@ -386,7 +399,12 @@ const MovementsScreen = () => {
           {sortedRecurring.length === 0
             ? emptyRecurring
             : sortedRecurring.map((item) => (
-                <RecurringCard key={item.id} item={item} onDelete={deleteRecurringMovement} />
+                <RecurringCard
+                  key={item.id}
+                  item={item}
+                  onDelete={deleteRecurringMovement}
+                  onEdit={handleEditRecurring}
+                />
               ))
           }
         </ScrollView>
@@ -405,7 +423,11 @@ const MovementsScreen = () => {
 
       <AddRecurringModal
         visible={showRecurringModal}
-        onDismiss={() => setShowRecurringModal(false)}
+        onDismiss={() => {
+          setShowRecurringModal(false);
+          setEditingRecurring(null);
+        }}
+        editingRecurring={editingRecurring}
       />
     </View>
   );
@@ -444,6 +466,8 @@ const styles = StyleSheet.create({
   },
   dayNumber: { fontSize: 14, fontFamily: 'Poppins_700Bold', lineHeight: 16 },
   dayLabel: { fontSize: 9, fontFamily: 'Poppins_400Regular' },
+  recurringActions: { flexDirection: 'row', gap: 4, marginLeft: 4 },
+  actionButton: { padding: 4 },
   deleteButton: { padding: 4 },
   emptyState: { alignItems: 'center', paddingVertical: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
