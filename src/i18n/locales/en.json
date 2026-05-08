@@ -87,7 +87,8 @@
     "evolution6Months": "Evolution · 6 months",
     "avgPerMonth": "Avg/Month",
     "total": "Total",
-    "categAbbr": "Categ."
+    "categAbbr": "Categ.",
+    "viewAllMovements": "View all movements"
   },
   "movements": {
   "add": "Add Movement",
@@ -611,5 +612,14 @@
     "boundaryTitle": "Something went wrong",
     "boundarySubtitle": "We've logged the error so we can fix it. Tap to try again.",
     "boundaryRetry": "Try again"
+  },
+  "update": {
+    "title": "New version available",
+    "versionLabel": "Version {{version}}",
+    "subtitle": "A new version of MoFlo is available. Update to enjoy the latest improvements.",
+    "subtitleForced": "You need to update the app to keep using it.",
+    "whatsNew": "What's new",
+    "updateNow": "Update now",
+    "later": "Later"
   }
 }

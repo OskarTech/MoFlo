@@ -87,7 +87,8 @@
     "evolution6Months": "Evolución · 6 meses",
     "avgPerMonth": "Media/Mes",
     "total": "Total",
-    "categAbbr": "Categ."
+    "categAbbr": "Categ.",
+    "viewAllMovements": "Ver todos los movimientos"
   },
   "movements": {
   "add": "Añadir Movimiento",
@@ -611,5 +612,14 @@
     "boundaryTitle": "Algo ha fallado",
     "boundarySubtitle": "Hemos guardado el error para poder corregirlo. Pulsa para reintentarlo.",
     "boundaryRetry": "Reintentar"
+  },
+  "update": {
+    "title": "Nueva versión disponible",
+    "versionLabel": "Versión {{version}}",
+    "subtitle": "Hay una nueva versión de MoFlo. Actualiza para disfrutar de las últimas mejoras.",
+    "subtitleForced": "Tienes que actualizar la app para continuar usándola.",
+    "whatsNew": "Novedades",
+    "updateNow": "Actualizar ahora",
+    "later": "Más tarde"
   }
 }

@@ -1,9 +1,11 @@
 import './src/i18n';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MD3LightTheme, MD3DarkTheme, PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Linking, useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import { useTranslation } from 'react-i18next';
 import {
   useFonts, Poppins_400Regular, Poppins_500Medium,
   Poppins_600SemiBold, Poppins_700Bold,
@@ -14,12 +16,22 @@ import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
 import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import UpdateAvailableModal from './src/components/common/UpdateAvailableModal';
+import {
+  fetchAppVersionConfig, compareVersions, AppVersionConfig,
+} from './src/services/firebase/version.service';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const colorScheme = useColorScheme();
   const { themeMode, colorPalette } = useSettingsStore();
+  const { i18n } = useTranslation();
+  const [updateInfo, setUpdateInfo] = useState<{
+    config: AppVersionConfig;
+    forced: boolean;
+  } | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
   const isDark = themeMode === 'dark'
     ? true
@@ -120,6 +132,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const checkVersion = async () => {
+      const config = await fetchAppVersionConfig();
+      if (!config?.latestVersion) return;
+      const current = Constants.expoConfig?.version ?? '0.0.0';
+      const isOutdated = compareVersions(current, config.latestVersion) < 0;
+      if (!isOutdated) return;
+      const forced = !!config.minRequiredVersion
+        && compareVersions(current, config.minRequiredVersion) < 0;
+      setUpdateInfo({ config, forced });
+    };
+    checkVersion();
+  }, []);
+
+  useEffect(() => {
     Notifications.setBadgeCountAsync(0).catch(() => {});
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
@@ -131,12 +157,27 @@ export default function App() {
 
   if (!fontsLoaded) return null;
 
+  const showUpdateModal = !!updateInfo && (updateInfo.forced || !updateDismissed);
+  const releaseNotes = updateInfo?.config.releaseNotes?.[i18n.language]
+    ?? updateInfo?.config.releaseNotes?.en;
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <RootNavigator />
+          {updateInfo && (
+            <UpdateAvailableModal
+              visible={showUpdateModal}
+              forced={updateInfo.forced}
+              latestVersion={updateInfo.config.latestVersion}
+              releaseNotes={releaseNotes}
+              iosUrl={updateInfo.config.iosUrl}
+              androidUrl={updateInfo.config.androidUrl}
+              onDismiss={() => setUpdateDismissed(true)}
+            />
+          )}
         </PaperProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
