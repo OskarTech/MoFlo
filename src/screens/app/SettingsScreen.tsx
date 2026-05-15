@@ -126,8 +126,8 @@ const SettingsScreen = () => {
 
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
-  const { movements } = useMovementStore();
-  const { huchas } = useSavingsStore();
+  const { movements, recurringMovements } = useMovementStore();
+  const { huchas, huchaMovements } = useSavingsStore();
   const {
     isSharedMode, sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
@@ -414,7 +414,7 @@ const SettingsScreen = () => {
         {
           text: t('sharedAccount.exportFirst'),
           onPress: async () => {
-            try { await exportMovementsToCSV(movements, huchas, t, sharedAccount?.memberNames); } catch (e) {}
+            try { await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames); } catch (e) {}
             confirmDeleteShared();
           },
         },
@@ -512,13 +512,13 @@ const SettingsScreen = () => {
 
   const handleExportCSV = () => {
     if (isSharedMode) {
-      exportMovementsToCSV(movements, huchas, t, sharedAccount?.memberNames).catch(() => {
+      exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames).catch(() => {
         Alert.alert('Error', t('export.error'));
       });
     } else {
       requirePremium(async () => {
         try {
-          await exportMovementsToCSV(movements, huchas, t);
+          await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t);
         } catch (e) {
           Alert.alert('Error', t('export.error'));
         }
