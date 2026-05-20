@@ -175,16 +175,25 @@ const AnnualScreen = () => {
     monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0),
     [monthMovements],
   );
-  const huchaNetForMonth = useMemo(() =>
-    huchaMovements
-      .filter(m => {
-        const d = new Date(m.date);
-        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
-      })
-      .reduce((acc, m) => acc + (m.type === 'withdrawal' ? m.amount : -m.amount), 0),
-    [huchaMovements, selectedMonth, selectedYear],
+  const balance = totalIncome - totalExpense;
+
+  // ── PREVIOUS MONTH COMPARISON ─────────────────────────────────────────────
+  const prevSelMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+  const prevSelYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+  const prevMonthMovements = useMemo(() =>
+    movements.filter(m => {
+      const d = new Date(m.date);
+      return d.getMonth() + 1 === prevSelMonth && d.getFullYear() === prevSelYear;
+    }),
+    [movements, prevSelMonth, prevSelYear],
   );
-  const balance = totalIncome - totalExpense + huchaNetForMonth;
+  const prevBalance = useMemo(() => {
+    if (prevMonthMovements.length === 0) return null;
+    const inc = prevMonthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+    const exp = prevMonthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+    return inc - exp;
+  }, [prevMonthMovements]);
+  const balanceDiff = prevBalance !== null ? balance - prevBalance : null;
   const savedPct = totalIncome > 0
     ? Math.round((balance / totalIncome) * 100)
     : 0;
@@ -437,9 +446,21 @@ const AnnualScreen = () => {
               <Text style={styles.savedPctText}>{savedPct}% {t('resumen.saved')}</Text>
             )}
           </View>
-          <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+          <Text style={[styles.balanceAmount, balanceDiff !== null ? { marginBottom: 4 } : undefined]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
             {balance >= 0 ? '+' : ''}{balance.toFixed(2).replace('.', ',')} {currencySymbol}
           </Text>
+          {balanceDiff !== null && (
+            <View style={styles.balanceDiffRow}>
+              <Ionicons
+                name={balanceDiff >= 0 ? 'trending-up-outline' : 'trending-down-outline'}
+                size={12}
+                color="rgba(255,255,255,0.75)"
+              />
+              <Text style={styles.balanceDiffText}>
+                {balanceDiff >= 0 ? '+' : ''}{balanceDiff.toFixed(0).replace('.', ',')} {currencySymbol} vs {shortMonth(prevSelMonth)}
+              </Text>
+            </View>
+          )}
           <View style={styles.balanceStatsRow}>
             <View>
               <Text style={styles.balanceStatLabel}>{t('resumen.ingresos').toUpperCase()}</Text>
@@ -1111,6 +1132,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', fontSize: 38, fontFamily: 'Poppins_700Bold',
     letterSpacing: -1, marginBottom: 16,
   },
+  balanceDiffRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 14, marginTop: -4 },
+  balanceDiffText: { color: 'rgba(255,255,255,0.75)', fontSize: 11, fontFamily: 'Poppins_500Medium' },
   balanceStatsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   balanceStatLabel: {
     color: 'rgba(255,255,255,0.6)', fontSize: 10,

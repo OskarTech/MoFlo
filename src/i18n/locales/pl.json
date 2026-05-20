@@ -164,7 +164,8 @@
   "recurring": "Cykliczne",
   "fixed": "Stałe",
   "recurringExpense": "Wydatek cykliczny",
-  "recurringIncome": "Przychód cykliczny"
+  "recurringIncome": "Przychód cykliczny",
+  "searchPlaceholder": "Szukaj transakcji..."
   },
   "annual": {
   "title": "Podsumowanie Roczne",
@@ -375,7 +376,11 @@
   "closedBadge": "Zamknięty",
   "completedSection": "Ukończone",
   "activeGoals": "aktywnych celów",
-  "invalidTargetAmount": "Cel nie może być niższy niż już zaoszczędzona kwota"
+  "invalidTargetAmount": "Cel nie może być niższy niż już zaoszczędzona kwota",
+  "editQuickAmounts": "Edytuj",
+  "saveQuickAmounts": "Zapisz",
+  "viewAllHistory": "Zobacz wszystko ({{count}})",
+  "hideHistory": "Ukryj"
   },
   "tabs": {
   "home": "Główna",

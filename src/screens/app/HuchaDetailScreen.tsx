@@ -4,6 +4,7 @@ import {
   Modal, Animated, Platform, StatusBar, Keyboard, Switch,
   TextInput as RNTextInput, Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, Button, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,6 @@ import { formatDate } from '../../utils/dateFormat';
 type RouteParams = { HuchaDetail: { huchaId: string } };
 
 const FILL_HEIGHT = 200;
-const QUICK_AMOUNTS = [10, 25, 50, 100];
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr',
@@ -48,7 +48,6 @@ const AddMoneyModal = ({
   visible,
   huchaColor,
   huchaCurrentAmount,
-  availableBalance,
   currencySymbol,
   onConfirm,
   onDismiss,
@@ -56,7 +55,6 @@ const AddMoneyModal = ({
   visible: boolean;
   huchaColor: string;
   huchaCurrentAmount: number;
-  availableBalance: number;
   currencySymbol: string;
   onConfirm: (amount: number, type: HuchaMovementType) => void;
   onDismiss: () => void;
@@ -93,7 +91,6 @@ const AddMoneyModal = ({
     const parsed = parseFloat(amount.replace(',', '.'));
     if (!parsed || parsed <= 0) return;
     if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
-    if (mode === 'deposit' && parsed > availableBalance) return;
     isSavingRef.current = true;
     onConfirm(parsed, mode);
     setAmount('');
@@ -109,7 +106,7 @@ const AddMoneyModal = ({
 
   const parsed = parseFloat(amount.replace(',', '.'));
   const isValid = parsed > 0
-    && (mode === 'deposit' ? parsed <= availableBalance : parsed <= huchaCurrentAmount);
+    && (mode === 'withdrawal' ? parsed <= huchaCurrentAmount : true);
   const activeColor = mode === 'deposit' ? huchaColor : dc.expense;
   const inputBg = isDark ? dc.background : '#FFFFFF';
   const projectedAmount = !isNaN(parsed) && parsed > 0
@@ -190,16 +187,6 @@ const AddMoneyModal = ({
               <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
             )}
 
-            {mode === 'deposit' && parsed > 0 && parsed > availableBalance && (
-              <Text style={styles.errorText}>{t('hucha.insufficientFunds')}</Text>
-            )}
-
-            {mode === 'deposit' && (
-              <Text style={[styles.balanceHint, { color: dc.textSecondary }]}>
-                {t('home.availableBalance')}: {availableBalance.toFixed(2)} {currencySymbol}
-              </Text>
-            )}
-
             <View style={styles.sheetButtons}>
               <Button
                 mode="outlined"
@@ -239,9 +226,7 @@ const HuchaDetailScreen = () => {
     addToHucha, deleteHucha, updateHucha,
     closeHucha, reopenHucha,
     showAddMoneyModal, setShowAddMoneyModal,
-    getAvailableBalance,
   } = useSavingsStore();
-  const availableBalance = getAvailableBalance();
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -264,6 +249,10 @@ const HuchaDetailScreen = () => {
   const [editName, setEditName] = useState('');
   const [editTarget, setEditTarget] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [quickAmounts, setQuickAmounts] = useState([10, 25, 50, 100]);
+  const [isEditingAmounts, setIsEditingAmounts] = useState(false);
+  const [editingAmountStrings, setEditingAmountStrings] = useState(['10', '25', '50', '100']);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const hasTarget = !!hucha && hucha.targetAmount > 0;
   const pct = hasTarget
@@ -277,6 +266,27 @@ const HuchaDetailScreen = () => {
       useNativeDriver: false,
     }).start();
   }, [pct, hasTarget]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@moflo_quick_amounts').then(stored => {
+      if (!stored) return;
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 4 && parsed.every((v: unknown) => typeof v === 'number' && v > 0)) {
+          setQuickAmounts(parsed);
+          setEditingAmountStrings(parsed.map(String));
+        }
+      } catch {}
+    });
+  }, []);
+
+  const handleSaveQuickAmounts = async () => {
+    const parsed = editingAmountStrings.map(s => parseFloat(s.replace(',', '.')));
+    if (parsed.some(v => isNaN(v) || v <= 0)) return;
+    setQuickAmounts(parsed);
+    setIsEditingAmounts(false);
+    await AsyncStorage.setItem('@moflo_quick_amounts', JSON.stringify(parsed));
+  };
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -342,9 +352,10 @@ const HuchaDetailScreen = () => {
     return <View style={[styles.container, { backgroundColor: dc.background }]} />;
   }
 
-  const recentMovements = huchaMovements
+  const allHuchaMovs = huchaMovements
     .filter(m => m.huchaId === hucha.id)
-    .slice(0, 4);
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const visibleHuchaMovs = showAllHistory ? allHuchaMovs : allHuchaMovs.slice(0, 4);
 
   const remaining = hasTarget ? Math.max(hucha.targetAmount - hucha.currentAmount, 0) : 0;
   const monthsEstimate = hasTarget && hucha.isAutomatic && hucha.monthlyAmount && hucha.monthlyAmount > 0
@@ -443,18 +454,10 @@ const HuchaDetailScreen = () => {
   };
 
   const handleQuickAdd = async (amount: number) => {
-    if (amount > availableBalance) {
-      Alert.alert(t('hucha.insufficientFunds'));
-      return;
-    }
     await addToHucha(hucha.id, amount, 'deposit');
   };
 
   const handleAddMoney = (amount: number, type: HuchaMovementType) => {
-    if (type === 'deposit' && amount > availableBalance) {
-      Alert.alert(t('hucha.insufficientFunds'));
-      return;
-    }
     setShowAddMoneyModal(false);
     addToHucha(hucha.id, amount, type);
   };
@@ -601,24 +604,63 @@ const HuchaDetailScreen = () => {
               {t('hucha.quickAdd')}
             </Text>
             <View style={styles.quickRow}>
-              {QUICK_AMOUNTS.map(a => {
-                const disabled = a > availableBalance;
-                return (
+              {isEditingAmounts ? (
+                <>
+                  {editingAmountStrings.map((val, i) => (
+                    <RNTextInput
+                      key={i}
+                      style={[styles.quickInput, {
+                        backgroundColor: dc.background,
+                        borderColor: hucha.color,
+                        color: dc.textPrimary,
+                      }]}
+                      value={val}
+                      onChangeText={v => {
+                        const next = [...editingAmountStrings];
+                        next[i] = v.replace(/[^0-9.,]/g, '');
+                        setEditingAmountStrings(next);
+                      }}
+                      keyboardType="decimal-pad"
+                      maxLength={6}
+                      selectTextOnFocus
+                    />
+                  ))}
                   <TouchableOpacity
-                    key={a}
-                    style={[
-                      styles.quickBtn,
-                      { backgroundColor: dc.surface, borderColor: dc.border },
-                      disabled && { opacity: 0.4 },
-                    ]}
-                    onPress={() => handleQuickAdd(a)}
-                    activeOpacity={0.7}
-                    disabled={disabled}
+                    style={[styles.quickEditBtn, { backgroundColor: hucha.color }]}
+                    onPress={handleSaveQuickAmounts}
+                    activeOpacity={0.8}
                   >
-                    <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}{currencySymbol}</Text>
+                    <Text style={[styles.quickEditBtnText, { color: '#fff' }]}>
+                      {t('hucha.saveQuickAmounts')}
+                    </Text>
                   </TouchableOpacity>
-                );
-              })}
+                </>
+              ) : (
+                <>
+                  {quickAmounts.map(a => (
+                    <TouchableOpacity
+                      key={a}
+                      style={[styles.quickBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+                      onPress={() => handleQuickAdd(a)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.quickBtnText, { color: hucha.color }]}>+{a}{currencySymbol}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.quickEditBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
+                    onPress={() => {
+                      setEditingAmountStrings(quickAmounts.map(String));
+                      setIsEditingAmounts(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.quickEditBtnText, { color: dc.textSecondary }]}>
+                      {t('hucha.editQuickAmounts')}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </>
         )}
@@ -707,12 +749,12 @@ const HuchaDetailScreen = () => {
         )}
 
         {/* Mini historial de movimientos */}
-        {recentMovements.length > 0 && (
+        {allHuchaMovs.length > 0 && (
           <View style={[styles.historyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
             <Text style={[styles.sectionLabel, { color: dc.textSecondary, marginBottom: 12 }]}>
               {t('hucha.history')}
             </Text>
-            {recentMovements.map((m, idx) => {
+            {visibleHuchaMovs.map((m, idx) => {
               const isDeposit = m.type === 'deposit';
               const movColor = isDeposit ? dc.income : dc.expense;
               return (
@@ -720,7 +762,7 @@ const HuchaDetailScreen = () => {
                   key={m.id}
                   style={[
                     styles.historyRow,
-                    idx < recentMovements.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: dc.border },
+                    idx < visibleHuchaMovs.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: dc.border },
                   ]}
                 >
                   <View style={[styles.historyIconWrap, { backgroundColor: movColor + '20' }]}>
@@ -744,6 +786,24 @@ const HuchaDetailScreen = () => {
                 </View>
               );
             })}
+            {allHuchaMovs.length > 4 && (
+              <TouchableOpacity
+                style={[styles.historyToggle, { borderTopColor: dc.border }]}
+                onPress={() => setShowAllHistory(prev => !prev)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.historyToggleText, { color: hucha.color }]}>
+                  {showAllHistory
+                    ? t('hucha.hideHistory')
+                    : t('hucha.viewAllHistory', { count: allHuchaMovs.length })}
+                </Text>
+                <Ionicons
+                  name={showAllHistory ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={hucha.color}
+                />
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
@@ -752,7 +812,6 @@ const HuchaDetailScreen = () => {
         visible={showAddMoneyModal && !isClosed}
         huchaColor={hucha.color}
         huchaCurrentAmount={hucha.currentAmount}
-        availableBalance={availableBalance}
         currencySymbol={currencySymbol}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
@@ -944,9 +1003,21 @@ const styles = StyleSheet.create({
   estimate: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', marginBottom: 28 },
 
   sectionLabel: { fontSize: 12, fontFamily: 'Poppins_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  quickRow: { flexDirection: 'row', gap: 8, marginBottom: 24, alignItems: 'center' },
   quickBtn: { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
-  quickBtnText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  quickBtnText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  quickEditBtn: {
+    borderRadius: 12, borderWidth: 1,
+    paddingVertical: 12, paddingHorizontal: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quickEditBtnText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
+  quickInput: {
+    flex: 1, borderRadius: 12, borderWidth: 1.5,
+    paddingVertical: 10, paddingHorizontal: 4,
+    textAlign: 'center', fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+  },
 
   automaticCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 16 },
   automaticRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -979,6 +1050,11 @@ const styles = StyleSheet.create({
 
   historyCard: { borderRadius: 16, borderWidth: 0.5, padding: 16, marginBottom: 24 },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  historyToggle: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingTop: 12, marginTop: 4, borderTopWidth: 0.5,
+  },
+  historyToggleText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
   historyIconWrap: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   historyInfo: { flex: 1 },
   historyLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium' },

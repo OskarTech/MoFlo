@@ -163,7 +163,8 @@
   "recurring": "Recurrente",
   "fixed": "Fijos",
   "recurringExpense": "Gasto recurrente",
-  "recurringIncome": "Ingreso recurrente"
+  "recurringIncome": "Ingreso recurrente",
+  "searchPlaceholder": "Buscar movimientos..."
   },
   "annual": {
   "title": "Resumen Anual",
@@ -373,7 +374,11 @@
   "closedBadge": "Cerrada",
   "completedSection": "Completadas",
   "activeGoals": "metas activas",
-  "invalidTargetAmount": "El objetivo no puede ser inferior al ahorrado actual"
+  "invalidTargetAmount": "El objetivo no puede ser inferior al ahorrado actual",
+  "editQuickAmounts": "Editar",
+  "saveQuickAmounts": "Guardar",
+  "viewAllHistory": "Ver todos ({{count}})",
+  "hideHistory": "Ocultar"
   },
   "tabs": {
   "home": "Inicio",

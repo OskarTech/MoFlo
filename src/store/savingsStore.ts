@@ -116,9 +116,6 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     for (const m of movements) {
       total += m.type === 'income' ? m.amount : -m.amount;
     }
-    for (const m of get().huchaMovements) {
-      total += m.type === 'withdrawal' ? m.amount : -m.amount;
-    }
     return total;
   },
 
@@ -256,7 +253,6 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const hucha = huchas.find(h => h.id === huchaId);
     if (!hucha) return;
 
-    if (type === 'deposit' && amount > get().getAvailableBalance()) return;
 
     const previousAmount = hucha.currentAmount;
     const newAmount = type === 'deposit'
@@ -415,8 +411,6 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       movement: HuchaMovement;
     };
     const candidates: Candidate[] = [];
-    let availableBalance = get().getAvailableBalance();
-
     for (const h of huchas) {
       if (h.closedAt) continue;
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
@@ -428,7 +422,6 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         ? Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount)
         : h.monthlyAmount;
       if (contribution <= 0) continue;
-      if (contribution > availableBalance) continue;
 
       // Deterministic id per (hucha, period) so two shared-account devices
       // running this at the same time collide on the same movement doc and
@@ -436,8 +429,6 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       const periodKey = h.nextContributionDate.slice(0, 10);
       const movementId = `hm_auto_${h.id}_${periodKey}`;
       if (existingMovementIds.has(movementId)) continue;
-
-      availableBalance -= contribution;
       const nowIso = new Date().toISOString();
 
       candidates.push({

@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, StyleSheet, FlatList, TouchableOpacity,
-  Alert, ScrollView,
+  Alert, ScrollView, TextInput as RNTextInput,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -231,9 +231,12 @@ const MovementsScreen = () => {
     .filter((m) => m.type === 'expense')
     .reduce((s, m) => s + m.amount, 0);
   const recurringNet = recurringIncomeTotal - recurringExpenseTotal;
+  const { getCategoryName } = useCategoryStore();
+  const { getSharedCategoryName } = useSharedCategoryStore();
   const route = useRoute<any>();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleEditRecurring = (item: RecurringMovement) => {
     setEditingRecurring(item);
@@ -260,9 +263,23 @@ const MovementsScreen = () => {
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   };
 
-  const filteredMovements = [...movements]
-    .filter((m) => m.type === filter && isCurrentMonth(m.date))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const filteredMovements = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return [...movements]
+      .filter(m => m.type === filter && isCurrentMonth(m.date))
+      .filter(m => {
+        if (!q) return true;
+        const note = (m.note || '').toLowerCase();
+        const desc = (m.description || '').toLowerCase();
+        const catName = (isSharedMode
+          ? getSharedCategoryName(m.category, m.type as MovementType, t)
+          : getCategoryName(m.category, m.type as MovementType, t)
+        ).toLowerCase();
+        const amountStr = m.amount.toFixed(2);
+        return note.includes(q) || desc.includes(q) || catName.includes(q) || amountStr.includes(q);
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [movements, filter, searchQuery, isSharedMode]);
 
   const sortedHuchaMovements = [...huchaMovements]
     .filter((m) => isCurrentMonth(m.date))
@@ -280,6 +297,7 @@ const MovementsScreen = () => {
 
   const handleFilterPress = (key: FilterType) => {
     setFilter(key);
+    setSearchQuery('');
     const x = filterPositions.current[key] ?? 0;
     scrollRef.current?.scrollTo({ x: x - 16, animated: true });
   };
@@ -336,11 +354,35 @@ const MovementsScreen = () => {
     </View>
   );
 
+  const searchBar = (filter === 'income' || filter === 'expense') ? (
+    <View style={[styles.searchWrapper, { backgroundColor: dc.background, borderBottomColor: dc.border }]}>
+      <View style={[styles.searchInner, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+        <Ionicons name="search-outline" size={16} color={dc.textSecondary} />
+        <RNTextInput
+          style={[styles.searchInput, { color: dc.textPrimary }]}
+          placeholder={t('movementsList.searchPlaceholder')}
+          placeholderTextColor={dc.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={16} color={dc.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  ) : null;
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.historial')} />
 
       {filterChips}
+      {searchBar}
 
       {filter === 'hucha' ? (
         <FlatList
@@ -441,6 +483,16 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   filterChipTextActive: { color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' },
   filtersWrapper: { borderBottomWidth: 0.5 },
+  searchWrapper: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 0.5 },
+  searchInner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 12, borderWidth: 0.5,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1, fontSize: 14, fontFamily: 'Poppins_400Regular',
+    paddingVertical: 0,
+  },
   listContent: { paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',

@@ -163,7 +163,8 @@
   "recurring": "Recurring",
   "fixed": "Fixed",
   "recurringExpense": "Recurring expense",
-  "recurringIncome": "Recurring income"
+  "recurringIncome": "Recurring income",
+  "searchPlaceholder": "Search movements..."
   },
   "annual": {
   "title": "Annual Summary",
@@ -373,7 +374,11 @@
   "closedBadge": "Closed",
   "completedSection": "Completed",
   "activeGoals": "active goals",
-  "invalidTargetAmount": "Target cannot be lower than the amount already saved"
+  "invalidTargetAmount": "Target cannot be lower than the amount already saved",
+  "editQuickAmounts": "Edit",
+  "saveQuickAmounts": "Save",
+  "viewAllHistory": "See all ({{count}})",
+  "hideHistory": "Hide"
   },
   "tabs": {
   "home": "Home",
