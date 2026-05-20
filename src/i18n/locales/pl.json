@@ -379,7 +379,7 @@
   "invalidTargetAmount": "Cel nie może być niższy niż już zaoszczędzona kwota",
   "editQuickAmounts": "Edytuj",
   "saveQuickAmounts": "Zapisz",
-  "viewAllHistory": "Zobacz wszystko ({{count}})",
+  "viewAllHistory": "Zobacz wszystko",
   "hideHistory": "Ukryj"
   },
   "tabs": {

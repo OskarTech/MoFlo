@@ -795,7 +795,7 @@ const HuchaDetailScreen = () => {
                 <Text style={[styles.historyToggleText, { color: hucha.color }]}>
                   {showAllHistory
                     ? t('hucha.hideHistory')
-                    : t('hucha.viewAllHistory', { count: allHuchaMovs.length })}
+                    : t('hucha.viewAllHistory')}
                 </Text>
                 <Ionicons
                   name={showAllHistory ? 'chevron-up' : 'chevron-down'}

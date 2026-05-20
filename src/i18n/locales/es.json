@@ -377,7 +377,7 @@
   "invalidTargetAmount": "El objetivo no puede ser inferior al ahorrado actual",
   "editQuickAmounts": "Editar",
   "saveQuickAmounts": "Guardar",
-  "viewAllHistory": "Ver todos ({{count}})",
+  "viewAllHistory": "Ver todos",
   "hideHistory": "Ocultar"
   },
   "tabs": {

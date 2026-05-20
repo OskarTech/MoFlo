@@ -365,7 +365,6 @@ const MovementsScreen = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
           returnKeyType="search"
-          clearButtonMode="while-editing"
           autoCorrect={false}
         />
         {searchQuery.length > 0 && (

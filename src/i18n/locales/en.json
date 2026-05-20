@@ -377,7 +377,7 @@
   "invalidTargetAmount": "Target cannot be lower than the amount already saved",
   "editQuickAmounts": "Edit",
   "saveQuickAmounts": "Save",
-  "viewAllHistory": "See all ({{count}})",
+  "viewAllHistory": "See all",
   "hideHistory": "Hide"
   },
   "tabs": {
