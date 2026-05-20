@@ -15,6 +15,8 @@ import { Movement, RecurringMovement } from '../types';
 const QUEUE_KEY = '@moflo_sync_queue';
 const MAX_ATTEMPTS = 5;
 
+let isProcessing = false;
+
 // Tipos de operaciones en cola
 type QueueOperationData =
   | { type: 'ADD_MOVEMENT'; payload: Movement }
@@ -52,66 +54,71 @@ export const enqueue = async (operation: QueueOperation): Promise<void> => {
 
 // ── PROCESAR COLA (cuando hay internet) ───────────────────────
 export const processQueue = async (): Promise<void> => {
+  if (isProcessing) return;
   const state = await NetInfo.fetch();
   if (!state.isConnected) return;
 
   const queue = await loadQueue();
   if (queue.length === 0) return;
 
-  console.log(`Processing sync queue: ${queue.length} operations`);
+  isProcessing = true;
+  try {
+    console.log(`Processing sync queue: ${queue.length} operations`);
 
-  const failed: QueueOperation[] = [];
+    const failed: QueueOperation[] = [];
+    let dropped = 0;
 
-  let dropped = 0;
-
-  for (const operation of queue) {
-    try {
-      switch (operation.type) {
-        case 'ADD_MOVEMENT':
-          await addMovementToFirestore(operation.payload);
-          break;
-        case 'DELETE_MOVEMENT':
-          await deleteMovementFromFirestore(operation.payload);
-          break;
-        case 'ADD_RECURRING':
-          await addRecurringToFirestore(operation.payload);
-          break;
-        case 'DELETE_RECURRING':
-          await deleteRecurringFromFirestore(operation.payload);
-          break;
-        case 'ADD_SHARED_MOVEMENT':
-          await addSharedMovementToFirestore(operation.accountId, operation.payload);
-          break;
-        case 'DELETE_SHARED_MOVEMENT':
-          await deleteSharedMovementFromFirestore(operation.accountId, operation.payload);
-          break;
-        case 'ADD_SHARED_RECURRING':
-          await addSharedRecurringToFirestore(operation.accountId, operation.payload);
-          break;
-        case 'DELETE_SHARED_RECURRING':
-          await deleteSharedRecurringFromFirestore(operation.accountId, operation.payload);
-          break;
-      }
-    } catch (e) {
-      const attempts = (operation.attempts ?? 0) + 1;
-      if (attempts >= MAX_ATTEMPTS) {
-        // Tras MAX_ATTEMPTS intentos descartamos para que la cola no crezca infinita
-        // (ej. doc borrado en otro dispositivo, payload corrupto, etc.)
-        console.error(`Dropping queue op after ${MAX_ATTEMPTS} attempts:`, operation.type, e);
-        dropped += 1;
-      } else {
-        console.error(`Queue op failed (attempt ${attempts}/${MAX_ATTEMPTS}):`, operation.type, e);
-        failed.push({ ...operation, attempts } as QueueOperation);
+    for (const operation of queue) {
+      try {
+        switch (operation.type) {
+          case 'ADD_MOVEMENT':
+            await addMovementToFirestore(operation.payload);
+            break;
+          case 'DELETE_MOVEMENT':
+            await deleteMovementFromFirestore(operation.payload);
+            break;
+          case 'ADD_RECURRING':
+            await addRecurringToFirestore(operation.payload);
+            break;
+          case 'DELETE_RECURRING':
+            await deleteRecurringFromFirestore(operation.payload);
+            break;
+          case 'ADD_SHARED_MOVEMENT':
+            await addSharedMovementToFirestore(operation.accountId, operation.payload);
+            break;
+          case 'DELETE_SHARED_MOVEMENT':
+            await deleteSharedMovementFromFirestore(operation.accountId, operation.payload);
+            break;
+          case 'ADD_SHARED_RECURRING':
+            await addSharedRecurringToFirestore(operation.accountId, operation.payload);
+            break;
+          case 'DELETE_SHARED_RECURRING':
+            await deleteSharedRecurringFromFirestore(operation.accountId, operation.payload);
+            break;
+        }
+      } catch (e) {
+        const attempts = (operation.attempts ?? 0) + 1;
+        if (attempts >= MAX_ATTEMPTS) {
+          // Tras MAX_ATTEMPTS intentos descartamos para que la cola no crezca infinita
+          // (ej. doc borrado en otro dispositivo, payload corrupto, etc.)
+          console.error(`Dropping queue op after ${MAX_ATTEMPTS} attempts:`, operation.type, e);
+          dropped += 1;
+        } else {
+          console.error(`Queue op failed (attempt ${attempts}/${MAX_ATTEMPTS}):`, operation.type, e);
+          failed.push({ ...operation, attempts } as QueueOperation);
+        }
       }
     }
-  }
 
-  // Guarda solo las operaciones que fallaron
-  await saveQueue(failed);
+    // Guarda solo las operaciones que fallaron
+    await saveQueue(failed);
 
-  if (failed.length === 0 && dropped === 0) {
-    console.log('Sync queue processed successfully');
-  } else {
-    console.log(`${failed.length} pending, ${dropped} dropped`);
+    if (failed.length === 0 && dropped === 0) {
+      console.log('Sync queue processed successfully');
+    } else {
+      console.log(`${failed.length} pending, ${dropped} dropped`);
+    }
+  } finally {
+    isProcessing = false;
   }
 };

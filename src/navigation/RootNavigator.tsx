@@ -67,6 +67,11 @@ const RootNavigator = () => {
         } catch (e) {
           console.warn('initUser error', e);
         }
+        // Vaciar cola pendiente al arrancar si ya hay internet
+        // (el listener de NetInfo solo dispara en reconexión, no en arranque).
+        NetInfo.fetch().then((state) => {
+          if (state.isConnected) processQueue().catch(() => {});
+        });
       }
       setLoading(false);
     });
