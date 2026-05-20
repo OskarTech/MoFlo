@@ -123,13 +123,17 @@ This project requires Firebase config files. You need to:
 
 ## 🌍 Internationalization
 
-MoFlo supports 3 languages. **All UI strings must be added to every locale file.**
+MoFlo supports 7 languages. **All UI strings must be added to every locale file.**
 
 | Language | Code | File |
 |---|---|---|
 | English | `en` | `src/i18n/locales/en.json` |
 | Spanish | `es` | `src/i18n/locales/es.json` |
 | Polish | `pl` | `src/i18n/locales/pl.json` |
+| French | `fr` | `src/i18n/locales/fr.json` |
+| Portuguese | `pt` | `src/i18n/locales/pt.json` |
+| Italian | `it` | `src/i18n/locales/it.json` |
+| German | `de` | `src/i18n/locales/de.json` |
 
 ---
 

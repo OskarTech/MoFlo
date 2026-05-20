@@ -299,7 +299,11 @@
     "languages": {
       "en": "English",
       "es": "Español",
-      "pl": "Polski"
+      "pl": "Polski",
+      "fr": "Français",
+      "pt": "Português",
+      "it": "Italiano",
+      "de": "Deutsch"
     }
   },
   "hucha": {

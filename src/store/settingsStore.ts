@@ -50,6 +50,10 @@ export const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
   { code: 'pl', label: 'Polski' },
+  { code: 'fr', label: 'Français' },
+  { code: 'pt', label: 'Português' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'de', label: 'Deutsch' },
 ];
 
 export type ThemeMode = 'auto' | 'light' | 'dark';
