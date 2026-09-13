@@ -55,7 +55,12 @@
     "add": "Add",
     "seeAll": "See all",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "dailySummary": "Daily summary",
+    "dayBalance": "Day balance",
+    "noMovementsDay": "No movements on this day",
+    "movementCount_one": "{{count}} movement",
+    "movementCount_other": "{{count}} movements"
   },
   "resumen": {
     "balance": "Balance",
@@ -390,10 +395,10 @@
   "annual": "Summary",
   "recurring": "Fixed",
   "hucha": "Savings",
-  "reminders": "Notifications"
+  "reminders": "Reminders"
   },
   "header": {
-  "reminders": "Notifications",
+  "reminders": "Reminders",
   "settings": "Settings",
   "home": "Home",
   "movements": "Movements",
@@ -417,12 +422,15 @@
   "reminderDescription": "Description",
   "reminderDate": "Date",
   "reminderTime": "Time",
+  "addDateTime": "Add date and time",
+  "addDateTimeHint": "You'll get a notification at that time",
   "save": "Save",
   "cancel": "Cancel",
   "deleteConfirm": "Delete this reminder?",
   "permissionDenied": "Notification permission denied",
   "permissionDeniedMessage": "Please enable notifications in your device settings to use reminders.",
   "scheduled": "Reminder scheduled!",
+  "pastDateError": "Choose a future date and time",
   "scheduledMessage": "You will be notified on {{date}} at {{time}}"
   },
   "premium": {

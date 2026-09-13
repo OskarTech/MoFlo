@@ -55,7 +55,12 @@
     "add": "Aggiungi",
     "seeAll": "Vedi tutto",
     "today": "Oggi",
-    "yesterday": "Ieri"
+    "yesterday": "Ieri",
+    "dailySummary": "Riepilogo giornaliero",
+    "dayBalance": "Saldo del giorno",
+    "noMovementsDay": "Nessun movimento in questo giorno",
+    "movementCount_one": "{{count}} movimento",
+    "movementCount_other": "{{count}} movimenti"
   },
   "resumen": {
     "balance": "Saldo",
@@ -390,10 +395,10 @@
     "annual": "Riepilogo",
     "recurring": "Fissi",
     "hucha": "Risparmi",
-    "reminders": "Notifiche"
+    "reminders": "Promemoria"
   },
   "header": {
-    "reminders": "Notifiche",
+    "reminders": "Promemoria",
     "settings": "Impostazioni",
     "home": "Home",
     "movements": "Movimenti",
@@ -416,12 +421,15 @@
     "reminderDescription": "Descrizione",
     "reminderDate": "Data",
     "reminderTime": "Ora",
+    "addDateTime": "Aggiungi data e ora",
+    "addDateTimeHint": "Riceverai una notifica in quel momento",
     "save": "Salva",
     "cancel": "Annulla",
     "deleteConfirm": "Eliminare questo promemoria?",
     "permissionDenied": "Permesso notifiche negato",
     "permissionDeniedMessage": "Attiva le notifiche nelle impostazioni del dispositivo per usare i promemoria.",
     "scheduled": "Promemoria programmato!",
+    "pastDateError": "Scegli una data e un'ora future",
     "scheduledMessage": "Riceverai una notifica il {{date}} alle {{time}}"
   },
   "premium": {

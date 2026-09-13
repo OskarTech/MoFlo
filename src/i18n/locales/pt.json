@@ -55,7 +55,12 @@
     "add": "Adicionar",
     "seeAll": "Ver tudo",
     "today": "Hoje",
-    "yesterday": "Ontem"
+    "yesterday": "Ontem",
+    "dailySummary": "Resumo diário",
+    "dayBalance": "Saldo do dia",
+    "noMovementsDay": "Sem movimentos neste dia",
+    "movementCount_one": "{{count}} movimento",
+    "movementCount_other": "{{count}} movimentos"
   },
   "resumen": {
     "balance": "Saldo",
@@ -390,10 +395,10 @@
     "annual": "Resumo",
     "recurring": "Fixos",
     "hucha": "Poupança",
-    "reminders": "Notificações"
+    "reminders": "Lembretes"
   },
   "header": {
-    "reminders": "Notificações",
+    "reminders": "Lembretes",
     "settings": "Definições",
     "home": "Início",
     "movements": "Movimentos",
@@ -416,12 +421,15 @@
     "reminderDescription": "Descrição",
     "reminderDate": "Data",
     "reminderTime": "Hora",
+    "addDateTime": "Adicionar data e hora",
+    "addDateTimeHint": "Receberá uma notificação nesse momento",
     "save": "Guardar",
     "cancel": "Cancelar",
     "deleteConfirm": "Eliminar este lembrete?",
     "permissionDenied": "Permissão de notificações negada",
     "permissionDeniedMessage": "Ative as notificações nas definições do seu dispositivo para usar lembretes.",
     "scheduled": "Lembrete programado!",
+    "pastDateError": "Escolha uma data e hora futuras",
     "scheduledMessage": "Receberá uma notificação a {{date}} às {{time}}"
   },
   "premium": {

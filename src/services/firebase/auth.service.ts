@@ -10,6 +10,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
+import { useReminderStore } from '../../store/reminderStore';
 import { clearPushTokens } from './pushTokens.service';
 
 GoogleSignin.configure({
@@ -62,6 +63,7 @@ export const logout = async () => {
   useCategoryStore.getState().resetStore();
   useSharedAccountStore.getState().resetStore();
   useSavingsStore.getState().resetStore();
+  useReminderStore.getState().resetStore();
 
   // 3. Cancela todas las notificaciones programadas en iOS/Android (recordatorio diario + reminders)
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useEffect } from 'react';
+﻿import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -12,19 +12,28 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
 const BalanceCard = ({
-  balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense,
+  balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense, onPressDaily,
 }: {
   balance: number; month: number; currencySymbol: string;
   totalIncome: number; totalExpense: number;
-  onPressIncome: () => void; onPressExpense: () => void;
+  onPressIncome: () => void; onPressExpense: () => void; onPressDaily: (origin: DailySummaryOrigin | null) => void;
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const balanceRef = useWalkthroughTarget('home_balance');
+  const dailyBtnRef = useRef<View>(null);
+
+  const handlePressDaily = () => {
+    if (!dailyBtnRef.current) return onPressDaily(null);
+    dailyBtnRef.current.measureInWindow((x, y, width, height) => {
+      onPressDaily(width > 0 ? { x, y, width, height } : null);
+    });
+  };
 
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
   const absBalance = Math.abs(balance);
@@ -32,7 +41,14 @@ const BalanceCard = ({
 
   return (
     <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: dc.balanceCard }]}>
-      <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
+      <View style={styles.balanceTopRow}>
+        <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
+        <View ref={dailyBtnRef} collapsable={false}>
+          <TouchableOpacity style={styles.dailyBtn} onPress={handlePressDaily} activeOpacity={0.7} hitSlop={8}>
+            <Text style={styles.dailyBtnText}>{t('home.today')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
       <View style={styles.balanceAmountRow}>
         {balance < 0 && <Text style={styles.balanceSign}>-</Text>}
         <Text style={styles.balanceInt} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.4}>{intPart}</Text>
@@ -72,6 +88,8 @@ const HomeScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
+  const [showDailySummary, setShowDailySummary] = useState(false);
+  const [dailyOrigin, setDailyOrigin] = useState<DailySummaryOrigin | null>(null);
   const wtIsActive = useWalkthroughStore(s => s.isActive);
   const wtCurrentStep = useWalkthroughStore(s => s.currentStep);
 
@@ -197,6 +215,7 @@ const HomeScreen = () => {
           totalExpense={summary.totalExpense}
           onPressIncome={() => navigation.navigate('HistorialTab', { initialFilter: 'income' })}
           onPressExpense={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
+          onPressDaily={(origin) => { setDailyOrigin(origin); setShowDailySummary(true); }}
         />
 
         {/* TOP CATEGORÍAS DE GASTO */}
@@ -309,6 +328,11 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
+      <DailySummaryModal
+        visible={showDailySummary}
+        origin={dailyOrigin}
+        onDismiss={() => setShowDailySummary(false)}
+      />
     </View>
   );
 };
@@ -328,10 +352,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden', elevation: 6, shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6,
   },
+  balanceTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+  },
   balanceLabelTop: {
     color: 'rgba(255,255,255,0.6)', fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold', letterSpacing: 1.5, marginBottom: 12,
+    fontFamily: 'Poppins_600SemiBold', letterSpacing: 1.5, flexShrink: 1, marginRight: 8,
   },
+  dailyBtn: {
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 4,
+  },
+  dailyBtnText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
   balanceAmountRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 20 },
   balanceSign: {
     color: '#FFFFFF', fontSize: 40, fontFamily: 'Poppins_700Bold',

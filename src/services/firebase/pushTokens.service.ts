@@ -3,6 +3,7 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, PermissionsAndroid } from 'react-native';
+import { ensureNotificationChannel } from '../notifications.service';
 
 const DEVICE_ID_KEY = '@moflo_device_id';
 
@@ -47,6 +48,8 @@ const saveToken = async (uid: string, deviceId: string, token: string) => {
 };
 
 export const setupPushTokens = async (): Promise<void> => {
+  // Android: el canal debe existir para mostrar push y recordatorios locales
+  await ensureNotificationChannel();
   const uid = auth().currentUser?.uid;
   if (!uid) return;
   try {

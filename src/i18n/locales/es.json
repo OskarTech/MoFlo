@@ -55,7 +55,12 @@
     "add": "Añadir",
     "seeAll": "Ver todo",
     "today": "Hoy",
-    "yesterday": "Ayer"
+    "yesterday": "Ayer",
+    "dailySummary": "Resumen diario",
+    "dayBalance": "Balance del día",
+    "noMovementsDay": "Sin movimientos este día",
+    "movementCount_one": "{{count}} movimiento",
+    "movementCount_other": "{{count}} movimientos"
   },
   "resumen": {
     "balance": "Balance",
@@ -390,10 +395,10 @@
   "annual": "Resumen",
   "recurring": "Fijos",
   "hucha": "Hucha",
-  "reminders": "Notificaciones"
+  "reminders": "Recordatorios"
   },
   "header": {
-  "reminders": "Notificaciones",
+  "reminders": "Recordatorios",
   "settings": "Ajustes",
   "home": "Inicio",
   "movements": "Movimientos",
@@ -417,12 +422,15 @@
   "reminderDescription": "Descripción",
   "reminderDate": "Fecha",
   "reminderTime": "Hora",
+  "addDateTime": "Añadir fecha y hora",
+  "addDateTimeHint": "Recibirás una notificación en ese momento",
   "save": "Guardar",
   "cancel": "Cancelar",
   "deleteConfirm": "¿Eliminar este recordatorio?",
   "permissionDenied": "Permiso de notificaciones denegado",
   "permissionDeniedMessage": "Activa las notificaciones en los ajustes de tu dispositivo para usar recordatorios.",
   "scheduled": "¡Recordatorio programado!",
+  "pastDateError": "Elige una fecha y hora futuras",
   "scheduledMessage": "Recibirás una notificación el {{date}} a las {{time}}"
   },
   "premium": {

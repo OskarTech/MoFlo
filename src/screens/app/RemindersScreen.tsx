@@ -2,13 +2,12 @@
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
-  Keyboard, Animated, KeyboardAvoidingView,
+  Keyboard, Animated, KeyboardAvoidingView, Switch,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -18,6 +17,7 @@ import { Reminder } from '../../types';
 import i18n from '../../i18n';
 import auth from '@react-native-firebase/auth';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useReminderStore } from '../../store/reminderStore';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -42,14 +42,16 @@ const formatTime = (date: Date): string => {
 };
 
 const ReminderCard = ({
-  reminder, onDelete,
+  reminder, onDelete, creatorName,
 }: {
-  reminder: Reminder; onDelete: (id: string) => void;
+  reminder: Reminder; onDelete: (id: string) => void; creatorName?: string;
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const date = new Date(reminder.date);
-  const isPast = date < new Date();
+  // Sin fecha = nota: nunca se marca como pasada
+  const isNote = !reminder.date;
+  const date = reminder.date ? new Date(reminder.date) : null;
+  const isPast = !!date && date < new Date();
 
   return (
     <View style={[styles.card, {
@@ -62,7 +64,7 @@ const ReminderCard = ({
           backgroundColor: isPast ? dc.border + '40' : dc.primary + '20',
         }]}>
           <Ionicons
-            name={isPast ? 'notifications-off-outline' : 'notifications-outline'}
+            name={isNote ? 'document-text-outline' : isPast ? 'notifications-off-outline' : 'notifications-outline'}
             size={22}
             color={isPast ? dc.textSecondary : dc.primary}
           />
@@ -71,9 +73,16 @@ const ReminderCard = ({
           <Text style={[styles.cardTitle, { color: isPast ? dc.textSecondary : dc.textPrimary }]}>
             {reminder.title}
           </Text>
-          <Text style={[styles.cardDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
-            📅 {formatDate(date)} · ⏰ {formatTime(date)}
-          </Text>
+          {!!date && (
+            <Text style={[styles.cardDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
+              📅 {formatDate(date)} · ⏰ {formatTime(date)}
+            </Text>
+          )}
+          {!!creatorName && (
+            <Text style={[styles.cardCreator, { color: dc.textSecondary }]} numberOfLines={1}>
+              👤 {creatorName}
+            </Text>
+          )}
         </View>
         <TouchableOpacity
           onPress={() => Alert.alert(
@@ -115,6 +124,30 @@ const AddReminderModal = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Por defecto es una nota sin fecha; con el interruptor se añade fecha, hora y notificación
+  const [withDate, setWithDate] = useState(false);
+
+  const toggleWithDate = (value: boolean) => {
+    Keyboard.dismiss();
+    setWithDate(value);
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+    if (!value) return;
+    setSelectedDate(getDefaultDate());
+    // Con fecha hay notificación: comprobar permiso y avisar si está denegado
+    Notifications.getPermissionsAsync()
+      .then(({ status }) => (status === 'granted'
+        ? status
+        : Notifications.requestPermissionsAsync().then(r => r.status)))
+      .then((status) => {
+        if (status !== 'granted') {
+          Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
+        } else {
+          useReminderStore.getState().resyncSharedNotifications();
+        }
+      })
+      .catch(() => {});
+  };
 
   const sheetOffset = useRef(new Animated.Value(0)).current;
 
@@ -163,17 +196,25 @@ const AddReminderModal = ({
   const handleDismiss = () => {
     setDescription('');
     setSelectedDate(getDefaultDate());
+    setWithDate(false);
+    setShowDatePicker(false);
+    setShowTimePicker(false);
     onDismiss();
   };
 
   const handleSave = async () => {
     if (!description.trim()) return;
+    // El selector permite una hora ya pasada de hoy: se guardaría sin notificación
+    if (withDate && selectedDate.getTime() <= Date.now()) {
+      Alert.alert(t('reminders.pastDateError'));
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
         title: description.trim(),
         description: '',
-        date: selectedDate.toISOString(),
+        date: withDate ? selectedDate.toISOString() : undefined,
       });
       handleDismiss();
     } finally {
@@ -201,11 +242,40 @@ const AddReminderModal = ({
               value={description}
               onChangeText={setDescription}
               mode="outlined"
+              multiline
               style={[styles.input, { backgroundColor: isDark ? dc.surface : '#FFFFFF' }]}
               outlineColor={dc.border}
               activeOutlineColor={dc.primary}
             />
 
+            <TouchableOpacity
+              style={[styles.dateToggleRow, {
+                backgroundColor: dc.surface,
+                borderColor: withDate ? dc.primary + '60' : dc.border,
+              }]}
+              onPress={() => toggleWithDate(!withDate)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={20} color={withDate ? dc.primary : dc.textSecondary} />
+              <View style={styles.dateToggleInfo}>
+                <Text style={[styles.dateToggleLabel, { color: dc.textPrimary }]}>
+                  {t('reminders.addDateTime')}
+                </Text>
+                <Text style={[styles.dateToggleHint, { color: dc.textSecondary }]}>
+                  {t('reminders.addDateTimeHint')}
+                </Text>
+              </View>
+              <Switch
+                value={withDate}
+                onValueChange={toggleWithDate}
+                trackColor={{ false: dc.border, true: dc.primary }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={dc.border}
+              />
+            </TouchableOpacity>
+
+            {withDate && (
+            <>
             <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
               {t('reminders.reminderDate')}
             </Text>
@@ -272,6 +342,9 @@ const AddReminderModal = ({
               />
             )}
 
+            </>
+            )}
+
             <View style={styles.modalButtons}>
               <Button
                 mode="outlined"
@@ -308,15 +381,19 @@ interface RemindersScreenProps {
 const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScreenProps) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const uid = auth().currentUser?.uid ?? 'guest';
-  const STORAGE_KEY = `@moflo_reminders_${uid}`;
+  const {
+    reminders: individualReminders, sharedReminders,
+    loadIndividualReminders, addReminder, deleteReminder, subscribeToSharedReminders,
+  } = useReminderStore();
 
   const {
-    sharedAccount, incomingRequests,
+    sharedAccount, incomingRequests, isSharedMode,
     approveJoinRequest, rejectJoinRequest,
   } = useSharedAccountStore();
   const currentUid = auth().currentUser?.uid;
+  // En cuenta compartida se muestran los recordatorios de todos los miembros
+  const inSharedAccount = isSharedMode && !!sharedAccount;
+  const reminders = inSharedAccount ? sharedReminders : individualReminders;
   const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
   const visibleRequests = isCreator
     ? incomingRequests.filter(r => r.status === 'pending')
@@ -352,75 +429,62 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   };
 
   useEffect(() => {
-    loadReminders();
+    loadIndividualReminders();
     requestPermissions();
-  }, []);
+  }, [currentUid]);
 
+  useEffect(() => {
+    if (sharedAccount?.id) subscribeToSharedReminders(sharedAccount.id);
+  }, [sharedAccount?.id]);
+
+  // Solo se pregunta la primera vez: las notas no necesitan permiso y no se insiste
+  // en cada apertura (el aviso de permiso denegado sale al activar "Añadir fecha y hora")
   const requestPermissions = async () => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
-    }
-  };
-
-  const loadReminders = async () => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) setReminders(JSON.parse(raw));
-    } catch (e) {
-      console.error('Error loading reminders:', e);
-    }
-  };
-
-  const saveReminders = async (newReminders: Reminder[]) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newReminders));
-    setReminders(newReminders);
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === 'undetermined') await Notifications.requestPermissionsAsync();
+    } catch {}
+    // Si el permiso se concedió después (aquí o en los ajustes del móvil),
+    // programar los recordatorios compartidos que ya habían llegado
+    useReminderStore.getState().resyncSharedNotifications();
   };
 
   const handleAddReminder = async (data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId'>) => {
-    const date = new Date(data.date);
-    let notificationId = '';
+    await addReminder(data);
+    // Las notas no programan notificación: no hace falta avisar
+    if (!data.date) return;
+    // Sin permiso no se programa nada (el aviso de permiso ya salió al activar la fecha)
     try {
-      notificationId = await Notifications.scheduleNotificationAsync({
-        content: { title: `🔔 MoFlo`, body: data.title, sound: true },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date,
-        },
-      });
-    } catch (e) {
-      console.error('Notification error:', e);
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+    } catch {
+      return;
     }
-
-    const newReminder: Reminder = {
-      id: Date.now().toString(),
-      ...data, notificationId,
-      createdAt: new Date().toISOString(),
-    };
-
-    await saveReminders([newReminder, ...reminders]);
-    Alert.alert(
-      t('reminders.scheduled'),
-      t('reminders.scheduledMessage', {
-        date: formatDate(date),
-        time: formatTime(date),
-      })
-    );
+    const date = new Date(data.date);
+    // Esperar a que el modal termine de cerrarse: en iOS un Alert presentado sobre
+    // un Modal que se está cerrando puede no llegar a mostrarse
+    setTimeout(() => {
+      Alert.alert(
+        t('reminders.scheduled'),
+        t('reminders.scheduledMessage', {
+          date: formatDate(date),
+          time: formatTime(date),
+        })
+      );
+    }, 450);
   };
 
-  const handleDeleteReminder = async (id: string) => {
-    const reminder = reminders.find((r) => r.id === id);
-    if (reminder?.notificationId) {
-      await Notifications.cancelScheduledNotificationAsync(reminder.notificationId);
-    }
-    await saveReminders(reminders.filter((r) => r.id !== id));
+  const handleDeleteReminder = (id: string) => {
+    deleteReminder(id).catch((e) => console.error('Error deleting reminder:', e));
   };
 
+  // Orden: recordatorios próximos → notas (más recientes primero) → recordatorios pasados
+  const nowTs = Date.now();
+  const rank = (r: Reminder) => (!r.date ? 1 : new Date(r.date).getTime() > nowTs ? 0 : 2);
   const sortedReminders = [...reminders].sort((a, b) => {
-    const aFuture = new Date(a.date) > new Date();
-    const bFuture = new Date(b.date) > new Date();
-    if (aFuture && !bFuture) return -1;
-    if (!aFuture && bFuture) return 1;
+    const diff = rank(a) - rank(b);
+    if (diff !== 0) return diff;
+    if (!a.date || !b.date) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
@@ -496,7 +560,14 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
           </View>
         ) : (
           sortedReminders.map((reminder) => (
-            <ReminderCard key={reminder.id} reminder={reminder} onDelete={handleDeleteReminder} />
+            <ReminderCard
+              key={reminder.id}
+              reminder={reminder}
+              onDelete={handleDeleteReminder}
+              creatorName={inSharedAccount && reminder.createdBy
+                ? sharedAccount?.memberNames?.[reminder.createdBy]
+                : undefined}
+            />
           ))
         )}
       </ScrollView>
@@ -522,6 +593,7 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   cardTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold', marginBottom: 4 },
   cardDate: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
+  cardCreator: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   deleteButton: { padding: 4 },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
@@ -539,6 +611,13 @@ const styles = StyleSheet.create({
     borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16,
   },
   pickerText: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  dateToggleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16,
+  },
+  dateToggleInfo: { flex: 1 },
+  dateToggleLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  dateToggleHint: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1 },
   saveButton: { flex: 2 },

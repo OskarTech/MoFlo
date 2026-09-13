@@ -105,9 +105,10 @@ export interface Reminder {
   id: string;
   title: string;
   description: string;
-  date: string;
+  date?: string; // sin fecha = nota (sin notificación)
   notificationId: string;
   createdAt: string;
+  createdBy?: string; // uid del miembro que lo creó (cuenta compartida)
 }
 
 export interface Category {

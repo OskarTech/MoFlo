@@ -55,7 +55,12 @@
     "add": "Hinzufügen",
     "seeAll": "Alle anzeigen",
     "today": "Heute",
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "dailySummary": "Tagesübersicht",
+    "dayBalance": "Tagesbilanz",
+    "noMovementsDay": "Keine Bewegungen an diesem Tag",
+    "movementCount_one": "{{count}} Bewegung",
+    "movementCount_other": "{{count}} Bewegungen"
   },
   "resumen": {
     "balance": "Kontostand",
@@ -390,10 +395,10 @@
     "annual": "Übersicht",
     "recurring": "Fest",
     "hucha": "Sparen",
-    "reminders": "Benachr."
+    "reminders": "Erinn."
   },
   "header": {
-    "reminders": "Benachrichtigungen",
+    "reminders": "Erinnerungen",
     "settings": "Einstellungen",
     "home": "Start",
     "movements": "Bewegungen",
@@ -416,12 +421,15 @@
     "reminderDescription": "Beschreibung",
     "reminderDate": "Datum",
     "reminderTime": "Uhrzeit",
+    "addDateTime": "Datum und Uhrzeit hinzufügen",
+    "addDateTimeHint": "Du erhältst zu diesem Zeitpunkt eine Benachrichtigung",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "deleteConfirm": "Diese Erinnerung löschen?",
     "permissionDenied": "Benachrichtigungsberechtigung verweigert",
     "permissionDeniedMessage": "Aktiviere Benachrichtigungen in den Einstellungen deines Geräts, um Erinnerungen zu nutzen.",
     "scheduled": "Erinnerung geplant!",
+    "pastDateError": "Wähle ein Datum und eine Uhrzeit in der Zukunft",
     "scheduledMessage": "Du wirst am {{date}} um {{time}} benachrichtigt"
   },
   "premium": {

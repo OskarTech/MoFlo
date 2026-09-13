@@ -55,7 +55,12 @@
     "add": "Ajouter",
     "seeAll": "Tout voir",
     "today": "Aujourd'hui",
-    "yesterday": "Hier"
+    "yesterday": "Hier",
+    "dailySummary": "Résumé du jour",
+    "dayBalance": "Solde du jour",
+    "noMovementsDay": "Aucun mouvement ce jour-là",
+    "movementCount_one": "{{count}} mouvement",
+    "movementCount_other": "{{count}} mouvements"
   },
   "resumen": {
     "balance": "Solde",
@@ -390,10 +395,10 @@
     "annual": "Résumé",
     "recurring": "Fixes",
     "hucha": "Épargne",
-    "reminders": "Notifications"
+    "reminders": "Rappels"
   },
   "header": {
-    "reminders": "Notifications",
+    "reminders": "Rappels",
     "settings": "Paramètres",
     "home": "Accueil",
     "movements": "Mouvements",
@@ -416,12 +421,15 @@
     "reminderDescription": "Description",
     "reminderDate": "Date",
     "reminderTime": "Heure",
+    "addDateTime": "Ajouter une date et une heure",
+    "addDateTimeHint": "Vous recevrez une notification à ce moment-là",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "deleteConfirm": "Supprimer ce rappel ?",
     "permissionDenied": "Permission de notification refusée",
     "permissionDeniedMessage": "Activez les notifications dans les paramètres de votre appareil pour utiliser les rappels.",
     "scheduled": "Rappel programmé !",
+    "pastDateError": "Choisissez une date et une heure futures",
     "scheduledMessage": "Vous recevrez une notification le {{date}} à {{time}}"
   },
   "premium": {

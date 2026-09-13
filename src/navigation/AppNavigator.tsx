@@ -205,21 +205,24 @@ const AppNavigator = () => {
             tabBarItemStyle: { display: 'none' },
           }}
         />
+        {/* Render callback (no `component` inline): evita que la pantalla se desmonte
+            y vuelva a montar en cada render del navegador */}
         <Tab.Screen
           name="Reminders"
-          component={(props: any) => (
+          options={{
+            tabBarButton: () => null,
+            tabBarLabel: '',
+            tabBarItemStyle: { display: 'none' },
+          }}
+        >
+          {(props: any) => (
             <RemindersScreen
               {...props}
               modalVisible={reminderModalVisible}
               onModalDismiss={() => setReminderModalVisible(false)}
             />
           )}
-          options={{
-            tabBarButton: () => null,
-            tabBarLabel: '',
-            tabBarItemStyle: { display: 'none' },
-          }}
-        />
+        </Tab.Screen>
       </Tab.Navigator>
 
       <AddMovementModal

@@ -54,8 +54,15 @@
     "ofIncomeSpent": "dochodu wydane",
     "add": "Dodaj",
     "seeAll": "Zobacz wszystko",
-    "today": "Hoy",
-    "yesterday": "Wczoraj"
+    "today": "Dzisiaj",
+    "yesterday": "Wczoraj",
+    "dailySummary": "Podsumowanie dnia",
+    "dayBalance": "Bilans dnia",
+    "noMovementsDay": "Brak transakcji tego dnia",
+    "movementCount_one": "{{count}} transakcja",
+    "movementCount_few": "{{count}} transakcje",
+    "movementCount_many": "{{count}} transakcji",
+    "movementCount_other": "{{count}} transakcji"
   },
   "resumen": {
     "balance": "Saldo",
@@ -392,10 +399,10 @@
   "annual": "Raport",
   "recurring": "Stałe",
   "hucha": "Skarbonka",
-  "reminders": "Powiadomienia"
+  "reminders": "Przypomnienia"
   },
   "header": {
-  "reminders": "Powiadomienia",
+  "reminders": "Przypomnienia",
   "settings": "Ustawienia",
   "home": "Główna",
   "movements": "Transakcje",
@@ -419,12 +426,15 @@
   "reminderDescription": "Opis",
   "reminderDate": "Data",
   "reminderTime": "Godzina",
+  "addDateTime": "Dodaj datę i godzinę",
+  "addDateTimeHint": "Otrzymasz powiadomienie o tej porze",
   "save": "Zapisz",
   "cancel": "Anuluj",
   "deleteConfirm": "Usunąć to przypomnienie?",
   "permissionDenied": "Odmowa uprawnień do powiadomień",
   "permissionDeniedMessage": "Włącz powiadomienia w ustawieniach urządzenia, aby korzystać z przypomnień.",
   "scheduled": "Przypomnienie zaplanowane!",
+  "pastDateError": "Wybierz przyszłą datę i godzinę",
   "scheduledMessage": "Otrzymasz powiadomienie {{date}} o {{time}}"
   },
   "premium": {

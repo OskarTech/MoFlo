@@ -23,6 +23,7 @@ import { usePremium } from '../../hooks/usePremium';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
 import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
@@ -31,6 +32,7 @@ import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import i18n from '../../i18n';
 import { logout, signInWithApple } from '../../services/firebase/auth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
+import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
 
 const NOTIF_KEY = '@moflo_daily_notif';
@@ -195,14 +197,11 @@ const SettingsScreen = () => {
         Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
         return;
       }
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      await Notifications.scheduleNotificationAsync({
-        content: { title: '💰 MoFlo', body: t('settings.notifMovementsSubtitle'), sound: true },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 0 },
-      });
+      // Solo reprograma la diaria: cancelar todas borraría también los recordatorios
+      await scheduleDailyNotification(t('settings.notifMovementsSubtitle'));
       Alert.alert('✅', t('settings.notifDailyEnabled'));
     } else {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      await cancelDailyNotification();
     }
   };
 
@@ -269,7 +268,7 @@ const SettingsScreen = () => {
                         const accountId = sa.id;
                         if (sa.createdBy === uid) {
                           const batch = firestore().batch();
-                          for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements']) {
+                          for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements', 'reminders', 'joinRequests']) {
                             const snap = await firestore()
                               .collection('sharedAccounts').doc(accountId)
                               .collection(col).get();
@@ -312,6 +311,7 @@ const SettingsScreen = () => {
                       useCategoryStore.getState().resetStore();
                       useSharedAccountStore.getState().resetStore();
                       useSavingsStore.getState().resetStore();
+                      useReminderStore.getState().resetStore();
 
                       await auth().currentUser?.delete();
                     } catch (e: any) {
@@ -1106,11 +1106,8 @@ const SettingsScreen = () => {
         onSelect={async (code) => {
           await saveSettings({ language: code });
           if (dailyNotifEnabled) {
-            await Notifications.cancelAllScheduledNotificationsAsync();
-            await Notifications.scheduleNotificationAsync({
-              content: { title: '💰 MoFlo', body: i18n.t('settings.notifMovementsSubtitle'), sound: true },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 0 },
-            });
+            // Reprograma solo la diaria con el nuevo idioma (sin cancelar los recordatorios)
+            await scheduleDailyNotification(i18n.t('settings.notifMovementsSubtitle'));
           }
         }}
         onDismiss={() => setShowLanguageModal(false)}

@@ -111,6 +111,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     useSavingsStore.getState().unsubscribeSharedHuchas();
     const { useSharedCategoryStore } = require('./sharedCategoryStore');
     useSharedCategoryStore.getState().resetSharedCategories();
+    const { useReminderStore } = require('./reminderStore');
+    useReminderStore.getState().unsubscribeSharedReminders(true);
   },
 
   // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────
@@ -121,6 +123,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { useMovementStore } = require('./movementStore');
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().subscribeToSharedHuchas(accountId);
+    const { useReminderStore } = require('./reminderStore');
+    useReminderStore.getState().subscribeToSharedReminders(accountId);
 
     movementsUnsubscribe = firestore()
       .collection('sharedAccounts').doc(accountId)
@@ -212,12 +216,19 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
                 incomingRequests: [],
               });
               if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
+              const { useReminderStore } = require('./reminderStore');
+              useReminderStore.getState().unsubscribeSharedReminders(true);
               AsyncStorage.removeItem(STORAGE_KEY);
               AsyncStorage.setItem(ACTIVE_KEY, 'individual');
             }
           }, (e) => {
             console.error('Error listening to shared account:', e);
           });
+
+        // Recordatorios compartidos: activos aunque esté en modo individual,
+        // para que las notificaciones de este dispositivo estén al día
+        const { useReminderStore } = require('./reminderStore');
+        useReminderStore.getState().subscribeToSharedReminders(account.id);
 
         // Suscribir a solicitudes entrantes solo si eres el creador
         if (account.createdBy === uid) {
@@ -238,8 +249,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         }
       }
     } catch (e) {
+      // Sin conexión: se usa la cuenta en caché; el listener de recordatorios
+      // trabaja con la caché de Firestore y se sincroniza al recuperar conexión
       const cached = await AsyncStorage.getItem(STORAGE_KEY);
-      if (cached) set({ sharedAccount: JSON.parse(cached) });
+      if (cached) {
+        const account = JSON.parse(cached) as SharedAccount;
+        set({ sharedAccount: account });
+        const { useReminderStore } = require('./reminderStore');
+        useReminderStore.getState().subscribeToSharedReminders(account.id);
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -289,6 +307,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       });
 
     get().subscribeToIncomingRequests(accountId);
+    const { useReminderStore } = require('./reminderStore');
+    useReminderStore.getState().subscribeToSharedReminders(accountId);
   },
 
   // ── UNIRSE A CUENTA (envía petición) ───────────────────────────
@@ -507,7 +527,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const batch = firestore().batch();
 
     const ref = firestore().collection('sharedAccounts').doc(sharedAccount.id);
-    const subcollections = ['movements', 'recurring', 'categories', 'huchas', 'huchaMovements', 'savings', 'joinRequests'];
+    const subcollections = ['movements', 'recurring', 'categories', 'huchas', 'huchaMovements', 'savings', 'joinRequests', 'reminders'];
 
     for (const sub of subcollections) {
       const snap = await ref.collection(sub).get();
