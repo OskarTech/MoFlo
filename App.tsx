@@ -6,10 +6,8 @@ import { AppState, Linking, useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
-import {
-  useFonts, Poppins_400Regular, Poppins_500Medium,
-  Poppins_600SemiBold, Poppins_700Bold,
-} from '@expo-google-fonts/poppins';
+import * as Font from 'expo-font';
+import { getSavedFont, getAppFontMap, setActiveFont } from './src/theme/fonts';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
@@ -22,6 +20,25 @@ import {
 } from './src/services/firebase/version.service';
 
 SplashScreen.preventAutoHideAsync();
+
+// Botones, campos de texto y demás componentes de Paper con la fuente de la app (por defecto
+// usan la del sistema). Cada estilo usa el archivo de su grosor en vez de un grosor simulado.
+const fontFamilyForWeight = (weight: number) =>
+  weight >= 700 ? 'Poppins_700Bold'
+    : weight >= 600 ? 'Poppins_600SemiBold'
+    : weight >= 500 ? 'Poppins_500Medium'
+    : 'Poppins_400Regular';
+
+const PAPER_FONTS = Object.fromEntries(
+  Object.entries(MD3LightTheme.fonts).map(([variant, font]) => [
+    variant,
+    {
+      ...font,
+      fontFamily: fontFamilyForWeight(Number(font.fontWeight) || 400),
+      fontWeight: 'normal',
+    },
+  ]),
+) as typeof MD3LightTheme.fonts;
 
 export default function App() {
   const colorScheme = useColorScheme();
@@ -45,6 +62,7 @@ export default function App() {
   const theme = isDark
     ? {
         ...MD3DarkTheme,
+        fonts: PAPER_FONTS,
         colors: {
           ...MD3DarkTheme.colors,
           primary: p.primaryLight,
@@ -57,6 +75,7 @@ export default function App() {
       }
     : {
         ...MD3LightTheme,
+        fonts: PAPER_FONTS,
         colors: {
           ...MD3LightTheme.colors,
           primary: p.primary,
@@ -68,12 +87,24 @@ export default function App() {
         },
       };
 
-  const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-  });
+  // Fuente elegida por el usuario en Ajustes (se carga con los nombres Poppins_* que usa toda la app)
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const fontId = await getSavedFont();
+      try {
+        await Font.loadAsync(getAppFontMap(fontId));
+        setActiveFont(fontId);
+      } catch (e) {
+        // Si falla la fuente elegida, Poppins; y si también falla, arrancar igualmente
+        console.error('Error loading app font:', e);
+        await Font.loadAsync(getAppFontMap('poppins')).catch(() => {});
+      }
+      if (!cancelled) setFontsLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

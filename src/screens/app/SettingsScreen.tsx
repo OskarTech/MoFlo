@@ -34,6 +34,11 @@ import { logout, signInWithApple } from '../../services/firebase/auth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
 import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
+import * as Font from 'expo-font';
+import {
+  FONT_OPTIONS, AppFontId, getSavedFont, saveFont,
+  getActiveFont, getPreviewFontFamily, getPreviewFontMap,
+} from '../../theme/fonts';
 
 const NOTIF_KEY = '@moflo_daily_notif';
 
@@ -121,6 +126,69 @@ const SelectModal = ({
   );
 };
 
+// Selector de fuente: cada opción se muestra con su propia fuente
+const FontSelectModal = ({
+  visible, selectedFont, onSelect, onDismiss,
+}: {
+  visible: boolean;
+  selectedFont: AppFontId;
+  onSelect: (id: AppFontId) => void;
+  onDismiss: () => void;
+}) => {
+  const { t } = useTranslation();
+  const { colors: dc } = useTheme();
+  const [previewReady, setPreviewReady] = useState(false);
+
+  useEffect(() => {
+    if (!visible || previewReady) return;
+    // Si no se pueden cargar, las opciones se ven con la fuente actual
+    Font.loadAsync(getPreviewFontMap())
+      .then(() => setPreviewReady(true))
+      .catch((e) => console.error('Error loading font previews:', e));
+  }, [visible, previewReady]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
+        <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
+          <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
+          <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{t('settings.selectFont')}</Text>
+          {/* Con scroll: con muchas fuentes la lista puede no caber en móviles pequeños */}
+          <ScrollView showsVerticalScrollIndicator={false}>
+          {FONT_OPTIONS.map((option) => {
+            const isSelected = option.id === selectedFont;
+            const canPreview = previewReady || option.id === getActiveFont();
+            const previewFont = canPreview ? { fontFamily: getPreviewFontFamily(option.id) } : undefined;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[styles.modalOption, { borderBottomColor: dc.border }]}
+                onPress={() => { onDismiss(); if (!isSelected) onSelect(option.id); }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    styles.modalOptionText,
+                    { color: isSelected ? dc.primary : dc.textPrimary },
+                    previewFont,
+                  ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={[{ fontSize: 13, marginTop: 2, color: dc.textSecondary }, previewFont]}>
+                    Aa · 1234,56
+                  </Text>
+                </View>
+                {isSelected && <Ionicons name="checkmark" size={20} color={dc.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const SettingsScreen = () => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
@@ -152,7 +220,14 @@ const SettingsScreen = () => {
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showDateFormatModal, setShowDateFormatModal] = useState(false);
   const [showColorPaletteModal, setShowColorPaletteModal] = useState(false);
+  const [showFontModal, setShowFontModal] = useState(false);
+  const [selectedFont, setSelectedFont] = useState<AppFontId>(getActiveFont());
   const [editingName, setEditingName] = useState(false);
+
+  // La fuente guardada puede no ser la activa si aún no se ha reiniciado la app
+  useEffect(() => {
+    getSavedFont().then(setSelectedFont);
+  }, []);
   const [nameInput, setNameInput] = useState(displayName ?? '');
 
   // Shared state
@@ -981,6 +1056,14 @@ const SettingsScreen = () => {
               />
             </>
           )}
+          {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="text-outline" iconColor={dc.primary}
+            label={t('settings.font')}
+            value={FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
+            onPress={() => setShowFontModal(true)}
+          />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
             icon="chatbubble-outline" iconColor={dc.primary}
@@ -1129,6 +1212,22 @@ const SettingsScreen = () => {
         selectedPalette={selectedPaletteId}
         onSelect={(id) => saveSettings({ colorPalette: id })}
         onDismiss={() => setShowColorPaletteModal(false)}
+      />
+      <FontSelectModal
+        visible={showFontModal}
+        selectedFont={selectedFont}
+        onSelect={async (id) => {
+          setSelectedFont(id);
+          await saveFont(id).catch((e) => console.error('Error saving font:', e));
+          // La fuente se carga al arrancar: hay que reiniciar para verla.
+          // Con retardo para que iOS muestre el aviso cuando la hoja ya se ha cerrado.
+          if (id !== getActiveFont()) {
+            setTimeout(() => {
+              Alert.alert(t('settings.fontRestartTitle'), t('settings.fontRestartMessage'));
+            }, 400);
+          }
+        }}
+        onDismiss={() => setShowFontModal(false)}
       />
 
       {/* ── MODALES COMPARTIDOS ──────────────────────────────── */}
