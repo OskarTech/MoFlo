@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
+import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
@@ -24,17 +25,25 @@ const BalanceCard = ({
 }: {
   balance: number; month: number; currencySymbol: string;
   totalIncome: number; totalExpense: number;
-  onPressIncome: () => void; onPressExpense: () => void; onPressDaily: (origin: DailySummaryOrigin | null) => void;
+  onPressIncome: (origin: DailySummaryOrigin | null) => void;
+  onPressExpense: (origin: DailySummaryOrigin | null) => void;
+  onPressDaily: (origin: DailySummaryOrigin | null) => void;
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   const balanceRef = useWalkthroughTarget('home_balance');
   const dailyBtnRef = useRef<View>(null);
+  const incomeRef = useRef<View>(null);
+  const expenseRef = useRef<View>(null);
 
-  const handlePressDaily = () => {
-    if (!dailyBtnRef.current) return onPressDaily(null);
-    dailyBtnRef.current.measureInWindow((x, y, width, height) => {
-      onPressDaily(width > 0 ? { x, y, width, height } : null);
+  // Posición del elemento pulsado: la pantalla flotante se expande desde ahí
+  const pressWithOrigin = (
+    ref: React.RefObject<View | null>,
+    onPress: (origin: DailySummaryOrigin | null) => void,
+  ) => {
+    if (!ref.current) return onPress(null);
+    ref.current.measureInWindow((x, y, width, height) => {
+      onPress(width > 0 ? { x, y, width, height } : null);
     });
   };
 
@@ -62,7 +71,12 @@ const BalanceCard = ({
       <View style={styles.balanceTopRow}>
         <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
         <View ref={dailyBtnRef} collapsable={false}>
-          <TouchableOpacity style={styles.dailyBtn} onPress={handlePressDaily} activeOpacity={0.7} hitSlop={8}>
+          <TouchableOpacity
+            style={styles.dailyBtn}
+            onPress={() => pressWithOrigin(dailyBtnRef, onPressDaily)}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
             <Text style={styles.dailyBtnText}>{t('home.today')}</Text>
           </TouchableOpacity>
         </View>
@@ -90,20 +104,24 @@ const BalanceCard = ({
         <View style={[styles.progressFill, { width: `${spentPct}%` as any, backgroundColor: dc.expense }]} />
       </View>
       <View style={styles.statsRow}>
-        <TouchableOpacity onPress={onPressIncome} activeOpacity={0.7}>
-          <View style={styles.statLabelRow}>
-            <View style={[styles.statDot, { backgroundColor: dc.income }]} />
-            <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
-          </View>
-          <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onPressExpense} activeOpacity={0.7}>
-          <View style={styles.statLabelRow}>
-            <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
-            <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
-          </View>
-          <Text style={styles.statAmount}>-{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
-        </TouchableOpacity>
+        <View ref={incomeRef} collapsable={false}>
+          <TouchableOpacity onPress={() => pressWithOrigin(incomeRef, onPressIncome)} activeOpacity={0.7}>
+            <View style={styles.statLabelRow}>
+              <View style={[styles.statDot, { backgroundColor: dc.income }]} />
+              <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+          </TouchableOpacity>
+        </View>
+        <View ref={expenseRef} collapsable={false}>
+          <TouchableOpacity onPress={() => pressWithOrigin(expenseRef, onPressExpense)} activeOpacity={0.7}>
+            <View style={styles.statLabelRow}>
+              <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
+              <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
+            </View>
+            <Text style={styles.statAmount}>-{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -116,6 +134,11 @@ const HomeScreen = () => {
   const scrollRef = useRef<ScrollView>(null);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [dailyOrigin, setDailyOrigin] = useState<DailySummaryOrigin | null>(null);
+  // Ingresos o gastos del mes en pantalla flotante (el tipo se mantiene durante el cierre)
+  const [showTypeSummary, setShowTypeSummary] = useState(false);
+  const [typeSummary, setTypeSummary] = useState<{ type: MovementType; origin: DailySummaryOrigin | null }>({
+    type: 'expense', origin: null,
+  });
   const wtIsActive = useWalkthroughStore(s => s.isActive);
   const wtCurrentStep = useWalkthroughStore(s => s.currentStep);
 
@@ -239,8 +262,8 @@ const HomeScreen = () => {
           currencySymbol={currencySymbol}
           totalIncome={summary.totalIncome}
           totalExpense={summary.totalExpense}
-          onPressIncome={() => navigation.navigate('HistorialTab', { initialFilter: 'income' })}
-          onPressExpense={() => navigation.navigate('HistorialTab', { initialFilter: 'expense' })}
+          onPressIncome={(origin) => { setTypeSummary({ type: 'income', origin }); setShowTypeSummary(true); }}
+          onPressExpense={(origin) => { setTypeSummary({ type: 'expense', origin }); setShowTypeSummary(true); }}
           onPressDaily={(origin) => { setDailyOrigin(origin); setShowDailySummary(true); }}
         />
 
@@ -358,6 +381,13 @@ const HomeScreen = () => {
         visible={showDailySummary}
         origin={dailyOrigin}
         onDismiss={() => setShowDailySummary(false)}
+      />
+      <MonthTypeSummaryModal
+        visible={showTypeSummary}
+        type={typeSummary.type}
+        origin={typeSummary.origin}
+        onDismiss={() => setShowTypeSummary(false)}
+        onSeeAll={(type) => navigation.navigate('HistorialTab', { initialFilter: type })}
       />
     </View>
   );
