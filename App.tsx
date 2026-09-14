@@ -39,7 +39,8 @@ export default function App() {
     ? false
     : colorScheme === 'dark';
 
-  const p = COLOR_PALETTES[colorPalette ?? 'green'];
+  // Si la paleta guardada no existe (p. ej. eliminada), usar la verde en vez de romper
+  const p = COLOR_PALETTES[colorPalette ?? 'green'] ?? COLOR_PALETTES.green;
 
   const theme = isDark
     ? {

@@ -39,7 +39,7 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose' | 'mono';
+export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose' | 'mono' | 'navy' | 'wine' | 'lime';
 
 interface PaletteEntry {
   primary: string;
@@ -140,6 +140,68 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     darkTextSecondary: '#A1A1AA',
     darkPrimary: '#A1A1AA',
     income: '#10B981', expense: '#EF4444', savings: '#F59E0B',
+  },
+  // Azul marino + dorado
+  navy: {
+    primary: '#1B2A4A',
+    primaryLight: '#D4AF37',
+    primaryDark: '#0E1729',
+    lightBg: '#FAF6EA',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#E9DDB5',
+    lightBalanceCard: '#1B2A4A',
+    lightTextPrimary: '#0E1729',
+    lightTextSecondary: '#4A5A7A',
+    darkBg: '#0A0F1C',
+    darkSurface: '#141C2E',
+    darkBorder: '#4A3F1E',
+    darkBalanceCard: '#1F3563',
+    darkTextPrimary: '#F7EFD8',
+    darkTextSecondary: '#A9A28A',
+    darkPrimary: '#2F5C9E',
+    income: '#10B981', expense: '#EF4444', savings: '#C9A227',
+    darkSavings: '#E6C35C',
+  },
+  // Burdeos + beige
+  wine: {
+    primary: '#6D1A2A',
+    primaryLight: '#E8C9A0',
+    primaryDark: '#3F0E18',
+    lightBg: '#F1F1F3',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#DCDCE0',
+    lightBalanceCard: '#7A1F33',
+    lightTextPrimary: '#2A0A11',
+    lightTextSecondary: '#6B5A5E',
+    darkBg: '#120D0B',
+    darkSurface: '#1F1816',
+    darkBorder: '#5A1E2B',
+    darkBalanceCard: '#7A1F33',
+    darkTextPrimary: '#F5E9D6',
+    darkTextSecondary: '#A8988A',
+    darkPrimary: '#A33348',
+    income: '#10B981', expense: '#E0603A', savings: '#C99A4B',
+    darkSavings: '#E0B866',
+  },
+  // Negro + verde lima
+  lime: {
+    primary: '#111111',
+    primaryLight: '#A3E635',
+    primaryDark: '#000000',
+    lightBg: '#F4F9E8',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#DDEFB8',
+    lightBalanceCard: '#111111',
+    lightTextPrimary: '#0A0A0A',
+    lightTextSecondary: '#5B6152',
+    darkBg: '#080808',
+    darkSurface: '#161616',
+    darkBorder: '#2E3A14',
+    darkBalanceCard: '#1C1C1C',
+    darkTextPrimary: '#F4F4F0',
+    darkTextSecondary: '#9CA38F',
+    darkPrimary: '#4D7C0F',
+    income: '#16A34A', expense: '#EF4444', savings: '#F59E0B',
   },
 };
 
