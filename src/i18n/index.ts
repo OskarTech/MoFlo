@@ -31,4 +31,10 @@ i18n.use(initReactI18next).init({
   },
 });
 
+const SUPPORTED_LANGUAGES = ['en', 'es', 'pl', 'fr', 'pt', 'it', 'de'];
+
+// Idioma del dispositivo si la app lo tiene; si no, inglés
+export const getDeviceLanguage = (): string =>
+  SUPPORTED_LANGUAGES.includes(languageTag) ? languageTag : 'en';
+
 export default i18n;

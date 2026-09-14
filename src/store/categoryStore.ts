@@ -66,29 +66,16 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       if (!netState.isConnected) return;
 
-      // ── CUSTOM CATEGORIES: sync up local-only items, then download ───
+      // ── CUSTOM CATEGORIES: download ─────────────────────────────────
+      // No se resuben las categorías locales que faltan en Firestore: podían haberse
+      // borrado en otro dispositivo y volvían a aparecer. Las creadas sin conexión
+      // las guarda Firestore como escrituras pendientes y las sube él solo.
       const snap = await firestore()
         .collection('users').doc(uid)
         .collection('categories').get();
       const remoteCustom = snap.docs.map(d => d.data() as Category);
-      const remoteIds = new Set(remoteCustom.map(c => c.id));
-
-      // Backfill: any local category missing remotely was never persisted — push it.
-      const missing = localCustom.filter(c => !remoteIds.has(c.id));
-      const merged = [...remoteCustom];
-      for (const cat of missing) {
-        try {
-          await firestore()
-            .collection('users').doc(uid)
-            .collection('categories').doc(cat.id)
-            .set(cat);
-          merged.push(cat);
-        } catch (e) {
-          console.error('Error backfilling category:', e);
-        }
-      }
-      set({ customCategories: merged });
-      await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(merged));
+      set({ customCategories: remoteCustom });
+      await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(remoteCustom));
 
       // ── HIDDEN BASE CATEGORIES: union local + remote ────────────────
       const userDoc = await firestore().collection('users').doc(uid).get();
@@ -126,14 +113,12 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     set({ customCategories: updated });
     await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
 
-    try {
-      await firestore()
-        .collection('users').doc(uid)
-        .collection('categories').doc(newCategory.id)
-        .set(newCategory);
-    } catch (e) {
-      console.error('Error saving category to Firestore:', e);
-    }
+    // Sin await: con mala conexión no deja bloqueado el botón de guardar
+    firestore()
+      .collection('users').doc(uid)
+      .collection('categories').doc(newCategory.id)
+      .set(newCategory)
+      .catch((e) => console.error('Error saving category to Firestore:', e));
   },
 
   updateCategory: async (id, updates) => {
@@ -145,32 +130,32 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
 
     if (uid) {
-      try {
-        await firestore()
-          .collection('users').doc(uid)
-          .collection('categories').doc(id)
-          .update(updates);
-      } catch (e) {
-        console.error('Error updating category in Firestore:', e);
-      }
+      // Sin await: con mala conexión no deja bloqueado el botón de guardar
+      firestore()
+        .collection('users').doc(uid)
+        .collection('categories').doc(id)
+        .update(updates)
+        .catch((e) => console.error('Error updating category in Firestore:', e));
     }
   },
 
+  // Borrado suave: deja de aparecer para elegir, pero los movimientos que ya la
+  // usan siguen mostrando su nombre
   deleteCategory: async (id) => {
     const uid = auth().currentUser?.uid;
-    const updated = get().customCategories.filter(c => c.id !== id);
+    const updated = get().customCategories.map(c => c.id === id ? { ...c, deleted: true } : c);
     set({ customCategories: updated });
     await AsyncStorage.setItem(CUSTOM_KEY, JSON.stringify(updated));
 
     if (uid) {
-      try {
-        await firestore()
-          .collection('users').doc(uid)
-          .collection('categories').doc(id)
-          .delete();
-      } catch (e) {
+      const ref = firestore()
+        .collection('users').doc(uid)
+        .collection('categories').doc(id);
+      ref.update({ deleted: true }).catch((e) => {
         console.error('Error deleting category from Firestore:', e);
-      }
+        // Si no se puede marcar, se borra como antes
+        ref.delete().catch(() => {});
+      });
     }
   },
 
@@ -207,7 +192,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       .map(c => ({ id: c.id, name: c.id, icon: c.icon, isCustom: false }));
 
     const custom = get().customCategories
-      .filter(c => c.type === type)
+      .filter(c => c.type === type && !c.deleted)
       .map(c => ({ id: c.id, name: c.name, icon: c.icon, isCustom: true }));
 
     return [...base, ...custom];

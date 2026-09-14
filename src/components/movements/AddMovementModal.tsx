@@ -105,6 +105,9 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
 
   useEffect(() => {
     if (!visible) return;
+    // Con mala conexión el guardado anterior puede seguir esperando a Firestore
+    // (el movimiento ya está guardado en local): no bloquear el siguiente
+    isSavingRef.current = false;
     const newType = initialType ?? type;
     if (initialType && initialType !== type) setType(initialType);
     const sorted = getSortedCategoriesForType(newType);

@@ -1,6 +1,7 @@
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Movement, RecurringMovement } from '../../types';
+import { getDeviceLanguage } from '../../i18n';
 
 // ── HELPERS ────────────────────────────────────────────────────
 
@@ -65,7 +66,11 @@ export const addRecurringToFirestore = async (
   recurring: RecurringMovement
 ): Promise<void> => {
   const { recurring: col } = getUserCollections();
-  await col.doc(recurring.id).set(recurring);
+  // Sin campos undefined (p. ej. sin descripción): Firestore rechaza la escritura entera
+  const sanitized = Object.fromEntries(
+    Object.entries(recurring).filter(([_, v]) => v !== undefined)
+  );
+  await col.doc(recurring.id).set(sanitized);
 };
 
 export const deleteRecurringFromFirestore = async (
@@ -135,7 +140,10 @@ export const addSharedRecurringToFirestore = async (
   accountId: string,
   recurring: RecurringMovement
 ): Promise<void> => {
-  await sharedRecurringCol(accountId).doc(recurring.id).set(recurring);
+  const sanitized = Object.fromEntries(
+    Object.entries(recurring).filter(([_, v]) => v !== undefined)
+  );
+  await sharedRecurringCol(accountId).doc(recurring.id).set(sanitized);
 };
 
 export const deleteSharedRecurringFromFirestore = async (
@@ -152,16 +160,18 @@ export const initializeNewUser = async (displayName: string): Promise<void> => {
   const userDoc = firestore().collection('users').doc(uid);
   const snapshot = await userDoc.get();
 
-  if (!snapshot.exists) {
+  // exists() es un método: con `!snapshot.exists` nunca se guardaban estos datos.
+  // También se comprueba displayName por si al arrancar ya se guardó solo el idioma.
+  if (!snapshot.exists() || !snapshot.data()?.settings?.displayName) {
     await userDoc.set({
       settings: {
         displayName,
         currencyCode: 'EUR',
-        language: 'auto',
+        language: getDeviceLanguage(),
         themeMode: 'auto',
         dateFormat: 'DD/MM/YYYY',
       },
       createdAt: new Date().toISOString(),
-    });
+    }, { merge: true });
   }
 };

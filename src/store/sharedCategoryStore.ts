@@ -50,30 +50,18 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       const localHidden: string[] = hiddenRaw ? JSON.parse(hiddenRaw) : [];
       if (localHidden.length) set({ sharedHiddenCategories: localHidden });
 
-      // ── CUSTOM: sync up local-only items, then merge with remote ────
+      // ── CUSTOM: download ────────────────────────────────────────────
+      // No se resuben las categorías locales que faltan en Firestore: podían haberse
+      // borrado por otro miembro y volvían a aparecer. Las creadas sin conexión
+      // las guarda Firestore como escrituras pendientes y las sube él solo.
       const snap = await firestore()
         .collection('sharedAccounts').doc(accountId)
         .collection('categories').get();
       const remoteCustom = snap.docs.map(d => d.data() as Category);
-      const remoteIds = new Set(remoteCustom.map(c => c.id));
-
-      const missing = localCustom.filter(c => !remoteIds.has(c.id));
-      const merged = [...remoteCustom];
-      for (const cat of missing) {
-        try {
-          await firestore()
-            .collection('sharedAccounts').doc(accountId)
-            .collection('categories').doc(cat.id)
-            .set(cat);
-          merged.push(cat);
-        } catch (e) {
-          console.error('Error backfilling shared category:', e);
-        }
-      }
-      set({ sharedCustomCategories: merged });
+      set({ sharedCustomCategories: remoteCustom });
       await AsyncStorage.setItem(
         `${SHARED_CUSTOM_KEY}_${accountId}`,
-        JSON.stringify(merged)
+        JSON.stringify(remoteCustom)
       );
 
       // ── HIDDEN: union local + remote ────────────────────────────────
@@ -116,14 +104,12 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       JSON.stringify(updated)
     );
 
-    try {
-      await firestore()
-        .collection('sharedAccounts').doc(accountId)
-        .collection('categories').doc(newCategory.id)
-        .set(newCategory);
-    } catch (e) {
-      console.error('Error saving shared category:', e);
-    }
+    // Sin await: con mala conexión no deja bloqueado el botón de guardar
+    firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('categories').doc(newCategory.id)
+      .set(newCategory)
+      .catch((e) => console.error('Error saving shared category:', e));
   },
 
   updateSharedCategory: async (accountId, id, updates) => {
@@ -136,32 +122,32 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       JSON.stringify(updated)
     );
 
-    try {
-      await firestore()
-        .collection('sharedAccounts').doc(accountId)
-        .collection('categories').doc(id)
-        .update(updates);
-    } catch (e) {
-      console.error('Error updating shared category:', e);
-    }
+    // Sin await: con mala conexión no deja bloqueado el botón de guardar
+    firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('categories').doc(id)
+      .update(updates)
+      .catch((e) => console.error('Error updating shared category:', e));
   },
 
+  // Borrado suave: deja de aparecer para elegir (a todos los miembros), pero los
+  // movimientos que ya la usan siguen mostrando su nombre
   deleteSharedCategory: async (accountId, id) => {
-    const updated = get().sharedCustomCategories.filter(c => c.id !== id);
+    const updated = get().sharedCustomCategories.map(c => c.id === id ? { ...c, deleted: true } : c);
     set({ sharedCustomCategories: updated });
     await AsyncStorage.setItem(
       `${SHARED_CUSTOM_KEY}_${accountId}`,
       JSON.stringify(updated)
     );
 
-    try {
-      await firestore()
-        .collection('sharedAccounts').doc(accountId)
-        .collection('categories').doc(id)
-        .delete();
-    } catch (e) {
+    const ref = firestore()
+      .collection('sharedAccounts').doc(accountId)
+      .collection('categories').doc(id);
+    ref.update({ deleted: true }).catch((e) => {
       console.error('Error deleting shared category:', e);
-    }
+      // Si no se puede marcar, se borra como antes
+      ref.delete().catch(() => {});
+    });
   },
 
   hideSharedBaseCategory: async (accountId, id, type) => {
@@ -193,7 +179,7 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       .map(c => ({ id: c.id, name: c.id, icon: c.icon, isCustom: false }));
 
     const custom = sharedCustomCategories
-      .filter(c => c.type === type)
+      .filter(c => c.type === type && !c.deleted)
       .map(c => ({ id: c.id, name: c.name, icon: c.icon, isCustom: true }));
 
     return [...base, ...custom];

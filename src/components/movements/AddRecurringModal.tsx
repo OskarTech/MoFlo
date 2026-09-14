@@ -106,6 +106,9 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 
   useEffect(() => {
     if (!visible) return;
+    // Con mala conexión el guardado anterior puede seguir esperando a Firestore
+    // (el recurrente ya está guardado en local): no bloquear el siguiente
+    isSavingRef.current = false;
     if (editingRecurring) {
       setType(editingRecurring.type);
       setAmount(editingRecurring.amount.toString());

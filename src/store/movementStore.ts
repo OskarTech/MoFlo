@@ -76,6 +76,9 @@ const getSharedRecurringCol = (accountId: string) =>
 const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
   Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
 
+// Meses hacia atrás que se recuperan como máximo si no se abrió la app
+const MAX_RECURRING_CATCH_UP_MONTHS = 12;
+
 export const useMovementStore = create<MovementStore>((set, get) => ({
   movements: [],
   recurringMovements: [],
@@ -420,38 +423,55 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   },
 
   // ── APLICAR RECURRENTES ────────────────────────────────────────
+  // Genera los movimientos de los meses cuyo día de cargo ya ha llegado, incluidos los
+  // meses en los que no se abrió la app. `lastAppliedMonth` guarda el último mes revisado
+  // de cada recurrente para no volver a generar un movimiento que el usuario haya borrado.
   applyRecurringMovements: async () => {
     const { sharedAccountId, recurringMovements, movements } = get();
 
     const now = new Date();
-    const currentDay = now.getDate();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const currentIndex = now.getFullYear() * 12 + now.getMonth();
     const newMovements: Movement[] = [];
+    const lastAppliedUpdates = new Map<string, string>();
 
     for (const recurring of recurringMovements) {
       if (!recurring.isActive) continue;
-      if (currentDay < recurring.recurringDay) continue;
 
       const createdAt = new Date(recurring.createdAt);
-      const createdInCurrentMonth =
-        createdAt.getFullYear() === currentYear &&
-        createdAt.getMonth() + 1 === currentMonth;
-      if (createdInCurrentMonth && createdAt.getDate() > recurring.recurringDay) continue;
+      const createdDay = new Date(
+        createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate(),
+      ).getTime();
 
-      const expectedId = `recurring_${recurring.id}_${currentMonth}_${currentYear}`;
-      const alreadyExists = movements.some(m =>
-        m.id === expectedId ||
-        (m.isRecurring &&
-          m.description === recurring.description &&
-          m.amount === recurring.amount &&
-          new Date(m.date).getMonth() + 1 === currentMonth &&
-          new Date(m.date).getFullYear() === currentYear)
-      );
+      // Sin registro (recurrentes anteriores a este cambio): solo el mes actual, como antes
+      let startIndex = currentIndex;
+      const [appliedYear, appliedMonth] = (recurring.lastAppliedMonth ?? '').split('-').map(Number);
+      if (appliedYear && appliedMonth) startIndex = appliedYear * 12 + appliedMonth; // mes siguiente
+      startIndex = Math.max(startIndex, currentIndex - (MAX_RECURRING_CATCH_UP_MONTHS - 1));
 
-      if (!alreadyExists) {
-        const day = Math.min(recurring.recurringDay, new Date(currentYear, currentMonth, 0).getDate());
-        const date = new Date(currentYear, currentMonth - 1, day);
+      let lastReviewedIndex = currentIndex - 1;
+      for (let index = startIndex; index <= currentIndex; index++) {
+        const year = Math.floor(index / 12);
+        const monthIdx = index % 12;
+        // Días 29-31 en meses más cortos: se cobra el último día del mes
+        const day = Math.min(recurring.recurringDay, new Date(year, monthIdx + 1, 0).getDate());
+        const date = new Date(year, monthIdx, day);
+        if (date.getTime() > today) break; // aún no ha llegado el día de cargo
+        lastReviewedIndex = index;
+        if (date.getTime() < createdDay) continue; // creado después del cargo de ese mes
+
+        const month = monthIdx + 1;
+        const expectedId = `recurring_${recurring.id}_${month}_${year}`;
+        const alreadyExists = movements.some(m =>
+          m.id === expectedId ||
+          (m.isRecurring &&
+            m.description === recurring.description &&
+            m.amount === recurring.amount &&
+            new Date(m.date).getMonth() === monthIdx &&
+            new Date(m.date).getFullYear() === year)
+        );
+        if (alreadyExists) continue;
+
         newMovements.push({
           id: expectedId,
           type: recurring.type,
@@ -465,6 +485,11 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           note: recurring.note,
           createdAt: new Date().toISOString(),
         });
+      }
+
+      const reviewedMonth = `${Math.floor(lastReviewedIndex / 12)}-${String(lastReviewedIndex % 12 + 1).padStart(2, '0')}`;
+      if (lastReviewedIndex >= startIndex - 1 && reviewedMonth !== recurring.lastAppliedMonth) {
+        lastAppliedUpdates.set(recurring.id, reviewedMonth);
       }
     }
 
@@ -495,6 +520,26 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           }
         }
       }
+    }
+
+    // Si mientras tanto se cambió de cuenta, no mezclar los recurrentes
+    if (lastAppliedUpdates.size > 0 && get().sharedAccountId === sharedAccountId) {
+      const updatedRecurring = get().recurringMovements.map(r => {
+        const month = lastAppliedUpdates.get(r.id);
+        return month ? { ...r, lastAppliedMonth: month } : r;
+      });
+      set({ recurringMovements: updatedRecurring });
+      await get().saveRecurring(updatedRecurring);
+
+      const uid = auth().currentUser?.uid;
+      const col = sharedAccountId
+        ? getSharedRecurringCol(sharedAccountId)
+        : uid ? firestore().collection('users').doc(uid).collection('recurring') : null;
+      // update (no set): si el recurrente se ha borrado no se vuelve a crear.
+      // Sin await: con mala conexión no bloquea el arranque.
+      lastAppliedUpdates.forEach((month, id) => {
+        col?.doc(id).update({ lastAppliedMonth: month }).catch(() => {});
+      });
     }
   },
 

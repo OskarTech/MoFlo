@@ -51,6 +51,7 @@ export interface RecurringMovement {
   isActive: boolean;
   note?: string;
   createdAt: string;
+  lastAppliedMonth?: string; // 'YYYY-MM': último mes ya revisado al generar sus movimientos
 }
 
 // Meta de ahorro (hucha)
@@ -118,6 +119,7 @@ export interface Category {
   icon: string;
   isCustom: boolean;
   createdAt: string;
+  deleted?: boolean; // borrada: no se puede elegir, pero su nombre se sigue mostrando
 }
 
 export interface SharedAccount {

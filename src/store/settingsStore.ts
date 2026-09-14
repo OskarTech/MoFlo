@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import i18n from '../i18n';
+import i18n, { getDeviceLanguage } from '../i18n';
 import {
   saveSettingsToFirestore,
   fetchSettingsFromFirestore,
@@ -56,6 +56,9 @@ export const LANGUAGES = [
   { code: 'de', label: 'Deutsch' },
 ];
 
+const isSupportedLanguage = (lang?: string): lang is string =>
+  !!lang && LANGUAGES.some((l) => l.code === lang);
+
 export type ThemeMode = 'auto' | 'light' | 'dark';
 export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY';
 export type { ColorPaletteId };
@@ -106,26 +109,40 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        // 'auto' u otro valor no soportado: se mantiene el idioma del dispositivo
+        if (!isSupportedLanguage(parsed.language)) delete parsed.language;
         set(parsed);
         if (parsed.language) await i18n.changeLanguage(parsed.language);
       }
 
-      if (!auth().currentUser) return;
+      const uid = auth().currentUser?.uid;
+      if (!uid) return;
 
       try {
         const firestoreSettings = await fetchSettingsFromFirestore();
+        const hasLanguage = isSupportedLanguage(firestoreSettings?.language);
+        const language = hasLanguage
+          ? firestoreSettings!.language
+          : isSupportedLanguage(get().language) ? get().language : getDeviceLanguage();
         if (firestoreSettings) {
           const typedSettings = {
             ...firestoreSettings,
+            language,
             themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
             dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
             colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
           };
           set(typedSettings);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
-          if (typedSettings.language) {
-            await i18n.changeLanguage(typedSettings.language);
-          }
+          await i18n.changeLanguage(language);
+        }
+        // Sin idioma guardado la Cloud Function envía las notificaciones en inglés.
+        // Sin await: con mala conexión no bloquea el arranque.
+        if (!hasLanguage) {
+          firestore()
+            .collection('users').doc(uid)
+            .set({ settings: { language } }, { merge: true })
+            .catch(() => {});
         }
       } catch (firestoreError: any) {
         if (firestoreError?.code !== 'firestore/permission-denied') {
