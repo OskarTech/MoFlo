@@ -35,6 +35,7 @@ import { exportMovementsToCSV } from '../../services/export.service';
 import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
 import * as Font from 'expo-font';
+import { reloadAppAsync } from 'expo';
 import {
   FONT_OPTIONS, AppFontId, getSavedFont, saveFont,
   getActiveFont, getPreviewFontFamily, getPreviewFontMap,
@@ -1223,7 +1224,17 @@ const SettingsScreen = () => {
           // Con retardo para que iOS muestre el aviso cuando la hoja ya se ha cerrado.
           if (id !== getActiveFont()) {
             setTimeout(() => {
-              Alert.alert(t('settings.fontRestartTitle'), t('settings.fontRestartMessage'));
+              Alert.alert(t('settings.fontRestartTitle'), t('settings.fontRestartMessage'), [
+                { text: t('settings.fontRestartOk'), style: 'cancel' },
+                {
+                  text: t('settings.fontRestartNow'),
+                  onPress: () => {
+                    reloadAppAsync('Font changed').catch((e) =>
+                      console.error('Error reloading app:', e)
+                    );
+                  },
+                },
+              ]);
             }, 400);
           }
         }}

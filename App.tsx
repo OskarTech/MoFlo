@@ -6,8 +6,7 @@ import { AppState, Linking, useColorScheme } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
-import * as Font from 'expo-font';
-import { getSavedFont, getAppFontMap, setActiveFont } from './src/theme/fonts';
+import { getSavedFont, loadAppFontsAsync, setActiveFont } from './src/theme/fonts';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
@@ -94,12 +93,12 @@ export default function App() {
     (async () => {
       const fontId = await getSavedFont();
       try {
-        await Font.loadAsync(getAppFontMap(fontId));
+        await loadAppFontsAsync(fontId);
         setActiveFont(fontId);
       } catch (e) {
         // Si falla la fuente elegida, Poppins; y si también falla, arrancar igualmente
         console.error('Error loading app font:', e);
-        await Font.loadAsync(getAppFontMap('poppins')).catch(() => {});
+        await loadAppFontsAsync('poppins').catch(() => {});
       }
       if (!cancelled) setFontsLoaded(true);
     })();

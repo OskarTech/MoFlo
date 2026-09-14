@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Font from 'expo-font';
+import { Asset } from 'expo-asset';
+import { requireNativeModule } from 'expo';
 
 // Fuente de la app elegida por cada usuario en su móvil (como el modo claro/oscuro).
 // No se sincroniza con Firestore ni afecta a la cuenta compartida: cada miembro ve la suya.
@@ -106,6 +109,26 @@ export const getAppFontMap = (id: AppFontId) => {
     Poppins_600SemiBold: files.semiBold,
     Poppins_700Bold: files.bold,
   };
+};
+
+// Carga la fuente de la app al arrancar. Tras "Reiniciar" desde Ajustes solo se recarga el JS:
+// las fuentes anteriores siguen registradas con los mismos nombres y Font.loadAsync no las
+// volvería a cargar, así que se sobrescriben con el cargador nativo (iOS y Android lo permiten).
+export const loadAppFontsAsync = async (id: AppFontId) => {
+  const map = getAppFontMap(id);
+  const alreadyRegistered = Object.keys(map).some((name) => Font.isLoaded(name));
+  if (!alreadyRegistered) {
+    await Font.loadAsync(map);
+    return;
+  }
+  const nativeLoader = requireNativeModule('ExpoFontLoader');
+  await Promise.all(
+    Object.entries(map).map(async ([name, source]) => {
+      const asset = Asset.fromModule(source);
+      await asset.downloadAsync();
+      await nativeLoader.loadAsync(name, asset.localUri);
+    }),
+  );
 };
 
 // Vista previa en el selector. La fuente activa ya está cargada como Poppins_600SemiBold;
