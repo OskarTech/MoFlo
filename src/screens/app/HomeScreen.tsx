@@ -16,6 +16,9 @@ import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/Dai
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
+const BALANCE_INT_MAX_SIZE = 52;
+const BALANCE_INT_MIN_SIZE = 22;
+
 const BalanceCard = ({
   balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense, onPressDaily,
 }: {
@@ -39,6 +42,21 @@ const BalanceCard = ({
   const absBalance = Math.abs(balance);
   const [intPart, decPart] = absBalance.toFixed(2).replace('.', ',').split(',');
 
+  // iOS (nueva arquitectura) puede dibujar vacío un Text con adjustsFontSizeToFit dentro
+  // de una fila con flexShrink: el tamaño de la parte entera se calcula a mano según
+  // el ancho disponible y el número de dígitos (igual en Android e iOS).
+  const [amountRowWidth, setAmountRowWidth] = useState(0);
+  const intFontSize = useMemo(() => {
+    if (!amountRowWidth) return BALANCE_INT_MAX_SIZE;
+    const decWidth = (decPart.length + 2 + currencySymbol.length) * 26 * 0.65; // ",00 €"
+    const signWidth = balance < 0 ? 40 * 0.6 + 2 : 0;
+    const available = amountRowWidth - decWidth - signWidth - 4;
+    // Ancho aproximado por dígito en Poppins Bold: 0.7em - 2px de letterSpacing
+    const size = (available / intPart.length + 2) / 0.7;
+    return Math.max(BALANCE_INT_MIN_SIZE, Math.min(BALANCE_INT_MAX_SIZE, Math.floor(size)));
+  }, [amountRowWidth, intPart, decPart, currencySymbol, balance]);
+  const intLineHeight = Math.round(intFontSize * (Platform.OS === 'ios' ? 66 / 52 : 56 / 52));
+
   return (
     <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: dc.balanceCard }]}>
       <View style={styles.balanceTopRow}>
@@ -49,9 +67,17 @@ const BalanceCard = ({
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.balanceAmountRow}>
+      <View
+        style={styles.balanceAmountRow}
+        onLayout={e => setAmountRowWidth(e.nativeEvent.layout.width)}
+      >
         {balance < 0 && <Text style={styles.balanceSign}>-</Text>}
-        <Text style={styles.balanceInt} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.4}>{intPart}</Text>
+        <Text
+          style={[styles.balanceInt, { fontSize: intFontSize, lineHeight: intLineHeight }]}
+          numberOfLines={1}
+        >
+          {intPart}
+        </Text>
         <Text style={styles.balanceDec}>,{decPart} {currencySymbol}</Text>
       </View>
       <View style={styles.progressRow}>
@@ -369,9 +395,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', fontSize: 40, fontFamily: 'Poppins_700Bold',
     lineHeight: 52, marginRight: 2,
   },
+  // fontSize y lineHeight se calculan en BalanceCard según el ancho disponible.
+  // Sin flexShrink: en iOS comprimía la parte entera hasta dejarla invisible.
   balanceInt: {
-    color: '#FFFFFF', fontSize: 52, fontFamily: 'Poppins_700Bold',
-    letterSpacing: -2, lineHeight: Platform.OS === 'ios' ? 66 : 56, flexShrink: 1,
+    color: '#FFFFFF', fontFamily: 'Poppins_700Bold', letterSpacing: -2,
   },
   balanceDec: {
     color: 'rgba(255,255,255,0.8)', fontSize: 26,

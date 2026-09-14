@@ -391,7 +391,8 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
                   </View>
                 )}
               </View>
-              <Text style={styles.balanceAmount} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.5}>
+              {/* Sin adjustsFontSizeToFit: en iOS (nueva arquitectura) puede dejar el texto invisible */}
+              <Text style={styles.balanceAmount} numberOfLines={1}>
                 {balanceSign}{formatAmount(Math.abs(balance))} {currencySymbol}
               </Text>
               <View style={styles.statsRow}>
@@ -400,7 +401,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
                     <View style={[styles.statDot, { backgroundColor: dc.income }]} />
                     <Text style={styles.statLabel} numberOfLines={1}>{t('home.income').toUpperCase()}</Text>
                   </View>
-                  <Text style={styles.statAmount} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.6}>
+                  <Text style={styles.statAmount} numberOfLines={1}>
                     +{formatAmount(totalIncome)} {currencySymbol}
                   </Text>
                 </View>
@@ -409,7 +410,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
                     <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
                     <Text style={styles.statLabel} numberOfLines={1}>{t('home.expenses').toUpperCase()}</Text>
                   </View>
-                  <Text style={styles.statAmount} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.6}>
+                  <Text style={styles.statAmount} numberOfLines={1}>
                     -{formatAmount(totalExpense)} {currencySymbol}
                   </Text>
                 </View>
