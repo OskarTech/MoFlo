@@ -362,7 +362,7 @@ const HuchaDetailScreen = () => {
     ? Math.ceil(remaining / hucha.monthlyAmount)
     : null;
 
-  const headerBg = isDark ? dc.surface : dc.secondary;
+  const headerBg = isDark ? dc.surface : dc.balanceCard;
   const headerColor = isDark ? dc.textPrimary : '#fff';
   const paddingTop = Platform.OS === 'android'
     ? (StatusBar.currentHeight ?? 0) + 12

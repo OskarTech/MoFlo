@@ -81,9 +81,10 @@ const AppNavigator = () => {
   }, []);
 
   const tabBarBg = dc.surface;
-  const tabBarBorder = isDark ? dc.border : '#E5E7EB';
+  const tabBarBorder = dc.border;
   const activeColor = isDark ? dc.primaryLight : dc.primary;
-  const inactiveColor = isDark ? '#FFFFFF' : '#9CA3AF';
+  // Modo claro: inactivos en el color de la paleta más apagado (73 = ~45% de opacidad)
+  const inactiveColor = isDark ? '#FFFFFF' : dc.primary + '73';
 
   const handleFabPress = () => {
     const current = activeTabRef.current;

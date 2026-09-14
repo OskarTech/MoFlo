@@ -53,7 +53,7 @@ const AppHeader = ({
   const isInSettings = route.name === 'Settings' || route.name === 'SettingsMain';
   const isInReminders = route.name === 'Reminders';
 
-  const headerBg = isDark ? dc.surface : dc.secondary;
+  const headerBg = isDark ? dc.surface : dc.balanceCard;
   const iconColor = isDark ? dc.textPrimary : '#FFFFFF';
   const titleColor = isDark ? dc.textPrimary : '#FFFFFF';
   const iconBg = isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)';
