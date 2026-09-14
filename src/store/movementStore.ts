@@ -478,7 +478,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           amount: recurring.amount,
           category: recurring.category,
           description: recurring.description,
-          date: date.toISOString(),
+          // A las 12:00 y no a las 00:00: así un cambio de zona horaria (viajes) no lo
+          // mueve al día o mes anterior. La comprobación del día de cargo sigue siendo por días.
+          date: new Date(year, monthIdx, day, 12).toISOString(),
           isRecurring: true,
           recurringDay: recurring.recurringDay,
           currency: recurring.currency,

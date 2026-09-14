@@ -493,7 +493,8 @@ const HuchaDetailScreen = () => {
     const year = today.getFullYear();
     const lastDay = new Date(year, monthIdx + 1, 0).getDate();
     const actualDay = Math.min(dayParsed, lastDay);
-    const next = new Date(year, monthIdx, actualDay);
+    // 12:00 para que un cambio de zona horaria no lo mueva al día anterior
+    const next = new Date(year, monthIdx, actualDay, 12);
     await updateHucha(hucha.id, {
       isAutomatic: true,
       monthlyAmount: parsed,

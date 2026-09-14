@@ -45,18 +45,27 @@ const computeNextContributionDate = (recurringDay: number, from: Date = new Date
   let monthIdx = from.getMonth();
   if (from.getDate() >= day) monthIdx += 1;
   const actualDay = clampDayToMonth(year, monthIdx, day);
-  return new Date(year, monthIdx, actualDay).toISOString();
+  // 12:00 instead of 00:00 so a time zone change doesn't shift it to the previous day/month
+  return new Date(year, monthIdx, actualDay, 12).toISOString();
 };
+
+const MIN_DAYS_BETWEEN_CONTRIBUTIONS = 20;
 
 // Advance to the next month while respecting the original recurringDay
 // (clamped to month length), instead of letting JS overflow Feb 31 -> Mar 3.
 const advanceToNextMonth = (isoDate: string, recurringDay?: number): string => {
   const d = new Date(isoDate);
   const day = recurringDay ?? d.getDate();
-  const monthIdx = d.getMonth() + 1;
+  let monthIdx = d.getMonth() + 1;
   const year = d.getFullYear();
-  const actualDay = clampDayToMonth(year, monthIdx, day);
-  return new Date(year, monthIdx, actualDay).toISOString();
+  let next = new Date(year, monthIdx, clampDayToMonth(year, monthIdx, day), 12);
+  // Old dates saved at 00:00 in another time zone can read as the previous day
+  // (e.g. Oct 1 00:00 Spain = Sep 30 23:00 Portugal). Never schedule the same period again.
+  if (next.getTime() - d.getTime() < MIN_DAYS_BETWEEN_CONTRIBUTIONS * 24 * 60 * 60 * 1000) {
+    monthIdx += 1;
+    next = new Date(year, monthIdx, clampDayToMonth(year, monthIdx, day), 12);
+  }
+  return next.toISOString();
 };
 
 interface SavingsStore {
@@ -414,7 +423,12 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     for (const h of huchas) {
       if (h.closedAt) continue;
       if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
-      if (new Date(h.nextContributionDate) > now) continue;
+      // Compared by day: contributions saved at 12:00 still apply from 00:00 of that day
+      const contributionDate = new Date(h.nextContributionDate);
+      const contributionDay = new Date(
+        contributionDate.getFullYear(), contributionDate.getMonth(), contributionDate.getDate(),
+      );
+      if (contributionDay > now) continue;
       const hasTarget = h.targetAmount > 0;
       if (hasTarget && h.currentAmount >= h.targetAmount) continue;
 
