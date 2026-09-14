@@ -511,7 +511,13 @@ const HuchaDetailScreen = () => {
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       {/* Custom header */}
       <View
-        style={[styles.header, { backgroundColor: headerBg, paddingTop }]}
+        style={[styles.header, {
+          backgroundColor: headerBg,
+          paddingTop,
+          // Línea sutil inferior, igual que la barra superior del resto de pantallas
+          borderBottomWidth: 0.5,
+          borderBottomColor: isDark ? dc.border : 'rgba(255,255,255,0.18)',
+        }]}
         onLayout={(e) => { headerH.current = e.nativeEvent.layout.height; }}
       >
         <TouchableOpacity

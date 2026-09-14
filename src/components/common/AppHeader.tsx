@@ -54,6 +54,8 @@ const AppHeader = ({
   const isInReminders = route.name === 'Reminders';
 
   const headerBg = isDark ? dc.surface : dc.balanceCard;
+  // Línea sutil inferior: separa la barra del contenido del mismo color al hacer scroll
+  const headerBorder = isDark ? dc.border : 'rgba(255,255,255,0.18)';
   const iconColor = isDark ? dc.textPrimary : '#FFFFFF';
   const titleColor = isDark ? dc.textPrimary : '#FFFFFF';
   const iconBg = isDark ? dc.border + '80' : 'rgba(255,255,255,0.15)';
@@ -112,7 +114,7 @@ const AppHeader = ({
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: headerBg, paddingTop }]}>
+      <View style={[styles.container, { backgroundColor: headerBg, borderBottomColor: headerBorder, paddingTop }]}>
         {showBack ? (
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: iconBg }]}
@@ -250,6 +252,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16, paddingBottom: 12,
+    borderBottomWidth: 0.5,
   },
   iconButton: {
     width: 38, height: 38, borderRadius: 12,
