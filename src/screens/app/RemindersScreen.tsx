@@ -42,9 +42,12 @@ const formatTime = (date: Date): string => {
 };
 
 const ReminderCard = ({
-  reminder, onDelete, creatorName,
+  reminder, onDelete, onEdit, creatorName,
 }: {
-  reminder: Reminder; onDelete: (id: string) => void; creatorName?: string;
+  reminder: Reminder;
+  onDelete: (id: string) => void;
+  onEdit: (reminder: Reminder) => void;
+  creatorName?: string;
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
@@ -84,30 +87,36 @@ const ReminderCard = ({
             </Text>
           )}
         </View>
-        <TouchableOpacity
-          onPress={() => Alert.alert(
-            t('reminders.deleteConfirm'),
-            reminder.title,
-            [
-              { text: t('reminders.cancel'), style: 'cancel' },
-              { text: 'OK', style: 'destructive', onPress: () => onDelete(reminder.id) },
-            ]
-          )}
-          style={styles.deleteButton}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.expense} />
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity onPress={() => onEdit(reminder)} style={styles.actionButton}>
+            <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => Alert.alert(
+              t('reminders.deleteConfirm'),
+              reminder.title,
+              [
+                { text: t('reminders.cancel'), style: 'cancel' },
+                { text: 'OK', style: 'destructive', onPress: () => onDelete(reminder.id) },
+              ]
+            )}
+            style={styles.actionButton}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.expense} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 };
 
 const AddReminderModal = ({
-  visible, onDismiss, onSave,
+  visible, onDismiss, onSave, editingReminder,
 }: {
   visible: boolean;
   onDismiss: () => void;
   onSave: (data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId'>) => Promise<void>;
+  editingReminder?: Reminder | null;
 }) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
@@ -193,6 +202,19 @@ const AddReminderModal = ({
     return () => { show.remove(); hide.remove(); };
   }, [sheetOffset, insets.bottom]);
 
+  // Al abrir en modo edición se precargan los valores; una nota sin fecha
+  // abre con el interruptor desactivado.
+  useEffect(() => {
+    if (!visible || !editingReminder) return;
+    const hasDate = !!editingReminder.date;
+    setDescription(editingReminder.title);
+    setWithDate(hasDate);
+    setSelectedDate(hasDate ? new Date(editingReminder.date!) : getDefaultDate());
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, editingReminder]);
+
   const handleDismiss = () => {
     setDescription('');
     setSelectedDate(getDefaultDate());
@@ -234,7 +256,7 @@ const AddReminderModal = ({
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-              {t('reminders.add')}
+              {editingReminder ? t('reminders.edit') : t('reminders.add')}
             </Text>
 
             <TextInput
@@ -383,13 +405,14 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   const { colors: dc } = useTheme();
   const {
     reminders: individualReminders, sharedReminders,
-    loadIndividualReminders, addReminder, deleteReminder, subscribeToSharedReminders,
+    loadIndividualReminders, addReminder, updateReminder, deleteReminder, subscribeToSharedReminders,
   } = useReminderStore();
 
   const {
     sharedAccount, incomingRequests, isSharedMode,
     approveJoinRequest, rejectJoinRequest,
   } = useSharedAccountStore();
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const currentUid = auth().currentUser?.uid;
   // En cuenta compartida se muestran los recordatorios de todos los miembros
   const inSharedAccount = isSharedMode && !!sharedAccount;
@@ -472,6 +495,19 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
         })
       );
     }, 450);
+  };
+
+  const handleEditReminder = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+  };
+
+  // El modal es el mismo para crear y editar: se decide aquí según el estado
+  const handleSaveReminder = async (data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId'>) => {
+    if (editingReminder) {
+      await updateReminder(editingReminder.id, data);
+      return;
+    }
+    await handleAddReminder(data);
   };
 
   const handleDeleteReminder = (id: string) => {
@@ -564,6 +600,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
               key={reminder.id}
               reminder={reminder}
               onDelete={handleDeleteReminder}
+              onEdit={handleEditReminder}
               creatorName={inSharedAccount && reminder.createdBy
                 ? sharedAccount?.memberNames?.[reminder.createdBy]
                 : undefined}
@@ -573,9 +610,13 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
       </ScrollView>
 
       <AddReminderModal
-        visible={modalVisible}
-        onDismiss={() => onModalDismiss?.()}
-        onSave={handleAddReminder}
+        visible={modalVisible || !!editingReminder}
+        onDismiss={() => {
+          setEditingReminder(null);
+          onModalDismiss?.();
+        }}
+        onSave={handleSaveReminder}
+        editingReminder={editingReminder}
       />
     </View>
   );
@@ -595,6 +636,8 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   cardCreator: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   deleteButton: { padding: 4 },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
+  actionButton: { padding: 4 },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },

@@ -428,6 +428,7 @@
   "reminders": {
     "title": "Rappels",
     "add": "Ajouter un rappel",
+    "edit": "Modifier le rappel",
     "noReminders": "Aucun rappel",
     "noRemindersSubtitle": "Appuyez sur + pour ajouter votre premier rappel",
     "reminderTitle": "Titre",

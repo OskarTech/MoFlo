@@ -428,6 +428,7 @@
   "reminders": {
     "title": "Lembretes",
     "add": "Adicionar Lembrete",
+    "edit": "Editar lembrete",
     "noReminders": "Sem lembretes",
     "noRemindersSubtitle": "Toque em + para adicionar o seu primeiro lembrete",
     "reminderTitle": "Título",

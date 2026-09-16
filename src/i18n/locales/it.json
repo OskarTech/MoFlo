@@ -428,6 +428,7 @@
   "reminders": {
     "title": "Promemoria",
     "add": "Aggiungi promemoria",
+    "edit": "Modifica promemoria",
     "noReminders": "Nessun promemoria",
     "noRemindersSubtitle": "Tocca + per aggiungere il tuo primo promemoria",
     "reminderTitle": "Titolo",

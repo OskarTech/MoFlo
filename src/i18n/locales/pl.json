@@ -433,6 +433,7 @@
   "reminders": {
   "title": "Przypomnienia",
   "add": "Dodaj Przypomnienie",
+  "edit": "Edytuj przypomnienie",
   "noReminders": "Brak przypomnień",
   "noRemindersSubtitle": "Naciśnij +, aby dodać pierwsze przypomnienie",
   "reminderTitle": "Tytuł",

@@ -429,6 +429,7 @@
   "reminders": {
   "title": "Recordatorios",
   "add": "Añadir Recordatorio",
+  "edit": "Editar recordatorio",
   "noReminders": "Sin recordatorios",
   "noRemindersSubtitle": "Pulsa + para añadir tu primer recordatorio",
   "reminderTitle": "Título",

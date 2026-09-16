@@ -36,16 +36,29 @@ const runExclusive = (task: () => Promise<void>) => {
   return notifChain;
 };
 
-const readNotifMap = async (): Promise<Record<string, string>> => {
+// Junto al id de notificación se guarda una firma del contenido: así este
+// dispositivo detecta que otro miembro editó el recordatorio y la reprograma.
+type NotifEntry = { n: string; sig: string };
+
+const sigOf = (r: Reminder) => `${r.title}|${r.date ?? ''}`;
+
+const readNotifMap = async (): Promise<Record<string, NotifEntry>> => {
   try {
     const raw = await AsyncStorage.getItem(SHARED_NOTIF_MAP_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    const out: Record<string, NotifEntry> = {};
+    for (const [id, value] of Object.entries(parsed as Record<string, any>)) {
+      // Formato antiguo: el valor era el id de notificación suelto. Sin firma
+      // se reprograma una vez y queda al día.
+      out[id] = typeof value === 'string' ? { n: value, sig: '' } : value;
+    }
+    return out;
   } catch {
     return {};
   }
 };
 
-const writeNotifMap = (map: Record<string, string>) =>
+const writeNotifMap = (map: Record<string, NotifEntry>) =>
   AsyncStorage.setItem(SHARED_NOTIF_MAP_KEY, JSON.stringify(map));
 
 export const scheduleReminderNotification = async (
@@ -92,16 +105,23 @@ const syncSharedNotifications = (
   reminders: Reminder[], accountName: string | undefined, canCancel: boolean,
 ) => runExclusive(async () => {
   const map = await readNotifMap();
-  const ids = new Set(reminders.map(r => r.id));
+  const byId = new Map(reminders.map(r => [r.id, r] as const));
   let changed = false;
 
-  if (canCancel) {
-    for (const [reminderId, notificationId] of Object.entries(map)) {
-      if (ids.has(reminderId) || pendingIds.has(reminderId)) continue;
-      await cancelNotification(notificationId);
-      delete map[reminderId];
-      changed = true;
+  for (const [reminderId, entry] of Object.entries(map)) {
+    const reminder = byId.get(reminderId);
+    if (!reminder) {
+      // Borrado por otro miembro: solo sobre snapshots del servidor, y nunca
+      // sobre los que este dispositivo acaba de crear
+      if (!canCancel || pendingIds.has(reminderId)) continue;
+    } else if (entry.sig === sigOf(reminder)) {
+      continue;
     }
+    // Borrado, editado o convertido en nota: la notificación vieja ya no sirve.
+    // Si sigue teniendo fecha futura, el bloque siguiente la reprograma.
+    await cancelNotification(entry.n);
+    delete map[reminderId];
+    changed = true;
   }
 
   // Las notas (sin fecha) no llevan notificación
@@ -113,7 +133,7 @@ const syncSharedNotifications = (
       for (const r of future) {
         const notificationId = await scheduleReminderNotification(r.title, new Date(r.date!), accountName);
         if (notificationId) {
-          map[r.id] = notificationId;
+          map[r.id] = { n: notificationId, sig: sigOf(r) };
           changed = true;
         }
       }
@@ -129,6 +149,7 @@ interface ReminderStore {
 
   loadIndividualReminders: () => Promise<void>;
   addReminder: (data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId' | 'createdBy'>) => Promise<void>;
+  updateReminder: (id: string, data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId' | 'createdBy'>) => Promise<void>;
   deleteReminder: (id: string) => Promise<void>;
 
   subscribeToSharedReminders: (accountId: string) => void;
@@ -172,7 +193,7 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
         const notificationId = await scheduleReminderNotification(data.title, date, sharedAccount.name);
         if (notificationId) {
           const map = await readNotifMap();
-          map[id] = notificationId;
+          map[id] = { n: notificationId, sig: sigOf(reminder) };
           await writeNotifMap(map);
         }
       });
@@ -193,6 +214,57 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
     await AsyncStorage.setItem(individualKey(uid), JSON.stringify(updated));
   },
 
+  // ── EDITAR ─────────────────────────────────────────────────────
+  updateReminder: async (id, data) => {
+    const { isSharedMode, sharedAccount } = getSharedAccountState();
+    const date = data.date ? new Date(data.date) : null;
+
+    if (isSharedMode && sharedAccount) {
+      const accountId: string = sharedAccount.id;
+      const existing = get().sharedReminders.find(r => r.id === id);
+      if (!existing) return;
+      const reminder: Reminder = { ...existing, ...data, id: existing.id };
+
+      // La notificación se reprograma siempre: pueden haber cambiado título o fecha,
+      // y una nota sin fecha no debe conservar la notificación anterior.
+      pendingIds.add(id);
+      await runExclusive(async () => {
+        const map = await readNotifMap();
+        if (map[id]) {
+          await cancelNotification(map[id].n);
+          delete map[id];
+        }
+        if (date && date.getTime() > Date.now()) {
+          const notificationId = await scheduleReminderNotification(data.title, date, sharedAccount.name);
+          if (notificationId) map[id] = { n: notificationId, sig: sigOf(reminder) };
+        }
+        await writeNotifMap(map);
+      });
+
+      set({
+        sharedReminders: get().sharedReminders.map(r => (r.id === id ? reminder : r)),
+      });
+      getSharedRemindersCol(accountId).doc(id).set(stripUndefined(reminder)).catch((e) => {
+        console.error('Error updating shared reminder:', e);
+      });
+      return;
+    }
+
+    const uid = auth().currentUser?.uid ?? 'guest';
+    const existing = get().reminders.find(r => r.id === id);
+    if (!existing) return;
+
+    if (existing.notificationId) await cancelNotification(existing.notificationId);
+    const notificationId = date && date.getTime() > Date.now()
+      ? await scheduleReminderNotification(data.title, date)
+      : '';
+
+    const reminder: Reminder = { ...existing, ...data, id: existing.id, notificationId };
+    const updated = get().reminders.map(r => (r.id === id ? reminder : r));
+    set({ reminders: updated });
+    await AsyncStorage.setItem(individualKey(uid), JSON.stringify(updated));
+  },
+
   // ── ELIMINAR ───────────────────────────────────────────────────
   deleteReminder: async (id) => {
     const { isSharedMode, sharedAccount } = getSharedAccountState();
@@ -204,7 +276,7 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
       await runExclusive(async () => {
         const map = await readNotifMap();
         if (map[id]) {
-          await cancelNotification(map[id]);
+          await cancelNotification(map[id].n);
           delete map[id];
           await writeNotifMap(map);
         }
@@ -287,8 +359,8 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
     if (cancelNotifications) {
       runExclusive(async () => {
         const map = await readNotifMap();
-        for (const notificationId of Object.values(map)) {
-          await cancelNotification(notificationId);
+        for (const entry of Object.values(map)) {
+          await cancelNotification(entry.n);
         }
         await AsyncStorage.removeItem(SHARED_NOTIF_MAP_KEY);
         if (accountId) await AsyncStorage.removeItem(sharedCacheKey(accountId));

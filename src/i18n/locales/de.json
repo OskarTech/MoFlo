@@ -428,6 +428,7 @@
   "reminders": {
     "title": "Erinnerungen",
     "add": "Erinnerung hinzufügen",
+    "edit": "Erinnerung bearbeiten",
     "noReminders": "Keine Erinnerungen",
     "noRemindersSubtitle": "Tippe auf +, um deine erste Erinnerung hinzuzufügen",
     "reminderTitle": "Titel",
