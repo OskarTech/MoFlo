@@ -18,14 +18,17 @@ import { colors } from '../../theme';
 import { Movement, MovementType, HuchaMovement, RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
+import AddMovementModal from '../../components/movements/AddMovementModal';
 import { formatDate } from '../../utils/dateFormat';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
 
 const MovementRow = ({
-  movement, onDelete,
+  movement, onDelete, onEdit,
 }: {
-  movement: Movement; onDelete: (id: string) => void;
+  movement: Movement;
+  onDelete: (id: string) => void;
+  onEdit: (movement: Movement) => void;
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol, language } = useSettingsStore();
@@ -73,20 +76,27 @@ const MovementRow = ({
   const dateAndCat = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
   const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
 
-  const handleDelete = () => {
+  // Pulsación larga: menú único con las dos acciones. Elegir "Eliminar" borra
+  // directamente, igual que antes confirmaba el diálogo: mismo número de pasos.
+  const handleLongPress = () => {
     Alert.alert(
-      t('movementsList.deleteConfirm'),
-      `${movement.amount.toFixed(2)} ${currencySymbol}`,
+      t('movementsList.actionTitle'),
+      `${title} · ${movement.amount.toFixed(2)} ${currencySymbol}`,
       [
+        {
+          text: t('movementsList.delete'),
+          style: 'destructive',
+          onPress: () => onDelete(movement.id),
+        },
+        { text: t('movementsList.edit'), onPress: () => onEdit(movement) },
         { text: t('movements.cancel'), style: 'cancel' },
-        { text: 'OK', style: 'destructive', onPress: () => onDelete(movement.id) },
       ]
     );
   };
 
   return (
     <TouchableOpacity
-      onLongPress={handleDelete}
+      onLongPress={handleLongPress}
       style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}
     >
       <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
@@ -236,6 +246,7 @@ const MovementsScreen = () => {
   const route = useRoute<any>();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
+  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleEditRecurring = (item: RecurringMovement) => {
@@ -261,6 +272,10 @@ const MovementsScreen = () => {
   const isCurrentMonth = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  };
+
+  const handleEditMovement = (movement: Movement) => {
+    setEditingMovement(movement);
   };
 
   const filteredMovements = useMemo(() => {
@@ -456,12 +471,21 @@ const MovementsScreen = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <MovementRow movement={item} onDelete={deleteMovement} />
+            <MovementRow
+              movement={item}
+              onDelete={deleteMovement}
+              onEdit={handleEditMovement}
+            />
           )}
           ListEmptyComponent={emptyMovements}
         />
       )}
 
+      <AddMovementModal
+        visible={!!editingMovement}
+        onDismiss={() => setEditingMovement(null)}
+        editingMovement={editingMovement}
+      />
       <AddRecurringModal
         visible={showRecurringModal}
         onDismiss={() => {

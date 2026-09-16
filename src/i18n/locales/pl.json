@@ -102,6 +102,7 @@
   },
   "movements": {
   "add": "Dodaj Transakcję",
+  "edit": "Edytuj transakcję",
   "type": "Typ",
   "income": "Przychód",
   "expense": "Wydatek",
@@ -168,6 +169,9 @@
   "noMovements": "Brak transakcji",
   "noMovementsSubtitle": "Spróbuj zmienić filtr lub dodaj nową transakcję",
   "deleteConfirm": "Usunąć tę transakcję?",
+  "actionTitle": "Co chcesz zrobić?",
+  "edit": "Edytuj",
+  "delete": "Usuń",
   "recurring": "Cykliczne",
   "fixed": "Stałe",
   "recurringExpense": "Wydatek cykliczny",

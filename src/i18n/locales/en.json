@@ -98,6 +98,7 @@
   },
   "movements": {
   "add": "Add Movement",
+  "edit": "Edit movement",
   "type": "Type",
   "income": "Income",
   "expense": "Expense",
@@ -165,6 +166,9 @@
   "noMovements": "No movements found",
   "noMovementsSubtitle": "Try changing the filter or add a new movement",
   "deleteConfirm": "Delete this movement?",
+  "actionTitle": "What would you like to do?",
+  "edit": "Edit",
+  "delete": "Delete",
   "recurring": "Recurring",
   "fixed": "Fixed",
   "recurringExpense": "Recurring expense",

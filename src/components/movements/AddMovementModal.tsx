@@ -22,12 +22,13 @@ interface Props {
   visible: boolean;
   onDismiss: () => void;
   initialType?: MovementType;
+  editingMovement?: Movement | null;
 }
 
-const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
+const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: Props) => {
   const { t } = useTranslation();
   const { isDark, colors: dc } = useTheme();
-  const { addMovement, movements } = useMovementStore();
+  const { addMovement, updateMovement, movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const {
     customCategories, hiddenBaseCategories,
@@ -108,13 +109,21 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
     // Con mala conexión el guardado anterior puede seguir esperando a Firestore
     // (el movimiento ya está guardado en local): no bloquear el siguiente
     isSavingRef.current = false;
+    if (editingMovement) {
+      setType(editingMovement.type);
+      setAmount(editingMovement.amount.toString());
+      setNote(editingMovement.note ?? '');
+      setCategoryId(editingMovement.category);
+      categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+      return;
+    }
     const newType = initialType ?? type;
     if (initialType && initialType !== type) setType(initialType);
     const sorted = getSortedCategoriesForType(newType);
     setCategoryId(sorted[0]?.id ?? 'other');
     categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, initialType]);
+  }, [visible, initialType, editingMovement]);
 
   const getCatName = (id: string, tp: MovementType) =>
     isSharedMode
@@ -169,6 +178,22 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
 
     isSavingRef.current = true;
 
+    if (editingMovement) {
+      // La fecha original se conserva: el store ignora cualquier cambio de fecha
+      updateMovement(editingMovement.id, {
+        type,
+        amount: parsedAmount,
+        category: categoryId as any,
+        description: getCatName(categoryId, type),
+        note: note.trim() || undefined,
+        currency: currencySymbol,
+      }).finally(() => {
+        isSavingRef.current = false;
+      });
+      handleDismiss();
+      return;
+    }
+
     const movement: Movement = {
       id: Date.now().toString(),
       type,
@@ -207,7 +232,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType }: Props) => {
             keyboardShouldPersistTaps="handled"
           >
             <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {t('movements.add')}
+              {editingMovement ? t('movements.edit') : t('movements.add')}
             </Text>
 
             {/* TIPO */}

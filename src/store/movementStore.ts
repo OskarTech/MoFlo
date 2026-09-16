@@ -45,6 +45,7 @@ interface MovementStore {
   saveRecurring: (recurring: RecurringMovement[]) => Promise<void>;
 
   addMovement: (movement: Movement) => Promise<void>;
+  updateMovement: (id: string, updates: Partial<Movement>) => Promise<void>;
   deleteMovement: (id: string) => Promise<void>;
 
   addRecurringMovement: (movement: RecurringMovement) => Promise<void>;
@@ -284,6 +285,59 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       catch (e) { await enqueue({ type: 'DELETE_MOVEMENT', payload: id }); }
     } else {
       await enqueue({ type: 'DELETE_MOVEMENT', payload: id });
+    }
+  },
+
+  // ── EDITAR MOVIMIENTO ──────────────────────────────────────────
+  updateMovement: async (id, updates) => {
+    const { sharedAccountId } = get();
+    const existing = get().movements.find(m => m.id === id);
+    if (!existing) return;
+    // La fecha, el autor y la marca de recurrente no se tocan al editar:
+    // editar una instancia no altera la regla fija que la generó.
+    const updated: Movement = {
+      ...existing,
+      ...updates,
+      id: existing.id,
+      date: existing.date,
+      createdAt: existing.createdAt,
+    };
+
+    const newMovements = get().movements.map(m => (m.id === id ? updated : m));
+    set({ movements: [...newMovements] });
+    await get().saveMovements(newMovements);
+
+    if (sharedAccountId) {
+      // Se conserva el autor original: editar no cambia quién lo creó
+      const uid = auth().currentUser?.uid ?? '';
+      const sharedMovement = stripUndefined({ ...updated, addedBy: updated.addedBy ?? uid });
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        try {
+          await getSharedMovementsCol(sharedAccountId).doc(id).set(sharedMovement);
+        } catch (e) {
+          await enqueue({
+            type: 'ADD_SHARED_MOVEMENT',
+            payload: sharedMovement,
+            accountId: sharedAccountId,
+          });
+        }
+      } else {
+        await enqueue({
+          type: 'ADD_SHARED_MOVEMENT',
+          payload: sharedMovement,
+          accountId: sharedAccountId,
+        });
+      }
+      return;
+    }
+
+    const netState = await NetInfo.fetch();
+    if (netState.isConnected) {
+      try { await addMovementToFirestore(updated); }
+      catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: updated }); }
+    } else {
+      await enqueue({ type: 'ADD_MOVEMENT', payload: updated });
     }
   },
 

@@ -98,6 +98,7 @@
   },
   "movements": {
     "add": "Aggiungi Movimento",
+    "edit": "Modifica movimento",
     "type": "Tipo",
     "income": "Entrata",
     "expense": "Spesa",
@@ -165,6 +166,9 @@
     "noMovements": "Nessun movimento",
     "noMovementsSubtitle": "Prova a cambiare filtro o aggiungi un nuovo movimento",
     "deleteConfirm": "Eliminare questo movimento?",
+    "actionTitle": "Cosa vuoi fare?",
+    "edit": "Modifica",
+    "delete": "Elimina",
     "recurring": "Ricorrente",
     "fixed": "Fissi",
     "recurringExpense": "Spesa ricorrente",

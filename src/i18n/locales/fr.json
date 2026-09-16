@@ -98,6 +98,7 @@
   },
   "movements": {
     "add": "Ajouter un mouvement",
+    "edit": "Modifier le mouvement",
     "type": "Type",
     "income": "Revenu",
     "expense": "Dépense",
@@ -165,6 +166,9 @@
     "noMovements": "Aucun mouvement",
     "noMovementsSubtitle": "Essayez de changer le filtre ou ajoutez un nouveau mouvement",
     "deleteConfirm": "Supprimer ce mouvement ?",
+    "actionTitle": "Que souhaitez-vous faire ?",
+    "edit": "Modifier",
+    "delete": "Supprimer",
     "recurring": "Récurrent",
     "fixed": "Fixes",
     "recurringExpense": "Dépense récurrente",
