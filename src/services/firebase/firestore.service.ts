@@ -95,6 +95,7 @@ interface UserSettings {
   themeMode: string;
   dateFormat?: string;
   colorPalette?: string;
+  hapticsEnabled?: boolean;
 }
 
 export const saveSettingsToFirestore = async (

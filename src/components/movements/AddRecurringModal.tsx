@@ -17,6 +17,7 @@ import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../common/PremiumModal';
 import { navigationRef } from '../../navigation/RootNavigator';
 import { MovementType, RecurringMovement } from '../../types';
+import { lightHaptic } from '../../utils/haptics';
 
 interface Props {
   visible: boolean;
@@ -179,6 +180,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     if (!day || day < 1 || day > 31) return;
 
     isSavingRef.current = true;
+    lightHaptic();
 
     if (editingRecurring) {
       const updates: Partial<RecurringMovement> = {

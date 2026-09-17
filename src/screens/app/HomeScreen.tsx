@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
+import { successHaptic, lightHaptic } from '../../utils/haptics';
 import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
 import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
@@ -49,7 +51,7 @@ const BalanceCard = ({
 
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
   const absBalance = Math.abs(balance);
-  const [intPart, decPart] = absBalance.toFixed(2).replace('.', ',').split(',');
+  const { intPart, decPart, decimalSeparator } = splitAmountParts(absBalance);
 
   // iOS (nueva arquitectura) puede dibujar vacío un Text con adjustsFontSizeToFit dentro
   // de una fila con flexShrink: el tamaño de la parte entera se calcula a mano según
@@ -92,7 +94,7 @@ const BalanceCard = ({
         >
           {intPart}
         </Text>
-        <Text style={styles.balanceDec}>,{decPart} {currencySymbol}</Text>
+        <Text style={styles.balanceDec}>{decimalSeparator}{decPart} {currencySymbol}</Text>
       </View>
       <View style={styles.progressRow}>
         <Text style={styles.progressMonth}>{t(`home.month_${month - 1}`)}</Text>
@@ -110,7 +112,7 @@ const BalanceCard = ({
               <View style={[styles.statDot, { backgroundColor: dc.income }]} />
               <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
             </View>
-            <Text style={styles.statAmount}>+{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+            <Text style={styles.statAmount}>+{formatAmount(totalIncome)} {currencySymbol}</Text>
           </TouchableOpacity>
         </View>
         <View ref={expenseRef} collapsable={false}>
@@ -119,7 +121,7 @@ const BalanceCard = ({
               <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
               <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
             </View>
-            <Text style={styles.statAmount}>-{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}</Text>
+            <Text style={styles.statAmount}>-{formatAmount(totalExpense)} {currencySymbol}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -156,7 +158,29 @@ const HomeScreen = () => {
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
-  const { movements, getMonthlySummary, getMovementsForSelectedMonth } = useMovementStore();
+  const {
+    movements, getMonthlySummary, getMovementsForSelectedMonth,
+    loadData, loadSharedData, setShowMovementModal,
+  } = useMovementStore();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fuerza una recarga desde Firestore. Respeta el modo activo: en cuenta
+  // compartida recarga la cuenta, en individual los datos propios.
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (isSharedMode && sharedAccount) {
+        await loadSharedData(sharedAccount.id);
+      } else {
+        await loadData();
+      }
+      successHaptic();
+    } catch (e) {
+      console.error('Error refreshing home:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const summary = getMonthlySummary();
   const monthMovements = getMovementsForSelectedMonth();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
@@ -238,6 +262,14 @@ const HomeScreen = () => {
         ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={dc.primary}
+            colors={[dc.primary]}
+          />
+        }
       >
         {(() => {
           const today = new Date();
@@ -302,7 +334,7 @@ const HomeScreen = () => {
                             {getCatName(category, 'expense')}
                           </Text>
                           <Text style={[styles.categoryAmount, { color: dc.textPrimary }]}>
-                            {amount.toFixed(2)} {currencySymbol}
+                            {formatAmount(amount)} {currencySymbol}
                           </Text>
                         </View>
                         <View style={[styles.barTrack, { backgroundColor: catColor + '25' }]}>
@@ -331,6 +363,14 @@ const HomeScreen = () => {
           {recentMovements.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
               <Text style={[styles.emptyText, { color: dc.textSecondary }]}>{t('home.noMovements')}</Text>
+              <TouchableOpacity
+                style={[styles.emptyAction, { backgroundColor: dc.primary }]}
+                onPress={() => { lightHaptic(); setShowMovementModal(true); }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add" size={16} color="#FFFFFF" />
+                <Text style={styles.emptyActionText}>{t('home.addFirstMovement')}</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={[styles.recentCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
@@ -350,7 +390,7 @@ const HomeScreen = () => {
                 const dateAndCat = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
                 const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
                 const amountColor = isIncome ? dc.income : dc.expense;
-                const amountStr = `${isIncome ? '+' : '-'}${mov.amount.toFixed(2).replace('.', ',')} ${currencySymbol}`;
+                const amountStr = `${isIncome ? '+' : '-'}${formatAmount(mov.amount)} ${currencySymbol}`;
 
                 return (
                   <View key={mov.id}>
@@ -457,6 +497,11 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },
   sectionMonth: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
   emptyCard: { borderRadius: 16, padding: 24, borderWidth: 0.5, alignItems: 'center' },
+  emptyAction: {
+    marginTop: 14, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  emptyActionText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', color: '#FFFFFF' },
   emptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
   catCard: { borderRadius: 16, borderWidth: 0.5, overflow: 'hidden' },
   catRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },

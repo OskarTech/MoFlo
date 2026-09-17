@@ -13,8 +13,10 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Hucha } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
 
-const formatAmount = (n: number) => n % 1 === 0 ? n.toFixed(0) : n.toFixed(2);
+// Los importes redondos se muestran sin decimales
+const formatAmount = (n: number) => formatAmountLocalized(n, n % 1 === 0 ? 0 : 2);
 
 const formatTargetDate = (yyyyMM?: string): string => {
   if (!yyyyMM) return '';

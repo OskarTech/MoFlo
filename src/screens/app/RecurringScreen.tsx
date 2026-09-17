@@ -14,6 +14,9 @@ import { colors } from '../../theme';
 import { RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
+import { formatAmount } from '../../utils/formatAmount';
+import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 const TYPE_COLORS = {
   income: colors.income,
@@ -46,6 +49,7 @@ const RecurringCard = ({
     : getCurrencySymbol();
 
   const handleDelete = () => {
+    warningHaptic();
     Alert.alert(
       t('recurring.deleteConfirm'),
       item.description,
@@ -61,6 +65,13 @@ const RecurringCard = ({
   };
 
   return (
+    <SwipeableRow
+      containerStyle={styles.swipeContainer}
+      actions={[
+        { icon: 'pencil', background: dc.primary, onPress: () => onEdit(item) },
+        { icon: 'trash', background: dc.expense, onPress: handleDelete },
+      ]}
+    >
     <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
       <View style={[styles.dayBadge, { backgroundColor: colors.primary + '20' }]}>
         <Text style={[styles.dayNumber, { color: colors.primary }]}>
@@ -80,18 +91,11 @@ const RecurringCard = ({
       </View>
       <View style={styles.cardRight}>
         <Text style={[styles.cardAmount, { color }]}>
-          {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
+          {item.type === 'income' ? '+' : '-'}{formatAmount(item.amount)} {currencySymbol}
         </Text>
-        <View style={styles.cardActions}>
-          <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
-            <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
-            <Ionicons name="trash-outline" size={18} color={colors.expense} />
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
+    </SwipeableRow>
   );
 };
 
@@ -130,11 +134,17 @@ const RecurringScreen = () => {
   const net = totalIncome - totalExpense;
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: dc.background }]}
+      // Cualquier toque de la pantalla cierra la fila deslizada. Devuelve false,
+      // así que no se queda con el gesto y el toque llega igual a su destino.
+      onStartShouldSetResponderCapture={closeOpenSwipeable}
+    >
       <AppHeader title={t('recurring.title')} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={closeOpenSwipeable}
       >
         <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
           <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
@@ -149,7 +159,7 @@ const RecurringScreen = () => {
                 </Text>
               </View>
               <Text style={[styles.summaryColValue, { color: colors.income }]}>
-                +{totalIncome.toFixed(2)} {currencySymbol}
+                +{formatAmount(totalIncome)} {currencySymbol}
               </Text>
             </View>
             <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
@@ -161,7 +171,7 @@ const RecurringScreen = () => {
                 </Text>
               </View>
               <Text style={[styles.summaryColValue, { color: colors.expense }]}>
-                -{totalExpense.toFixed(2)} {currencySymbol}
+                -{formatAmount(totalExpense)} {currencySymbol}
               </Text>
             </View>
           </View>
@@ -171,7 +181,7 @@ const RecurringScreen = () => {
               {t('recurring.net')}
             </Text>
             <Text style={[styles.summaryNetValue, { color: net >= 0 ? colors.income : colors.expense }]}>
-              {net >= 0 ? '+' : ''}{net.toFixed(2)} {currencySymbol}
+              {net >= 0 ? '+' : ''}{formatAmount(net)} {currencySymbol}
             </Text>
           </View>
         </View>
@@ -185,6 +195,14 @@ const RecurringScreen = () => {
             <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
               {t('recurring.noRecurringSubtitle')}
             </Text>
+            <TouchableOpacity
+              style={[styles.emptyAction, { backgroundColor: dc.primary }]}
+              onPress={() => { lightHaptic(); setShowRecurringModal(true); }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add" size={16} color="#FFFFFF" />
+              <Text style={styles.emptyActionText}>{t('recurring.addFirst')}</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           sortedRecurring.map((item) => (
@@ -215,9 +233,15 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 100 },
   card: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 14, marginBottom: 10,
+    borderRadius: 16, padding: 14,
     borderWidth: 0.5, gap: 10,
   },
+  swipeContainer: { marginBottom: 10, borderRadius: 16 },
+  emptyAction: {
+    marginTop: 16, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  emptyActionText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', color: '#FFFFFF' },
   dayBadge: {
     width: 40, height: 40, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,

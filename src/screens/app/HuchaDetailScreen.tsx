@@ -19,6 +19,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { HuchaMovementType } from '../../types';
 import { formatDate } from '../../utils/dateFormat';
+import { formatAmount } from '../../utils/formatAmount';
+import { warningHaptic } from '../../utils/haptics';
 
 type RouteParams = { HuchaDetail: { huchaId: string } };
 
@@ -174,11 +176,11 @@ const AddMoneyModal = ({
             {projectedAmount !== null && (
               <View style={[styles.previewRow, { backgroundColor: activeColor + '15', borderColor: activeColor + '30' }]}>
                 <Text style={[styles.previewLabel, { color: dc.textSecondary }]}>
-                  {huchaCurrentAmount.toFixed(2)} {currencySymbol}
+                  {formatAmount(huchaCurrentAmount)} {currencySymbol}
                 </Text>
                 <Ionicons name="arrow-forward" size={14} color={activeColor} />
                 <Text style={[styles.previewNew, { color: activeColor }]}>
-                  {projectedAmount.toFixed(2)} {currencySymbol}
+                  {formatAmount(projectedAmount)} {currencySymbol}
                 </Text>
               </View>
             )}
@@ -371,6 +373,7 @@ const HuchaDetailScreen = () => {
   const isClosed = !!hucha.closedAt;
 
   const handleDelete = () => {
+    warningHaptic();
     Alert.alert(
       t('hucha.deleteConfirm'),
       t('hucha.deleteConfirmMsg'),
@@ -583,11 +586,11 @@ const HuchaDetailScreen = () => {
         {/* Importes */}
         <View style={styles.amountsRow}>
           <Text style={[styles.currentAmount, { color: dc.textPrimary }]}>
-            {hucha.currentAmount.toFixed(2)}
+            {formatAmount(hucha.currentAmount)}
           </Text>
           {hasTarget ? (
             <Text style={[styles.targetAmount, { color: dc.textSecondary }]}>
-              {'/'}{hucha.targetAmount.toFixed(2)} {currencySymbol}
+              {'/'}{formatAmount(hucha.targetAmount)} {currencySymbol}
             </Text>
           ) : (
             <Text style={[styles.targetAmount, { color: dc.textSecondary }]}>
@@ -598,7 +601,7 @@ const HuchaDetailScreen = () => {
 
         {remaining > 0 && monthsEstimate !== null && (
           <Text style={[styles.estimate, { color: dc.textSecondary }]}>
-            {t('hucha.remaining', { amount: remaining.toFixed(2) })}
+            {t('hucha.remaining', { amount: formatAmount(remaining) })}
             {' · '}
             {t('hucha.monthsEstimate', { months: monthsEstimate })}
           </Text>
@@ -788,7 +791,7 @@ const HuchaDetailScreen = () => {
                     </Text>
                   </View>
                   <Text style={[styles.historyAmount, { color: movColor }]}>
-                    {isDeposit ? '+' : '-'}{m.amount.toFixed(2)} {currencySymbol}
+                    {isDeposit ? '+' : '-'}{formatAmount(m.amount)} {currencySymbol}
                   </Text>
                 </View>
               );
@@ -857,8 +860,8 @@ const HuchaDetailScreen = () => {
                   </Text>
                   <Text style={[styles.actionsSubtitle, { color: dc.textSecondary }]}>
                     {hasTarget
-                      ? `${hucha.currentAmount.toFixed(2)} / ${hucha.targetAmount.toFixed(2)} ${currencySymbol}`
-                      : `${hucha.currentAmount.toFixed(2)} ${currencySymbol} · ${t('hucha.accumulating')}`}
+                      ? `${formatAmount(hucha.currentAmount)} / ${formatAmount(hucha.targetAmount)} ${currencySymbol}`
+                      : `${formatAmount(hucha.currentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
                   </Text>
                 </View>
               </View>

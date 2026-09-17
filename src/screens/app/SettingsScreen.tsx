@@ -36,6 +36,7 @@ import { scheduleDailyNotification, cancelDailyNotification } from '../../servic
 import Constants from 'expo-constants';
 import * as Font from 'expo-font';
 import { reloadAppAsync } from 'expo';
+import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import {
   FONT_OPTIONS, AppFontId, getSavedFont, saveFont,
   getActiveFont, getPreviewFontFamily, getPreviewFontMap,
@@ -195,7 +196,7 @@ const SettingsScreen = () => {
   const { colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
-  const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, saveSettings } = useSettingsStore();
+  const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const { movements, recurringMovements } = useMovementStore();
   const { huchas, huchaMovements } = useSavingsStore();
@@ -282,6 +283,7 @@ const SettingsScreen = () => {
   };
 
   const handleDeleteData = () => {
+    warningHaptic();
     Alert.alert(
       t('settings.deleteData'),
       t('settings.deleteDataConfirm'),
@@ -314,6 +316,7 @@ const SettingsScreen = () => {
   };
 
   const handleDeleteAccount = () => {
+    warningHaptic();
     Alert.alert(
       t('settings.deleteAccount'),
       t('settings.deleteAccountWarning'),
@@ -323,6 +326,7 @@ const SettingsScreen = () => {
           text: t('settings.deleteAccount'),
           style: 'destructive',
           onPress: () => {
+            warningHaptic();
             Alert.alert(
               t('settings.deleteAccountConfirm'),
               t('settings.deleteAccountConfirmMessage'),
@@ -418,6 +422,7 @@ const SettingsScreen = () => {
   };
 
   const handleLogout = () => {
+    warningHaptic();
     Alert.alert(
       t('settings.logout'),
       t('settings.logoutConfirm'),
@@ -462,6 +467,7 @@ const SettingsScreen = () => {
   };
 
   const handleLeave = () => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.leaveAccount'),
       t('sharedAccount.leaveConfirm'),
@@ -482,6 +488,7 @@ const SettingsScreen = () => {
   };
 
   const handleDeleteShared = () => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.deleteAccount'),
       t('sharedAccount.deleteWarning'),
@@ -504,6 +511,7 @@ const SettingsScreen = () => {
   };
 
   const confirmDeleteShared = () => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.deleteAccount'),
       t('sharedAccount.deleteConfirm'),
@@ -538,6 +546,7 @@ const SettingsScreen = () => {
   };
 
   const handleRejectRequest = (uid: string, name: string) => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.rejectConfirmTitle'),
       t('sharedAccount.rejectConfirmBody', { name }),
@@ -1047,16 +1056,13 @@ const SettingsScreen = () => {
               : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
             onPress={handleExportCSV}
           />
-          {!isSharedMode && (
-            <>
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="moon-outline" iconColor={dc.primary}
-                label={t('settings.theme')} value={selectedThemeLabel}
-                onPress={() => setShowThemeModal(true)}
-              />
-            </>
-          )}
+          {/* Apariencia: afecta a toda la app, no a la cuenta activa */}
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="moon-outline" iconColor={dc.primary}
+            label={t('settings.theme')} value={selectedThemeLabel}
+            onPress={() => setShowThemeModal(true)}
+          />
           {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
@@ -1064,6 +1070,26 @@ const SettingsScreen = () => {
             label={t('settings.font')}
             value={FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
             onPress={() => setShowFontModal(true)}
+          />
+          {/* Vibración: ajuste de la app, independiente de la cuenta activa */}
+          <View style={[styles.divider, { backgroundColor: dc.border }]} />
+          <OptionRow
+            icon="phone-portrait-outline" iconColor={dc.primary}
+            label={t('settings.haptics')}
+            subtitle={t('settings.hapticsSubtitle')}
+            showArrow={false}
+            right={
+              <Switch
+                value={hapticsEnabled}
+                onValueChange={(value) => {
+                  saveSettings({ hapticsEnabled: value });
+                  // Al activarlo se confirma con la propia vibración
+                  if (value) lightHaptic();
+                }}
+                trackColor={{ false: dc.border, true: dc.primary + '80' }}
+                thumbColor={hapticsEnabled ? dc.primary : dc.textSecondary}
+              />
+            }
           />
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
           <OptionRow
@@ -1290,6 +1316,7 @@ const SettingsScreen = () => {
                     style={[styles.modalOption, { borderBottomColor: dc.border }]}
                     onPress={() => {
                       setShowKickMemberModal(false);
+                      warningHaptic();
                       Alert.alert(
                         t('sharedAccount.kickMember'),
                         `${t('sharedAccount.kickConfirm')} ${name}?\n\n${t('sharedAccount.kickWarning')}`,

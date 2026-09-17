@@ -19,6 +19,7 @@ import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
+import { warningHaptic } from '../../utils/haptics';
 
 type RouteParams = {
   SharedAccount: { code?: string; name?: string; fromDeepLink?: boolean };
@@ -147,6 +148,7 @@ const SharedAccountScreen = () => {
   };
 
   const handleCancelRequest = () => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.cancelRequestConfirmTitle'),
       t('sharedAccount.cancelRequestConfirmBody'),
@@ -176,6 +178,7 @@ const SharedAccountScreen = () => {
   };
 
   const handleReject = (uid: string, name: string) => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.rejectConfirmTitle'),
       t('sharedAccount.rejectConfirmBody', { name }),

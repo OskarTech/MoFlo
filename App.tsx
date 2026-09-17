@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { getSavedFont, loadAppFontsAsync, setActiveFont } from './src/theme/fonts';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
 import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
@@ -193,6 +194,9 @@ export default function App() {
     ?? updateInfo?.config.releaseNotes?.en;
 
   return (
+    // Requisito de react-native-gesture-handler: sin esta raíz los gestos
+    // (las filas deslizables) no responden en Android.
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ErrorBoundary>
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
@@ -212,5 +216,6 @@ export default function App() {
         </PaperProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

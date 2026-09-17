@@ -15,6 +15,9 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { formatAmount } from '../../utils/formatAmount';
+import SwipeNavigator from '../../components/common/SwipeNavigator';
+import AnimatedTabPill from '../../components/common/AnimatedTabPill';
 
 type SummaryTab = 'expense' | 'income' | 'hucha';
 
@@ -125,12 +128,15 @@ const AnnualScreen = () => {
   const [selectedMonth, setSelectedMonthLocal] = useState(nowDate.getMonth() + 1);
   const [selectedYear, setSelectedYearLocal] = useState(nowDate.getFullYear());
   const [activeTab, setActiveTab] = useState<SummaryTab>('expense');
+  // Resumen de todo el año: se llega deslizando a la derecha desde el mes actual
+  const [yearMode, setYearMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCatMovements, setShowCatMovements] = useState(false);
   const [selectedIncomeCategory, setSelectedIncomeCategory] = useState<string | null>(null);
   const [showIncomeCatMovements, setShowIncomeCatMovements] = useState(false);
 
   const selectPeriod = (month: number, year: number) => {
+    setYearMode(false);
     setSelectedMonthLocal(month);
     setSelectedYearLocal(year);
   };
@@ -162,9 +168,10 @@ const AnnualScreen = () => {
   const monthMovements = useMemo(() =>
     movements.filter(m => {
       const d = new Date(m.date);
-      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+      if (d.getFullYear() !== selectedYear) return false;
+      return yearMode || d.getMonth() + 1 === selectedMonth;
     }),
-    [movements, selectedMonth, selectedYear],
+    [movements, selectedMonth, selectedYear, yearMode],
   );
 
   const totalIncome = useMemo(() =>
@@ -183,9 +190,10 @@ const AnnualScreen = () => {
   const prevMonthMovements = useMemo(() =>
     movements.filter(m => {
       const d = new Date(m.date);
+      if (yearMode) return d.getFullYear() === selectedYear - 1;
       return d.getMonth() + 1 === prevSelMonth && d.getFullYear() === prevSelYear;
     }),
-    [movements, prevSelMonth, prevSelYear],
+    [movements, prevSelMonth, prevSelYear, yearMode, selectedYear],
   );
   const prevBalance = useMemo(() => {
     if (prevMonthMovements.length === 0) return null;
@@ -400,6 +408,47 @@ const AnnualScreen = () => {
     : tab === 'income' ? t('resumen.ingresos')
     : t('resumen.huchas');
 
+  // Los chips van del mes actual (izquierda) hacia atrás en el tiempo (derecha):
+  // deslizar a la izquierda avanza en esa lista, es decir, va a un mes anterior
+  const monthIndex = monthChips.findIndex(
+    c => c.month === selectedMonth && c.year === selectedYear
+  );
+  const goOlderMonth = () => {
+    // Desde el resumen anual se vuelve al mes actual
+    if (yearMode) {
+      const { month, year } = monthChips[0];
+      selectPeriod(month, year);
+      return;
+    }
+    if (monthIndex < 0 || monthIndex >= monthChips.length - 1) return;
+    const { month, year } = monthChips[monthIndex + 1];
+    selectPeriod(month, year);
+  };
+  const goNewerMonth = () => {
+    if (yearMode) return;
+    // Pasado el mes actual ya no hay meses: aparece el resumen del año entero
+    if (monthIndex === 0) {
+      setYearMode(true);
+      return;
+    }
+    if (monthIndex < 0) return;
+    const { month, year } = monthChips[monthIndex - 1];
+    selectPeriod(month, year);
+  };
+
+  // En modo anual la cabecera muestra solo el año
+  const periodLabel = yearMode
+    ? String(selectedYear)
+    : `${fullMonth(selectedMonth).toUpperCase()} ${selectedYear}`;
+
+  const tabIndex = subTabs.indexOf(activeTab);
+  const goNextTab = () => {
+    if (tabIndex < subTabs.length - 1) setActiveTab(subTabs[tabIndex + 1]);
+  };
+  const goPrevTab = () => {
+    if (tabIndex > 0) setActiveTab(subTabs[tabIndex - 1]);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
       <AppHeader title={t('header.annual')} />
@@ -413,7 +462,7 @@ const AnnualScreen = () => {
           contentContainerStyle={styles.monthRow}
         >
           {monthChips.map(({ month, year }) => {
-            const isSelected = month === selectedMonth && year === selectedYear;
+            const isSelected = !yearMode && month === selectedMonth && year === selectedYear;
             return (
               <TouchableOpacity
                 key={`${year}-${month}`}
@@ -436,18 +485,19 @@ const AnnualScreen = () => {
           })}
         </ScrollView>
 
-        {/* BALANCE CARD */}
+        {/* BALANCE CARD — deslizable para cambiar de mes */}
+        <SwipeNavigator onSwipeLeft={goOlderMonth} onSwipeRight={goNewerMonth}>
         <View style={[styles.balanceCard, { backgroundColor: balanceBg }]}>
           <View style={styles.balanceTopRow}>
             <Text style={styles.balancePeriodLabel}>
-              {t('resumen.balance').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+              {t('resumen.balance').toUpperCase()} · {periodLabel}
             </Text>
             {totalIncome > 0 && (
               <Text style={styles.savedPctText}>{savedPct}% {t('resumen.saved')}</Text>
             )}
           </View>
           <Text style={[styles.balanceAmount, balanceDiff !== null ? { marginBottom: 4 } : undefined]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-            {balance >= 0 ? '+' : ''}{balance.toFixed(2).replace('.', ',')} {currencySymbol}
+            {balance >= 0 ? '+' : ''}{formatAmount(balance)} {currencySymbol}
           </Text>
           {balanceDiff !== null && (
             <View style={styles.balanceDiffRow}>
@@ -457,7 +507,7 @@ const AnnualScreen = () => {
                 color="rgba(255,255,255,0.75)"
               />
               <Text style={styles.balanceDiffText}>
-                {balanceDiff >= 0 ? '+' : ''}{balanceDiff.toFixed(0).replace('.', ',')} {currencySymbol} vs {shortMonth(prevSelMonth)}
+                {balanceDiff >= 0 ? '+' : ''}{formatAmount(balanceDiff, 0)} {currencySymbol} vs {yearMode ? selectedYear - 1 : shortMonth(prevSelMonth)}
               </Text>
             </View>
           )}
@@ -465,17 +515,18 @@ const AnnualScreen = () => {
             <View>
               <Text style={styles.balanceStatLabel}>{t('resumen.ingresos').toUpperCase()}</Text>
               <Text style={styles.balanceStatValue}>
-                +{totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}
+                +{formatAmount(totalIncome)} {currencySymbol}
               </Text>
             </View>
             <View>
               <Text style={styles.balanceStatLabel}>{t('resumen.gastos').toUpperCase()}</Text>
               <Text style={styles.balanceStatValue}>
-                -{totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}
+                -{formatAmount(totalExpense)} {currencySymbol}
               </Text>
             </View>
           </View>
         </View>
+        </SwipeNavigator>
 
         {/* MONTHLY FLOW CHART */}
         <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
@@ -523,28 +574,28 @@ const AnnualScreen = () => {
           </ScrollView>
         </View>
 
-        {/* SUB-TABS */}
+        {/* SUB-TABS — fijos: al deslizar solo se mueve el contenido de abajo */}
         <View style={styles.subTabsRow}>
           {subTabs.map((tab) => (
-            <TouchableOpacity
+            <AnimatedTabPill
               key={tab}
-              style={[
-                styles.subTab,
-                { backgroundColor: dc.surface, borderColor: dc.border },
-                activeTab === tab && { backgroundColor: dc.primary, borderColor: dc.primary },
-              ]}
+              label={subTabLabel(tab)}
+              active={activeTab === tab}
               onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[
-                styles.subTabText,
-                { color: dc.textSecondary },
-                activeTab === tab && { color: '#FFFFFF' },
-              ]}>
-                {subTabLabel(tab)}
-              </Text>
-            </TouchableOpacity>
+              activeBackground={dc.primary}
+              inactiveBackground={dc.surface}
+              activeBorder={dc.primary}
+              inactiveBorder={dc.border}
+              activeText="#FFFFFF"
+              inactiveText={dc.textSecondary}
+              style={styles.subTab}
+              textStyle={styles.subTabText}
+            />
           ))}
         </View>
+
+        {/* Solo el contenido se desliza entre Gastos, Ingresos y Huchas */}
+        <SwipeNavigator onSwipeLeft={goNextTab} onSwipeRight={goPrevTab}>
 
         {/* ── GASTOS TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'expense' && (
@@ -572,10 +623,10 @@ const AnnualScreen = () => {
                   </DonutChart>
                   <View style={styles.pieInfoCol}>
                     <Text style={[styles.pieInfoLabel, { color: dc.textSecondary }]}>
-                      {t('resumen.gastos').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+                      {t('resumen.gastos').toUpperCase()} · {periodLabel}
                     </Text>
                     <Text style={[styles.pieInfoAmount, { color: dc.textPrimary }]}>
-                      {totalExpense.toFixed(2).replace('.', ',')} {currencySymbol}
+                      {formatAmount(totalExpense)} {currencySymbol}
                     </Text>
                     <Text style={[styles.pieInfoSub, { color: dc.textSecondary }]}>
                       {expenseBreakdown.length} {t('resumen.categories')}
@@ -586,7 +637,7 @@ const AnnualScreen = () => {
 
               {/* Desglose */}
               <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                {t('resumen.desglose').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+                {t('resumen.desglose').toUpperCase()} · {periodLabel}
               </Text>
               <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
                 {expenseBreakdown.map((item, i) => {
@@ -611,7 +662,7 @@ const AnnualScreen = () => {
                               {getCatName(item.category, 'expense')}
                             </Text>
                             <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
-                              {item.amount.toFixed(0)} {currencySymbol}
+                              {formatAmount(item.amount, 0)} {currencySymbol}
                             </Text>
                           </View>
                           <Text style={[styles.catPct, { color: dc.textSecondary }]}>
@@ -640,7 +691,7 @@ const AnnualScreen = () => {
                             <View style={styles.catDetailAvgBox}>
                               <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>{t('resumen.avgPerMonth').toUpperCase()}</Text>
                               <Text style={[styles.catDetailAvg, { color: dc.textPrimary }]}>
-                                {categoryMonthlyData.monthlyAvg.toFixed(0)} {currencySymbol}
+                                {formatAmount(categoryMonthlyData.monthlyAvg, 0)} {currencySymbol}
                               </Text>
                             </View>
                           </View>
@@ -651,8 +702,8 @@ const AnnualScreen = () => {
                               const isCurrent = bar.month === nowDate.getMonth() + 1 && bar.year === nowDate.getFullYear();
                               return (
                                 <View key={idx} style={styles.catDetailBarGroup}>
-                                  <Text style={[styles.catDetailBarVal, { color: dc.textSecondary }]}>
-                                    {bar.amt > 0 ? bar.amt.toFixed(0) : ''}
+                                  <Text style={[styles.catDetailBarVal, { color: dc.textSecondary }]} numberOfLines={1}>
+                                    {bar.amt > 0 ? formatAmount(bar.amt, 0) : ''}
                                   </Text>
                                   <View style={[styles.catDetailBarTrack, { height: 60 }]}>
                                     <View style={[
@@ -672,14 +723,14 @@ const AnnualScreen = () => {
                               <View key={yr}>
                                 <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{yr}</Text>
                                 <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
-                                  {(amt as number).toFixed(0)} {currencySymbol}
+                                  {formatAmount(amt as number, 0)} {currencySymbol}
                                 </Text>
                               </View>
                             ))}
                             <View>
                               <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{t('resumen.total').toUpperCase()}</Text>
                               <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
-                                {categoryMonthlyData.total.toFixed(0)} {currencySymbol}
+                                {formatAmount(categoryMonthlyData.total, 0)} {currencySymbol}
                               </Text>
                             </View>
                           </View>
@@ -733,7 +784,7 @@ const AnnualScreen = () => {
                                             {title}
                                           </Text>
                                           <Text style={[styles.catMovAmount, { color: dc.textPrimary }]}>
-                                            -{mv.amount.toFixed(2).replace('.', ',')} {currencySymbol}
+                                            -{formatAmount(mv.amount)} {currencySymbol}
                                           </Text>
                                         </View>
                                       </View>
@@ -779,10 +830,10 @@ const AnnualScreen = () => {
                   </DonutChart>
                   <View style={styles.pieInfoCol}>
                     <Text style={[styles.pieInfoLabel, { color: dc.textSecondary }]}>
-                      {t('resumen.ingresos').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+                      {t('resumen.ingresos').toUpperCase()} · {periodLabel}
                     </Text>
                     <Text style={[styles.pieInfoAmount, { color: dc.textPrimary }]}>
-                      {totalIncome.toFixed(2).replace('.', ',')} {currencySymbol}
+                      {formatAmount(totalIncome)} {currencySymbol}
                     </Text>
                     <Text style={[styles.pieInfoSub, { color: dc.textSecondary }]}>
                       {incomeBreakdown.length} {t('resumen.categories')}
@@ -793,7 +844,7 @@ const AnnualScreen = () => {
 
               {/* Desglose */}
               <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                {t('resumen.desglose').toUpperCase()} · {fullMonth(selectedMonth).toUpperCase()} {selectedYear}
+                {t('resumen.desglose').toUpperCase()} · {periodLabel}
               </Text>
               <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
                 {incomeBreakdown.map((item, i) => {
@@ -818,7 +869,7 @@ const AnnualScreen = () => {
                               {getCatName(item.category, 'income')}
                             </Text>
                             <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
-                              {item.amount.toFixed(0)} {currencySymbol}
+                              {formatAmount(item.amount, 0)} {currencySymbol}
                             </Text>
                           </View>
                           <Text style={[styles.catPct, { color: dc.textSecondary }]}>
@@ -847,7 +898,7 @@ const AnnualScreen = () => {
                               <View style={styles.catDetailAvgBox}>
                                 <Text style={[styles.catDetailEvol, { color: dc.textSecondary }]}>{t('resumen.avgPerMonth').toUpperCase()}</Text>
                                 <Text style={[styles.catDetailAvg, { color: dc.textPrimary }]}>
-                                  {incomeCategoryMonthlyData.monthlyAvg.toFixed(0)} {currencySymbol}
+                                  {formatAmount(incomeCategoryMonthlyData.monthlyAvg, 0)} {currencySymbol}
                                 </Text>
                               </View>
                             </View>
@@ -858,8 +909,8 @@ const AnnualScreen = () => {
                                 const isCurrent = bar.month === nowDate.getMonth() + 1 && bar.year === nowDate.getFullYear();
                                 return (
                                   <View key={idx} style={styles.catDetailBarGroup}>
-                                    <Text style={[styles.catDetailBarVal, { color: dc.textSecondary }]}>
-                                      {bar.amt > 0 ? bar.amt.toFixed(0) : ''}
+                                    <Text style={[styles.catDetailBarVal, { color: dc.textSecondary }]} numberOfLines={1}>
+                                      {bar.amt > 0 ? formatAmount(bar.amt, 0) : ''}
                                     </Text>
                                     <View style={[styles.catDetailBarTrack, { height: 60 }]}>
                                       <View style={[
@@ -879,14 +930,14 @@ const AnnualScreen = () => {
                                 <View key={yr}>
                                   <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{yr}</Text>
                                   <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
-                                    {(amt as number).toFixed(0)} {currencySymbol}
+                                    {formatAmount(amt as number, 0)} {currencySymbol}
                                   </Text>
                                 </View>
                               ))}
                               <View>
                                 <Text style={[styles.catDetailYearLbl, { color: dc.textSecondary }]}>{t('resumen.total').toUpperCase()}</Text>
                                 <Text style={[styles.catDetailYearVal, { color: dc.textPrimary }]}>
-                                  {incomeCategoryMonthlyData.total.toFixed(0)} {currencySymbol}
+                                  {formatAmount(incomeCategoryMonthlyData.total, 0)} {currencySymbol}
                                 </Text>
                               </View>
                             </View>
@@ -940,7 +991,7 @@ const AnnualScreen = () => {
                                             {title}
                                           </Text>
                                           <Text style={[styles.catMovAmount, { color: dc.income }]}>
-                                            +{mv.amount.toFixed(2).replace('.', ',')} {currencySymbol}
+                                            +{formatAmount(mv.amount)} {currencySymbol}
                                           </Text>
                                         </View>
                                       </View>
@@ -970,11 +1021,11 @@ const AnnualScreen = () => {
               </Text>
               <View style={styles.huchaTotalRow}>
                 <Text style={[styles.incomeTotalAmount, { color: dc.textPrimary }]}>
-                  {huchasTotalThisYear.toFixed(0)} {currencySymbol}
+                  {formatAmount(huchasTotalThisYear, 0)} {currencySymbol}
                 </Text>
                 {huchasTotalThisMonth > 0 && (
                   <Text style={[styles.huchaThisMonthBadge, { color: dc.income }]}>
-                    +{huchasTotalThisMonth.toFixed(0)} {t('resumen.thisMonth')}
+                    +{formatAmount(huchasTotalThisMonth, 0)} {t('resumen.thisMonth')}
                   </Text>
                 )}
               </View>
@@ -1061,7 +1112,7 @@ const AnnualScreen = () => {
                           {t('resumen.thisMonthLabel').toUpperCase()}
                         </Text>
                         <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
-                          {thisMonth.toFixed(0)} {currencySymbol}
+                          {formatAmount(thisMonth, 0)} {currencySymbol}
                         </Text>
                       </View>
                       <View style={[styles.huchaStatSep, { backgroundColor: dc.border }]} />
@@ -1070,7 +1121,7 @@ const AnnualScreen = () => {
                           {t('resumen.enYear', { year: currentYear }).toUpperCase()}
                         </Text>
                         <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
-                          {thisYear.toFixed(0)} {currencySymbol}
+                          {formatAmount(thisYear, 0)} {currencySymbol}
                         </Text>
                       </View>
                       <View style={[styles.huchaStatSep, { backgroundColor: dc.border }]} />
@@ -1080,7 +1131,7 @@ const AnnualScreen = () => {
                         </Text>
                         <Text style={[styles.huchaStatValue, { color: dc.textPrimary }]}>
                           {h.isAutomatic && h.monthlyAmount
-                            ? `${h.monthlyAmount.toFixed(0)} ${currencySymbol}`
+                            ? `${formatAmount(h.monthlyAmount, 0)} ${currencySymbol}`
                             : t('resumen.manual')
                           }
                         </Text>
@@ -1092,6 +1143,7 @@ const AnnualScreen = () => {
             )}
           </>
         )}
+        </SwipeNavigator>
 
       </ScrollView>
     </View>

@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases from 'react-native-purchases';
 import auth from '@react-native-firebase/auth';
+import { REVENUECAT_API_KEY } from '../constants/revenuecat';
 
 const PREMIUM_KEY = '@moflo_premium';
 
-const REVENUECAT_API_KEY = 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
 
 interface PremiumStore {
   isPremium: boolean;

@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import {
   View, StyleSheet, Modal,
-  TouchableOpacity, Alert, Platform, Linking
+  TouchableOpacity, Alert, Linking
 } from 'react-native';
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -10,11 +10,7 @@ import Purchases, { PurchasesOffering } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
-
-// Asignación estricta para evitar errores de tipo en TypeScript
-const REVENUECAT_API_KEY = Platform.OS === 'ios'
-  ? 'appl_YQYNRiBuRZKoXZvhaOnPNMJbSES'
-  : 'goog_SAFOqDvIHgdKmDuegCaDuzpfZFr';
+import { REVENUECAT_API_KEY } from '../../constants/revenuecat';
 
 interface Props {
   visible: boolean;

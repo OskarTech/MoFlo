@@ -14,6 +14,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
+import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
 
 const CAT_COLORS = [
   '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
@@ -62,7 +63,7 @@ interface Props {
   onDismiss: () => void;
 }
 
-const formatAmount = (n: number) => n.toFixed(2).replace('.', ',');
+const formatAmount = (n: number) => formatAmountLocalized(n);
 
 const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
   const { t } = useTranslation();

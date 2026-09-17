@@ -16,6 +16,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import AnimatedBar from '../common/AnimatedBar';
 import { DailySummaryOrigin } from './DailySummaryModal';
+import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
 
 const CAT_COLORS = [
   '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
@@ -54,7 +55,7 @@ interface Props {
   onSeeAll: (type: MovementType) => void;
 }
 
-const formatAmount = (n: number) => n.toFixed(2).replace('.', ',');
+const formatAmount = (n: number) => formatAmountLocalized(n);
 
 // Ingresos o gastos del mes en un rectángulo flotante que se expande desde
 // el importe pulsado en la tarjeta de balance (mismo estilo que el resumen diario)

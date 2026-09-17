@@ -9,6 +9,7 @@ import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import { useMovementStore } from '../store/movementStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useTheme } from '../hooks/useTheme';
 import { usePremiumStore } from '../store/premiumStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
@@ -20,6 +21,7 @@ import { setupPushTokens } from '../services/firebase/pushTokens.service';
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { colors: dc } = useTheme();
 
   const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
   const { loadSettings } = useSettingsStore();
@@ -119,8 +121,13 @@ const RootNavigator = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#166634" />
+      // Fondo y color del tema activo: sin ellos parpadeaba en blanco al
+      // arrancar en modo oscuro, y el verde fijo ignoraba la paleta elegida
+      <View style={{
+        flex: 1, justifyContent: 'center', alignItems: 'center',
+        backgroundColor: dc.background,
+      }}>
+        <ActivityIndicator size="large" color={dc.primary} />
       </View>
     );
   }

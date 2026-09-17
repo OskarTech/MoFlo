@@ -70,6 +70,7 @@ interface SettingsStore {
   themeMode: ThemeMode;
   dateFormat: DateFormat;
   colorPalette: ColorPaletteId;
+  hapticsEnabled: boolean;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
@@ -80,6 +81,7 @@ interface SettingsStore {
     themeMode: ThemeMode;
     dateFormat: DateFormat;
     colorPalette: ColorPaletteId;
+    hapticsEnabled: boolean;
   }>) => Promise<void>;
   getCurrencySymbol: () => string;
   resetStore: () => void;
@@ -92,6 +94,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   themeMode: 'auto',
   dateFormat: 'DD/MM/YYYY',
   colorPalette: 'green',
+  hapticsEnabled: true,
   isLoading: false,
 
   resetStore: () => set({
@@ -101,6 +104,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     themeMode: 'auto',
     dateFormat: 'DD/MM/YYYY',
     colorPalette: 'green',
+    hapticsEnabled: true,
   }),
 
   loadSettings: async () => {
@@ -131,6 +135,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
             dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
             colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
+            // Ajuste nuevo: las cuentas antiguas no lo tienen guardado
+            hapticsEnabled: firestoreSettings.hapticsEnabled ?? true,
           };
           set(typedSettings);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -165,6 +171,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       themeMode: get().themeMode,
       dateFormat: get().dateFormat,
       colorPalette: get().colorPalette,
+      hapticsEnabled: get().hapticsEnabled,
     };
     const updated = { ...current, ...newSettings };
     set(updated);

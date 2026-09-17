@@ -37,6 +37,7 @@
     "noExpenses": "No expenses this month",
     "noMovements": "No movements yet",
     "noMovementsSubtitle": "Tap + to add your first movement",
+    "addFirstMovement": "Add first movement",
     "month_0": "January",
     "month_1": "February",
     "month_2": "March",
@@ -141,6 +142,7 @@
   "edit": "Edit recurring movement",
   "noRecurring": "No recurring movements",
   "noRecurringSubtitle": "Add fixed expenses or income that repeat every month",
+  "addFirst": "Add recurring movement",
   "active": "Active",
   "inactive": "Inactive",
   "dayShort": "day",
@@ -166,8 +168,6 @@
   "noMovements": "No movements found",
   "noMovementsSubtitle": "Try changing the filter or add a new movement",
   "deleteConfirm": "Delete this movement?",
-  "actionTitle": "What would you like to do?",
-  "edit": "Edit",
   "delete": "Delete",
   "recurring": "Recurring",
   "fixed": "Fixed",
@@ -207,6 +207,8 @@
   "email": "Email",
   "memberSince": "Member since",
   "preferences": "Preferences",
+  "haptics": "Haptics",
+  "hapticsSubtitle": "Tactile feedback while using the app",
   "account": "Account",
   "changePassword": "Change password",
   "deleteAccount": "Delete account",
@@ -632,9 +634,9 @@
       "title": "Recurring movements",
       "body": "Go to the Movements tab and choose the 'Fixed' filter. From there you can create automatic expenses or incomes like rent, subscriptions or salary."
     },
-    "longPressDelete": {
-      "title": "Delete a movement",
-      "body": "Long-press any movement in the list to delete it."
+    "swipeActions": {
+      "title": "Edit or delete",
+      "body": "Swipe any movement to the left to edit or delete it."
     },
     "hucha": {
       "title": "Your savings goals",

@@ -30,13 +30,23 @@ import { usePremiumStore } from '../store/premiumStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { closeOpenSwipeable } from '../components/common/SwipeableRow';
 
 const Tab = createBottomTabNavigator();
 const HuchaStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 
 const HuchaNavigator = () => (
-  <HuchaStack.Navigator screenOptions={{ headerShown: false }}>
+  // 'fade' en lugar del deslizamiento por defecto: es la única transición que no
+  // desplaza la pantalla, así la barra superior no se mueve de su sitio al
+  // entrar ni al salir de una hucha.
+  <HuchaStack.Navigator
+    screenOptions={{
+      headerShown: false,
+      animation: 'fade',
+      animationDuration: 220,
+    }}
+  >
     <HuchaStack.Screen name="HuchaMain" component={HuchaScreen} />
     <HuchaStack.Screen name="HuchaDetail" component={HuchaDetailScreen} />
     <HuchaStack.Screen name="CreateHucha" component={CreateHuchaScreen} />
@@ -60,6 +70,8 @@ const AppNavigator = () => {
   const insets = useSafeAreaInsets();
 
   const [movementModalVisible, setMovementModalVisible] = useState(false);
+  // Lo activan los estados vacíos para abrir el mismo modal que el botón +
+  const { showMovementModal, setShowMovementModal } = useMovementStore();
   const [reminderModalVisible, setReminderModalVisible] = useState(false);
   const [premiumModalVisible, setPremiumModalVisible] = useState(false);
 
@@ -87,6 +99,7 @@ const AppNavigator = () => {
   const inactiveColor = isDark ? '#FFFFFF' : dc.primary + '73';
 
   const handleFabPress = () => {
+    closeOpenSwipeable();
     const current = activeTabRef.current;
     if (current === 'Reminders') {
       setReminderModalVisible(true);
@@ -119,6 +132,8 @@ const AppNavigator = () => {
   return (
     <>
       <Tab.Navigator
+        // Cambiar de pestaña cierra la fila que hubiera deslizada: las pantallas
+        // de pestañas no se desmontan, así que se quedaría abierta al volver
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarActiveTintColor: activeColor,
@@ -152,6 +167,9 @@ const AppNavigator = () => {
           },
         })}
         screenListeners={{
+          // Cambiar de pestaña cierra la fila que hubiera deslizada: las pantallas
+          // de pestañas no se desmontan, así que se quedaría abierta al volver
+          tabPress: () => { closeOpenSwipeable(); },
           state: (e) => {
             const state = e.data?.state;
             if (state) {
@@ -227,8 +245,11 @@ const AppNavigator = () => {
       </Tab.Navigator>
 
       <AddMovementModal
-        visible={movementModalVisible}
-        onDismiss={() => setMovementModalVisible(false)}
+        visible={movementModalVisible || showMovementModal}
+        onDismiss={() => {
+          setMovementModalVisible(false);
+          setShowMovementModal(false);
+        }}
       />
       <PremiumModal
         visible={premiumModalVisible}

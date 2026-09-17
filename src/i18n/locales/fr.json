@@ -37,6 +37,7 @@
     "noExpenses": "Aucune dépense ce mois-ci",
     "noMovements": "Aucun mouvement",
     "noMovementsSubtitle": "Appuyez sur + pour ajouter votre premier mouvement",
+    "addFirstMovement": "Ajouter un premier mouvement",
     "month_0": "Janvier",
     "month_1": "Février",
     "month_2": "Mars",
@@ -141,6 +142,7 @@
     "edit": "Modifier le mouvement récurrent",
     "noRecurring": "Aucun mouvement récurrent",
     "noRecurringSubtitle": "Ajoutez des dépenses ou revenus fixes qui se répètent chaque mois",
+    "addFirst": "Ajouter un mouvement récurrent",
     "active": "Actif",
     "inactive": "Inactif",
     "dayShort": "jour",
@@ -166,8 +168,6 @@
     "noMovements": "Aucun mouvement",
     "noMovementsSubtitle": "Essayez de changer le filtre ou ajoutez un nouveau mouvement",
     "deleteConfirm": "Supprimer ce mouvement ?",
-    "actionTitle": "Que souhaitez-vous faire ?",
-    "edit": "Modifier",
     "delete": "Supprimer",
     "recurring": "Récurrent",
     "fixed": "Fixes",
@@ -207,6 +207,8 @@
     "email": "E-mail",
     "memberSince": "Membre depuis",
     "preferences": "Préférences",
+    "haptics": "Retour haptique",
+    "hapticsSubtitle": "Retour tactile lors de l'utilisation de l'app",
     "account": "Compte",
     "changePassword": "Changer le mot de passe",
     "deleteAccount": "Supprimer le compte",
@@ -631,9 +633,9 @@
       "title": "Mouvements récurrents",
       "body": "Allez dans l'onglet Mouvements et choisissez le filtre 'Fixes'. De là, vous pouvez créer des dépenses ou revenus automatiques comme un loyer, des abonnements ou un salaire."
     },
-    "longPressDelete": {
-      "title": "Supprimer un mouvement",
-      "body": "Appuyez longuement sur n'importe quel mouvement de la liste pour le supprimer."
+    "swipeActions": {
+      "title": "Modifier ou supprimer",
+      "body": "Balayez un mouvement vers la gauche pour le modifier ou le supprimer."
     },
     "hucha": {
       "title": "Vos objectifs d'épargne",

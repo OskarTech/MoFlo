@@ -37,6 +37,7 @@
     "noExpenses": "Sin gastos este mes",
     "noMovements": "Sin movimientos",
     "noMovementsSubtitle": "Pulsa + para añadir tu primer movimiento",
+    "addFirstMovement": "Añadir primer movimiento",
     "month_0": "Enero",
     "month_1": "Febrero",
     "month_2": "Marzo",
@@ -141,6 +142,7 @@
   "edit": "Editar movimiento recurrente",
   "noRecurring": "Sin movimientos recurrentes",
   "noRecurringSubtitle": "Añade gastos o ingresos fijos que se repiten cada mes",
+  "addFirst": "Añadir movimiento fijo",
   "active": "Activo",
   "dayShort": "día",
   "inactive": "Inactivo",
@@ -166,8 +168,6 @@
   "noMovements": "Sin movimientos",
   "noMovementsSubtitle": "Prueba cambiando el filtro o añade un nuevo movimiento",
   "deleteConfirm": "¿Eliminar este movimiento?",
-  "actionTitle": "¿Qué deseas hacer?",
-  "edit": "Editar",
   "delete": "Eliminar",
   "recurring": "Recurrente",
   "fixed": "Fijos",
@@ -208,6 +208,8 @@
   "privacyPolicy": "Política de Privacidad",
   "termsOfService": "Términos de Servicio",
   "preferences": "Preferencias",
+  "haptics": "Vibración",
+  "hapticsSubtitle": "Respuesta táctil al usar la app",
   "dateFormat": "Formato de fecha",
   "dateFormatDMY": "DD/MM/AAAA",
   "dateFormatMDY": "MM/DD/AAAA",
@@ -632,9 +634,9 @@
       "title": "Movimientos recurrentes",
       "body": "Entra en la pestaña Movimientos y elige el filtro 'Fijos'. Desde ahí puedes crear gastos o ingresos automáticos como alquiler, suscripciones o nómina."
     },
-    "longPressDelete": {
-      "title": "Eliminar un movimiento",
-      "body": "Mantén pulsado cualquier movimiento de la lista para eliminarlo."
+    "swipeActions": {
+      "title": "Editar o eliminar",
+      "body": "Desliza cualquier movimiento hacia la izquierda para editarlo o eliminarlo."
     },
     "hucha": {
       "title": "Tus huchas",

@@ -37,6 +37,7 @@
     "noExpenses": "Nessuna spesa questo mese",
     "noMovements": "Nessun movimento",
     "noMovementsSubtitle": "Tocca + per aggiungere il tuo primo movimento",
+    "addFirstMovement": "Aggiungi il primo movimento",
     "month_0": "Gennaio",
     "month_1": "Febbraio",
     "month_2": "Marzo",
@@ -141,6 +142,7 @@
     "edit": "Modifica movimento ricorrente",
     "noRecurring": "Nessun movimento ricorrente",
     "noRecurringSubtitle": "Aggiungi spese o entrate fisse che si ripetono ogni mese",
+    "addFirst": "Aggiungi movimento ricorrente",
     "active": "Attivo",
     "inactive": "Inattivo",
     "dayShort": "giorno",
@@ -166,8 +168,6 @@
     "noMovements": "Nessun movimento",
     "noMovementsSubtitle": "Prova a cambiare filtro o aggiungi un nuovo movimento",
     "deleteConfirm": "Eliminare questo movimento?",
-    "actionTitle": "Cosa vuoi fare?",
-    "edit": "Modifica",
     "delete": "Elimina",
     "recurring": "Ricorrente",
     "fixed": "Fissi",
@@ -207,6 +207,8 @@
     "email": "E-mail",
     "memberSince": "Membro da",
     "preferences": "Preferenze",
+    "haptics": "Feedback aptico",
+    "hapticsSubtitle": "Risposta tattile durante l'uso dell'app",
     "account": "Account",
     "changePassword": "Cambia password",
     "deleteAccount": "Elimina account",
@@ -631,9 +633,9 @@
       "title": "Movimenti ricorrenti",
       "body": "Vai alla scheda Movimenti e scegli il filtro 'Fissi'. Da lì puoi creare spese o entrate automatiche come affitto, abbonamenti o stipendio."
     },
-    "longPressDelete": {
-      "title": "Eliminare un movimento",
-      "body": "Tieni premuto qualsiasi movimento della lista per eliminarlo."
+    "swipeActions": {
+      "title": "Modificare o eliminare",
+      "body": "Scorri un movimento verso sinistra per modificarlo o eliminarlo."
     },
     "hucha": {
       "title": "I tuoi obiettivi",

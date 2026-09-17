@@ -14,12 +14,14 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import { Movement, MovementType, HuchaMovement, RecurringMovement } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 import AddMovementModal from '../../components/movements/AddMovementModal';
 import { formatDate } from '../../utils/dateFormat';
+import { formatAmount } from '../../utils/formatAmount';
+import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
 
@@ -76,29 +78,33 @@ const MovementRow = ({
   const dateAndCat = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
   const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
 
-  // Pulsación larga: menú único con las dos acciones. Elegir "Eliminar" borra
-  // directamente, igual que antes confirmaba el diálogo: mismo número de pasos.
-  const handleLongPress = () => {
+  // Deslizar hasta la papelera no borra directamente: se confirma antes, por si
+  // el gesto ha sido accidental
+  const handleDelete = () => {
+    warningHaptic();
     Alert.alert(
-      t('movementsList.actionTitle'),
-      `${title} · ${movement.amount.toFixed(2)} ${currencySymbol}`,
+      t('movementsList.deleteConfirm'),
+      `${title} · ${formatAmount(movement.amount)} ${currencySymbol}`,
       [
+        { text: t('movements.cancel'), style: 'cancel' },
         {
           text: t('movementsList.delete'),
           style: 'destructive',
           onPress: () => onDelete(movement.id),
         },
-        { text: t('movementsList.edit'), onPress: () => onEdit(movement) },
-        { text: t('movements.cancel'), style: 'cancel' },
       ]
     );
   };
 
   return (
-    <TouchableOpacity
-      onLongPress={handleLongPress}
-      style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}
+    <SwipeableRow
+      containerStyle={styles.swipeContainer}
+      actions={[
+        { icon: 'pencil', background: dc.primary, onPress: () => onEdit(movement) },
+        { icon: 'trash', background: dc.expense, onPress: handleDelete },
+      ]}
     >
+    <View style={[styles.movementRow, { backgroundColor: dc.surface, borderColor: dc.border }]}>
       <View style={[styles.movementIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={22} color={color} />
       </View>
@@ -118,9 +124,10 @@ const MovementRow = ({
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color }]}>
-        {isIncome ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
+        {isIncome ? '+' : '-'}{formatAmount(movement.amount)} {currencySymbol}
       </Text>
-    </TouchableOpacity>
+    </View>
+    </SwipeableRow>
   );
 };
 
@@ -158,7 +165,7 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color: amountColor }]}>
-        {isDeposit ? '+' : '-'}{movement.amount.toFixed(2)} {currencySymbol}
+        {isDeposit ? '+' : '-'}{formatAmount(movement.amount)} {currencySymbol}
       </Text>
     </View>
   );
@@ -182,6 +189,7 @@ const RecurringCard = ({
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const handleDelete = () => {
+    warningHaptic();
     Alert.alert(
       t('recurring.deleteConfirm'),
       item.description,
@@ -193,6 +201,13 @@ const RecurringCard = ({
   };
 
   return (
+    <SwipeableRow
+      containerStyle={styles.swipeContainer}
+      actions={[
+        { icon: 'pencil', background: dc.primary, onPress: () => onEdit(item) },
+        { icon: 'trash', background: dc.expense, onPress: handleDelete },
+      ]}
+    >
     <View style={[styles.recurringCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
       <View style={[styles.dayBadge, { backgroundColor: dc.primary + '20' }]}>
         <Text style={[styles.dayNumber, { color: dc.primary }]}>{item.recurringDay}</Text>
@@ -203,28 +218,27 @@ const RecurringCard = ({
       </View>
       <View style={styles.movementInfo}>
         <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
-          {item.description}{item.note ? ` · ${item.note}` : ''}
+          {item.description}
         </Text>
-        <Text style={[styles.movementAmount, { color, fontSize: 12 }]}>
-          {item.type === 'income' ? '+' : '-'}{item.amount.toFixed(2)} {currencySymbol}
-        </Text>
+        {!!item.note && (
+          <Text style={[styles.movementDate, { color: dc.textSecondary }]} numberOfLines={1}>
+            {item.note}
+          </Text>
+        )}
       </View>
-      <View style={styles.recurringActions}>
-        <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
-          <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
-          <Ionicons name="trash-outline" size={18} color={colors.expense} />
-        </TouchableOpacity>
-      </View>
+      {/* El importe a la derecha, igual que en los movimientos normales */}
+      <Text style={[styles.movementAmount, { color }]}>
+        {item.type === 'income' ? '+' : '-'}{formatAmount(item.amount)} {currencySymbol}
+      </Text>
     </View>
+    </SwipeableRow>
   );
 };
 
 const MovementsScreen = () => {
   const { t } = useTranslation();
   const {
-    movements, deleteMovement,
+    movements, deleteMovement, setShowMovementModal,
     recurringMovements, deleteRecurringMovement,
     showRecurringModal, setShowRecurringModal,
     setActiveHistorialFilter,
@@ -290,8 +304,12 @@ const MovementsScreen = () => {
           ? getSharedCategoryName(m.category, m.type as MovementType, t)
           : getCategoryName(m.category, m.type as MovementType, t)
         ).toLowerCase();
-        const amountStr = m.amount.toFixed(2);
-        return note.includes(q) || desc.includes(q) || catName.includes(q) || amountStr.includes(q);
+        // Se busca por el valor crudo (6555.00) y por el formateado que ve el
+        // usuario (6.555,00), para que ambas formas de teclearlo funcionen
+        const amountRaw = m.amount.toFixed(2);
+        const amountShown = formatAmount(m.amount);
+        return note.includes(q) || desc.includes(q) || catName.includes(q)
+          || amountRaw.includes(q) || amountShown.includes(q);
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [movements, filter, searchQuery, isSharedMode]);
@@ -354,6 +372,17 @@ const MovementsScreen = () => {
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
         {t('movementsList.noMovements')}
       </Text>
+      {/* En el filtro de huchas la acción no es añadir un movimiento suelto */}
+      {filter !== 'hucha' && (
+        <TouchableOpacity
+          style={[styles.emptyAction, { backgroundColor: dc.primary }]}
+          onPress={() => { lightHaptic(); setShowMovementModal(true); }}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={16} color="#FFFFFF" />
+          <Text style={styles.emptyActionText}>{t('movements.add')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -366,6 +395,14 @@ const MovementsScreen = () => {
       <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
         {t('recurring.noRecurringSubtitle')}
       </Text>
+      <TouchableOpacity
+        style={[styles.emptyAction, { backgroundColor: dc.primary }]}
+        onPress={() => { lightHaptic(); setShowRecurringModal(true); }}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={16} color="#FFFFFF" />
+        <Text style={styles.emptyActionText}>{t('recurring.addFirst')}</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -392,7 +429,12 @@ const MovementsScreen = () => {
   ) : null;
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: dc.background }]}
+      // Cualquier toque de la pantalla cierra la fila deslizada. Devuelve false,
+      // así que no se queda con el gesto y el toque llega igual a su destino.
+      onStartShouldSetResponderCapture={closeOpenSwipeable}
+    >
       <AppHeader title={t('header.historial')} />
 
       {filterChips}
@@ -411,6 +453,7 @@ const MovementsScreen = () => {
         <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeOpenSwipeable}
         >
           <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
             <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
@@ -425,7 +468,7 @@ const MovementsScreen = () => {
                   </Text>
                 </View>
                 <Text style={[styles.summaryColValue, { color: dc.income }]}>
-                  +{recurringIncomeTotal.toFixed(2)} {recurringCurrencySymbol}
+                  +{formatAmount(recurringIncomeTotal)} {recurringCurrencySymbol}
                 </Text>
               </View>
               <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
@@ -437,7 +480,7 @@ const MovementsScreen = () => {
                   </Text>
                 </View>
                 <Text style={[styles.summaryColValue, { color: dc.expense }]}>
-                  -{recurringExpenseTotal.toFixed(2)} {recurringCurrencySymbol}
+                  -{formatAmount(recurringExpenseTotal)} {recurringCurrencySymbol}
                 </Text>
               </View>
             </View>
@@ -447,7 +490,7 @@ const MovementsScreen = () => {
                 {t('recurring.net')}
               </Text>
               <Text style={[styles.summaryNetValue, { color: recurringNet >= 0 ? dc.income : dc.expense }]}>
-                {recurringNet >= 0 ? '+' : ''}{recurringNet.toFixed(2)} {recurringCurrencySymbol}
+                {recurringNet >= 0 ? '+' : ''}{formatAmount(recurringNet)} {recurringCurrencySymbol}
               </Text>
             </View>
           </View>
@@ -470,6 +513,7 @@ const MovementsScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeOpenSwipeable}
           renderItem={({ item }) => (
             <MovementRow
               movement={item}
@@ -517,9 +561,15 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   listContent: { paddingHorizontal: 16, paddingBottom: 100, paddingTop: 8 },
+  swipeContainer: { marginBottom: 8, borderRadius: 16 },
+  emptyAction: {
+    marginTop: 16, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  emptyActionText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', color: '#FFFFFF' },
   movementRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5,
+    borderRadius: 16, padding: 14, borderWidth: 0.5,
   },
   movementIcon: {
     width: 44, height: 44, borderRadius: 22,
@@ -533,7 +583,7 @@ const styles = StyleSheet.create({
   movementAmount: { fontSize: 14, fontFamily: 'Poppins_600SemiBold', marginLeft: 8 },
   recurringCard: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 14, marginBottom: 8, borderWidth: 0.5, gap: 10,
+    borderRadius: 16, padding: 14, borderWidth: 0.5, gap: 10,
   },
   dayBadge: {
     width: 40, height: 40, borderRadius: 12,

@@ -17,6 +17,7 @@ import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../common/PremiumModal';
 import { navigationRef } from '../../navigation/RootNavigator';
 import { MovementType, Movement } from '../../types';
+import { lightHaptic } from '../../utils/haptics';
 
 interface Props {
   visible: boolean;
@@ -177,6 +178,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     if (!parsedAmount || parsedAmount <= 0) return;
 
     isSavingRef.current = true;
+    lightHaptic();
 
     if (editingMovement) {
       // La fecha original se conserva: el store ignora cualquier cambio de fecha

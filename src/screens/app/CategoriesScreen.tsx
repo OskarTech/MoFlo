@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import { warningHaptic } from '../../utils/haptics';
 
 const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { name: 'home', icon: 'home' },
@@ -325,6 +326,7 @@ const CategoriesScreen = () => {
   const customCats = getCategoriesForType(activeType).filter(c => c.isCustom);
 
   const handleDeleteBase = (id: string, name: string) => {
+    warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
       name,
@@ -340,6 +342,7 @@ const CategoriesScreen = () => {
   };
 
   const handleDeleteCustom = (id: string, name: string) => {
+    warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
       name,

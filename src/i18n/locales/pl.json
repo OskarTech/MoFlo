@@ -37,6 +37,7 @@
     "noExpenses": "Brak wydatków w tym miesiącu",
     "noMovements": "Brak transakcji",
     "noMovementsSubtitle": "Naciśnij +, aby dodać pierwszą transakcję",
+    "addFirstMovement": "Dodaj pierwszą transakcję",
     "month_0": "Styczeń",
     "month_1": "Luty",
     "month_2": "Marzec",
@@ -145,6 +146,7 @@
   "edit": "Edytuj cykliczną transakcje",
   "noRecurring": "Brak cyklicznych transakcji",
   "noRecurringSubtitle": "Dodaj stałe wydatki lub przychody powtarzające się co miesiąc",
+  "addFirst": "Dodaj cykliczną transakcję",
   "dayShort": "dzień",
   "active": "Aktywne",
   "inactive": "Nieaktywne",
@@ -170,8 +172,6 @@
   "noMovements": "Brak transakcji",
   "noMovementsSubtitle": "Spróbuj zmienić filtr lub dodaj nową transakcję",
   "deleteConfirm": "Usunąć tę transakcję?",
-  "actionTitle": "Co chcesz zrobić?",
-  "edit": "Edytuj",
   "delete": "Usuń",
   "recurring": "Cykliczne",
   "fixed": "Stałe",
@@ -206,6 +206,8 @@
   "email": "E-mail",
   "memberSince": "Członek od",
   "preferences": "Preferencje",
+  "haptics": "Wibracje",
+  "hapticsSubtitle": "Reakcja dotykowa podczas korzystania z aplikacji",
   "account": "Konto",
   "changePassword": "Zmień hasło",
   "deleteAccount": "Usuń konto",
@@ -636,9 +638,9 @@
       "title": "Transakcje cykliczne",
       "body": "Przejdź do zakładki Transakcje i wybierz filtr 'Stałe'. Stamtąd możesz tworzyć automatyczne wydatki lub przychody, takie jak czynsz, subskrypcje lub pensja."
     },
-    "longPressDelete": {
-      "title": "Usuń transakcję",
-      "body": "Przytrzymaj dłużej dowolną transakcję na liście, aby ją usunąć."
+    "swipeActions": {
+      "title": "Edytuj lub usuń",
+      "body": "Przesuń transakcję w lewo, aby ją edytować lub usunąć."
     },
     "hucha": {
       "title": "Twoje skarbonki",

@@ -37,6 +37,7 @@
     "noExpenses": "Keine Ausgaben in diesem Monat",
     "noMovements": "Keine Bewegungen",
     "noMovementsSubtitle": "Tippe auf +, um deine erste Bewegung hinzuzufügen",
+    "addFirstMovement": "Erste Bewegung hinzufügen",
     "month_0": "Januar",
     "month_1": "Februar",
     "month_2": "März",
@@ -141,6 +142,7 @@
     "edit": "Wiederkehrende Bewegung bearbeiten",
     "noRecurring": "Keine wiederkehrenden Bewegungen",
     "noRecurringSubtitle": "Füge feste Ausgaben oder Einnahmen hinzu, die sich monatlich wiederholen",
+    "addFirst": "Wiederkehrende Bewegung hinzufügen",
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "dayShort": "Tag",
@@ -166,8 +168,6 @@
     "noMovements": "Keine Bewegungen",
     "noMovementsSubtitle": "Versuche, den Filter zu ändern oder eine neue Bewegung hinzuzufügen",
     "deleteConfirm": "Diese Bewegung löschen?",
-    "actionTitle": "Was möchtest du tun?",
-    "edit": "Bearbeiten",
     "delete": "Löschen",
     "recurring": "Wiederkehrend",
     "fixed": "Fest",
@@ -207,6 +207,8 @@
     "email": "E-Mail",
     "memberSince": "Mitglied seit",
     "preferences": "Präferenzen",
+    "haptics": "Haptik",
+    "hapticsSubtitle": "Taktiles Feedback beim Verwenden der App",
     "account": "Konto",
     "changePassword": "Passwort ändern",
     "deleteAccount": "Konto löschen",
@@ -631,9 +633,9 @@
       "title": "Wiederkehrende Bewegungen",
       "body": "Gehe zum Tab Bewegungen und wähle den Filter 'Fest'. Von dort kannst du automatische Ausgaben oder Einnahmen wie Miete, Abos oder Gehalt erstellen."
     },
-    "longPressDelete": {
-      "title": "Bewegung löschen",
-      "body": "Halte eine Bewegung in der Liste lange gedrückt, um sie zu löschen."
+    "swipeActions": {
+      "title": "Bearbeiten oder löschen",
+      "body": "Wische eine Bewegung nach links, um sie zu bearbeiten oder zu löschen."
     },
     "hucha": {
       "title": "Deine Sparziele",

@@ -37,6 +37,7 @@
     "noExpenses": "Sem despesas este mês",
     "noMovements": "Sem movimentos",
     "noMovementsSubtitle": "Toque em + para adicionar o seu primeiro movimento",
+    "addFirstMovement": "Adicionar primeiro movimento",
     "month_0": "Janeiro",
     "month_1": "Fevereiro",
     "month_2": "Março",
@@ -141,6 +142,7 @@
     "edit": "Editar movimento recorrente",
     "noRecurring": "Sem movimentos recorrentes",
     "noRecurringSubtitle": "Adicione despesas ou receitas fixas que se repetem todos os meses",
+    "addFirst": "Adicionar movimento recorrente",
     "active": "Ativo",
     "inactive": "Inativo",
     "dayShort": "dia",
@@ -166,8 +168,6 @@
     "noMovements": "Sem movimentos",
     "noMovementsSubtitle": "Experimente mudar o filtro ou adicionar um novo movimento",
     "deleteConfirm": "Eliminar este movimento?",
-    "actionTitle": "O que deseja fazer?",
-    "edit": "Editar",
     "delete": "Eliminar",
     "recurring": "Recorrente",
     "fixed": "Fixos",
@@ -207,6 +207,8 @@
     "email": "E-mail",
     "memberSince": "Membro desde",
     "preferences": "Preferências",
+    "haptics": "Vibração",
+    "hapticsSubtitle": "Resposta tátil ao utilizar a aplicação",
     "account": "Conta",
     "changePassword": "Alterar palavra-passe",
     "deleteAccount": "Eliminar conta",
@@ -631,9 +633,9 @@
       "title": "Movimentos recorrentes",
       "body": "Vá ao separador Movimentos e escolha o filtro 'Fixos'. A partir daí pode criar despesas ou receitas automáticas como renda, subscrições ou salário."
     },
-    "longPressDelete": {
-      "title": "Eliminar um movimento",
-      "body": "Mantenha premido qualquer movimento da lista para o eliminar."
+    "swipeActions": {
+      "title": "Editar ou eliminar",
+      "body": "Deslize qualquer movimento para a esquerda para o editar ou eliminar."
     },
     "hucha": {
       "title": "Os seus objetivos",

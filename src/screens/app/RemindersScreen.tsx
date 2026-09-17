@@ -18,6 +18,8 @@ import i18n from '../../i18n';
 import auth from '@react-native-firebase/auth';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
+import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -52,11 +54,30 @@ const ReminderCard = ({
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
   // Sin fecha = nota: nunca se marca como pasada
+  const handleDelete = () => {
+    warningHaptic();
+    Alert.alert(
+      t('reminders.deleteConfirm'),
+      reminder.title,
+      [
+        { text: t('reminders.cancel'), style: 'cancel' },
+        { text: 'OK', style: 'destructive', onPress: () => onDelete(reminder.id) },
+      ]
+    );
+  };
+
   const isNote = !reminder.date;
   const date = reminder.date ? new Date(reminder.date) : null;
   const isPast = !!date && date < new Date();
 
   return (
+    <SwipeableRow
+      containerStyle={styles.swipeContainer}
+      actions={[
+        { icon: 'pencil', background: dc.primary, onPress: () => onEdit(reminder) },
+        { icon: 'trash', background: dc.expense, onPress: handleDelete },
+      ]}
+    >
     <View style={[styles.card, {
       backgroundColor: dc.surface,
       borderColor: isPast ? dc.border : dc.primary + '40',
@@ -76,37 +97,26 @@ const ReminderCard = ({
           <Text style={[styles.cardTitle, { color: isPast ? dc.textSecondary : dc.textPrimary }]}>
             {reminder.title}
           </Text>
-          {!!date && (
-            <Text style={[styles.cardDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
-              📅 {formatDate(date)} · ⏰ {formatTime(date)}
-            </Text>
-          )}
           {!!creatorName && (
             <Text style={[styles.cardCreator, { color: dc.textSecondary }]} numberOfLines={1}>
               👤 {creatorName}
             </Text>
           )}
         </View>
-        <View style={styles.cardActions}>
-          <TouchableOpacity onPress={() => onEdit(reminder)} style={styles.actionButton}>
-            <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => Alert.alert(
-              t('reminders.deleteConfirm'),
-              reminder.title,
-              [
-                { text: t('reminders.cancel'), style: 'cancel' },
-                { text: 'OK', style: 'destructive', onPress: () => onDelete(reminder.id) },
-              ]
-            )}
-            style={styles.actionButton}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.expense} />
-          </TouchableOpacity>
-        </View>
+        {/* Las notas no llevan fecha: ahí la columna derecha no se dibuja */}
+        {!!date && (
+          <View style={styles.cardWhen}>
+            <Text style={[styles.cardWhenDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
+              📅 {formatDate(date)}
+            </Text>
+            <Text style={[styles.cardWhenTime, { color: dc.textSecondary }]}>
+              ⏰ {formatTime(date)}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
+    </SwipeableRow>
   );
 };
 
@@ -232,6 +242,7 @@ const AddReminderModal = ({
       return;
     }
     setSaving(true);
+    lightHaptic();
     try {
       await onSave({
         title: description.trim(),
@@ -437,6 +448,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   };
 
   const handleRejectRequest = (rUid: string, name: string) => {
+    warningHaptic();
     Alert.alert(
       t('sharedAccount.rejectConfirmTitle'),
       t('sharedAccount.rejectConfirmBody', { name }),
@@ -525,11 +537,17 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: dc.background }]}
+      // Cualquier toque de la pantalla cierra la fila deslizada. Devuelve false,
+      // así que no se queda con el gesto y el toque llega igual a su destino.
+      onStartShouldSetResponderCapture={closeOpenSwipeable}
+    >
       <AppHeader title={t('header.reminders')} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={closeOpenSwipeable}
       >
         {visibleRequests.length > 0 && (
           <>
@@ -626,15 +644,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   card: {
-    borderRadius: 16, marginBottom: 10,
+    borderRadius: 16,
     borderWidth: 0.5, borderLeftWidth: 4, overflow: 'hidden',
   },
+  swipeContainer: { marginBottom: 10, borderRadius: 16 },
   cardContent: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
   cardIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   cardInfo: { flex: 1 },
   cardTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold', marginBottom: 4 },
   cardDate: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
   cardCreator: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  cardWhen: { alignItems: 'flex-end', flexShrink: 0 },
+  cardWhenDate: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  cardWhenTime: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
   deleteButton: { padding: 4 },
   cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
   actionButton: { padding: 4 },
