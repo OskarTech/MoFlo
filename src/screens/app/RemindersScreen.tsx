@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
-  Keyboard, Animated, KeyboardAvoidingView, Switch,
+  Keyboard, Animated, Switch,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -43,7 +43,7 @@ const formatTime = (date: Date): string => {
   return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-const ReminderCard = ({
+const ReminderCardBase = ({
   reminder, onDelete, onEdit, creatorName,
 }: {
   reminder: Reminder;
@@ -119,6 +119,9 @@ const ReminderCard = ({
     </SwipeableRow>
   );
 };
+
+// Memoizada: cada tarjeta monta un Swipeable con dos gestos nativos
+const ReminderCard = memo(ReminderCardBase);
 
 const AddReminderModal = ({
   visible, onDismiss, onSave, editingReminder,
@@ -509,9 +512,9 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
     }, 450);
   };
 
-  const handleEditReminder = (reminder: Reminder) => {
+  const handleEditReminder = useCallback((reminder: Reminder) => {
     setEditingReminder(reminder);
-  };
+  }, []);
 
   // El modal es el mismo para crear y editar: se decide aquí según el estado
   const handleSaveReminder = async (data: Omit<Reminder, 'id' | 'createdAt' | 'notificationId'>) => {
@@ -522,9 +525,9 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
     await handleAddReminder(data);
   };
 
-  const handleDeleteReminder = (id: string) => {
+  const handleDeleteReminder = useCallback((id: string) => {
     deleteReminder(id).catch((e) => console.error('Error deleting reminder:', e));
-  };
+  }, [deleteReminder]);
 
   // Orden: recordatorios próximos → notas (más recientes primero) → recordatorios pasados
   const nowTs = Date.now();

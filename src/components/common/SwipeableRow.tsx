@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated, StyleSheet, TouchableOpacity, View,
   StyleProp, ViewStyle,
@@ -69,6 +69,11 @@ const SwipeableRow = ({
   children, actions, borderRadius = 16, containerStyle, enabled = true,
 }: Props) => {
   const rowRef = useRef<Swipeable>(null);
+  // El Swipeable clásico llama a renderRightActions en cada render, no al
+  // deslizar, así que sin esto cada fila de la lista montaría de entrada dos
+  // botones pulsables con sus iconos de fuente aunque no se vean nunca. Hasta
+  // el primer arrastre se dibujan solo los rectángulos de color.
+  const [armed, setArmed] = useState(false);
 
   const close = () => rowRef.current?.close();
 
@@ -83,6 +88,8 @@ const SwipeableRow = ({
     if (openRow === rowRef.current) openRow = null;
   };
 
+  const handleOpenStartDrag = useCallback(() => setArmed(true), []);
+
   // Si la fila se desmonta abierta (se borra el elemento, cambia el filtro),
   // el registro no puede quedarse apuntando a algo que ya no existe
   useEffect(() => () => {
@@ -91,32 +98,50 @@ const SwipeableRow = ({
 
   const renderActions = (
     progress: Animated.AnimatedInterpolation<number>,
-  ) => (
-    <View style={[styles.actions, { borderRadius }]}>
-      {actions.map((action, index) => {
-        // Cada botón entra desplazándose desde la derecha
-        const translateX = progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [ACTION_WIDTH * (actions.length - index), 0],
-          extrapolate: 'clamp',
-        });
-        return (
-          <Animated.View key={action.icon} style={{ transform: [{ translateX }] }}>
-            <TouchableOpacity
+  ) => {
+    // Los marcadores ocupan exactamente lo mismo que los botones reales: el
+    // Swipeable mide aquí cuánto tiene que abrirse la fila, así que el ancho no
+    // puede cambiar al sustituirlos
+    if (!armed) {
+      return (
+        <View style={[styles.actions, { borderRadius }]}>
+          {actions.map((action) => (
+            <View
+              key={action.icon}
               style={[styles.action, { backgroundColor: action.background }]}
-              onPress={() => {
-                close();
-                action.onPress();
-              }}
-              activeOpacity={0.8}
-            >
-              <Ionicons name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
-            </TouchableOpacity>
-          </Animated.View>
-        );
-      })}
-    </View>
-  );
+            />
+          ))}
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.actions, { borderRadius }]}>
+        {actions.map((action, index) => {
+          // Cada botón entra desplazándose desde la derecha
+          const translateX = progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [ACTION_WIDTH * (actions.length - index), 0],
+            extrapolate: 'clamp',
+          });
+          return (
+            <Animated.View key={action.icon} style={{ transform: [{ translateX }] }}>
+              <TouchableOpacity
+                style={[styles.action, { backgroundColor: action.background }]}
+                onPress={() => {
+                  close();
+                  action.onPress();
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
+      </View>
+    );
+  };
 
   if (!enabled || actions.length === 0) {
     return <View style={containerStyle}>{children}</View>;
@@ -129,6 +154,7 @@ const SwipeableRow = ({
       rightThreshold={40}
       overshootRight={false}
       renderRightActions={renderActions}
+      onSwipeableOpenStartDrag={handleOpenStartDrag}
       onSwipeableWillOpen={handleWillOpen}
       onSwipeableClose={handleClosed}
       containerStyle={containerStyle}

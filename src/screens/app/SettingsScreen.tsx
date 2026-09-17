@@ -632,7 +632,7 @@ const SettingsScreen = () => {
   const selectedPaletteLabel = t(`settings.palette${selectedPaletteId.charAt(0).toUpperCase() + selectedPaletteId.slice(1)}`);
 
   const selectedSharedCurrencyLabel = CURRENCIES.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
-  const selectedSharedPaletteId: ColorPaletteId = sharedColorPalette && sharedColorPalette in COLOR_PALETTES ? sharedColorPalette : 'blue';
+  const selectedSharedPaletteId: ColorPaletteId = sharedColorPalette && sharedColorPalette in COLOR_PALETTES ? sharedColorPalette : 'navy';
   const selectedSharedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === sharedDateFormat)?.label ?? 'DD/MM/YYYY';
 
   const initials = displayName

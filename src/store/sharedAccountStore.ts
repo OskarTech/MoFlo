@@ -77,7 +77,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   isSharedMode: false,
   notificationsEnabled: true,
   sharedCurrencyCode: 'EUR',
-  sharedColorPalette: 'blue',
+  sharedColorPalette: 'navy',
   sharedDateFormat: 'DD/MM/YYYY',
   isLoading: false,
   pendingJoinRequest: null,
@@ -95,7 +95,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       sharedRecurring: [],
       isSharedMode: false,
       sharedCurrencyCode: 'EUR',
-      sharedColorPalette: 'blue',
+      sharedColorPalette: 'navy',
       sharedDateFormat: 'DD/MM/YYYY',
       pendingJoinRequest: null,
       incomingRequests: [],
@@ -599,7 +599,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         const parsed = JSON.parse(cached);
         set({
           sharedCurrencyCode: parsed.currencyCode ?? 'EUR',
-          sharedColorPalette: parsed.colorPalette ?? 'blue',
+          sharedColorPalette: parsed.colorPalette ?? 'navy',
         });
       }
 

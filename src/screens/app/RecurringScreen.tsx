@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
-  View, StyleSheet, ScrollView,
+  View, StyleSheet, FlatList,
   TouchableOpacity, Alert,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -30,7 +31,7 @@ const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   expense: 'arrow-up-circle',
 };
 
-const RecurringCard = ({
+const RecurringCardBase = ({
   item, onDelete, onEdit,
 }: {
   item: RecurringMovement;
@@ -99,6 +100,9 @@ const RecurringCard = ({
   );
 };
 
+// Memoizada: cada tarjeta monta un Swipeable con dos gestos nativos
+const RecurringCard = memo(RecurringCardBase);
+
 const RecurringScreen = () => {
   const { t } = useTranslation();
   const {
@@ -111,18 +115,22 @@ const RecurringScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
   const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
+  // Solo se monta con el foco: MovementsScreen monta otro AddRecurringModal con la
+  // misma bandera del store y con las dos pantallas montadas se dibujaba duplicado
+  const isFocused = useIsFocused();
 
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
 
-  const handleEdit = (item: RecurringMovement) => {
+  const handleEdit = useCallback((item: RecurringMovement) => {
     setEditingRecurring(item);
     setShowRecurringModal(true);
-  };
+  }, [setShowRecurringModal]);
 
-  const sortedRecurring = [...recurringMovements].sort(
-    (a, b) => a.recurringDay - b.recurringDay
+  const sortedRecurring = useMemo(
+    () => [...recurringMovements].sort((a, b) => a.recurringDay - b.recurringDay),
+    [recurringMovements],
   );
 
   const totalIncome = recurringMovements
@@ -133,6 +141,76 @@ const RecurringScreen = () => {
     .reduce((s, m) => s + m.amount, 0);
   const net = totalIncome - totalExpense;
 
+  const renderRecurringItem = useCallback(
+    ({ item }: { item: RecurringMovement }) => (
+      <RecurringCard item={item} onDelete={deleteRecurringMovement} onEdit={handleEdit} />
+    ),
+    [deleteRecurringMovement, handleEdit],
+  );
+
+  // Cabecera fija de la lista: se muestra siempre, también sin fijos, igual que antes
+  const summaryCard = (
+    <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
+        {t('recurring.summaryTitle').toUpperCase()}
+      </Text>
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCol}>
+          <View style={styles.summaryColHeader}>
+            <Ionicons name="arrow-down-circle" size={14} color={colors.income} />
+            <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+              {t('recurring.income')}
+            </Text>
+          </View>
+          <Text style={[styles.summaryColValue, { color: colors.income }]}>
+            +{formatAmount(totalIncome)} {currencySymbol}
+          </Text>
+        </View>
+        <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
+        <View style={styles.summaryCol}>
+          <View style={styles.summaryColHeader}>
+            <Ionicons name="arrow-up-circle" size={14} color={colors.expense} />
+            <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+              {t('recurring.expense')}
+            </Text>
+          </View>
+          <Text style={[styles.summaryColValue, { color: colors.expense }]}>
+            -{formatAmount(totalExpense)} {currencySymbol}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
+      <View style={styles.summaryNetRow}>
+        <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
+          {t('recurring.net')}
+        </Text>
+        <Text style={[styles.summaryNetValue, { color: net >= 0 ? colors.income : colors.expense }]}>
+          {net >= 0 ? '+' : ''}{formatAmount(net)} {currencySymbol}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const emptyState = (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>🔄</Text>
+      <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
+        {t('recurring.noRecurring')}
+      </Text>
+      <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
+        {t('recurring.noRecurringSubtitle')}
+      </Text>
+      <TouchableOpacity
+        style={[styles.emptyAction, { backgroundColor: dc.primary }]}
+        onPress={() => { lightHaptic(); setShowRecurringModal(true); }}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={16} color="#FFFFFF" />
+        <Text style={styles.emptyActionText}>{t('recurring.addFirst')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View
       style={[styles.container, { backgroundColor: dc.background }]}
@@ -141,89 +219,30 @@ const RecurringScreen = () => {
       onStartShouldSetResponderCapture={closeOpenSwipeable}
     >
       <AppHeader title={t('recurring.title')} />
-      <ScrollView
+      <FlatList
+        data={sortedRecurring}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScrollBeginDrag={closeOpenSwipeable}
-      >
-        <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
-            {t('recurring.summaryTitle').toUpperCase()}
-          </Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCol}>
-              <View style={styles.summaryColHeader}>
-                <Ionicons name="arrow-down-circle" size={14} color={colors.income} />
-                <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
-                  {t('recurring.income')}
-                </Text>
-              </View>
-              <Text style={[styles.summaryColValue, { color: colors.income }]}>
-                +{formatAmount(totalIncome)} {currencySymbol}
-              </Text>
-            </View>
-            <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
-            <View style={styles.summaryCol}>
-              <View style={styles.summaryColHeader}>
-                <Ionicons name="arrow-up-circle" size={14} color={colors.expense} />
-                <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
-                  {t('recurring.expense')}
-                </Text>
-              </View>
-              <Text style={[styles.summaryColValue, { color: colors.expense }]}>
-                -{formatAmount(totalExpense)} {currencySymbol}
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
-          <View style={styles.summaryNetRow}>
-            <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
-              {t('recurring.net')}
-            </Text>
-            <Text style={[styles.summaryNetValue, { color: net >= 0 ? colors.income : colors.expense }]}>
-              {net >= 0 ? '+' : ''}{formatAmount(net)} {currencySymbol}
-            </Text>
-          </View>
-        </View>
-
-        {sortedRecurring.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔄</Text>
-            <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
-              {t('recurring.noRecurring')}
-            </Text>
-            <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
-              {t('recurring.noRecurringSubtitle')}
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyAction, { backgroundColor: dc.primary }]}
-              onPress={() => { lightHaptic(); setShowRecurringModal(true); }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add" size={16} color="#FFFFFF" />
-              <Text style={styles.emptyActionText}>{t('recurring.addFirst')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          sortedRecurring.map((item) => (
-            <RecurringCard
-              key={item.id}
-              item={item}
-              onDelete={deleteRecurringMovement}
-              onEdit={handleEdit}
-            />
-          ))
-        )}
-      </ScrollView>
-
-      <AddRecurringModal
-        visible={showRecurringModal}
-        onDismiss={() => {
-          setShowRecurringModal(false);
-          setEditingRecurring(null);
-        }}
-        editingRecurring={editingRecurring}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        renderItem={renderRecurringItem}
+        ListHeaderComponent={summaryCard}
+        ListEmptyComponent={emptyState}
       />
+
+      {isFocused && (
+        <AddRecurringModal
+          visible={showRecurringModal}
+          onDismiss={() => {
+            setShowRecurringModal(false);
+            setEditingRecurring(null);
+          }}
+          editingRecurring={editingRecurring}
+        />
+      )}
     </View>
   );
 };

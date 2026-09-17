@@ -15,6 +15,7 @@ import { useCategoryStore } from '../store/categoryStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useSavingsStore } from '../store/savingsStore';
+import { useReminderStore } from '../store/reminderStore';
 import { processQueue } from '../services/syncQueue.service';
 import { setupPushTokens } from '../services/firebase/pushTokens.service';
 
@@ -34,6 +35,13 @@ const RootNavigator = () => {
     await loadPremium();
     await loadCategories();
     subscribeToCategories();
+    // Los recordatorios individuales salen de AsyncStorage y hasta ahora se leían
+    // al montarse la pantalla: la primera vez que se abría enseñaba "no hay
+    // recordatorios" hasta que resolvía la lectura. Cargándolos aquí la pantalla
+    // ya se monta con la lista puesta, igual que Movimientos o Huchas.
+    // Se usa getState() y no el hook: RootNavigator no debe re-renderizar la app
+    // entera cada vez que cambie un recordatorio.
+    await useReminderStore.getState().loadIndividualReminders();
     await loadSharedAccount();
     setupPushTokens().catch((e) => console.warn('setupPushTokens error', e));
 

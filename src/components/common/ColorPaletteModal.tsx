@@ -8,7 +8,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 
 export const PALETTE_ORDER: ColorPaletteId[] = [
-  'green', 'blue', 'earth', 'mint', 'rose', 'mono', 'navy', 'wine', 'lime',
+  'green', 'earth', 'mint', 'rose', 'mono', 'navy', 'wine', 'lime',
+  'teal', 'cocoa',
 ];
 
 interface Props {

@@ -375,5 +375,12 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
     syncSharedNotifications(get().sharedReminders, getSharedAccountState().sharedAccount?.name, false);
   },
 
-  resetStore: () => set({ reminders: [] }),
+  // Cancela también el listener de recordatorios compartidos y limpia la lista.
+  // Sin esto, un reset que no pasara por unsubscribeAll() (borrar la cuenta)
+  // dejaba el listener vivo y los recordatorios del usuario anterior en memoria.
+  // Llamarlo dos veces es inofensivo: unsubscribeSharedReminders es idempotente.
+  resetStore: () => {
+    get().unsubscribeSharedReminders(true);
+    set({ reminders: [] });
+  },
 }));

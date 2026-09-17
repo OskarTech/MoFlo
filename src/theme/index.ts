@@ -39,7 +39,9 @@ export const sharedColors = {
 
 // ── PALETAS DE COLOR ───────────────────────────────────────────
 
-export type ColorPaletteId = 'green' | 'blue' | 'earth' | 'mint' | 'rose' | 'mono' | 'navy' | 'wine' | 'lime';
+export type ColorPaletteId =
+  | 'green' | 'earth' | 'mint' | 'rose' | 'mono' | 'navy' | 'wine' | 'lime'
+  | 'teal' | 'cocoa';
 
 interface PaletteEntry {
   primary: string;
@@ -73,12 +75,6 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     lightBg: '#F0FAF4', lightBorder: '#D1FAE5', lightBalanceCard: '#166534',
     darkBg: '#0F1110', darkSurface: '#1C2120', darkBorder: '#2E3330', darkBalanceCard: '#065F46',
     income: '#10B981', expense: '#EF4444', savings: '#F59E0B',
-  },
-  blue: {
-    primary: '#1D4ED8', primaryLight: '#60A5FA', primaryDark: '#1E40AF',
-    lightBg: '#EFF6FF', lightBorder: '#BFDBFE', lightBalanceCard: '#1D4ED8',
-    darkBg: '#0F172A', darkSurface: '#1E293B', darkBorder: '#1E3A5F', darkBalanceCard: '#1E40AF',
-    income: '#3B82F6', expense: '#F43F5E', savings: '#F97316',
   },
   earth: {
     primary: '#2D4A3E', primaryLight: '#8FB8A0', primaryDark: '#1E3329',
@@ -202,6 +198,48 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     darkTextSecondary: '#9CA38F',
     darkPrimary: '#4D7C0F',
     income: '#16A34A', expense: '#EF4444', savings: '#F59E0B',
+  },
+  // Petróleo + melocotón
+  teal: {
+    primary: '#0F5257',
+    primaryLight: '#FF8A65',
+    primaryDark: '#072F33',
+    lightBg: '#FFF1E8',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#F9D6C3',
+    lightBalanceCard: '#0F5257',
+    lightTextPrimary: '#06282B',
+    lightTextSecondary: '#6E5A50',
+    darkBg: '#0B100F',
+    darkSurface: '#161F1E',
+    darkBorder: '#4A3229',
+    darkBalanceCard: '#0F5257',
+    darkTextPrimary: '#FDEDE3',
+    darkTextSecondary: '#AD988C',
+    darkPrimary: '#0F766E',
+    income: '#12A594', expense: '#E5614A', savings: '#F0894F',
+    darkSavings: '#FFA870',
+  },
+  // Cacao + azul
+  cocoa: {
+    primary: '#6B4F35',
+    primaryLight: '#5B9BD5',
+    primaryDark: '#432F1E',
+    lightBg: '#EAF2FA',
+    lightSurface: '#FFFFFF',
+    lightBorder: '#C6DCF0',
+    lightBalanceCard: '#6B4F35',
+    lightTextPrimary: '#2B1D12',
+    lightTextSecondary: '#546B80',
+    darkBg: '#0A0D11',
+    darkSurface: '#151B21',
+    darkBorder: '#28405A',
+    darkBalanceCard: '#6B4F35',
+    darkTextPrimary: '#E8F0F8',
+    darkTextSecondary: '#8FA3B5',
+    darkPrimary: '#8A6642',
+    income: '#4F9D69', expense: '#C4553D', savings: '#3E7CB1',
+    darkSavings: '#5B9BD5',
   },
 };
 

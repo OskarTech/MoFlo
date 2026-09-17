@@ -63,7 +63,7 @@ export const processQueue = async (): Promise<void> => {
 
   isProcessing = true;
   try {
-    console.log(`Processing sync queue: ${queue.length} operations`);
+    if (__DEV__) console.log(`Processing sync queue: ${queue.length} operations`);
 
     const failed: QueueOperation[] = [];
     let dropped = 0;
@@ -114,9 +114,9 @@ export const processQueue = async (): Promise<void> => {
     await saveQueue(failed);
 
     if (failed.length === 0 && dropped === 0) {
-      console.log('Sync queue processed successfully');
+      if (__DEV__) console.log('Sync queue processed successfully');
     } else {
-      console.log(`${failed.length} pending, ${dropped} dropped`);
+      if (__DEV__) console.log(`${failed.length} pending, ${dropped} dropped`);
     }
   } finally {
     isProcessing = false;

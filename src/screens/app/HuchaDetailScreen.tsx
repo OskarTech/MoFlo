@@ -2,7 +2,7 @@
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, Animated, Platform, StatusBar, Keyboard, Switch,
-  TextInput as RNTextInput, Dimensions,
+  TextInput as RNTextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, Button, TextInput } from 'react-native-paper';

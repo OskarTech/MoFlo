@@ -3,7 +3,7 @@ import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Modal, FlatList,
 } from 'react-native';
-import { Text, TextInput, ActivityIndicator } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';

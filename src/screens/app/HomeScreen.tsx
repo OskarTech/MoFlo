@@ -10,7 +10,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
-import { Movement, MovementType } from '../../types';
+import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
 import { successHaptic, lightHaptic } from '../../utils/haptics';

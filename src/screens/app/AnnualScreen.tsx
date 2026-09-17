@@ -114,14 +114,25 @@ const DonutChart = ({
 
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 const AnnualScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors: dc } = useTheme();
-  const { getCurrencySymbol } = useSettingsStore();
+  // Selectores en vez del store entero, para no renderizar la pantalla ante
+  // cambios que no le afectan
+  const movements = useMovementStore((s) => s.movements);
+  const huchas = useSavingsStore((s) => s.huchas);
+  const huchaMovements = useSavingsStore((s) => s.huchaMovements);
+  const isSharedMode = useSharedAccountStore((s) => s.isSharedMode);
+  // Aquí el selector devuelve el símbolo ya resuelto y no la función:
+  // getCurrencySymbol lee de get() por dentro, así que su identidad nunca cambia
+  // y suscribirse a ella dejaría el símbolo obsoleto al cambiar de moneda
+  const personalCurrencySymbol = useSettingsStore((s) => s.getCurrencySymbol());
+  const sharedCurrencySymbol = useSharedAccountStore((s) => s.getSharedCurrencySymbol());
+  // Los stores de categorías se quedan enteros a propósito: getCategoryName y
+  // getCategoriesForType también leen de get(), y aquí sí se usan en el render,
+  // así que suscribirse solo a ellas dejaría nombres e iconos obsoletos al
+  // renombrar o crear una categoría
   const { getCategoryName, getCategoriesForType } = useCategoryStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
-  const { huchas, huchaMovements } = useSavingsStore();
-  const { movements } = useMovementStore();
 
   // Local period state — independent of HomeScreen
   const nowDate = new Date();
@@ -141,7 +152,7 @@ const AnnualScreen = () => {
     setSelectedYearLocal(year);
   };
 
-  const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const currencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
@@ -256,7 +267,9 @@ const AnnualScreen = () => {
         isSelected: m === selectedMonth && y === selectedYear,
       };
     });
-  }, [movements, selectedMonth, selectedYear]);
+    // i18n.language: las etiquetas salen de t(), hay que recalcularlas al
+    // cambiar de idioma
+  }, [movements, selectedMonth, selectedYear, i18n.language]);
 
   const flowMax = useMemo(() =>
     Math.max(1, ...flowData.map(d => Math.max(d.income, d.expense))),
@@ -317,7 +330,7 @@ const AnnualScreen = () => {
         });
       return { month: m, year: y, label: shortMonth(m), net };
     });
-  }, [huchaMovements]);
+  }, [huchaMovements, i18n.language]);
 
   const huchasBarMax = useMemo(() =>
     Math.max(1, ...huchasFlowData.map(d =>
@@ -367,7 +380,7 @@ const AnnualScreen = () => {
       .slice(0, 2);
 
     return { bars, monthlyAvg, barMax, sortedYears, total };
-  }, [selectedIncomeCategory, movements]);
+  }, [selectedIncomeCategory, movements, i18n.language]);
 
   // ── EXPENSE CATEGORY DETAIL ───────────────────────────────────────────────
   const categoryMonthlyData = useMemo(() => {
@@ -398,7 +411,7 @@ const AnnualScreen = () => {
       .slice(0, 2);
 
     return { bars, monthlyAvg, barMax, sortedYears, total };
-  }, [selectedCategory, movements]);
+  }, [selectedCategory, movements, i18n.language]);
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
   const balanceBg = dc.balanceCard;
@@ -440,14 +453,6 @@ const AnnualScreen = () => {
   const periodLabel = yearMode
     ? String(selectedYear)
     : `${fullMonth(selectedMonth).toUpperCase()} ${selectedYear}`;
-
-  const tabIndex = subTabs.indexOf(activeTab);
-  const goNextTab = () => {
-    if (tabIndex < subTabs.length - 1) setActiveTab(subTabs[tabIndex + 1]);
-  };
-  const goPrevTab = () => {
-    if (tabIndex > 0) setActiveTab(subTabs[tabIndex - 1]);
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: dc.background }]}>
@@ -574,7 +579,7 @@ const AnnualScreen = () => {
           </ScrollView>
         </View>
 
-        {/* SUB-TABS — fijos: al deslizar solo se mueve el contenido de abajo */}
+        {/* SUB-TABS */}
         <View style={styles.subTabsRow}>
           {subTabs.map((tab) => (
             <AnimatedTabPill
@@ -593,9 +598,6 @@ const AnnualScreen = () => {
             />
           ))}
         </View>
-
-        {/* Solo el contenido se desliza entre Gastos, Ingresos y Huchas */}
-        <SwipeNavigator onSwipeLeft={goNextTab} onSwipeRight={goPrevTab}>
 
         {/* ── GASTOS TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'expense' && (
@@ -1143,7 +1145,6 @@ const AnnualScreen = () => {
             )}
           </>
         )}
-        </SwipeNavigator>
 
       </ScrollView>
     </View>

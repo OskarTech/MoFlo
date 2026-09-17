@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import {
   View, StyleSheet, FlatList, TouchableOpacity,
   Alert, ScrollView, TextInput as RNTextInput,
@@ -6,7 +6,7 @@ import {
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useIsFocused } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
@@ -25,7 +25,7 @@ import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
 
-const MovementRow = ({
+const MovementRowBase = ({
   movement, onDelete, onEdit,
 }: {
   movement: Movement;
@@ -131,7 +131,12 @@ const MovementRow = ({
   );
 };
 
-const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
+// Cada fila monta un Swipeable con dos gestos nativos y dos botones ocultos, así
+// que re-renderizarlas todas a la vez es caro. Con memo solo se vuelve a
+// renderizar la fila cuyo movimiento ha cambiado.
+const MovementRow = memo(MovementRowBase);
+
+const HuchaMovementRowBase = ({ movement }: { movement: HuchaMovement }) => {
   const { getCurrencySymbol } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
   const { colors: dc } = useTheme();
@@ -171,7 +176,9 @@ const HuchaMovementRow = ({ movement }: { movement: HuchaMovement }) => {
   );
 };
 
-const RecurringCard = ({
+const HuchaMovementRow = memo(HuchaMovementRowBase);
+
+const RecurringCardBase = ({
   item, onDelete, onEdit,
 }: {
   item: RecurringMovement;
@@ -235,19 +242,31 @@ const RecurringCard = ({
   );
 };
 
+const RecurringCard = memo(RecurringCardBase);
+
 const MovementsScreen = () => {
   const { t } = useTranslation();
-  const {
-    movements, deleteMovement, setShowMovementModal,
-    recurringMovements, deleteRecurringMovement,
-    showRecurringModal, setShowRecurringModal,
-    setActiveHistorialFilter,
-  } = useMovementStore();
-  const { huchaMovements } = useSavingsStore();
-  const { getCurrencySymbol } = useSettingsStore();
-  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
+  // Un selector por campo en vez de `useMovementStore()` entero: al cambiar de
+  // filtro se escribe `activeHistorialFilter` en este mismo store y, suscritos
+  // al store completo, eso provocaba un segundo render de toda la pantalla
+  const movements = useMovementStore((s) => s.movements);
+  const deleteMovement = useMovementStore((s) => s.deleteMovement);
+  const setShowMovementModal = useMovementStore((s) => s.setShowMovementModal);
+  const recurringMovements = useMovementStore((s) => s.recurringMovements);
+  const deleteRecurringMovement = useMovementStore((s) => s.deleteRecurringMovement);
+  const showRecurringModal = useMovementStore((s) => s.showRecurringModal);
+  const setShowRecurringModal = useMovementStore((s) => s.setShowRecurringModal);
+  const setActiveHistorialFilter = useMovementStore((s) => s.setActiveHistorialFilter);
+  const huchaMovements = useSavingsStore((s) => s.huchaMovements);
+  const isSharedMode = useSharedAccountStore((s) => s.isSharedMode);
+  // El selector devuelve el símbolo ya resuelto y no la función: getCurrencySymbol
+  // lee de get() por dentro, así que su identidad nunca cambia y suscribirse a
+  // ella dejaría el símbolo obsoleto al cambiar de moneda en Ajustes. Devolviendo
+  // la cadena, Zustand la compara y re-renderiza solo si el símbolo cambia.
+  const personalCurrencySymbol = useSettingsStore((s) => s.getCurrencySymbol());
+  const sharedCurrencySymbol = useSharedAccountStore((s) => s.getSharedCurrencySymbol());
   const { colors: dc } = useTheme();
-  const recurringCurrencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
+  const recurringCurrencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
   const recurringIncomeTotal = recurringMovements
     .filter((m) => m.type === 'income')
     .reduce((s, m) => s + m.amount, 0);
@@ -255,18 +274,24 @@ const MovementsScreen = () => {
     .filter((m) => m.type === 'expense')
     .reduce((s, m) => s + m.amount, 0);
   const recurringNet = recurringIncomeTotal - recurringExpenseTotal;
-  const { getCategoryName } = useCategoryStore();
-  const { getSharedCategoryName } = useSharedCategoryStore();
+  const getCategoryName = useCategoryStore((s) => s.getCategoryName);
+  const getSharedCategoryName = useSharedCategoryStore((s) => s.getSharedCategoryName);
   const route = useRoute<any>();
+  // Los modales solo se montan en la pantalla que tiene el foco. AddRecurringModal
+  // se abre con una bandera del store y RecurringScreen (en el stack de Ajustes)
+  // monta otro igual, así que con las dos pantallas montadas se dibujaba duplicado.
+  // El foco no cambia mientras hay un modal abierto, así que la animación de salida
+  // se sigue viendo entera antes de desmontarse.
+  const isFocused = useIsFocused();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleEditRecurring = (item: RecurringMovement) => {
+  const handleEditRecurring = useCallback((item: RecurringMovement) => {
     setEditingRecurring(item);
     setShowRecurringModal(true);
-  };
+  }, [setShowRecurringModal]);
   const scrollRef = useRef<ScrollView>(null);
   const filterPositions = useRef<{ [key: string]: number }>({});
 
@@ -288,9 +313,30 @@ const MovementsScreen = () => {
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   };
 
-  const handleEditMovement = (movement: Movement) => {
+  const handleEditMovement = useCallback((movement: Movement) => {
     setEditingMovement(movement);
-  };
+  }, []);
+
+  // renderItem estable: si cambia de identidad en cada render, FlatList vuelve
+  // a renderizar todas las celdas visibles aunque las filas estén memoizadas
+  const renderMovementItem = useCallback(
+    ({ item }: { item: Movement }) => (
+      <MovementRow movement={item} onDelete={deleteMovement} onEdit={handleEditMovement} />
+    ),
+    [deleteMovement, handleEditMovement],
+  );
+
+  const renderHuchaItem = useCallback(
+    ({ item }: { item: HuchaMovement }) => <HuchaMovementRow movement={item} />,
+    [],
+  );
+
+  const renderRecurringItem = useCallback(
+    ({ item }: { item: RecurringMovement }) => (
+      <RecurringCard item={item} onDelete={deleteRecurringMovement} onEdit={handleEditRecurring} />
+    ),
+    [deleteRecurringMovement, handleEditRecurring],
+  );
 
   const filteredMovements = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -314,12 +360,20 @@ const MovementsScreen = () => {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [movements, filter, searchQuery, isSharedMode]);
 
-  const sortedHuchaMovements = [...huchaMovements]
-    .filter((m) => isCurrentMonth(m.date))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Antes se recalculaban en cada render aunque el filtro activo fuera otro:
+  // copia + filtro + orden, con dos objetos Date por comparación
+  const sortedHuchaMovements = useMemo(
+    () => huchaMovements
+      .filter((m) => isCurrentMonth(m.date))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [huchaMovements, currentMonth, currentYear],
+  );
 
-  const sortedRecurring = [...recurringMovements]
-    .sort((a, b) => a.recurringDay - b.recurringDay);
+  const sortedRecurring = useMemo(
+    () => [...recurringMovements].sort((a, b) => a.recurringDay - b.recurringDay),
+    [recurringMovements],
+  );
 
   const filters: { key: FilterType; label: string; color: string }[] = [
     { key: 'income', label: t('movementsList.income'), color: dc.income },
@@ -363,6 +417,50 @@ const MovementsScreen = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
+    </View>
+  );
+
+  // Cabecera fija de la lista de fijos: se muestra siempre, también
+  // cuando no hay ninguno, igual que antes
+  const recurringSummary = (
+    <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+      <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
+        {t('recurring.summaryTitle').toUpperCase()}
+      </Text>
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCol}>
+          <View style={styles.summaryColHeader}>
+            <Ionicons name="arrow-down-circle" size={14} color={dc.income} />
+            <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+              {t('recurring.income')}
+            </Text>
+          </View>
+          <Text style={[styles.summaryColValue, { color: dc.income }]}>
+            +{formatAmount(recurringIncomeTotal)} {recurringCurrencySymbol}
+          </Text>
+        </View>
+        <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
+        <View style={styles.summaryCol}>
+          <View style={styles.summaryColHeader}>
+            <Ionicons name="arrow-up-circle" size={14} color={dc.expense} />
+            <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
+              {t('recurring.expense')}
+            </Text>
+          </View>
+          <Text style={[styles.summaryColValue, { color: dc.expense }]}>
+            -{formatAmount(recurringExpenseTotal)} {recurringCurrencySymbol}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
+      <View style={styles.summaryNetRow}>
+        <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
+          {t('recurring.net')}
+        </Text>
+        <Text style={[styles.summaryNetValue, { color: recurringNet >= 0 ? dc.income : dc.expense }]}>
+          {recurringNet >= 0 ? '+' : ''}{formatAmount(recurringNet)} {recurringCurrencySymbol}
+        </Text>
+      </View>
     </View>
   );
 
@@ -446,67 +544,26 @@ const MovementsScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <HuchaMovementRow movement={item} />}
+          renderItem={renderHuchaItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
           ListEmptyComponent={emptyMovements}
         />
       ) : filter === 'recurring' ? (
-        <ScrollView
+        <FlatList
+          data={sortedRecurring}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeOpenSwipeable}
-        >
-          <View style={[styles.summaryCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-            <Text style={[styles.summaryTitle, { color: dc.textSecondary }]}>
-              {t('recurring.summaryTitle').toUpperCase()}
-            </Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryCol}>
-                <View style={styles.summaryColHeader}>
-                  <Ionicons name="arrow-down-circle" size={14} color={dc.income} />
-                  <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
-                    {t('recurring.income')}
-                  </Text>
-                </View>
-                <Text style={[styles.summaryColValue, { color: dc.income }]}>
-                  +{formatAmount(recurringIncomeTotal)} {recurringCurrencySymbol}
-                </Text>
-              </View>
-              <View style={[styles.summarySep, { backgroundColor: dc.border }]} />
-              <View style={styles.summaryCol}>
-                <View style={styles.summaryColHeader}>
-                  <Ionicons name="arrow-up-circle" size={14} color={dc.expense} />
-                  <Text style={[styles.summaryColLabel, { color: dc.textSecondary }]}>
-                    {t('recurring.expense')}
-                  </Text>
-                </View>
-                <Text style={[styles.summaryColValue, { color: dc.expense }]}>
-                  -{formatAmount(recurringExpenseTotal)} {recurringCurrencySymbol}
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.summaryDivider, { backgroundColor: dc.border }]} />
-            <View style={styles.summaryNetRow}>
-              <Text style={[styles.summaryNetLabel, { color: dc.textSecondary }]}>
-                {t('recurring.net')}
-              </Text>
-              <Text style={[styles.summaryNetValue, { color: recurringNet >= 0 ? dc.income : dc.expense }]}>
-                {recurringNet >= 0 ? '+' : ''}{formatAmount(recurringNet)} {recurringCurrencySymbol}
-              </Text>
-            </View>
-          </View>
-
-          {sortedRecurring.length === 0
-            ? emptyRecurring
-            : sortedRecurring.map((item) => (
-                <RecurringCard
-                  key={item.id}
-                  item={item}
-                  onDelete={deleteRecurringMovement}
-                  onEdit={handleEditRecurring}
-                />
-              ))
-          }
-        </ScrollView>
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          renderItem={renderRecurringItem}
+          ListHeaderComponent={recurringSummary}
+          ListEmptyComponent={emptyRecurring}
+        />
       ) : (
         <FlatList
           data={filteredMovements}
@@ -514,30 +571,31 @@ const MovementsScreen = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeOpenSwipeable}
-          renderItem={({ item }) => (
-            <MovementRow
-              movement={item}
-              onDelete={deleteMovement}
-              onEdit={handleEditMovement}
-            />
-          )}
+          renderItem={renderMovementItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
           ListEmptyComponent={emptyMovements}
         />
       )}
 
-      <AddMovementModal
-        visible={!!editingMovement}
-        onDismiss={() => setEditingMovement(null)}
-        editingMovement={editingMovement}
-      />
-      <AddRecurringModal
-        visible={showRecurringModal}
-        onDismiss={() => {
-          setShowRecurringModal(false);
-          setEditingRecurring(null);
-        }}
-        editingRecurring={editingRecurring}
-      />
+      {isFocused && (
+        <>
+          <AddMovementModal
+            visible={!!editingMovement}
+            onDismiss={() => setEditingMovement(null)}
+            editingMovement={editingMovement}
+          />
+          <AddRecurringModal
+            visible={showRecurringModal}
+            onDismiss={() => {
+              setShowRecurringModal(false);
+              setEditingRecurring(null);
+            }}
+            editingRecurring={editingRecurring}
+          />
+        </>
+      )}
     </View>
   );
 };
