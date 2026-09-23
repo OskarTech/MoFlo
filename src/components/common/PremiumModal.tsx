@@ -6,11 +6,12 @@ import {
 import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import Purchases, { PurchasesOffering } from 'react-native-purchases';
+import Purchases, { PurchasesOffering, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { colors } from '../../theme';
-import { REVENUECAT_API_KEY } from '../../constants/revenuecat';
+import { ensurePurchasesUser, hasPremiumEntitlement } from '../../services/revenuecat';
+import { reportError } from '../../services/crashReporting';
 
 interface Props {
   visible: boolean;
@@ -34,10 +35,25 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
+  // Restauración sin avisos: la usan tanto el botón como la compra que la
+  // tienda rechaza por estar el producto ya comprado.
+  const applyRestore = async (): Promise<boolean> => {
+    await ensurePurchasesUser();
+    const customerInfo = await Purchases.restorePurchases();
+
+    if (!hasPremiumEntitlement(customerInfo)) return false;
+
+    await setPremium(true);
+    onPurchase();
+    return true;
+  };
+
   const handlePurchase = async () => {
     setLoading(true);
     try {
-      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      // Identifica al usuario en RevenueCat ANTES de comprar: si no, la compra
+      // puede acabar registrada bajo el usuario anónimo del SDK y perderse.
+      await ensurePurchasesUser();
       const offerings = await Purchases.getOfferings();
       const offering: PurchasesOffering | null = offerings.current;
 
@@ -48,15 +64,34 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
 
       const { customerInfo } = await Purchases.purchasePackage(offering.lifetime);
 
-      if (customerInfo.entitlements.active['premium']) {
+      if (hasPremiumEntitlement(customerInfo)) {
         await setPremium(true);
         onPurchase();
         Alert.alert('✅', t('premium.successMessage', '¡Gracias por tu compra!'));
       }
     } catch (e: any) {
-      if (!e.userCancelled) {
-        Alert.alert('Error', t('premium.errorPurchase', 'Ha ocurrido un error con la compra.'));
+      if (e?.userCancelled) return;
+
+      // La tienda responde que este producto ya está comprado con esta cuenta.
+      // No es un error que enseñar: es una compra que hay que restaurar.
+      if (e?.code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR ||
+          e?.code === PURCHASES_ERROR_CODE.RECEIPT_ALREADY_IN_USE_ERROR) {
+        try {
+          if (await applyRestore()) {
+            Alert.alert('✅', t('premium.restoreSuccess', 'Compras restauradas con éxito.'));
+            return;
+          }
+        } catch (restoreError) {
+          reportError(restoreError, 'PremiumModal: restaurar tras compra ya poseída');
+        }
+        // La compra existe en la tienda pero está atada a otra cuenta de MoFlo.
+        reportError(e, 'PremiumModal: compra ya poseída');
+        Alert.alert('', t('premium.alreadyOwned'));
+        return;
       }
+
+      reportError(e, 'PremiumModal: compra');
+      Alert.alert('Error', t('premium.errorPurchase', 'Ha ocurrido un error con la compra.'));
     } finally {
       setLoading(false);
     }
@@ -65,17 +100,13 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
   const handleRestore = async () => {
     setRestoring(true);
     try {
-      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
-      const customerInfo = await Purchases.restorePurchases();
-
-      if (customerInfo.entitlements.active['premium']) {
-        await setPremium(true);
-        onPurchase();
+      if (await applyRestore()) {
         Alert.alert('✅', t('premium.restoreSuccess', 'Compras restauradas con éxito.'));
       } else {
         Alert.alert('', t('premium.restoreNotFound', 'No se han encontrado compras para restaurar.'));
       }
     } catch (e) {
+      reportError(e, 'PremiumModal: restaurar');
       Alert.alert('Error', t('premium.errorRestore', 'Error al restaurar las compras.'));
     } finally {
       setRestoring(false);

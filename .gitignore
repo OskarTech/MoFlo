@@ -50,4 +50,5 @@ google-service-info.plist
 # Credentials
 credentials.json
 *.keystore
-*.jksGoogleService-Info.plist
+*.jks
+GoogleService-Info.plist

@@ -118,7 +118,7 @@ const SharedAccountScreen = () => {
         navigation.navigate('HomeTab');
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo crear la cuenta.');
+      Alert.alert('Error', t('sharedAccount.createError'));
     } finally {
       setLoading(false);
     }

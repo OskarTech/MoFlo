@@ -18,6 +18,7 @@ import PremiumModal from '../common/PremiumModal';
 import { navigationRef } from '../../navigation/RootNavigator';
 import { MovementType, Movement } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
+import { parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
 
 interface Props {
   visible: boolean;
@@ -112,7 +113,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     isSavingRef.current = false;
     if (editingMovement) {
       setType(editingMovement.type);
-      setAmount(editingMovement.amount.toString());
+      setAmount(formatAmountForInput(editingMovement.amount));
       setNote(editingMovement.note ?? '');
       setCategoryId(editingMovement.category);
       categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
@@ -174,7 +175,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
 
   const handleSave = () => {
     if (isSavingRef.current) return;
-    const parsedAmount = parseFloat(amount.replace(',', '.'));
+    const parsedAmount = parseAmountInput(amount);
     if (!parsedAmount || parsedAmount <= 0) return;
 
     isSavingRef.current = true;
@@ -197,7 +198,9 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     }
 
     const movement: Movement = {
-      id: Date.now().toString(),
+      // Sufijo aleatorio: dos miembros de una cuenta compartida guardando en el
+      // mismo milisegundo generaban el mismo id y uno pisaba al otro
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type,
       amount: parsedAmount,
       category: categoryId as any,
@@ -215,7 +218,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     handleDismiss();
   };
 
-  const isValid = !!amount && parseFloat(amount.replace(',', '.')) > 0;
+  const isValid = !!amount && parseAmountInput(amount) > 0;
 
   return (
     <>

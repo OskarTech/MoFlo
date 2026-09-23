@@ -18,6 +18,7 @@ import PremiumModal from '../common/PremiumModal';
 import { navigationRef } from '../../navigation/RootNavigator';
 import { MovementType, RecurringMovement } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
+import { parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
 
 interface Props {
   visible: boolean;
@@ -112,7 +113,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     isSavingRef.current = false;
     if (editingRecurring) {
       setType(editingRecurring.type);
-      setAmount(editingRecurring.amount.toString());
+      setAmount(formatAmountForInput(editingRecurring.amount));
       setNote(editingRecurring.note ?? '');
       setCategoryId(editingRecurring.category);
       setRecurringDay(editingRecurring.recurringDay.toString());
@@ -174,7 +175,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 
   const handleSave = () => {
     if (isSavingRef.current) return;
-    const parsedAmount = parseFloat(amount.replace(',', '.'));
+    const parsedAmount = parseAmountInput(amount);
     const day = parseInt(recurringDay);
     if (!parsedAmount || parsedAmount <= 0) return;
     if (!day || day < 1 || day > 31) return;
@@ -199,7 +200,10 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     }
 
     const newRecurring: RecurringMovement = {
-      id: Date.now().toString(),
+      // Sufijo aleatorio, igual que en el resto de stores. Los recurrentes ya
+      // creados conservan su id, así que applyRecurringMovements sigue casando
+      // los movimientos que generó para ellos.
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type,
       amount: parsedAmount,
       category: categoryId as any,
@@ -218,7 +222,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
   };
 
   const isValid = !!amount &&
-    parseFloat(amount.replace(',', '.')) > 0 &&
+    parseAmountInput(amount) > 0 &&
     parseInt(recurringDay) >= 1 &&
     parseInt(recurringDay) <= 31;
 

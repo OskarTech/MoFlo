@@ -4,6 +4,8 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { SharedAccount, Movement, RecurringMovement, JoinRequest, PendingJoinRequest } from '../types';
 import { CURRENCIES, ColorPaletteId } from './settingsStore';
+import { reportError } from '../services/crashReporting';
+import { deleteSubcollections } from '../services/firebase/batchDelete';
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
@@ -17,6 +19,37 @@ const generateInviteCode = (): string => {
   ).join('');
 };
 
+const INVITE_CODE_ATTEMPTS = 5;
+
+/**
+ * Código de invitación que no esté ya en uso.
+ *
+ * Son 6 caracteres, unos 2.176 millones de combinaciones, así que una colisión
+ * es improbabilísima. Pero si ocurriera, joinSharedAccount busca con limit(1) y
+ * podría devolver la cuenta equivocada: alguien acabaría pidiendo entrar en la
+ * cuenta de un desconocido.
+ *
+ * Si la consulta falla, por ejemplo sin conexión, se usa el código tal cual: no
+ * poder crear la cuenta es mucho peor que arriesgarse a una colisión que no va
+ * a pasar.
+ */
+const generateUniqueInviteCode = async (): Promise<string> => {
+  for (let attempt = 0; attempt < INVITE_CODE_ATTEMPTS; attempt++) {
+    const code = generateInviteCode();
+    try {
+      const snap = await firestore()
+        .collection('sharedAccounts')
+        .where('inviteCode', '==', code)
+        .limit(1)
+        .get();
+      if (snap.empty) return code;
+    } catch {
+      return code;
+    }
+  }
+  return generateInviteCode();
+};
+
 export const generateInviteLink = (code: string, name: string): string => {
   const encoded = encodeURIComponent(name);
   return `https://oskartech.github.io/join.html?code=${code}&name=${encoded}`;
@@ -27,6 +60,15 @@ let movementsUnsubscribe: (() => void) | null = null;
 let recurringUnsubscribe: (() => void) | null = null;
 let ownRequestUnsubscribe: (() => void) | null = null;
 let incomingRequestsUnsubscribe: (() => void) | null = null;
+// Cuenta que están escuchando ahora mismo movementsUnsubscribe y recurringUnsubscribe.
+// Sirve para no cancelar y recrear los listeners cuando ya apuntan a la cuenta correcta.
+let subscribedMovementsAccountId: string | null = null;
+
+const stopMovementListeners = () => {
+  if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
+  if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+  subscribedMovementsAccountId = null;
+};
 
 export type JoinResult =
   | 'pending'
@@ -85,8 +127,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
   resetStore: () => {
     if (accountUnsubscribe) { accountUnsubscribe(); accountUnsubscribe = null; }
-    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
-    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+    stopMovementListeners();
     if (ownRequestUnsubscribe) { ownRequestUnsubscribe(); ownRequestUnsubscribe = null; }
     if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
     set({
@@ -104,8 +145,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
   unsubscribeAll: () => {
     if (accountUnsubscribe) { accountUnsubscribe(); accountUnsubscribe = null; }
-    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
-    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+    stopMovementListeners();
     if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().unsubscribeSharedHuchas();
@@ -117,38 +157,67 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
   // ── LISTENER MOVIMIENTOS EN TIEMPO REAL ───────────────────────
   subscribeToSharedMovements: (accountId) => {
-    if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
-    if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
-
-    const { useMovementStore } = require('./movementStore');
+    // Estos dos ya se protegen solos de las llamadas repetidas
     const { useSavingsStore } = require('./savingsStore');
     useSavingsStore.getState().subscribeToSharedHuchas(accountId);
     const { useReminderStore } = require('./reminderStore');
     useReminderStore.getState().subscribeToSharedReminders(accountId);
 
-    movementsUnsubscribe = firestore()
+    // Ya se está escuchando esta misma cuenta: no hay nada que rehacer.
+    // Antes se cancelaban y recreaban los dos listeners cada vez que la app
+    // volvía a primer plano o se recuperaba la conexión, y cada listener nuevo
+    // vuelve a leer la colección entera de Firestore. Los listeners siguen
+    // vivos en segundo plano y se reconectan solos, así que renovarlos no
+    // aportaba datos más frescos, solo lecturas de más.
+    if (
+      subscribedMovementsAccountId === accountId
+      && movementsUnsubscribe
+      && recurringUnsubscribe
+    ) return;
+
+    stopMovementListeners();
+    subscribedMovementsAccountId = accountId;
+
+    const { useMovementStore } = require('./movementStore');
+
+    const movementsSub = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('movements')
       .onSnapshot((snap) => {
+        // Se cambió de cuenta mientras llegaba el snapshot
+        if (subscribedMovementsAccountId !== accountId) return;
         const movements = snap.docs
           .map(d => d.data() as Movement)
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         useMovementStore.setState({ movements: [...movements] });
       }, (e) => {
-        console.error('Error listening to shared movements:', e);
+        reportError(e, 'listener de movimientos compartidos');
+        // Firestore cierra el listener tras un error: hay que dejar que la
+        // próxima llamada vuelva a suscribirse en lugar de darlo por vivo
+        if (movementsUnsubscribe === movementsSub) {
+          movementsUnsubscribe = null;
+          subscribedMovementsAccountId = null;
+        }
       });
+    movementsUnsubscribe = movementsSub;
 
-    recurringUnsubscribe = firestore()
+    const recurringSub = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('recurring')
       .onSnapshot((snap) => {
+        if (subscribedMovementsAccountId !== accountId) return;
         const recurring = snap.docs
           .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
         useMovementStore.setState({ recurringMovements: [...recurring] });
       }, (e) => {
-        console.error('Error listening to shared recurring:', e);
+        reportError(e, 'listener de recurrentes compartidos');
+        if (recurringUnsubscribe === recurringSub) {
+          recurringUnsubscribe = null;
+          subscribedMovementsAccountId = null;
+        }
       });
+    recurringUnsubscribe = recurringSub;
   },
 
   // ── CARGAR CUENTA COMPARTIDA ───────────────────────────────────
@@ -273,7 +342,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       || 'Usuario';
     if (!uid) return;
 
-    const inviteCode = generateInviteCode();
+    const inviteCode = await generateUniqueInviteCode();
     const accountId = `shared_${uid}_${Date.now()}`;
 
     const newAccount: SharedAccount = {
@@ -524,22 +593,18 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { sharedAccount } = get();
     if (!sharedAccount) return;
 
-    const batch = firestore().batch();
-
     const ref = firestore().collection('sharedAccounts').doc(sharedAccount.id);
-    const subcollections = ['movements', 'recurring', 'categories', 'huchas', 'huchaMovements', 'savings', 'joinRequests', 'reminders'];
 
-    for (const sub of subcollections) {
-      const snap = await ref.collection(sub).get();
-      snap.docs.forEach(doc => batch.delete(doc.ref));
-    }
+    // En lotes de 450: Firestore rechaza cualquier lote de más de 500 escrituras,
+    // así que una cuenta con bastantes movimientos no se podía borrar nunca.
+    // El documento de la cuenta se borra al final: si algo falla antes, la
+    // cuenta sigue en pie y se puede reintentar en vez de quedar a medias.
+    await deleteSubcollections(ref, [
+      'movements', 'recurring', 'categories', 'huchas',
+      'huchaMovements', 'savings', 'joinRequests', 'reminders',
+    ]);
 
-    await batch.commit();
-
-    await firestore()
-      .collection('sharedAccounts')
-      .doc(sharedAccount.id)
-      .delete();
+    await ref.delete();
 
     get().unsubscribeAll();
     set({
@@ -563,8 +628,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       get().subscribeToSharedMovements(sharedAccount.id);
       await get().loadSharedSettings(sharedAccount.id);
     } else {
-      if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
-      if (recurringUnsubscribe) { recurringUnsubscribe(); recurringUnsubscribe = null; }
+      stopMovementListeners();
       const { useSavingsStore } = require('./savingsStore');
       useSavingsStore.getState().unsubscribeSharedHuchas();
       set({ sharedMovements: [], sharedRecurring: [] });

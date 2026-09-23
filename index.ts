@@ -1,3 +1,7 @@
+// Lo primero de todo, antes de cargar la app: en producción la consola se
+// silencia para no dejar datos del usuario en el registro del sistema.
+import './src/utils/productionLogging';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';

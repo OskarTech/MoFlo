@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases from 'react-native-purchases';
 import auth from '@react-native-firebase/auth';
-import { REVENUECAT_API_KEY } from '../constants/revenuecat';
+import {
+  ensurePurchasesUser,
+  hasPremiumEntitlement,
+  tryRecoverPurchase,
+} from '../services/revenuecat';
+import { reportError } from '../services/crashReporting';
 
 const PREMIUM_KEY = '@moflo_premium';
 
@@ -29,21 +34,49 @@ export const usePremiumStore = create<PremiumStore>((set) => ({
       const uid = auth().currentUser?.uid;
       if (uid) {
         const revenueCatCheck = async () => {
-          await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
-          await Purchases.logIn(uid);
-          const customerInfo = await Purchases.getCustomerInfo();
-          const isPremium = !!customerInfo.entitlements.active['premium'];
-          set({ isPremium });
-          await AsyncStorage.setItem(PREMIUM_KEY, String(isPremium));
+          await ensurePurchasesUser();
+          let info = await Purchases.getCustomerInfo();
+
+          // Rescate de las compras que quedaron bajo otro App User ID cuando la
+          // app aún no identificaba al usuario en RevenueCat. Se intenta una
+          // sola vez por usuario y solo en Android, donde no se le enseña nada.
+          //
+          // Solo si este móvil tenía ya el premium concedido: con las
+          // transferencias activadas en RevenueCat, una restauración se lleva
+          // la compra al usuario que la pide, así que nunca debe lanzarse sola
+          // en una cuenta que no la ha tenido. Para ese caso está el botón de
+          // restaurar, que lo pide la persona a propósito.
+          if (!hasPremiumEntitlement(info) && cached === 'true') {
+            const recovered = await tryRecoverPurchase(uid);
+            if (recovered) info = recovered;
+          }
+
+          if (hasPremiumEntitlement(info)) {
+            set({ isPremium: true });
+            await AsyncStorage.setItem(PREMIUM_KEY, 'true');
+            return;
+          }
+
+          // El premium solo se retira si la respuesta venía de este usuario.
+          // Antes se guardaba 'false' sin comprobarlo, así que un arranque con
+          // la identidad equivocada borraba la única prueba local de la compra
+          // y ya no había vuelta atrás.
+          if ((await Purchases.getAppUserID()) === uid) {
+            set({ isPremium: false });
+            await AsyncStorage.setItem(PREMIUM_KEY, 'false');
+          }
         };
+
+        // El fallo se recoge aquí dentro: si gana el timeout, el rechazo
+        // llegaría cuando el catch de fuera ya no está escuchando.
+        const guarded = revenueCatCheck().catch((e) => reportError(e, 'loadPremium'));
         const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
-        await Promise.race([revenueCatCheck(), timeout]);
+        await Promise.race([guarded, timeout]);
       }
     } catch (e) {
-      // Si RevenueCat falla usa el valor local
-      const cached = await AsyncStorage.getItem(PREMIUM_KEY);
-      set({ isPremium: cached === 'true' });
-      console.error('Error loading premium:', e);
+      // Se conserva lo que hubiera en local: el estado solo se toca arriba,
+      // cuando ya hay una respuesta de RevenueCat de la que fiarse.
+      reportError(e, 'loadPremium');
     } finally {
       set({ isLoading: false });
     }

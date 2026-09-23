@@ -5,6 +5,8 @@ import auth from '@react-native-firebase/auth';
 import { Hucha, HuchaMovement, HuchaMovementType } from '../types';
 import { maybePromptForRating } from '../utils/rateAppPrompt';
 import { useMovementStore } from './movementStore';
+import { reportError } from '../services/crashReporting';
+import { deleteRefsInChunks } from '../services/firebase/batchDelete';
 
 const STORAGE_KEY = '@moflo_huchas';
 const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
@@ -13,6 +15,9 @@ const SHARED_MOV_STORAGE_KEY = '@moflo_shared_hucha_movements';
 
 let unsubscribeShared: (() => void) | null = null;
 let unsubscribeSharedMovements: (() => void) | null = null;
+// Cuenta que escucha cada listener, para no recrearlos si ya apuntan donde toca
+let subscribedHuchasAccountId: string | null = null;
+let subscribedHuchaMovementsAccountId: string | null = null;
 
 const getUserHuchasCol = () => {
   const uid = auth().currentUser?.uid;
@@ -337,19 +342,16 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
     try {
+      // En lotes de 450, por si una hucha muy antigua acumula más de 500 movimientos
       if (sharedAccountId) {
         await getSharedHuchasCol(sharedAccountId).doc(id).delete();
         const movSnap = await getSharedMovementsCol(sharedAccountId)
           .where('huchaId', '==', id).get();
-        const batch = firestore().batch();
-        movSnap.docs.forEach(d => batch.delete(d.ref));
-        if (movSnap.docs.length > 0) await batch.commit();
+        await deleteRefsInChunks(movSnap.docs.map(d => d.ref));
       } else {
         await getUserHuchasCol().doc(id).delete();
         const movSnap = await getUserMovementsCol().where('huchaId', '==', id).get();
-        const batch = firestore().batch();
-        movSnap.docs.forEach(d => batch.delete(d.ref));
-        if (movSnap.docs.length > 0) await batch.commit();
+        await deleteRefsInChunks(movSnap.docs.map(d => d.ref));
       }
     } catch (e) {
       console.error('Error deleting hucha:', e);
@@ -509,47 +511,72 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
   },
 
   subscribeToSharedHuchas: (accountId) => {
-    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    get().subscribeToSharedHuchaMovements(accountId);
 
-    unsubscribeShared = getSharedHuchasCol(accountId)
+    // Ya se escucha esta cuenta: recrear el listener solo servía para volver a
+    // leer la colección entera cada vez que la app pasaba a primer plano
+    if (subscribedHuchasAccountId === accountId && unsubscribeShared) return;
+
+    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    subscribedHuchasAccountId = accountId;
+
+    const sub = getSharedHuchasCol(accountId)
       .orderBy('createdAt', 'desc')
       .onSnapshot((snap) => {
+        if (subscribedHuchasAccountId !== accountId) return;
         const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
         set({ huchas });
         AsyncStorage.setItem(SHARED_STORAGE_KEY, JSON.stringify(huchas));
       }, (e) => {
-        console.error('Error listening to shared huchas:', e);
+        reportError(e, 'listener de huchas compartidas');
+        // Firestore cierra el listener tras un error: permitir resuscribirse
+        if (unsubscribeShared === sub) {
+          unsubscribeShared = null;
+          subscribedHuchasAccountId = null;
+        }
       });
-
-    get().subscribeToSharedHuchaMovements(accountId);
+    unsubscribeShared = sub;
   },
 
   unsubscribeSharedHuchas: () => {
     if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
+    subscribedHuchasAccountId = null;
     get().unsubscribeSharedHuchaMovements();
   },
 
   subscribeToSharedHuchaMovements: (accountId) => {
-    if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
+    if (subscribedHuchaMovementsAccountId === accountId && unsubscribeSharedMovements) return;
 
-    unsubscribeSharedMovements = getSharedMovementsCol(accountId)
+    if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
+    subscribedHuchaMovementsAccountId = accountId;
+
+    const sub = getSharedMovementsCol(accountId)
       .orderBy('createdAt', 'desc')
       .onSnapshot((snap) => {
+        if (subscribedHuchaMovementsAccountId !== accountId) return;
         const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
         set({ huchaMovements: movements });
         AsyncStorage.setItem(SHARED_MOV_STORAGE_KEY, JSON.stringify(movements));
       }, (e) => {
-        console.error('Error listening to shared hucha movements:', e);
+        reportError(e, 'listener de movimientos de huchas compartidas');
+        if (unsubscribeSharedMovements === sub) {
+          unsubscribeSharedMovements = null;
+          subscribedHuchaMovementsAccountId = null;
+        }
       });
+    unsubscribeSharedMovements = sub;
   },
 
   unsubscribeSharedHuchaMovements: () => {
     if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
+    subscribedHuchaMovementsAccountId = null;
   },
 
   resetStore: () => {
     if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
     if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
+    subscribedHuchasAccountId = null;
+    subscribedHuchaMovementsAccountId = null;
     set({
       huchas: [],
       huchaMovements: [],

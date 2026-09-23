@@ -12,6 +12,8 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useReminderStore } from '../../store/reminderStore';
 import { clearPushTokens } from './pushTokens.service';
+import { processQueue } from '../syncQueue.service';
+import { resetPurchasesUser } from '../revenuecat';
 
 GoogleSignin.configure({
   webClientId: '376703221466-iovth1ic0v85o741s0k6sms9141h35fn.apps.googleusercontent.com',
@@ -47,16 +49,31 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
   const uid = auth().currentUser?.uid;
 
-  // 0. Borra el token FCM de este dispositivo en Firestore para no recibir más pushes
+  // 0.a Soltar el usuario de RevenueCat no depende de Firebase, así que se
+  // lanza ya y se espera más abajo: encadenar sus dos topes de tiempo sumaba
+  // hasta 8 segundos en el peor caso. En paralelo, el peor caso son 5.
+  const purchasesReset = resetPurchasesUser().catch(() => {});
+
+  // 0.b Sube lo que quede pendiente ANTES de cerrar sesión. Con un tope de tiempo
+  // para que el botón no se quede colgado si la conexión es mala: lo que no
+  // suba se queda en la cola marcado con este uid y se sincroniza solo cuando
+  // este usuario vuelva a entrar. Antes la cola se borraba aquí sin más y esos
+  // movimientos se perdían para siempre.
+  try {
+    const flushTimeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+    await Promise.race([processQueue().catch(() => {}), flushTimeout]);
+  } catch {}
+
+  // 1. Borra el token FCM de este dispositivo en Firestore para no recibir más pushes
   if (uid) {
     try { await clearPushTokens(uid); } catch {}
   }
 
-  // 1. Cancela listeners PRIMERO antes de todo
+  // 2. Cancela listeners PRIMERO antes de todo
   useSharedAccountStore.getState().unsubscribeAll();
   useSharedCategoryStore.getState().resetSharedCategories();
 
-  // 2. Resetea todos los stores
+  // 3. Resetea todos los stores
   useMovementStore.getState().resetStore();
   useSettingsStore.getState().resetStore();
   usePremiumStore.getState().setPremium(false);
@@ -65,15 +82,22 @@ export const logout = async () => {
   useSavingsStore.getState().resetStore();
   useReminderStore.getState().resetStore();
 
-  // 3. Cancela todas las notificaciones programadas en iOS/Android (recordatorio diario + reminders)
+  // 3.b Suelta también el usuario de RevenueCat. Sin esto el SDK se queda con
+  // el App User ID del anterior, y quien entre después en este móvil hereda su
+  // identidad de compra. Se lanzó al principio; aquí solo se espera.
+  await purchasesReset;
+
+  // 4. Cancela todas las notificaciones programadas en iOS/Android (recordatorio diario + reminders)
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
 
-  // 4. Limpia AsyncStorage
+  // 5. Limpia AsyncStorage.
+  // '@moflo_sync_queue' ya NO se borra aquí: cada operación lleva su uid, así
+  // que lo que no se haya podido subir espera a que ese usuario vuelva a entrar
+  // en vez de perderse.
   const keysToRemove = [
     '@moflo_movements',
     '@moflo_recurring',
     '@moflo_settings',
-    '@moflo_sync_queue',
     '@moflo_premium',
     '@moflo_custom_categories',
     '@moflo_shared_account',
@@ -82,6 +106,10 @@ export const logout = async () => {
     '@moflo_shared_recurring',
     '@moflo_huchas',
     '@moflo_shared_huchas',
+    // Caché de los movimientos de huchas: sin borrarla, al entrar otra persona
+    // en el mismo móvil se le enseñaban un instante los movimientos del anterior
+    '@moflo_hucha_movements',
+    '@moflo_shared_hucha_movements',
     '@moflo_daily_notif',
   ];
 
@@ -95,6 +123,6 @@ export const logout = async () => {
 
   await AsyncStorage.multiRemove(keysToRemove);
 
-  // 4. Cierra sesión en Firebase
+  // 6. Cierra sesión en Firebase
   await auth().signOut();
 };

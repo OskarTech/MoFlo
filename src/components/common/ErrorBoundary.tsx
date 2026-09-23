@@ -1,6 +1,7 @@
 import React, { Component, ReactNode, ErrorInfo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import i18n from '../../i18n';
+import { reportError } from '../../services/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -26,8 +27,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, _info: ErrorInfo) {
-    if (__DEV__) console.error('ErrorBoundary caught:', error);
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // La pantalla promete al usuario que el error queda registrado; hasta ahora
+    // en producción no se guardaba en ninguna parte y la promesa era falsa.
+    reportError(error, `ErrorBoundary${info.componentStack ?? ''}`);
   }
 
   reset = () => this.setState({ hasError: false });

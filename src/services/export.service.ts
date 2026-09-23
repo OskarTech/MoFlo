@@ -4,10 +4,30 @@ import { Movement, Hucha, RecurringMovement, HuchaMovement } from '../types';
 import { useCategoryStore } from '../store/categoryStore';
 
 const escapeCSV = (value: string) => {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+  if (
+    value.includes(',') || value.includes('"')
+    || value.includes('\n') || value.includes('\r')
+  ) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+};
+
+/**
+ * Texto escrito por una persona: notas, nombres de categoría, nombres de hucha
+ * y nombres de miembros.
+ *
+ * Excel y LibreOffice ejecutan como fórmula cualquier celda que empiece por
+ * `=`, `+`, `-` o `@`. Una nota como "=1+1" se convertía en un cálculo al abrir
+ * el fichero, y en una cuenta compartida esa nota la puede escribir otro
+ * miembro. Un apóstrofo delante la deja como texto.
+ *
+ * Solo se aplica aquí: los importes se escriben con signo a propósito
+ * ("+25.00", "-13.50") y no deben llevar apóstrofo.
+ */
+const escapeCSVText = (value: string) => {
+  const guarded = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return escapeCSV(guarded);
 };
 
 export const exportMovementsToCSV = async (
@@ -48,11 +68,11 @@ export const exportMovementsToCSV = async (
       const user = includeUser ? (m.addedBy ? memberNames![m.addedBy] ?? '' : '') : null;
 
       return [
-        ...(includeUser ? [escapeCSV(user!)] : []),
+        ...(includeUser ? [escapeCSVText(user!)] : []),
         escapeCSV(date),
         escapeCSV(type),
-        escapeCSV(category),
-        escapeCSV(note),
+        escapeCSVText(category),
+        escapeCSVText(note),
         escapeCSV(amount),
         escapeCSV(currency),
         escapeCSV(recurring),
@@ -85,8 +105,8 @@ export const exportMovementsToCSV = async (
 
       return [
         escapeCSV(type),
-        escapeCSV(category),
-        escapeCSV(note),
+        escapeCSVText(category),
+        escapeCSVText(note),
         escapeCSV(amount),
         escapeCSV(currency),
         escapeCSV(day),
@@ -125,7 +145,7 @@ export const exportMovementsToCSV = async (
       const closed = h.closedAt ? new Date(h.closedAt).toLocaleDateString() : '—';
 
       return [
-        escapeCSV(h.name),
+        escapeCSVText(h.name),
         escapeCSV(h.icon),
         escapeCSV(h.currentAmount.toFixed(2)),
         escapeCSV(h.targetAmount > 0 ? h.targetAmount.toFixed(2) : '—'),
@@ -159,9 +179,9 @@ export const exportMovementsToCSV = async (
       const user = includeUser ? (hm.addedBy ? memberNames![hm.addedBy] ?? '' : '') : null;
 
       return [
-        ...(includeUser ? [escapeCSV(user!)] : []),
+        ...(includeUser ? [escapeCSVText(user!)] : []),
         escapeCSV(date),
-        escapeCSV(hm.huchaName),
+        escapeCSVText(hm.huchaName),
         escapeCSV(type),
         escapeCSV(amount),
       ].join(',');
@@ -191,7 +211,9 @@ export const exportMovementsToCSV = async (
     lines.push(...huchaMovRows);
   }
 
-  const csv = lines.join('\n');
+  // Marca de orden de bytes al principio: sin ella Excel abre el fichero como
+  // ANSI y destroza los acentos y la ñ de las notas y las categorías.
+  const csv = '﻿' + lines.join('\r\n');
   const fileName = `moflo_export_${new Date().toISOString().split('T')[0]}.csv`;
 
   const file = new File(Paths.cache, fileName);

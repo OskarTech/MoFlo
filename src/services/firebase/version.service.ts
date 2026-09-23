@@ -11,7 +11,9 @@ export interface AppVersionConfig {
 export const fetchAppVersionConfig = async (): Promise<AppVersionConfig | null> => {
   try {
     const doc = await firestore().collection('config').doc('appVersion').get();
-    if (!doc.exists) return null;
+    // exists() es un método: con `!doc.exists` la condición nunca se cumplía y
+    // se devolvía el resultado de data(), que es indefinido si el doc no existe
+    if (!doc.exists()) return null;
     return doc.data() as AppVersionConfig;
   } catch {
     return null;

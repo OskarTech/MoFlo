@@ -198,6 +198,14 @@
     "deleteAccountConfirmMessage": "Tutti i tuoi dati saranno eliminati definitivamente. Non potrai recuperarli.",
     "deleteAccountSuccess": "Account eliminato con successo",
     "deleteAccountError": "Errore durante l'eliminazione dell'account. Esci, accedi di nuovo e riprova.",
+    "deleteDataError": "Non è stato possibile eliminare i dati.",
+    "reauthTitle": "Conferma la tua identità",
+    "reauthMessage": "Per sicurezza, inserisci la tua password per eliminare l'account.",
+    "reauthPassword": "Password",
+    "reauthPasswordRequired": "Inserisci la tua password.",
+    "reauthWrongPassword": "Password errata.",
+    "reauthFailed": "Non è stato possibile verificare la tua identità. Riprova.",
+    "reauthChecking": "Verifica in corso...",
     "security": "Sicurezza",
     "biometrics": "Face ID / Impronta digitale",
     "biometricsSubtitle": "Sblocca l'app con la biometria",
@@ -449,7 +457,8 @@
     "successMessage": "Benvenuto in MoFlo Premium!",
     "errorNoProduct": "Prodotto non disponibile, riprova più tardi",
     "errorPurchase": "Errore durante l'acquisto, riprova",
-    "errorRestore": "Impossibile ripristinare l'acquisto"
+    "errorRestore": "Impossibile ripristinare l'acquisto",
+    "alreadyOwned": "Questo acquisto è già presente sul tuo account dello store, ma è associato a un altro account MoFlo. Accedi con quell'account oppure scrivici per attivarlo."
   },
   "categories": {
     "title": "Categorie",
@@ -523,6 +532,7 @@
     "renameAccount": "Rinomina account",
     "renameSuccess": "Account rinominato con successo",
     "renameError": "Impossibile rinominare l'account",
+    "createError": "Non è stato possibile creare l'account. Riprova.",
     "sharedCategoriesSubtitle": "Gestisci le categorie dell'account condiviso",
     "exportSubtitle": "Esporta i movimenti dell'account condiviso",
     "currency": "Valuta condivisa",

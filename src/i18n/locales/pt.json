@@ -198,6 +198,14 @@
     "deleteAccountConfirmMessage": "Todos os seus dados serão eliminados permanentemente. Não poderá recuperá-los.",
     "deleteAccountSuccess": "Conta eliminada com sucesso",
     "deleteAccountError": "Erro ao eliminar a conta. Por favor, termine sessão, inicie sessão novamente e tente outra vez.",
+    "deleteDataError": "Não foi possível eliminar os dados.",
+    "reauthTitle": "Confirme a sua identidade",
+    "reauthMessage": "Por segurança, introduza a sua palavra-passe para eliminar a conta.",
+    "reauthPassword": "Palavra-passe",
+    "reauthPasswordRequired": "Introduza a sua palavra-passe.",
+    "reauthWrongPassword": "Palavra-passe incorreta.",
+    "reauthFailed": "Não foi possível verificar a sua identidade. Tente novamente.",
+    "reauthChecking": "A verificar...",
     "security": "Segurança",
     "biometrics": "Face ID / Impressão digital",
     "biometricsSubtitle": "Desbloquear a app com biometria",
@@ -449,7 +457,8 @@
     "successMessage": "Bem-vindo ao MoFlo Premium!",
     "errorNoProduct": "Produto indisponível, tente mais tarde",
     "errorPurchase": "Erro ao efetuar a compra, tente novamente",
-    "errorRestore": "Não foi possível restaurar a compra"
+    "errorRestore": "Não foi possível restaurar a compra",
+    "alreadyOwned": "Já tem esta compra na sua conta da loja, mas está associada a outra conta MoFlo. Inicie sessão com essa conta ou contacte-nos para a ativar."
   },
   "categories": {
     "title": "Categorias",
@@ -523,6 +532,7 @@
     "renameAccount": "Renomear conta",
     "renameSuccess": "Conta renomeada com sucesso",
     "renameError": "Não foi possível renomear a conta",
+    "createError": "Não foi possível criar a conta. Tente novamente.",
     "sharedCategoriesSubtitle": "Faça a gestão das categorias da conta partilhada",
     "exportSubtitle": "Exporte os movimentos da conta partilhada",
     "currency": "Moeda partilhada",

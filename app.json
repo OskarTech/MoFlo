@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoFlo",
     "slug": "moflo",
-    "version": "1.4.5",
+    "version": "1.4.6",
     "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
-      "buildNumber": "45",
+      "buildNumber": "46",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": ["remote-notification"]
@@ -31,7 +31,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.oskartech.moflo",
-      "versionCode": 45,
+      "versionCode": 46,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.INTERNET",
@@ -48,6 +48,7 @@
     },
     "plugins": [
       "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       "@react-native-firebase/messaging",
       "@react-native-google-signin/google-signin",
       [
@@ -66,7 +67,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage", "RNFBMessaging"],
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage", "RNFBMessaging", "RNFBCrashlytics"],
             "useFrameworks": "static"
           },
           "android": {

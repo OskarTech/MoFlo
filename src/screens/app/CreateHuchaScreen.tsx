@@ -14,6 +14,7 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
+import { parseAmountInput } from '../../utils/formatAmount';
 
 const PRESET_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
   'home-outline', 'business-outline', 'bed-outline', 'construct-outline',
@@ -84,9 +85,9 @@ const CreateHuchaScreen = () => {
     return () => clearTimeout(id);
   }, [step, noTarget]);
 
-  const parsedTarget = parseFloat(targetAmount.replace(',', '.'));
-  const parsedInitial = parseFloat(initialAmount.replace(',', '.'));
-  const parsedMonthly = parseFloat(monthlyAmount.replace(',', '.'));
+  const parsedTarget = parseAmountInput(targetAmount);
+  const parsedInitial = parseAmountInput(initialAmount);
+  const parsedMonthly = parseAmountInput(monthlyAmount);
   const parsedDay = parseInt(recurringDay, 10);
   const initialValue = !isNaN(parsedInitial) && parsedInitial > 0 ? parsedInitial : 0;
   const initialExceedsTarget = !noTarget

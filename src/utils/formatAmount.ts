@@ -70,3 +70,68 @@ export const formatMoney = (
   currencySymbol: string,
   decimals = 2,
 ): string => `${formatAmount(amount, decimals)} ${currencySymbol}`;
+
+/**
+ * Importe tal y como debe aparecer dentro de un campo de texto editable:
+ * con el separador decimal del idioma activo y sin separador de miles.
+ *
+ * Los campos de edición se rellenaban con `String(amount)`, que siempre usa el
+ * punto como decimal. En español, alemán, italiano y portugués eso enseñaba
+ * "1234.56" en un campo mientras el resto de la app mostraba "1.234,56", y al
+ * reescribirlo el punto se interpretaba como separador de miles.
+ */
+export const formatAmountForInput = (amount: number): string => {
+  if (!Number.isFinite(amount)) return '';
+  const { decimal } = getSeparators();
+  // toFixed(2) solo cuando hace falta: un importe redondo se escribe "20", no "20,00"
+  const raw = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  return raw.replace('.', decimal);
+};
+
+/**
+ * Convierte lo que el usuario ha escrito en un importe.
+ *
+ * Antes se hacía `parseFloat(texto.replace(',', '.'))`, que rompía en cuanto
+ * aparecía un separador de miles: "1.234,56" acababa en parseFloat("1.234.56")
+ * y se guardaban 1,23 € sin aviso ninguno.
+ *
+ * Reglas, en orden:
+ *  1. Si aparecen los dos separadores, el último es el decimal y el otro de miles.
+ *  2. Si el mismo separador se repite, es de miles.
+ *  3. Un único separador con exactamente tres dígitos detrás es ambiguo
+ *     ("1.234"): se resuelve con el separador de miles del idioma activo.
+ *     Un cero delante nunca agrupa millares, así que "0.234" son decimales.
+ *  4. En cualquier otro caso es el separador decimal.
+ */
+export const parseAmountInput = (raw: string): number => {
+  if (!raw) return NaN;
+  // Los espacios de millar de francés y polaco caen aquí también
+  const cleaned = raw.replace(/[^0-9.,]/g, '');
+  if (!cleaned) return NaN;
+
+  const lastDot = cleaned.lastIndexOf('.');
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastSep = Math.max(lastDot, lastComma);
+  if (lastSep === -1) return Number(cleaned);
+
+  const sepChar = lastSep === lastDot ? '.' : ',';
+  const head = cleaned.slice(0, lastSep);
+  const digitsBefore = head.replace(/[.,]/g, '');
+  const digitsAfter = cleaned.slice(lastSep + 1).replace(/[.,]/g, '');
+
+  const bothSeparators = lastDot !== -1 && lastComma !== -1;
+  const repeated = head.includes(sepChar);
+  const ambiguous = !bothSeparators
+    && !repeated
+    && digitsAfter.length === 3
+    && digitsBefore.length > 0
+    && !digitsBefore.startsWith('0');
+
+  const isThousands = ambiguous && sepChar === getSeparators().thousands;
+
+  const value = isThousands
+    ? Number(digitsBefore + digitsAfter)
+    : Number(`${digitsBefore || '0'}.${digitsAfter || '0'}`);
+
+  return Number.isFinite(value) ? value : NaN;
+};

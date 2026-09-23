@@ -18,6 +18,7 @@ import { useSavingsStore } from '../store/savingsStore';
 import { useReminderStore } from '../store/reminderStore';
 import { processQueue } from '../services/syncQueue.service';
 import { setupPushTokens } from '../services/firebase/pushTokens.service';
+import { reportError, setCrashUser } from '../services/crashReporting';
 
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
@@ -70,12 +71,14 @@ const RootNavigator = () => {
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser);
+      // Solo el uid, para poder seguir el rastro de un aviso concreto
+      setCrashUser(firebaseUser?.uid ?? null);
       if (firebaseUser) {
         const timeout = new Promise<void>((resolve) => setTimeout(resolve, 15000));
         try {
           await Promise.race([initUser(), timeout]);
         } catch (e) {
-          console.warn('initUser error', e);
+          reportError(e, 'initUser');
         }
         // Vaciar cola pendiente al arrancar si ya hay internet
         // (el listener de NetInfo solo dispara en reconexión, no en arranque).

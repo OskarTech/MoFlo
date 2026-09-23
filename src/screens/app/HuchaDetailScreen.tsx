@@ -19,7 +19,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { HuchaMovementType } from '../../types';
 import { formatDate } from '../../utils/dateFormat';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatAmount, parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
 import { warningHaptic } from '../../utils/haptics';
 
 type RouteParams = { HuchaDetail: { huchaId: string } };
@@ -90,7 +90,7 @@ const AddMoneyModal = ({
 
   const handleConfirm = () => {
     if (isSavingRef.current) return;
-    const parsed = parseFloat(amount.replace(',', '.'));
+    const parsed = parseAmountInput(amount);
     if (!parsed || parsed <= 0) return;
     if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
     isSavingRef.current = true;
@@ -106,7 +106,7 @@ const AddMoneyModal = ({
     onDismiss();
   };
 
-  const parsed = parseFloat(amount.replace(',', '.'));
+  const parsed = parseAmountInput(amount);
   const isValid = parsed > 0
     && (mode === 'withdrawal' ? parsed <= huchaCurrentAmount : true);
   const activeColor = mode === 'deposit' ? huchaColor : dc.expense;
@@ -276,14 +276,14 @@ const HuchaDetailScreen = () => {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length === 4 && parsed.every((v: unknown) => typeof v === 'number' && v > 0)) {
           setQuickAmounts(parsed);
-          setEditingAmountStrings(parsed.map(String));
+          setEditingAmountStrings(parsed.map(formatAmountForInput));
         }
       } catch {}
     });
   }, []);
 
   const handleSaveQuickAmounts = async () => {
-    const parsed = editingAmountStrings.map(s => parseFloat(s.replace(',', '.')));
+    const parsed = editingAmountStrings.map(parseAmountInput);
     if (parsed.some(v => isNaN(v) || v <= 0)) return;
     setQuickAmounts(parsed);
     setIsEditingAmounts(false);
@@ -429,11 +429,11 @@ const HuchaDetailScreen = () => {
 
   const handleMoreMenu = () => {
     setEditName(hucha.name);
-    setEditTarget(String(hucha.targetAmount));
+    setEditTarget(formatAmountForInput(hucha.targetAmount));
     setShowActionsMenu(true);
   };
 
-  const parsedEditTarget = parseFloat(editTarget.replace(',', '.'));
+  const parsedEditTarget = parseAmountInput(editTarget);
   const trimmedEditName = editName.trim();
   const editTargetTooLow = hasTarget
     && !isNaN(parsedEditTarget)
@@ -468,7 +468,7 @@ const HuchaDetailScreen = () => {
   const handleToggleAutomatic = async (value: boolean) => {
     if (value) {
       showAutoInputRef.current = true;
-      setAutoAmount(hucha.monthlyAmount ? String(hucha.monthlyAmount) : '');
+      setAutoAmount(hucha.monthlyAmount ? formatAmountForInput(hucha.monthlyAmount) : '');
       setAutoDay(hucha.recurringDay ? String(hucha.recurringDay) : '1');
       setShowAutoInput(true);
     } else {
@@ -486,7 +486,7 @@ const HuchaDetailScreen = () => {
   };
 
   const handleSaveAutomatic = async () => {
-    const parsed = parseFloat(autoAmount.replace(',', '.'));
+    const parsed = parseAmountInput(autoAmount);
     if (!parsed || parsed <= 0) return;
     const dayParsed = parseInt(autoDay, 10);
     if (!dayParsed || dayParsed < 1 || dayParsed > 31) return;
@@ -660,7 +660,7 @@ const HuchaDetailScreen = () => {
                   <TouchableOpacity
                     style={[styles.quickEditBtn, { backgroundColor: dc.surface, borderColor: dc.border }]}
                     onPress={() => {
-                      setEditingAmountStrings(quickAmounts.map(String));
+                      setEditingAmountStrings(quickAmounts.map(formatAmountForInput));
                       setIsEditingAmounts(true);
                     }}
                     activeOpacity={0.8}
@@ -707,7 +707,7 @@ const HuchaDetailScreen = () => {
           </View>
 
           {showAutoInput && (() => {
-            const amountValid = !!autoAmount && parseFloat(autoAmount.replace(',', '.')) > 0;
+            const amountValid = !!autoAmount && parseAmountInput(autoAmount) > 0;
             const dayParsed = parseInt(autoDay, 10);
             const dayValid = !!autoDay && dayParsed >= 1 && dayParsed <= 31;
             const canSave = amountValid && dayValid;

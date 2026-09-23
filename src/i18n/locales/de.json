@@ -198,6 +198,14 @@
     "deleteAccountConfirmMessage": "Alle deine Daten werden dauerhaft gelöscht. Du kannst sie nicht wiederherstellen.",
     "deleteAccountSuccess": "Konto erfolgreich gelöscht",
     "deleteAccountError": "Fehler beim Löschen des Kontos. Bitte melde dich ab, erneut an und versuche es noch einmal.",
+    "deleteDataError": "Die Daten konnten nicht gelöscht werden.",
+    "reauthTitle": "Bestätige, dass du es bist",
+    "reauthMessage": "Gib aus Sicherheitsgründen dein Passwort ein, um dein Konto zu löschen.",
+    "reauthPassword": "Passwort",
+    "reauthPasswordRequired": "Gib dein Passwort ein.",
+    "reauthWrongPassword": "Falsches Passwort.",
+    "reauthFailed": "Wir konnten deine Identität nicht bestätigen. Bitte versuche es erneut.",
+    "reauthChecking": "Wird geprüft...",
     "security": "Sicherheit",
     "biometrics": "Face ID / Fingerabdruck",
     "biometricsSubtitle": "App mit Biometrie entsperren",
@@ -449,7 +457,8 @@
     "successMessage": "Willkommen bei MoFlo Premium!",
     "errorNoProduct": "Produkt nicht verfügbar, später erneut versuchen",
     "errorPurchase": "Kauf fehlgeschlagen, bitte erneut versuchen",
-    "errorRestore": "Kauf konnte nicht wiederhergestellt werden"
+    "errorRestore": "Kauf konnte nicht wiederhergestellt werden",
+    "alreadyOwned": "Dieser Kauf liegt bereits in deinem Store-Konto, ist aber mit einem anderen MoFlo-Konto verknüpft. Melde dich mit diesem Konto an oder schreib uns, damit wir ihn freischalten."
   },
   "categories": {
     "title": "Kategorien",
@@ -523,6 +532,7 @@
     "renameAccount": "Konto umbenennen",
     "renameSuccess": "Konto erfolgreich umbenannt",
     "renameError": "Konto konnte nicht umbenannt werden",
+    "createError": "Das Konto konnte nicht erstellt werden. Bitte versuche es erneut.",
     "sharedCategoriesSubtitle": "Verwalte die Kategorien des geteilten Kontos",
     "exportSubtitle": "Exportiere die Bewegungen des geteilten Kontos",
     "currency": "Geteilte Währung",

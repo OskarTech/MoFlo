@@ -30,7 +30,13 @@ import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import i18n from '../../i18n';
-import { logout, signInWithApple } from '../../services/firebase/auth.service';
+import { logout } from '../../services/firebase/auth.service';
+import { clearPushTokens } from '../../services/firebase/pushTokens.service';
+import { clearQueueForUser } from '../../services/syncQueue.service';
+import { reportError } from '../../services/crashReporting';
+import { resetPurchasesUser } from '../../services/revenuecat';
+import { deleteSubcollections } from '../../services/firebase/batchDelete';
+import { reauthenticate, needsPasswordToReauthenticate } from '../../services/firebase/reauth.service';
 import { exportMovementsToCSV } from '../../services/export.service';
 import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
@@ -193,7 +199,7 @@ const FontSelectModal = ({
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { isDark, colors: dc } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
@@ -216,6 +222,12 @@ const SettingsScreen = () => {
 
   // Individual state
   const [isDeleting, setIsDeleting] = useState(false);
+  // Reautenticación previa al borrado de cuenta. Solo las cuentas de correo y
+  // contraseña necesitan el modal: Apple y Google abren su propia hoja.
+  const [showReauthModal, setShowReauthModal] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [reauthError, setReauthError] = useState('');
+  const [isReauthenticating, setIsReauthenticating] = useState(false);
   const [dailyNotifEnabled, setDailyNotifEnabled] = useState(false);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -298,21 +310,160 @@ const SettingsScreen = () => {
               useMovementStore.getState().resetStore();
               useSavingsStore.getState().resetStore();
               if (uid) {
-                const batch = firestore().batch();
-                for (const col of ['movements', 'recurring', 'huchas', 'huchaMovements']) {
-                  const snap = await firestore().collection('users').doc(uid).collection(col).get();
-                  snap.docs.forEach(doc => batch.delete(doc.ref));
-                }
-                await batch.commit();
+                // En lotes de 450: con un solo lote, quien tuviera más de 500
+                // documentos no podía borrar sus datos
+                await deleteSubcollections(
+                  firestore().collection('users').doc(uid),
+                  ['movements', 'recurring', 'huchas', 'huchaMovements'],
+                );
               }
               Alert.alert('✅', t('settings.deleteDataSuccess'));
             } catch (e) {
-              Alert.alert('Error', 'No se pudieron eliminar los datos.');
+              reportError(e, 'deleteData');
+              Alert.alert('Error', t('settings.deleteDataError'));
             }
           },
         },
       ]
     );
+  };
+
+  // Borrado efectivo. Solo se llama cuando la identidad ya está verificada, así
+  // que a estas alturas `user.delete()` no puede fallar por sesión antigua y
+  // dejar la cuenta medio destruida.
+  const performAccountDeletion = async () => {
+    if (!uid) return;
+    setIsDeleting(true);
+    try {
+      useSharedAccountStore.getState().unsubscribeAll();
+
+      const { sharedAccount: sa } = useSharedAccountStore.getState();
+      if (sa) {
+        const accountId = sa.id;
+        if (sa.createdBy === uid) {
+          const accountRef = firestore().collection('sharedAccounts').doc(accountId);
+          // En lotes de 450: con un solo lote, una cuenta con más de 500
+          // documentos no se podía borrar nunca
+          await deleteSubcollections(accountRef, [
+            'movements', 'recurring', 'categories', 'savings',
+            'huchas', 'huchaMovements', 'reminders', 'joinRequests',
+          ]);
+          await accountRef.delete();
+        } else {
+          const updatedMembers = sa.members.filter(m => m !== uid);
+          const updatedNames = { ...sa.memberNames };
+          delete updatedNames[uid];
+          await firestore()
+            .collection('sharedAccounts').doc(accountId)
+            .update({ members: updatedMembers, memberNames: updatedNames });
+        }
+      }
+
+      const userRef = firestore().collection('users').doc(uid);
+      await deleteSubcollections(userRef, [
+        'movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements',
+      ]);
+      await userRef.delete();
+
+      // Tokens push de este móvil y del resto de dispositivos.
+      // Borrar `users/{uid}` NO arrastra sus subcolecciones, así que
+      // 'devices' se quedaba huérfano para siempre y la Cloud Function
+      // seguía teniendo a quién enviar notificaciones.
+      // Va aquí, después de que lo demás haya salido bien: si el
+      // borrado falla antes, la cuenta sigue viva y sus tokens también.
+      try {
+        await clearPushTokens(uid);
+        await deleteSubcollections(userRef, ['devices']);
+      } catch (e) {
+        // No debe impedir que se complete el borrado de la cuenta
+        reportError(e, 'deleteAccount: limpieza de devices');
+      }
+
+      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
+
+      // Solo lo encolado por esta cuenta: en el mismo móvil puede
+      // haber pendientes de otra persona y no son nuestras de borrar
+      await clearQueueForUser(uid);
+
+      await AsyncStorage.multiRemove([
+        '@moflo_movements', '@moflo_recurring', '@moflo_settings',
+        '@moflo_premium', '@moflo_custom_categories',
+        '@moflo_shared_account', '@moflo_active_account', '@moflo_savings',
+        '@moflo_daily_notif',
+        // Faltaban: se quedaban en el móvil y la siguiente persona
+        // que entrase veía un instante los datos de la cuenta borrada
+        '@moflo_shared_movements', '@moflo_shared_recurring',
+        '@moflo_huchas', '@moflo_shared_huchas',
+        '@moflo_hucha_movements', '@moflo_shared_hucha_movements',
+        `@moflo_hidden_base_${uid}`, `@moflo_reminders_${uid}`, `@moflo_shared_notif_${uid}`,
+      ]);
+
+      useMovementStore.getState().resetStore();
+      useSettingsStore.getState().resetStore();
+      usePremiumStore.getState().setPremium(false);
+      useCategoryStore.getState().resetStore();
+      useSharedAccountStore.getState().resetStore();
+      useSavingsStore.getState().resetStore();
+      useReminderStore.getState().resetStore();
+      // Igual que al cerrar sesión: el SDK de compras no debe quedarse con la
+      // identidad de una cuenta que ya no existe.
+      await resetPurchasesUser();
+
+      await auth().currentUser?.delete();
+    } catch (e) {
+      setIsDeleting(false);
+      reportError(e, 'deleteAccount');
+      Alert.alert('Error', t('settings.deleteAccountError'));
+    }
+  };
+
+  // Paso previo obligatorio: verificar la identidad ANTES de borrar nada.
+  // Si se cancela o falla, no se ha tocado un solo dato.
+  const startAccountDeletion = async () => {
+    if (isDeleting || isReauthenticating) return;
+
+    if (needsPasswordToReauthenticate()) {
+      setReauthPassword('');
+      setReauthError('');
+      setShowReauthModal(true);
+      return;
+    }
+
+    setIsReauthenticating(true);
+    const result = await reauthenticate();
+    setIsReauthenticating(false);
+
+    if (result === 'cancelled') return;
+    if (result !== 'ok') {
+      Alert.alert('Error', t('settings.reauthFailed'));
+      return;
+    }
+    await performAccountDeletion();
+  };
+
+  const handleConfirmReauthPassword = async () => {
+    if (isReauthenticating) return;
+    if (!reauthPassword) {
+      setReauthError(t('settings.reauthPasswordRequired'));
+      return;
+    }
+    setIsReauthenticating(true);
+    const result = await reauthenticate(reauthPassword);
+    setIsReauthenticating(false);
+
+    if (result === 'wrong-password') {
+      setReauthError(t('settings.reauthWrongPassword'));
+      return;
+    }
+    if (result !== 'ok') {
+      setReauthError(t('settings.reauthFailed'));
+      return;
+    }
+
+    setShowReauthModal(false);
+    setReauthPassword('');
+    setReauthError('');
+    await performAccountDeletion();
   };
 
   const handleDeleteAccount = () => {
@@ -335,83 +486,7 @@ const SettingsScreen = () => {
                 {
                   text: t('settings.deleteAccount'),
                   style: 'destructive',
-                  onPress: async () => {
-                    if (isDeleting) return;
-                    setIsDeleting(true);
-                    try {
-                      if (!uid) throw new Error('No user');
-
-                      useSharedAccountStore.getState().unsubscribeAll();
-
-                      const { sharedAccount: sa } = useSharedAccountStore.getState();
-                      if (sa) {
-                        const accountId = sa.id;
-                        if (sa.createdBy === uid) {
-                          const batch = firestore().batch();
-                          for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements', 'reminders', 'joinRequests']) {
-                            const snap = await firestore()
-                              .collection('sharedAccounts').doc(accountId)
-                              .collection(col).get();
-                            snap.docs.forEach(doc => batch.delete(doc.ref));
-                          }
-                          await batch.commit();
-                          await firestore().collection('sharedAccounts').doc(accountId).delete();
-                        } else {
-                          const updatedMembers = sa.members.filter(m => m !== uid);
-                          const updatedNames = { ...sa.memberNames };
-                          delete updatedNames[uid];
-                          await firestore()
-                            .collection('sharedAccounts').doc(accountId)
-                            .update({ members: updatedMembers, memberNames: updatedNames });
-                        }
-                      }
-
-                      const userRef = firestore().collection('users').doc(uid);
-                      const batch2 = firestore().batch();
-                      for (const col of ['movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements']) {
-                        const snap = await userRef.collection(col).get();
-                        snap.docs.forEach(doc => batch2.delete(doc.ref));
-                      }
-                      await batch2.commit();
-                      await userRef.delete();
-
-                      try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
-
-                      await AsyncStorage.multiRemove([
-                        '@moflo_movements', '@moflo_recurring', '@moflo_settings',
-                        '@moflo_sync_queue', '@moflo_premium', '@moflo_custom_categories',
-                        '@moflo_shared_account', '@moflo_active_account', '@moflo_savings',
-                        '@moflo_daily_notif',
-                        `@moflo_hidden_base_${uid}`, `@moflo_reminders_${uid}`, `@moflo_shared_notif_${uid}`,
-                      ]);
-
-                      useMovementStore.getState().resetStore();
-                      useSettingsStore.getState().resetStore();
-                      usePremiumStore.getState().setPremium(false);
-                      useCategoryStore.getState().resetStore();
-                      useSharedAccountStore.getState().resetStore();
-                      useSavingsStore.getState().resetStore();
-                      useReminderStore.getState().resetStore();
-
-                      await auth().currentUser?.delete();
-                    } catch (e: any) {
-                      setIsDeleting(false);
-                      if (e?.code === 'auth/requires-recent-login') {
-                        const providerData = auth().currentUser?.providerData;
-                        const isApple = providerData?.some(p => p.providerId === 'apple.com');
-                        if (isApple) {
-                          try {
-                            await signInWithApple();
-                            await auth().currentUser?.delete();
-                            return;
-                          } catch (_) {}
-                        }
-                        Alert.alert('Error', t('settings.deleteAccountError'));
-                      } else {
-                        Alert.alert('Error', t('settings.deleteAccountError'));
-                      }
-                    }
-                  },
+                  onPress: () => { startAccountDeletion(); },
                 },
               ]
             );
@@ -1358,6 +1433,72 @@ const SettingsScreen = () => {
         </View>
       </Modal>
 
+      {/* Confirmación de identidad antes de borrar la cuenta. Solo aparece en
+          cuentas de correo y contraseña: Apple y Google abren su propia hoja. */}
+      <Modal
+        visible={showReauthModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReauthModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => { if (!isReauthenticating) setShowReauthModal(false); }}
+          />
+          <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
+            <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
+            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
+              {t('settings.reauthTitle')}
+            </Text>
+            <Text style={[styles.reauthMessage, { color: dc.textSecondary }]}>
+              {t('settings.reauthMessage')}
+            </Text>
+            <TextInput
+              value={reauthPassword}
+              onChangeText={(v) => { setReauthPassword(v); setReauthError(''); }}
+              label={t('settings.reauthPassword')}
+              mode="outlined"
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              style={{ backgroundColor: isDark ? dc.background : '#FFFFFF' }}
+              outlineColor={dc.border}
+              activeOutlineColor={dc.primary}
+              onSubmitEditing={handleConfirmReauthPassword}
+            />
+            {!!reauthError && (
+              <Text style={[styles.reauthError, { color: colors.expense }]}>{reauthError}</Text>
+            )}
+            <View style={styles.reauthButtons}>
+              <TouchableOpacity
+                style={[styles.reauthButton, { borderColor: dc.border, borderWidth: 1 }]}
+                onPress={() => { if (!isReauthenticating) setShowReauthModal(false); }}
+              >
+                <Text style={[styles.reauthButtonText, { color: dc.textSecondary }]}>
+                  {t('settings.cancel')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.reauthButton,
+                  { backgroundColor: colors.expense },
+                  isReauthenticating && { opacity: 0.6 },
+                ]}
+                disabled={isReauthenticating}
+                onPress={handleConfirmReauthPassword}
+              >
+                <Text style={[styles.reauthButtonText, { color: '#FFFFFF' }]}>
+                  {isReauthenticating ? t('settings.reauthChecking') : t('settings.deleteAccount')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <PremiumModal
         visible={showModal}
         onDismiss={() => setShowModal(false)}
@@ -1450,6 +1591,13 @@ const styles = StyleSheet.create({
   modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
   modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
+
+  // Confirmación de identidad antes de borrar la cuenta
+  reauthMessage: { fontSize: 14, fontFamily: 'Poppins_400Regular', lineHeight: 20, marginBottom: 16 },
+  reauthError: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8 },
+  reauthButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  reauthButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  reauthButtonText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
 
   // Pending requests

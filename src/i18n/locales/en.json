@@ -198,6 +198,14 @@
   "deleteAccountConfirmMessage": "All your data will be permanently deleted. You will not be able to recover it.",
   "deleteAccountSuccess": "Account successfully deleted",
   "deleteAccountError": "Error deleting account. Please sign out, sign in again and try again.",
+  "deleteDataError": "Data could not be deleted.",
+  "reauthTitle": "Confirm it's you",
+  "reauthMessage": "For your security, enter your password to delete your account.",
+  "reauthPassword": "Password",
+  "reauthPasswordRequired": "Enter your password.",
+  "reauthWrongPassword": "Incorrect password.",
+  "reauthFailed": "We couldn't verify your identity. Please try again.",
+  "reauthChecking": "Checking...",
   "security": "Security",
   "biometrics": "Face ID / Fingerprint",
   "biometricsSubtitle": "Unlock app with biometrics",
@@ -450,7 +458,8 @@
   "successMessage": "Welcome to MoFlo Premium!",
   "errorNoProduct": "Product not available, try again later",
   "errorPurchase": "Purchase failed, try again",
-  "errorRestore": "Could not restore purchase"
+  "errorRestore": "Could not restore purchase",
+  "alreadyOwned": "You already own this purchase on your store account, but it is linked to a different MoFlo account. Sign in with that account or contact us to activate it."
   },
   "categories": {
   "title": "Categories",
@@ -524,6 +533,7 @@
   "renameAccount": "Rename account",
   "renameSuccess": "Account renamed successfully",
   "renameError": "Could not rename account",
+  "createError": "Could not create the account. Please try again.",
   "sharedCategoriesSubtitle": "Manage shared account categories",
   "exportSubtitle": "Export shared account movements",
   "currency": "Shared currency",
