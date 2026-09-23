@@ -1,4 +1,7 @@
 {
+  "react-native": {
+    "crashlytics_disable_auto_disabler": true
+  },
   "functions": [
     {
       "source": "functions",
