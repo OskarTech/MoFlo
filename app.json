@@ -58,16 +58,10 @@
         }
       ],
       [
-        "expo-image-picker",
-        {
-          "photosPermission": "MoFlo needs access to your photos to set a profile picture."
-        }
-      ],
-      [
         "expo-build-properties",
         {
           "ios": {
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBStorage", "RNFBMessaging", "RNFBCrashlytics"],
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBMessaging", "RNFBCrashlytics"],
             "useFrameworks": "static"
           },
           "android": {
@@ -75,7 +69,6 @@
           }
         }
       ],
-      "expo-mail-composer",
       "@react-native-community/datetimepicker"
     ],
     "extra": {
