@@ -6,6 +6,7 @@ import { SharedAccount, Movement, RecurringMovement, JoinRequest, PendingJoinReq
 import { CURRENCIES, ColorPaletteId } from './settingsStore';
 import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
+import i18n from '../i18n';
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
@@ -372,7 +373,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const displayName = useSettingsStore.getState().displayName
       || auth().currentUser?.displayName
       || auth().currentUser?.email?.split('@')[0]
-      || 'Usuario';
+      // Se guarda como nombre del miembro: en el idioma de quien lo escribe
+      || i18n.t('common.user');
     if (!uid) return;
 
     const inviteCode = await generateUniqueInviteCode();
@@ -420,7 +422,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const displayName = useSettingsStore.getState().displayName
       || auth().currentUser?.displayName
       || auth().currentUser?.email?.split('@')[0]
-      || 'Usuario';
+      || i18n.t('common.user');
     if (!uid) return 'error';
 
     if (get().pendingJoinRequest) return 'has_pending';
@@ -546,7 +548,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         firestore().collection('sharedAccounts').doc(sharedAccount.id),
         {
           members: firestore.FieldValue.arrayUnion(requesterUid),
-          [`memberNames.${requesterUid}`]: request.displayName || 'Usuario',
+          [`memberNames.${requesterUid}`]: request.displayName || i18n.t('common.user'),
         }
       );
       batch.delete(requestRef);

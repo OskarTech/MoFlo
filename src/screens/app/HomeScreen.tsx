@@ -283,7 +283,7 @@ const HomeScreen = () => {
                 {dayName} · {today.getDate()} {monthName}
               </Text>
               <Text style={[styles.greetingText, { color: dc.textPrimary }]}>
-                {t('home.hello')}, {displayName || 'Usuario'}
+                {t('home.hello')}, {displayName || t('common.user')}
               </Text>
             </View>
           );

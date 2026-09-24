@@ -104,7 +104,7 @@ const SharedAccountScreen = () => {
         navigation.navigate('HomeTab');
       }
     } catch (e) {
-      Alert.alert('Error', t('sharedAccount.createError'));
+      Alert.alert(t('common.error'), t('sharedAccount.createError'));
     } finally {
       setLoading(false);
     }
@@ -124,10 +124,10 @@ const SharedAccountScreen = () => {
       } else if (result === 'has_pending') {
         Alert.alert('', t('sharedAccount.alreadyHasPending'));
       } else {
-        Alert.alert('Error', t('sharedAccount.joinError'));
+        Alert.alert(t('common.error'), t('sharedAccount.joinError'));
       }
     } catch (e) {
-      Alert.alert('Error', t('sharedAccount.joinError'));
+      Alert.alert(t('common.error'), t('sharedAccount.joinError'));
     } finally {
       setLoading(false);
     }
@@ -353,7 +353,7 @@ const SharedAccountScreen = () => {
               </Text>
               <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
                 {sharedAccount.members.map((uid, index) => {
-                  const name = sharedAccount.memberNames[uid] ?? 'Usuario';
+                  const name = sharedAccount.memberNames[uid] ?? t('common.user');
                   const isCreator = uid === sharedAccount.createdBy;
                   const isCurrentUser = uid === require('@react-native-firebase/auth').default().currentUser?.uid;
                   return (

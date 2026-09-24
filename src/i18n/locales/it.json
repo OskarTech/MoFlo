@@ -656,5 +656,9 @@
     "whatsNew": "Novità",
     "updateNow": "Aggiorna ora",
     "later": "Più tardi"
+  },
+  "common": {
+    "user": "Utente",
+    "error": "Errore"
   }
 }

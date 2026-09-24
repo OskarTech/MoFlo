@@ -58,7 +58,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       const offering: PurchasesOffering | null = offerings.current;
 
       if (!offering || !offering.lifetime) {
-        Alert.alert('Error', t('premium.errorNoProduct', 'Producto no encontrado.'));
+        Alert.alert(t('common.error'), t('premium.errorNoProduct', 'Producto no encontrado.'));
         return;
       }
 
@@ -91,7 +91,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       }
 
       reportError(e, 'PremiumModal: compra');
-      Alert.alert('Error', t('premium.errorPurchase', 'Ha ocurrido un error con la compra.'));
+      Alert.alert(t('common.error'), t('premium.errorPurchase', 'Ha ocurrido un error con la compra.'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       }
     } catch (e) {
       reportError(e, 'PremiumModal: restaurar');
-      Alert.alert('Error', t('premium.errorRestore', 'Error al restaurar las compras.'));
+      Alert.alert(t('common.error'), t('premium.errorRestore', 'Error al restaurar las compras.'));
     } finally {
       setRestoring(false);
     }
@@ -188,11 +188,11 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
           {/* ENLACES LEGALES */}
           <View style={styles.legalContainer}>
             <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}>
-              <Text style={[styles.legalText, { color: dc.textSecondary }]}>Términos de Servicio</Text>
+              <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.termsOfService')}</Text>
             </TouchableOpacity>
             <Text style={[styles.legalSeparator, { color: dc.textSecondary }]}>|</Text>
             <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}>
-              <Text style={[styles.legalText, { color: dc.textSecondary }]}>Política de Privacidad</Text>
+              <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.privacyPolicy')}</Text>
             </TouchableOpacity>
           </View>
 

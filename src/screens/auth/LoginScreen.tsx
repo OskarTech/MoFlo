@@ -74,7 +74,7 @@ const LoginScreen = ({ navigation }: Props) => {
         await useSettingsStore.getState().adoptDisplayNameIfMissing(auth().currentUser?.displayName);
       }
     } catch (e) {
-      Alert.alert('Error', t('auth.appleSignInError'));
+      Alert.alert(t('common.error'), t('auth.appleSignInError'));
     } finally {
       setIsAppleLoading(false);
     }

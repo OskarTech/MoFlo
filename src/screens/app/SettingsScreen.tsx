@@ -325,7 +325,7 @@ const SettingsScreen = () => {
               Alert.alert('✅', t('settings.deleteDataSuccess'));
             } catch (e) {
               reportError(e, 'deleteData');
-              Alert.alert('Error', t('settings.deleteDataError'));
+              Alert.alert(t('common.error'), t('settings.deleteDataError'));
             }
           },
         },
@@ -429,7 +429,7 @@ const SettingsScreen = () => {
     } catch (e) {
       setIsDeleting(false);
       reportError(e, 'deleteAccount');
-      Alert.alert('Error', t('settings.deleteAccountError'));
+      Alert.alert(t('common.error'), t('settings.deleteAccountError'));
     }
   };
 
@@ -451,7 +451,7 @@ const SettingsScreen = () => {
 
     if (result === 'cancelled') return;
     if (result !== 'ok') {
-      Alert.alert('Error', t('settings.reauthFailed'));
+      Alert.alert(t('common.error'), t('settings.reauthFailed'));
       return;
     }
     await performAccountDeletion();
@@ -539,7 +539,7 @@ const SettingsScreen = () => {
       setEditingSharedName(false);
       Alert.alert('✅', t('sharedAccount.renameSuccess'));
     } catch (e) {
-      Alert.alert('Error', t('sharedAccount.renameError'));
+      Alert.alert(t('common.error'), t('sharedAccount.renameError'));
     }
   };
 
@@ -697,14 +697,14 @@ const SettingsScreen = () => {
   const handleExportCSV = () => {
     if (isSharedMode) {
       exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames).catch(() => {
-        Alert.alert('Error', t('export.error'));
+        Alert.alert(t('common.error'), t('export.error'));
       });
     } else {
       requirePremium(async () => {
         try {
           await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t);
         } catch (e) {
-          Alert.alert('Error', t('export.error'));
+          Alert.alert(t('common.error'), t('export.error'));
         }
       });
     }
@@ -975,7 +975,7 @@ const SettingsScreen = () => {
             </Text>
             <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
               {sharedAccount?.members.map((memberId, index) => {
-                const name = sharedAccount.memberNames[memberId] ?? 'Usuario';
+                const name = sharedAccount.memberNames[memberId] ?? t('common.user');
                 const isMe = memberId === uid;
                 const isMemberCreator = memberId === sharedAccount.createdBy;
                 return (
@@ -1409,7 +1409,7 @@ const SettingsScreen = () => {
               data={kickableMembers}
               keyExtractor={(item) => item}
               renderItem={({ item: memberId }) => {
-                const name = sharedAccount?.memberNames?.[memberId] ?? 'Usuario';
+                const name = sharedAccount?.memberNames?.[memberId] ?? t('common.user');
                 return (
                   <TouchableOpacity
                     style={[styles.modalOption, { borderBottomColor: dc.border }]}
@@ -1440,7 +1440,7 @@ const SettingsScreen = () => {
                               } catch (e) {
                                 // Antes un fallo no enseñaba nada: solo faltaba el ✅
                                 reportError(e, 'kickMember');
-                                Alert.alert('Error', t('auth.errorGeneral'));
+                                Alert.alert(t('common.error'), t('auth.errorGeneral'));
                               }
                             },
                           },

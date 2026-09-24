@@ -657,5 +657,9 @@
     "whatsNew": "What's new",
     "updateNow": "Update now",
     "later": "Later"
+  },
+  "common": {
+    "user": "User",
+    "error": "Error"
   }
 }
