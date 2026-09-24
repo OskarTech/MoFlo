@@ -97,7 +97,9 @@ export const formatAmountForInput = (amount: number): string => {
  *
  * Reglas, en orden:
  *  1. Si aparecen los dos separadores, el último es el decimal y el otro de miles.
- *  2. Si el mismo separador se repite, es de miles.
+ *  2. Si el mismo separador se repite y agrupa bien los millares ("1.234.567":
+ *     de 1 a 3 cifras delante, sin cero inicial, y bloques de 3 detrás), es de
+ *     miles. Si no ("1.234.56", una errata), se aplica la regla 4.
  *  3. Un único separador con exactamente tres dígitos detrás es ambiguo
  *     ("1.234"): se resuelve con el separador de miles del idioma activo.
  *     Un cero delante nunca agrupa millares, así que "0.234" son decimales.
@@ -121,13 +123,21 @@ export const parseAmountInput = (raw: string): number => {
 
   const bothSeparators = lastDot !== -1 && lastComma !== -1;
   const repeated = head.includes(sepChar);
+  // Antes el separador repetido acababa como decimal: "1.234.567" se guardaba
+  // como 1.234,57 sin aviso
+  const groups = cleaned.split(sepChar);
+  const groupedThousands = !bothSeparators
+    && repeated
+    && /^[1-9]\d{0,2}$/.test(groups[0])
+    && groups.slice(1).every((group) => /^\d{3}$/.test(group));
   const ambiguous = !bothSeparators
     && !repeated
     && digitsAfter.length === 3
     && digitsBefore.length > 0
     && !digitsBefore.startsWith('0');
 
-  const isThousands = ambiguous && sepChar === getSeparators().thousands;
+  const isThousands = groupedThousands
+    || (ambiguous && sepChar === getSeparators().thousands);
 
   const value = isThousands
     ? Number(digitsBefore + digitsAfter)

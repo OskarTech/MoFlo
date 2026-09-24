@@ -116,7 +116,23 @@ describe('parseAmountInput', () => {
     expect(parseAmountInput(`1${NARROW_NBSP}234,5`)).toBe(1234.5);
   });
 
-  // Hoy "1.234.567" se lee como 1234,567 aunque el comentario de la función dice
-  // que un separador repetido es de miles. Pendiente de decidir la regla.
-  it.todo('un separador repetido ("1.234.567") se lee como separador de miles');
+  it.each([
+    ['1.234.567', 1234567],
+    ['12.345.678', 12345678],
+    ['1.234.567.890', 1234567890],
+    ['1,234,567', 1234567],
+  ])('un separador repetido que agrupa millares ("%s") es de miles', (input, expected) => {
+    expect(parseAmountInput(input)).toBe(expected);
+    mockLanguage = 'en';
+    expect(parseAmountInput(input)).toBe(expected);
+  });
+
+  it.each([
+    ['1.234.56', 1234.56], // errata: el último sigue siendo el decimal
+    ['12..5', 12.5],
+    ['0.234.567', 234.567], // un cero delante nunca agrupa millares
+    ['1234.567.890', 1234567.89], // primer grupo de más de tres cifras
+  ])('si el separador repetido no agrupa bien, "%s" se lee como antes (%s)', (input, expected) => {
+    expect(parseAmountInput(input)).toBe(expected);
+  });
 });
