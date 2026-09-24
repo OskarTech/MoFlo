@@ -20,6 +20,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
+import { formatDate as formatAppDate } from '../../utils/dateFormat';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -31,10 +32,9 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const formatDate = (date: Date): string => {
-  if (i18n.language === 'en') return date.toLocaleDateString('en-US');
-  return date.toLocaleDateString('es-ES');
-};
+// El mismo formato que el resto de la app: respeta el ajuste DD/MM o MM/DD
+// (y el de la cuenta compartida). Antes solo distinguía inglés y español.
+const formatDate = (date: Date): string => formatAppDate(date.toISOString());
 
 const formatTime = (date: Date): string => {
   if (i18n.language === 'en') {

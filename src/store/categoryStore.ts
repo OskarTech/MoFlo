@@ -170,16 +170,18 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     // Guarda en AsyncStorage
     await AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(updated));
 
-    // Guarda en Firestore para sincronización entre dispositivos
+    // Guarda en Firestore para sincronización entre dispositivos.
+    // arrayUnion en vez de la lista local entera: dos dispositivos ocultando a
+    // la vez se pisaban y una de las dos se perdía.
     try {
       await firestore()
         .collection('users').doc(uid)
-        .update({ hiddenCategories: updated });
+        .update({ hiddenCategories: firestore.FieldValue.arrayUnion(key) });
     } catch (e) {
       // Si el doc no existe, usa set con merge
       await firestore()
         .collection('users').doc(uid)
-        .set({ hiddenCategories: updated }, { merge: true });
+        .set({ hiddenCategories: firestore.FieldValue.arrayUnion(key) }, { merge: true });
     }
   },
 

@@ -70,6 +70,23 @@ const stopMovementListeners = () => {
   subscribedMovementsAccountId = null;
 };
 
+// Vuelve a los datos personales cuando la cuenta compartida desaparece sin que
+// el usuario lo haya pedido: la ha borrado el dueño. Hace lo mismo que elegir
+// la cuenta personal en el selector del header. Sin esto, movimientos y huchas
+// seguían apuntando a una cuenta que ya no existe, y lo nuevo que se creaba lo
+// rechazaban las reglas: no se guardaba en ningún sitio.
+const returnToPersonalData = () => {
+  stopMovementListeners();
+  const { useSavingsStore } = require('./savingsStore');
+  const { useMovementStore } = require('./movementStore');
+  useSavingsStore.getState().unsubscribeSharedHuchas();
+  useMovementStore.getState().setSharedAccountId(null);
+  useSavingsStore.getState().setSharedAccountId(null);
+  // Sin await: se llama desde un listener
+  useMovementStore.getState().loadData().catch(() => {});
+  useSavingsStore.getState().loadHuchas().catch(() => {});
+};
+
 export type JoinResult =
   | 'pending'
   | 'already_member'
@@ -268,15 +285,24 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
         // Listener cuenta en tiempo real
         if (accountUnsubscribe) accountUnsubscribe();
-        accountUnsubscribe = firestore()
+        const accountSub = firestore()
           .collection('sharedAccounts')
           .doc(account.id)
           .onSnapshot((doc) => {
-            if (doc.exists()) {
-              const updated = { id: doc.id, ...doc.data() } as SharedAccount;
+            const data = doc.exists() ? doc.data() : undefined;
+            // La cuenta sigue existiendo pero ya no estás en members: te ha
+            // expulsado el creador o has salido desde otro de tus móviles. Se
+            // trata igual que si la hubieran borrado. Antes se seguía dentro
+            // hasta reiniciar la app y lo que se añadía lo rechazaban las reglas.
+            const removedFromAccount = !!data
+              && Array.isArray(data.members)
+              && !data.members.includes(uid);
+            if (data && !removedFromAccount) {
+              const updated = { id: doc.id, ...data } as SharedAccount;
               set({ sharedAccount: updated });
               AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             } else {
+              const wasSharedMode = get().isSharedMode;
               set({
                 sharedAccount: null,
                 isSharedMode: false,
@@ -289,10 +315,17 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
               useReminderStore.getState().unsubscribeSharedReminders(true);
               AsyncStorage.removeItem(STORAGE_KEY);
               AsyncStorage.setItem(ACTIVE_KEY, 'individual');
+              if (wasSharedMode) returnToPersonalData();
+              // Ya no hay nada que escuchar de esta cuenta
+              if (accountUnsubscribe === accountSub) {
+                accountSub();
+                accountUnsubscribe = null;
+              }
             }
           }, (e) => {
             console.error('Error listening to shared account:', e);
           });
+        accountUnsubscribe = accountSub;
 
         // Recordatorios compartidos: activos aunque esté en modo individual,
         // para que las notificaciones de este dispositivo estén al día
@@ -396,10 +429,23 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       const snap = await firestore()
         .collection('sharedAccounts')
         .where('inviteCode', '==', code.toUpperCase().trim())
-        .limit(1)
+        // Dos y no uno: así se detecta si otra cuenta tiene el mismo código
+        .limit(2)
         .get();
 
       if (snap.empty) return 'invalid';
+
+      // Las reglas dejan leer los códigos de todas las cuentas y no impiden
+      // repetirlos, así que alguien podría crear una copia de una cuenta con su
+      // mismo código. Con limit(1) la solicitud acabaría en la cuenta cuyo id
+      // ordene primero, que puede ser la copia. Ante la duda no se envía nada.
+      if (snap.size > 1) {
+        reportError(
+          new Error(`Código de invitación repetido en: ${snap.docs.map(d => d.id).join(', ')}`),
+          'joinSharedAccount',
+        );
+        return 'invalid';
+      }
 
       const accountDoc = snap.docs[0];
       const account = { id: accountDoc.id, ...accountDoc.data() } as SharedAccount;
@@ -414,10 +460,16 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         requestedAt,
       };
 
-      await firestore()
+      const requestRef = firestore()
         .collection('sharedAccounts').doc(account.id)
-        .collection('joinRequests').doc(uid)
-        .set(requestData);
+        .collection('joinRequests').doc(uid);
+
+      // Una solicitud anterior (rechazada, o pendiente desde otro móvil o antes
+      // de reinstalar) convertía el set() en una modificación, y las reglas solo
+      // dejan modificar solicitudes a los miembros: fallaba como código inválido.
+      // Borrándola antes, esta es una solicitud nueva y vuelve a avisar al creador.
+      await requestRef.delete().catch(() => {});
+      await requestRef.set(requestData);
 
       const pending: PendingJoinRequest = {
         accountId: account.id,
@@ -486,15 +538,16 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       if (!requestSnap.exists()) return;
       const request = requestSnap.data() as JoinRequest;
 
-      const updatedMembers = sharedAccount.members.includes(requesterUid)
-        ? sharedAccount.members
-        : [...sharedAccount.members, requesterUid];
-      const updatedNames = { ...sharedAccount.memberNames, [requesterUid]: request.displayName };
-
+      // arrayUnion y una sola clave de memberNames en vez de reescribir la lista
+      // entera con la copia local: al aprobar dos solicitudes seguidas, la
+      // segunda salía con la lista sin actualizar y las reglas la rechazaban.
       const batch = firestore().batch();
       batch.update(
         firestore().collection('sharedAccounts').doc(sharedAccount.id),
-        { members: updatedMembers, memberNames: updatedNames }
+        {
+          members: firestore.FieldValue.arrayUnion(requesterUid),
+          [`memberNames.${requesterUid}`]: request.displayName || 'Usuario',
+        }
       );
       batch.delete(requestRef);
       await batch.commit();
@@ -567,14 +620,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { sharedAccount } = get();
     if (!uid || !sharedAccount) return;
 
-    const updatedMembers = sharedAccount.members.filter(m => m !== uid);
-    const updatedNames = { ...sharedAccount.memberNames };
-    delete updatedNames[uid];
-
+    // Solo se quita a uno mismo: reescribiendo la lista entera con la copia
+    // local, si alguien había entrado mientras tanto las reglas lo rechazaban
     await firestore()
       .collection('sharedAccounts')
       .doc(sharedAccount.id)
-      .update({ members: updatedMembers, memberNames: updatedNames });
+      .update({
+        members: firestore.FieldValue.arrayRemove(uid),
+        [`memberNames.${uid}`]: firestore.FieldValue.delete(),
+      });
 
     get().unsubscribeAll();
     set({

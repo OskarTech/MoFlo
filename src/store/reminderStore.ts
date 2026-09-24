@@ -170,7 +170,53 @@ export const useReminderStore = create<ReminderStore>((set, get) => ({
       set({ reminders: raw ? JSON.parse(raw) : [] });
     } catch (e) {
       console.error('Error loading reminders:', e);
+      return;
     }
+
+    // El cierre de sesión ya no borra los recordatorios personales, pero sí
+    // cancela sus notificaciones (y el sistema también puede perderlas). Aquí
+    // se vuelven a programar las que falten. Las que siguen programadas no se
+    // tocan, así que en un arranque normal no hace nada. En la cola exclusiva
+    // para que dos cargas seguidas (arranque y pantalla) no las dupliquen.
+    await runExclusive(async () => {
+      if ((auth().currentUser?.uid ?? 'guest') !== uid) return;
+      const future = get().reminders.filter(r =>
+        !!r.date && new Date(r.date).getTime() > Date.now());
+      if (future.length === 0) return;
+
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const scheduledIds = new Set(scheduled.map(n => n.identifier));
+      const missing = future.filter(r => !r.notificationId || !scheduledIds.has(r.notificationId));
+      if (missing.length === 0) return;
+
+      const created = new Map<string, { notificationId: string; seen: Reminder }>();
+      for (const r of missing) {
+        const notificationId = await scheduleReminderNotification(r.title, new Date(r.date!));
+        if (notificationId) created.set(r.id, { notificationId, seen: r });
+      }
+      if (created.size === 0) return;
+
+      // Sobre el estado actual: si mientras tanto se ha editado o borrado alguno,
+      // esa acción ya ha gestionado su notificación y la de aquí sobra.
+      const sameUser = (auth().currentUser?.uid ?? 'guest') === uid;
+      const applied = new Set<string>();
+      const merged = get().reminders.map(r => {
+        const c = created.get(r.id);
+        if (!c || !sameUser) return r;
+        const unchanged = r.notificationId === c.seen.notificationId
+          && r.date === c.seen.date
+          && r.title === c.seen.title;
+        if (!unchanged) return r;
+        applied.add(r.id);
+        return { ...r, notificationId: c.notificationId };
+      });
+      for (const [id, c] of created) {
+        if (!applied.has(id)) await cancelNotification(c.notificationId);
+      }
+      if (applied.size === 0) return;
+      set({ reminders: merged });
+      await AsyncStorage.setItem(individualKey(uid), JSON.stringify(merged));
+    });
   },
 
   // ── AÑADIR ─────────────────────────────────────────────────────

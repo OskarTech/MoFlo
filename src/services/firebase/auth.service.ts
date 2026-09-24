@@ -113,10 +113,13 @@ export const logout = async () => {
     '@moflo_daily_notif',
   ];
 
+  // '@moflo_reminders_{uid}' tampoco se borra: los recordatorios personales solo
+  // viven en este móvil y borrarlos aquí los perdía para siempre. La clave ya es
+  // de este usuario, así que nadie más los ve. Sus notificaciones sí se cancelan
+  // arriba y se vuelven a programar cuando vuelve a entrar.
   if (uid) {
     keysToRemove.push(
       `@moflo_hidden_base_${uid}`,
-      `@moflo_reminders_${uid}`,
       `@moflo_shared_notif_${uid}`,
     );
   }

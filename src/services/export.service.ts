@@ -2,6 +2,8 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Movement, Hucha, RecurringMovement, HuchaMovement } from '../types';
 import { useCategoryStore } from '../store/categoryStore';
+import { useSharedAccountStore } from '../store/sharedAccountStore';
+import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 
 const escapeCSV = (value: string) => {
   if (
@@ -38,7 +40,12 @@ export const exportMovementsToCSV = async (
   t: (key: string) => string,
   memberNames?: { [uid: string]: string }
 ): Promise<void> => {
-  const { getCategoryName } = useCategoryStore.getState();
+  // En una cuenta compartida los movimientos usan las categorías de la cuenta:
+  // con las personales, las creadas en la cuenta salían en el CSV como la clave
+  // de traducción ("movements.categories.shared_custom_…") en vez de su nombre.
+  const getCategoryName = useSharedAccountStore.getState().isSharedMode
+    ? useSharedCategoryStore.getState().getSharedCategoryName
+    : useCategoryStore.getState().getCategoryName;
   const includeUser = !!memberNames;
 
   // ── MOVEMENTS ──────────────────────────────────────────────────

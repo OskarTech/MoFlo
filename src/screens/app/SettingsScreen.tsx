@@ -32,7 +32,8 @@ import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
 import { clearPushTokens } from '../../services/firebase/pushTokens.service';
-import { clearQueueForUser } from '../../services/syncQueue.service';
+import { clearQueueForUser, clearPersonalQueueForUser } from '../../services/syncQueue.service';
+import { revokeAppleToken } from '../../services/firebase/appleAuth';
 import { reportError } from '../../services/crashReporting';
 import { resetPurchasesUser } from '../../services/revenuecat';
 import { deleteSubcollections } from '../../services/firebase/batchDelete';
@@ -306,6 +307,10 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Lo pendiente de subir se descarta primero: si no, la cola lo
+              // volvía a subir después del borrado. Solo lo personal de este
+              // usuario; lo de sus cuentas compartidas sigue su curso.
+              if (uid) await clearPersonalQueueForUser(uid);
               await AsyncStorage.multiRemove(['@moflo_movements', '@moflo_recurring', '@moflo_huchas', '@moflo_hucha_movements']);
               useMovementStore.getState().resetStore();
               useSavingsStore.getState().resetStore();
@@ -350,12 +355,13 @@ const SettingsScreen = () => {
           ]);
           await accountRef.delete();
         } else {
-          const updatedMembers = sa.members.filter(m => m !== uid);
-          const updatedNames = { ...sa.memberNames };
-          delete updatedNames[uid];
+          // Solo se quita a uno mismo, sin reescribir la lista con la copia local
           await firestore()
             .collection('sharedAccounts').doc(accountId)
-            .update({ members: updatedMembers, memberNames: updatedNames });
+            .update({
+              members: firestore.FieldValue.arrayRemove(uid),
+              [`memberNames.${uid}`]: firestore.FieldValue.delete(),
+            });
         }
       }
 
@@ -408,6 +414,16 @@ const SettingsScreen = () => {
       // Igual que al cerrar sesión: el SDK de compras no debe quedarse con la
       // identidad de una cuenta que ya no existe.
       await resetPurchasesUser();
+
+      // Apple exige revocar el token de Sign in with Apple al borrar la cuenta.
+      // Va justo antes de borrar el usuario porque Firebase lo asocia a la
+      // sesión abierta. Nunca debe impedir el borrado: si falla (por ejemplo, si
+      // la clave de Apple no está configurada en Firebase) o tarda, se registra
+      // y se sigue.
+      const revoke = revokeAppleToken().catch((e) => {
+        reportError(e, 'deleteAccount: revocar token de Apple');
+      });
+      await Promise.race([revoke, new Promise<void>((resolve) => setTimeout(resolve, 10000))]);
 
       await auth().currentUser?.delete();
     } catch (e) {
@@ -541,6 +557,18 @@ const SettingsScreen = () => {
     });
   };
 
+  // Tras salir de la cuenta compartida o borrarla hay que devolver también las
+  // huchas a la cuenta personal, igual que hace el selector del header. Antes
+  // solo se recargaban los movimientos: las huchas seguían apuntando a la
+  // cuenta compartida y lo nuevo que se creaba lo rechazaban las reglas.
+  const returnToPersonalAccount = async () => {
+    useSavingsStore.getState().setSharedAccountId(null);
+    await loadData();
+    await setSharedMode(false);
+    await useSavingsStore.getState().loadHuchas();
+    navigation.navigate('HomeTab');
+  };
+
   const handleLeave = () => {
     warningHaptic();
     Alert.alert(
@@ -553,9 +581,7 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await leaveSharedAccount();
-            await loadData();
-            await setSharedMode(false);
-            navigation.navigate('HomeTab');
+            await returnToPersonalAccount();
           },
         },
       ]
@@ -597,9 +623,7 @@ const SettingsScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await deleteSharedAccount();
-            await loadData();
-            await setSharedMode(false);
-            navigation.navigate('HomeTab');
+            await returnToPersonalAccount();
           },
         },
       ]
@@ -1402,13 +1426,15 @@ const SettingsScreen = () => {
                             style: 'destructive',
                             onPress: async () => {
                               if (!sharedAccount) return;
-                              const updatedMembers = sharedAccount.members.filter(m => m !== memberId);
-                              const updatedNames = { ...sharedAccount.memberNames };
-                              delete updatedNames[memberId];
+                              // Solo se quita a ese miembro, sin reescribir la
+                              // lista entera con la copia local
                               await firestore()
                                 .collection('sharedAccounts')
                                 .doc(sharedAccount.id)
-                                .update({ members: updatedMembers, memberNames: updatedNames });
+                                .update({
+                                  members: firestore.FieldValue.arrayRemove(memberId),
+                                  [`memberNames.${memberId}`]: firestore.FieldValue.delete(),
+                                });
                               Alert.alert('✅', t('sharedAccount.kickSuccess'));
                             },
                           },

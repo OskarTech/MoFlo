@@ -24,6 +24,7 @@ import WalkthroughOverlay from '../components/walkthrough/WalkthroughOverlay';
 import { useWalkthroughStore } from '../store/walkthroughStore';
 import { recordFirstLaunch } from '../utils/firstLaunch';
 import { maybePromptForSharedInvite } from '../utils/inviteSharedPrompt';
+import { deliverPendingInvite } from '../utils/pendingInvite';
 import { navigationRef } from './RootNavigator';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
@@ -78,6 +79,9 @@ const AppNavigator = () => {
   const activeTabRef = useRef('HomeTab');
 
   useEffect(() => {
+    // Un enlace de invitación abierto sin sesión o durante el arranque se abre
+    // ahora, que ya hay sesión y la navegación de la app existe
+    deliverPendingInvite(navigationRef);
     useWalkthroughStore.getState().checkAndStartIfNew();
     recordFirstLaunch();
     // Disparamos el prompt de invitación compartida con un retraso para no competir

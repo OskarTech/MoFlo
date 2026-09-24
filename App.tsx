@@ -15,6 +15,7 @@ import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import UpdateAvailableModal from './src/components/common/UpdateAvailableModal';
+import { receiveInviteCode } from './src/utils/pendingInvite';
 import {
   fetchAppVersionConfig, compareVersions, AppVersionConfig,
 } from './src/services/firebase/version.service';
@@ -113,28 +114,21 @@ export default function App() {
   }, [fontsLoaded]);
 
   useEffect(() => {
+    // El código se guarda y se abre en cuanto hay sesión y la app está montada
+    // (ver pendingInvite). Antes se navegaba a 'SharedAccount' desde la raíz, y
+    // en React Navigation 7 eso no llega a una pantalla que está dentro de
+    // Ajustes: el enlace abría la app y no hacía nada más.
     const processDeepLink = (url: string) => {
       const match = url.match(/[?&]code=([A-Z0-9]{6})/i);
       if (!match) return;
-      const code = match[1].toUpperCase();
-      if (navigationRef.isReady()) {
-        navigationRef.navigate('SharedAccount', { code, fromDeepLink: true });
-      }
+      receiveInviteCode(match[1].toUpperCase(), navigationRef);
     };
 
     const subscription = Linking.addEventListener('url', (event) => processDeepLink(event.url));
 
     // Cold start: app abierta desde el link
     Linking.getInitialURL().then((url) => {
-      if (!url) return;
-      const tryNavigate = (retries = 0) => {
-        if (navigationRef.isReady()) {
-          processDeepLink(url);
-        } else if (retries < 20) {
-          setTimeout(() => tryNavigate(retries + 1), 100);
-        }
-      };
-      tryNavigate();
+      if (url) processDeepLink(url);
     });
 
     return () => subscription.remove();

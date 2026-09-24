@@ -71,26 +71,12 @@ const SharedAccountScreen = () => {
 
   useEffect(() => {
     if (route.params?.code && !sharedAccount && !pendingJoinRequest) {
-      const code = route.params.code;
-      setInviteCode(code);
-      if (route.params?.fromDeepLink) {
-        setLoading(true);
-        joinSharedAccount(code.trim()).then((result) => {
-          if (result === 'pending') {
-            Alert.alert('⏳', t('sharedAccount.requestSent'));
-          } else if (result === 'invalid') {
-            Alert.alert('Error', t('sharedAccount.joinError'));
-          } else if (result === 'has_pending') {
-            Alert.alert('', t('sharedAccount.alreadyHasPending'));
-          } else if (result === 'error') {
-            Alert.alert('Error', t('sharedAccount.joinError'));
-          }
-        }).catch(() => {
-          Alert.alert('Error', t('sharedAccount.joinError'));
-        }).finally(() => setLoading(false));
-      } else {
-        setMode('join');
-      }
+      // También desde un enlace: el formulario con el código puesto, y se
+      // confirma con el botón de unirse. Antes se enviaba la solicitud sin
+      // enseñar nada, así que un toque sin querer, o abrir el enlace con la
+      // cuenta todavía cargando, mandaba una solicitud y un aviso al dueño.
+      setInviteCode(route.params.code);
+      setMode('join');
     }
   }, [route.params]);
 

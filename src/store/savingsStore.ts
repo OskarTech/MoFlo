@@ -7,6 +7,11 @@ import { maybePromptForRating } from '../utils/rateAppPrompt';
 import { useMovementStore } from './movementStore';
 import { reportError } from '../services/crashReporting';
 import { deleteRefsInChunks } from '../services/firebase/batchDelete';
+import {
+  clampDayToMonth,
+  planAutomaticContributions,
+  ContributionCandidate,
+} from '../utils/automaticContributions';
 
 const STORAGE_KEY = '@moflo_huchas';
 const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
@@ -37,11 +42,6 @@ const getUserMovementsCol = () => {
 const getSharedMovementsCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('huchaMovements');
 
-const clampDayToMonth = (year: number, monthIdx: number, day: number): number => {
-  const lastDay = new Date(year, monthIdx + 1, 0).getDate();
-  return Math.min(day, lastDay);
-};
-
 // Computes the next ISO date for a given day-of-month (1-31).
 // If today is before the chosen day, it lands on this month; otherwise next month.
 const computeNextContributionDate = (recurringDay: number, from: Date = new Date()): string => {
@@ -52,25 +52,6 @@ const computeNextContributionDate = (recurringDay: number, from: Date = new Date
   const actualDay = clampDayToMonth(year, monthIdx, day);
   // 12:00 instead of 00:00 so a time zone change doesn't shift it to the previous day/month
   return new Date(year, monthIdx, actualDay, 12).toISOString();
-};
-
-const MIN_DAYS_BETWEEN_CONTRIBUTIONS = 20;
-
-// Advance to the next month while respecting the original recurringDay
-// (clamped to month length), instead of letting JS overflow Feb 31 -> Mar 3.
-const advanceToNextMonth = (isoDate: string, recurringDay?: number): string => {
-  const d = new Date(isoDate);
-  const day = recurringDay ?? d.getDate();
-  let monthIdx = d.getMonth() + 1;
-  const year = d.getFullYear();
-  let next = new Date(year, monthIdx, clampDayToMonth(year, monthIdx, day), 12);
-  // Old dates saved at 00:00 in another time zone can read as the previous day
-  // (e.g. Oct 1 00:00 Spain = Sep 30 23:00 Portugal). Never schedule the same period again.
-  if (next.getTime() - d.getTime() < MIN_DAYS_BETWEEN_CONTRIBUTIONS * 24 * 60 * 60 * 1000) {
-    monthIdx += 1;
-    next = new Date(year, monthIdx, clampDayToMonth(year, monthIdx, day), 12);
-  }
-  return next.toISOString();
 };
 
 interface SavingsStore {
@@ -224,16 +205,25 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       if (sharedAccountId) {
         await getSharedHuchasCol(sharedAccountId).doc(id).set(firestoreData);
       } else {
-        await getUserHuchasCol().doc(id).set(firestoreData);
+        // Primero en local: esperando a Firestore, sin conexión la hucha no
+        // aparecía hasta recuperarla y era fácil crearla dos veces. Firestore
+        // guarda la escritura y la sube solo cuando vuelve la conexión.
         const updated = [hucha, ...get().huchas];
         set({ huchas: updated });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         if (updated.length === 2) {
           setTimeout(() => maybePromptForRating('second_hucha'), 600);
         }
+        await getUserHuchasCol().doc(id).set(firestoreData);
       }
     } catch (e) {
       console.error('Error creating hucha:', e);
+      // Firestore la ha rechazado: se quita para no enseñar una hucha que no existe
+      if (!sharedAccountId) {
+        const remaining = get().huchas.filter(h => h.id !== id);
+        set({ huchas: remaining });
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(remaining)).catch(() => {});
+      }
     }
   },
 
@@ -251,12 +241,16 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       Object.entries(safeData).filter(([, v]) => v !== undefined)
     ) as Record<string, unknown>;
     if (Object.keys(firestoreData).length === 0) return;
+    // Sin await: el cambio ya está en local y Firestore lo guarda y lo sube solo
+    // al recuperar la conexión. Esperándolo, sin internet el modal de edición se
+    // quedaba cargando hasta que volvía la conexión.
     try {
-      if (sharedAccountId) {
-        await getSharedHuchasCol(sharedAccountId).doc(id).set(firestoreData, { merge: true });
-      } else {
-        await getUserHuchasCol().doc(id).set(firestoreData, { merge: true });
-      }
+      const ref = sharedAccountId
+        ? getSharedHuchasCol(sharedAccountId).doc(id)
+        : getUserHuchasCol().doc(id);
+      ref.set(firestoreData, { merge: true }).catch((e) => {
+        console.error('Error updating hucha:', e);
+      });
     } catch (e) {
       console.error('Error updating hucha:', e);
     }
@@ -312,15 +306,22 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       // money while this device was offline) are summed by the server instead
       // of overwritten with the stale local value.
       const delta = type === 'deposit' ? amount : -amount;
-      await huchasCol.doc(huchaId).set(
-        { currentAmount: firestore.FieldValue.increment(delta) },
-        { merge: true }
-      );
 
       const movementsCol = sharedAccountId
         ? getSharedMovementsCol(sharedAccountId)
         : getUserMovementsCol();
-      await movementsCol.doc(movId).set(huchaMovement);
+
+      // En un solo lote: el importe y su apunte en el historial se guardan juntos
+      // o ninguno. Con dos escrituras seguidas, si la app se cerraba entre ambas
+      // sin conexión, el importe subía pero el depósito no salía en el historial.
+      const batch = firestore().batch();
+      batch.set(
+        huchasCol.doc(huchaId),
+        { currentAmount: firestore.FieldValue.increment(delta) },
+        { merge: true }
+      );
+      batch.set(movementsCol.doc(movId), huchaMovement);
+      await batch.commit();
     } catch (e) {
       console.error('Error adding to hucha:', e);
     }
@@ -412,67 +413,31 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
   applyAutomaticContributions: async () => {
     const { huchas, sharedAccountId } = get();
-    const now = new Date();
     const existingMovementIds = new Set(get().huchaMovements.map(m => m.id));
 
-    type Candidate = {
-      huchaId: string;
-      contribution: number;
-      nextDate: string;
-      movement: HuchaMovement;
-    };
-    const candidates: Candidate[] = [];
-    for (const h of huchas) {
-      if (h.closedAt) continue;
-      if (!h.isAutomatic || !h.monthlyAmount || !h.nextContributionDate) continue;
-      // Compared by day: contributions saved at 12:00 still apply from 00:00 of that day
-      const contributionDate = new Date(h.nextContributionDate);
-      const contributionDay = new Date(
-        contributionDate.getFullYear(), contributionDate.getMonth(), contributionDate.getDate(),
-      );
-      if (contributionDay > now) continue;
-      const hasTarget = h.targetAmount > 0;
-      if (hasTarget && h.currentAmount >= h.targetAmount) continue;
-
-      const contribution = hasTarget
-        ? Math.min(h.monthlyAmount, h.targetAmount - h.currentAmount)
-        : h.monthlyAmount;
-      if (contribution <= 0) continue;
-
-      // Deterministic id per (hucha, period) so two shared-account devices
-      // running this at the same time collide on the same movement doc and
-      // the transaction below detects the duplicate instead of double-applying.
-      const periodKey = h.nextContributionDate.slice(0, 10);
-      const movementId = `hm_auto_${h.id}_${periodKey}`;
-      if (existingMovementIds.has(movementId)) continue;
-      const nowIso = new Date().toISOString();
-
-      candidates.push({
-        huchaId: h.id,
-        contribution,
-        nextDate: advanceToNextMonth(h.nextContributionDate, h.recurringDay),
-        movement: {
-          id: movementId,
-          huchaId: h.id,
-          huchaName: h.name,
-          huchaColor: h.color,
-          type: 'deposit',
-          amount: contribution,
-          date: h.nextContributionDate,
-          createdAt: nowIso,
-        },
-      });
-    }
-
+    // Todos los meses vencidos de cada hucha, en orden (antes, uno por arranque)
+    const candidates = planAutomaticContributions(huchas, existingMovementIds, new Date());
     if (candidates.length === 0) return;
+
+    // Agrupadas por hucha, manteniendo el orden de los meses
+    const byHucha = new Map<string, ContributionCandidate[]>();
+    for (const c of candidates) {
+      const list = byHucha.get(c.huchaId) ?? [];
+      list.push(c);
+      byHucha.set(c.huchaId, list);
+    }
 
     // Optimistic local update — UI feels instant; the snapshot listener will
     // reconcile with server state if any transaction below fails.
     const updatedHuchas = huchas.map(h => {
-      const c = candidates.find(x => x.huchaId === h.id);
-      return c
-        ? { ...h, currentAmount: h.currentAmount + c.contribution, nextContributionDate: c.nextDate }
-        : h;
+      const list = byHucha.get(h.id);
+      if (!list) return h;
+      const total = list.reduce((acc, c) => acc + c.contribution, 0);
+      return {
+        ...h,
+        currentAmount: h.currentAmount + total,
+        nextContributionDate: list[list.length - 1].nextDate,
+      };
     });
     set({ huchas: updatedHuchas });
     const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
@@ -490,22 +455,27 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     // Apply each contribution in a Firestore transaction. The movement doc
     // acts as the lock: if it already exists (another member already applied
     // this period), we skip the write so currentAmount isn't double-incremented.
-    // Run in parallel for speed.
-    await Promise.all(candidates.map(async (c) => {
-      try {
-        const huchaRef = huchasCol.doc(c.huchaId);
-        const movRef = movementsCol.doc(c.movement.id);
-        await firestore().runTransaction(async (tx) => {
-          const movSnap = await tx.get(movRef);
-          if (movSnap.exists()) return;
-          tx.set(movRef, c.movement);
-          tx.set(huchaRef, {
-            currentAmount: firestore.FieldValue.increment(c.contribution),
-            nextContributionDate: c.nextDate,
-          }, { merge: true });
-        });
-      } catch (e) {
-        console.error('Error applying automatic contribution:', e);
+    // Huchas in parallel; the months of one hucha in order, because each one
+    // moves nextContributionDate forward. If a month fails, the later ones are
+    // left for the next launch so the date never skips a pending month.
+    await Promise.all([...byHucha.values()].map(async (list) => {
+      for (const c of list) {
+        try {
+          const huchaRef = huchasCol.doc(c.huchaId);
+          const movRef = movementsCol.doc(c.movement.id);
+          await firestore().runTransaction(async (tx) => {
+            const movSnap = await tx.get(movRef);
+            if (movSnap.exists()) return;
+            tx.set(movRef, c.movement);
+            tx.set(huchaRef, {
+              currentAmount: firestore.FieldValue.increment(c.contribution),
+              nextContributionDate: c.nextDate,
+            }, { merge: true });
+          });
+        } catch (e) {
+          console.error('Error applying automatic contribution:', e);
+          break;
+        }
       }
     }));
   },

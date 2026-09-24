@@ -358,6 +358,11 @@ export const onSharedMovementCreated = onDocumentCreated(
   async (event) => {
     const movement = event.data?.data();
     if (!movement) return;
+    // Los movimientos de un recurrente los crea automáticamente la app del primer
+    // miembro que la abre a partir del día del cargo. Avisar decía que los había
+    // añadido esa persona, y al recuperar meses atrasados llegaban varios de golpe.
+    // Solo se avisa de lo que alguien añade a mano (la app los crea con false).
+    if (movement.isRecurring === true) return;
     const accountId = event.params.accountId;
     const addedBy: string | undefined = movement.addedBy;
     if (!addedBy) return;

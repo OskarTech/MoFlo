@@ -18,7 +18,7 @@ import { Movement, MovementType, HuchaMovement, RecurringMovement } from '../../
 import AppHeader from '../../components/common/AppHeader';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 import AddMovementModal from '../../components/movements/AddMovementModal';
-import { formatDate } from '../../utils/dateFormat';
+import { formatDate, getDateLocale } from '../../utils/dateFormat';
 import { formatAmount } from '../../utils/formatAmount';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
@@ -62,7 +62,7 @@ const MovementRowBase = ({
       return `${t('home.today')}, ${hh}:${mm}`;
     }
     if (movMidnight.getTime() === yesterdayMidnight.getTime()) return t('home.yesterday');
-    const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+    const locale = getDateLocale(language);
     return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   };
 

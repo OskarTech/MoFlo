@@ -84,6 +84,7 @@ interface SettingsStore {
     hapticsEnabled: boolean;
   }>) => Promise<void>;
   getCurrencySymbol: () => string;
+  adoptDisplayNameIfMissing: (name?: string | null, persist?: boolean) => Promise<void>;
   resetStore: () => void;
 }
 
@@ -122,8 +123,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const uid = auth().currentUser?.uid;
       if (!uid) return;
 
+      // Solo si Firestore ha respondido se sabe de verdad que no hay nombre
+      let firestoreChecked = false;
       try {
         const firestoreSettings = await fetchSettingsFromFirestore();
+        firestoreChecked = true;
         const hasLanguage = isSupportedLanguage(firestoreSettings?.language);
         const language = hasLanguage
           ? firestoreSettings!.language
@@ -155,6 +159,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           console.error('Error syncing settings from Firestore:', firestoreError);
         }
       }
+
+      // Con Google o Apple nadie guardaba el nombre en los ajustes: el Home
+      // saludaba con "Usuario" hasta que se cambiaba a mano. Se toma el de la
+      // cuenta si todavía no hay ninguno.
+      await get().adoptDisplayNameIfMissing(auth().currentUser?.displayName, firestoreChecked);
     } catch (e) {
       console.error('Error loading settings:', e);
     } finally {
@@ -203,5 +212,29 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   getCurrencySymbol: () => {
     const { currencyCode } = get();
     return CURRENCIES.find((c) => c.code === currencyCode)?.symbol ?? '€';
+  },
+
+  // Rellena el nombre solo si todavía no hay ninguno. `persist` solo cuando se
+  // sabe que Firestore tampoco lo tiene: si no se ha podido comprobar (sin
+  // conexión, por ejemplo), se queda en esta sesión y no pisa nunca un nombre
+  // que el usuario haya puesto a mano. En la siguiente carga manda Firestore.
+  adoptDisplayNameIfMissing: async (name, persist = false) => {
+    const trimmed = name?.trim();
+    if (!trimmed || get().displayName) return;
+    set({ displayName: trimmed });
+    if (!persist) return;
+
+    const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled } = get();
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
+      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+    })).catch(() => {});
+    const uid = auth().currentUser?.uid;
+    if (uid) {
+      // Sin await: con mala conexión no bloquea el arranque
+      firestore()
+        .collection('users').doc(uid)
+        .set({ settings: { displayName: trimmed } }, { merge: true })
+        .catch(() => {});
+    }
   },
 }));

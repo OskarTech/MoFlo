@@ -159,14 +159,16 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       JSON.stringify(updated)
     );
 
+    // arrayUnion en vez de la lista local entera: dos miembros ocultando a la
+    // vez se pisaban y una de las dos se perdía
     try {
       await firestore()
         .collection('sharedAccounts').doc(accountId)
-        .update({ hiddenCategories: updated });
+        .update({ hiddenCategories: firestore.FieldValue.arrayUnion(key) });
     } catch (e) {
       await firestore()
         .collection('sharedAccounts').doc(accountId)
-        .set({ hiddenCategories: updated }, { merge: true });
+        .set({ hiddenCategories: firestore.FieldValue.arrayUnion(key) }, { merge: true });
     }
   },
 

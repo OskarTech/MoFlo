@@ -234,3 +234,22 @@ export const clearQueueForUser = async (uid: string): Promise<void> => {
   const remaining = queue.filter((op) => !!op.uid && op.uid !== uid);
   await saveQueue(remaining);
 };
+
+const PERSONAL_OPERATION_TYPES: QueueOperation['type'][] = [
+  'ADD_MOVEMENT', 'DELETE_MOVEMENT', 'ADD_RECURRING', 'DELETE_RECURRING',
+];
+
+/**
+ * Descarta lo pendiente de los datos personales de un usuario y respeta todo lo
+ * demás: lo de sus cuentas compartidas y lo de otras personas. Lo usa "Borrar
+ * datos": sin esto, lo que estuviera por subir se volvía a subir después del
+ * borrado. clearQueueForUser no sirve aquí porque se llevaría también lo
+ * pendiente de las cuentas compartidas, que no se están borrando.
+ */
+export const clearPersonalQueueForUser = async (uid: string): Promise<void> => {
+  const queue = await loadQueue();
+  // Sin uid: cola anterior a esta versión, que solo puede ser del usuario activo
+  const remaining = queue.filter((op) =>
+    !PERSONAL_OPERATION_TYPES.includes(op.type) || (!!op.uid && op.uid !== uid));
+  await saveQueue(remaining);
+};

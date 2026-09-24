@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
 import { loginWithEmail, loginWithGoogle, signInWithApple } from '../../services/firebase/auth.service';
+import auth from '@react-native-firebase/auth';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 
@@ -64,7 +66,13 @@ const LoginScreen = ({ navigation }: Props) => {
   const handleAppleSignIn = async () => {
     setIsAppleLoading(true);
     try {
-      await signInWithApple();
+      const signedIn = await signInWithApple();
+      // Apple solo da el nombre la primera vez y signInWithApple lo guarda en la
+      // cuenta después de iniciar sesión, cuando los ajustes ya se han cargado.
+      // Aquí se recoge para esta sesión; la siguiente carga lo guarda en Firestore.
+      if (signedIn) {
+        await useSettingsStore.getState().adoptDisplayNameIfMissing(auth().currentUser?.displayName);
+      }
     } catch (e) {
       Alert.alert('Error', t('auth.appleSignInError'));
     } finally {

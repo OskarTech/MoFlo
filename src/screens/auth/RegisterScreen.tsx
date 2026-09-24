@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
 import { registerWithEmail } from '../../services/firebase/auth.service';
 import { initializeNewUser } from '../../services/firebase/firestore.service';
+import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 
@@ -40,6 +41,10 @@ const RegisterScreen = ({ navigation }: Props) => {
     try {
       await registerWithEmail(email, password);
       await initializeNewUser(name);
+      // Los ajustes se cargan en cuanto se crea la sesión, casi siempre antes de
+      // que initializeNewUser guarde el nombre: el Home saludaba con "Usuario"
+      // hasta el siguiente arranque. Firestore ya lo tiene; aquí solo en local.
+      await useSettingsStore.getState().adoptDisplayNameIfMissing(name);
     } catch (e: any) {
       switch (e.code) {
         case 'auth/email-already-in-use':

@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
+import { getDateLocale } from '../../utils/dateFormat';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
 import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
 import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
@@ -221,7 +222,7 @@ const HomeScreen = () => {
     if (movMidnight.getTime() === yesterdayMidnight.getTime()) {
       return t('home.yesterday');
     }
-    const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+    const locale = getDateLocale(language);
     return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   };
 
@@ -273,7 +274,7 @@ const HomeScreen = () => {
       >
         {(() => {
           const today = new Date();
-          const locale = language === 'pl' ? 'pl-PL' : language === 'en' ? 'en-US' : 'es-ES';
+          const locale = getDateLocale(language);
           const dayName = today.toLocaleDateString(locale, { weekday: 'long' }).toUpperCase();
           const monthName = t(`home.month_${today.getMonth()}`).toUpperCase();
           return (
