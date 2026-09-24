@@ -1426,16 +1426,22 @@ const SettingsScreen = () => {
                             style: 'destructive',
                             onPress: async () => {
                               if (!sharedAccount) return;
-                              // Solo se quita a ese miembro, sin reescribir la
-                              // lista entera con la copia local
-                              await firestore()
-                                .collection('sharedAccounts')
-                                .doc(sharedAccount.id)
-                                .update({
-                                  members: firestore.FieldValue.arrayRemove(memberId),
-                                  [`memberNames.${memberId}`]: firestore.FieldValue.delete(),
-                                });
-                              Alert.alert('✅', t('sharedAccount.kickSuccess'));
+                              try {
+                                // Solo se quita a ese miembro, sin reescribir la
+                                // lista entera con la copia local
+                                await firestore()
+                                  .collection('sharedAccounts')
+                                  .doc(sharedAccount.id)
+                                  .update({
+                                    members: firestore.FieldValue.arrayRemove(memberId),
+                                    [`memberNames.${memberId}`]: firestore.FieldValue.delete(),
+                                  });
+                                Alert.alert('✅', t('sharedAccount.kickSuccess'));
+                              } catch (e) {
+                                // Antes un fallo no enseñaba nada: solo faltaba el ✅
+                                reportError(e, 'kickMember');
+                                Alert.alert('Error', t('auth.errorGeneral'));
+                              }
                             },
                           },
                         ]

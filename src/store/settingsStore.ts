@@ -8,6 +8,7 @@ import {
   fetchSettingsFromFirestore,
 } from '../services/firebase/firestore.service';
 import { ColorPaletteId } from '../theme';
+import { refreshDailyNotificationLanguage } from '../services/notifications.service';
 
 const syncDisplayNameToSharedAccounts = async (uid: string, displayName: string) => {
   const snapshot = await firestore()
@@ -164,6 +165,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       // saludaba con "Usuario" hasta que se cambiaba a mano. Se toma el de la
       // cuenta si todavía no hay ninguno.
       await get().adoptDisplayNameIfMissing(auth().currentUser?.displayName, firestoreChecked);
+
+      // Si el idioma cambió (por ejemplo, desde otro dispositivo), la diaria se
+      // reprograma con el texto nuevo. Sin await: no retrasa el arranque.
+      refreshDailyNotificationLanguage();
     } catch (e) {
       console.error('Error loading settings:', e);
     } finally {
@@ -206,6 +211,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     if (newSettings.language) {
       await i18n.changeLanguage(newSettings.language);
+      await refreshDailyNotificationLanguage();
     }
   },
 

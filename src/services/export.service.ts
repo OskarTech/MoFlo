@@ -4,6 +4,9 @@ import { Movement, Hucha, RecurringMovement, HuchaMovement } from '../types';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
+// Fechas con el ajuste DD/MM o MM/DD de la app (o el de la cuenta compartida),
+// igual que en pantalla. Antes salían con el formato del sistema del móvil.
+import { formatDate } from '../utils/dateFormat';
 
 const escapeCSV = (value: string) => {
   if (
@@ -63,7 +66,7 @@ export const exportMovementsToCSV = async (
   const movRows = [...movements]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map((m) => {
-      const date = new Date(m.date).toLocaleDateString();
+      const date = formatDate(m.date);
       const type = t(`movements.${m.type}`);
       const category = getCategoryName(m.category, m.type, t);
       const amount = m.type === 'income'
@@ -148,8 +151,8 @@ export const exportMovementsToCSV = async (
       const automatic = h.isAutomatic ? t('export.yes') : t('export.no');
       const monthly = h.isAutomatic && h.monthlyAmount ? h.monthlyAmount.toFixed(2) : '—';
       const day = h.isAutomatic && h.recurringDay ? String(h.recurringDay) : '—';
-      const created = new Date(h.createdAt).toLocaleDateString();
-      const closed = h.closedAt ? new Date(h.closedAt).toLocaleDateString() : '—';
+      const created = formatDate(h.createdAt);
+      const closed = h.closedAt ? formatDate(h.closedAt) : '—';
 
       return [
         escapeCSVText(h.name),
@@ -178,7 +181,7 @@ export const exportMovementsToCSV = async (
   const huchaMovRows = [...huchaMovements]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map((hm) => {
-      const date = new Date(hm.date).toLocaleDateString();
+      const date = formatDate(hm.date);
       const type = hm.type === 'deposit' ? t('export.deposit') : t('export.withdrawal');
       const amount = hm.type === 'deposit'
         ? `+${hm.amount.toFixed(2)}`

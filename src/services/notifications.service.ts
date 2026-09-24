@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import i18n from '../i18n';
 
 // Canal Android para notificaciones locales y push (la Cloud Function envía con channelId 'default').
 // En Android 8+ una notificación sin canal válido no se muestra.
@@ -8,6 +10,10 @@ export const ANDROID_CHANNEL_ID = 'default';
 // Identificador fijo de la notificación diaria: permite cancelarla sin tocar los recordatorios
 const DAILY_NOTIFICATION_ID = 'moflo_daily_notification';
 const DAILY_NOTIFICATION_TITLE = '💰 MoFlo';
+// La misma clave que usa Ajustes para saber si la diaria está activada
+const DAILY_ENABLED_KEY = '@moflo_daily_notif';
+// Idioma del texto con el que se programó la diaria
+const DAILY_LANGUAGE_KEY = '@moflo_daily_notif_language';
 
 export const ensureNotificationChannel = async (): Promise<void> => {
   if (Platform.OS !== 'android') return;
@@ -52,4 +58,21 @@ export const scheduleDailyNotification = async (body: string): Promise<void> => 
       channelId: ANDROID_CHANNEL_ID,
     },
   });
+  await AsyncStorage.setItem(DAILY_LANGUAGE_KEY, i18n.language).catch(() => {});
+};
+
+/**
+ * La notificación diaria se programa con el texto del idioma de ese momento y
+ * se quedaba así aunque después se cambiara el idioma de la app. Si está
+ * activada y se programó en otro idioma, se vuelve a programar con el actual.
+ * Si no ha cambiado no hace nada, así que se puede llamar en cada arranque.
+ */
+export const refreshDailyNotificationLanguage = async (): Promise<void> => {
+  try {
+    if ((await AsyncStorage.getItem(DAILY_ENABLED_KEY)) !== 'true') return;
+    if ((await AsyncStorage.getItem(DAILY_LANGUAGE_KEY)) === i18n.language) return;
+    await scheduleDailyNotification(i18n.t('settings.notifMovementsSubtitle'));
+  } catch (e) {
+    console.warn('Failed to refresh daily notification language', e);
+  }
 };

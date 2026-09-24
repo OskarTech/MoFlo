@@ -343,17 +343,29 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
     try {
-      // En lotes de 450, por si una hucha muy antigua acumula más de 500 movimientos
-      if (sharedAccountId) {
-        await getSharedHuchasCol(sharedAccountId).doc(id).delete();
-        const movSnap = await getSharedMovementsCol(sharedAccountId)
-          .where('huchaId', '==', id).get();
-        await deleteRefsInChunks(movSnap.docs.map(d => d.ref));
-      } else {
-        await getUserHuchasCol().doc(id).delete();
-        const movSnap = await getUserMovementsCol().where('huchaId', '==', id).get();
-        await deleteRefsInChunks(movSnap.docs.map(d => d.ref));
+      const huchaRef = sharedAccountId
+        ? getSharedHuchasCol(sharedAccountId).doc(id)
+        : getUserHuchasCol().doc(id);
+      const movementsCol = sharedAccountId
+        ? getSharedMovementsCol(sharedAccountId)
+        : getUserMovementsCol();
+
+      // Primero se buscan sus apuntes y después se borra todo junto, con la
+      // hucha al final. Antes se borraba la hucha y luego se buscaban: si la app
+      // se cerraba entre medias sin conexión, los apuntes quedaban sueltos en el
+      // historial. Si la búsqueda falla, al menos se borra la hucha, como antes.
+      let movementRefs: typeof huchaRef[] = [];
+      try {
+        const movSnap = await movementsCol.where('huchaId', '==', id).get();
+        movementRefs = movSnap.docs.map(d => d.ref);
+      } catch (e) {
+        console.error('Error finding hucha movements:', e);
       }
+
+      // En lotes de 450, por si una hucha muy antigua acumula más de 500
+      // movimientos. La hucha va en el último: si un lote falla, sigue en pie
+      // y el borrado se puede repetir.
+      await deleteRefsInChunks([...movementRefs, huchaRef]);
     } catch (e) {
       console.error('Error deleting hucha:', e);
     }

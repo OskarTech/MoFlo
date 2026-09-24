@@ -30,7 +30,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     // La pantalla promete al usuario que el error queda registrado; hasta ahora
     // en producción no se guardaba en ninguna parte y la promesa era falsa.
-    reportError(error, `ErrorBoundary${info.componentStack ?? ''}`);
+    // Solo las primeras pantallas del árbol: el componentStack entero ocupa
+    // miles de caracteres y en Crashlytics se veía como un bloque ilegible
+    const stack = (info.componentStack ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(' < ');
+    reportError(error, stack ? `ErrorBoundary: ${stack}` : 'ErrorBoundary');
   }
 
   reset = () => this.setState({ hasError: false });
