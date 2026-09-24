@@ -15,7 +15,7 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../common/PremiumModal';
-import { navigationRef } from '../../navigation/RootNavigator';
+import { navigationRef } from '../../navigation/navigationRef';
 import { MovementType, RecurringMovement } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
 import { parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';

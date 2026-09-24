@@ -25,7 +25,7 @@ import { useWalkthroughStore } from '../store/walkthroughStore';
 import { recordFirstLaunch } from '../utils/firstLaunch';
 import { maybePromptForSharedInvite } from '../utils/inviteSharedPrompt';
 import { deliverPendingInvite } from '../utils/pendingInvite';
-import { navigationRef } from './RootNavigator';
+import { navigationRef } from './navigationRef';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { Ionicons } from '@expo/vector-icons';

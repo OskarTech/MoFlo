@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { ActivityIndicator, AppState, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-export const navigationRef = createNavigationContainerRef<any>();
+import { navigationRef } from './navigationRef';
+// Se sigue exportando desde aquí para no cambiar a quien ya lo importa (App.tsx)
+export { navigationRef };
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
