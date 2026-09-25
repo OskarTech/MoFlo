@@ -14,6 +14,9 @@ import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
 import { getDateLocale } from '../../utils/dateFormat';
+import { getMemberLabel } from '../../utils/memberLabel';
+import MemberName from '../../components/common/MemberName';
+import StrikeText from '../../components/common/StrikeText';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
 import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
 import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
@@ -154,9 +157,9 @@ const HomeScreen = () => {
   }, [wtIsActive, wtCurrentStep]);
 
   const { getCurrencySymbol, displayName, language } = useSettingsStore();
-  const { getCategoryName, getCategoriesForType } = useCategoryStore();
+  const { getCategoryName, getCategoryIcon, isCategoryDeleted } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
-  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
+  const { getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted } = useSharedCategoryStore();
   const navigation = useNavigation<any>();
 
   const {
@@ -192,19 +195,19 @@ const HomeScreen = () => {
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
-  const getCatIcon = (id: string): keyof typeof Ionicons.glyphMap => {
-    const cats = isSharedMode
-      ? getSharedCategoriesForType('expense')
-      : getCategoriesForType('expense');
-    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
-  };
+  // Tachada si la categoría está borrada, igual que en el historial
+  const renderCatName = (id: string, type: MovementType) => (
+    <StrikeText struck={isSharedMode ? isSharedCategoryDeleted(id, type) : isCategoryDeleted(id, type)}>
+      {getCatName(id, type)}
+    </StrikeText>
+  );
 
   const getCatIconForType = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
-    const cats = isSharedMode
-      ? getSharedCategoriesForType(type)
-      : getCategoriesForType(type);
-    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+    const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
+    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
   };
+
+  const getCatIcon = (id: string): keyof typeof Ionicons.glyphMap => getCatIconForType(id, 'expense');
 
   const formatMovementTime = (dateStr: string): string => {
     const date = new Date(dateStr);
@@ -332,7 +335,7 @@ const HomeScreen = () => {
                       <View style={styles.catContent}>
                         <View style={styles.catHeader}>
                           <Text style={[styles.categoryName, { color: dc.textPrimary }]} numberOfLines={1}>
-                            {getCatName(category, 'expense')}
+                            {renderCatName(category, 'expense')}
                           </Text>
                           <Text style={[styles.categoryAmount, { color: dc.textPrimary }]}>
                             {formatAmount(amount)} {currencySymbol}
@@ -379,17 +382,19 @@ const HomeScreen = () => {
                 const isIncome = mov.type === 'income';
                 const color = isIncome ? dc.income : dc.expense;
                 const icon = getCatIconForType(mov.category, mov.type as MovementType);
-                const title = mov.note || getCatName(mov.category, mov.type as MovementType);
                 const hasNote = !!mov.note;
-                const catLabel = getCatName(mov.category, mov.type as MovementType);
+                const catLabel = renderCatName(mov.category, mov.type as MovementType);
+                // Con nota, la categoría pasa a la línea de abajo
+                const title = mov.note || catLabel;
                 const timeLabel = formatMovementTime(mov.date);
-                const userName = isSharedMode && mov.isRecurring
+                // Recurrentes con su etiqueta; lo demás, con quien lo añadió
+                // (tachado si ya no está en la cuenta)
+                const recurringLabel = isSharedMode && mov.isRecurring
                   ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
-                  : isSharedMode && mov.addedBy
-                    ? sharedAccount?.memberNames?.[mov.addedBy]
-                    : undefined;
-                const dateAndCat = hasNote ? `${timeLabel} · ${catLabel}` : timeLabel;
-                const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
+                  : undefined;
+                const member = isSharedMode && !mov.isRecurring
+                  ? getMemberLabel(sharedAccount, mov.addedBy, t('sharedAccount.formerMember'))
+                  : undefined;
                 const amountColor = isIncome ? dc.income : dc.expense;
                 const amountStr = `${isIncome ? '+' : '-'}${formatAmount(mov.amount)} ${currencySymbol}`;
 
@@ -405,7 +410,10 @@ const HomeScreen = () => {
                           {title}
                         </Text>
                         <Text style={[styles.recentSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
-                          {subtitle}
+                          {recurringLabel ? `${recurringLabel} · ` : null}
+                          {member ? <><MemberName member={member} />{' · '}</> : null}
+                          {timeLabel}
+                          {hasNote ? <>{' · '}{catLabel}</> : null}
                         </Text>
                       </View>
                       <Text style={[styles.recentAmount, { color: amountColor }]}>{amountStr}</Text>

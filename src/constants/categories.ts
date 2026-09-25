@@ -26,3 +26,8 @@ export const BASE_CATEGORIES: BaseCategory[] = [
 
 export const getBaseByType = (type: MovementType): BaseCategory[] =>
   BASE_CATEGORIES.filter((c) => c.type === type);
+
+// También de las ocultas: los movimientos que ya las usan siguen con su icono
+export const getBaseCategoryIcon = (id: string, type: MovementType): string | undefined =>
+  (BASE_CATEGORIES.find((c) => c.id === id && c.type === type)
+    ?? BASE_CATEGORIES.find((c) => c.id === id))?.icon;

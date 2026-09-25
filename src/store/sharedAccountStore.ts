@@ -623,13 +623,13 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     if (!uid || !sharedAccount) return;
 
     // Solo se quita a uno mismo: reescribiendo la lista entera con la copia
-    // local, si alguien había entrado mientras tanto las reglas lo rechazaban
+    // local, si alguien había entrado mientras tanto las reglas lo rechazaban.
+    // El nombre se queda en memberNames: lo que añadió sigue firmado, tachado.
     await firestore()
       .collection('sharedAccounts')
       .doc(sharedAccount.id)
       .update({
         members: firestore.FieldValue.arrayRemove(uid),
-        [`memberNames.${uid}`]: firestore.FieldValue.delete(),
       });
 
     get().unsubscribeAll();

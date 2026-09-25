@@ -355,7 +355,9 @@ const SettingsScreen = () => {
           ]);
           await accountRef.delete();
         } else {
-          // Solo se quita a uno mismo, sin reescribir la lista con la copia local
+          // Solo se quita a uno mismo, sin reescribir la lista con la copia local.
+          // Aquí el nombre sí se borra, porque borra su cuenta y con ella sus
+          // datos: lo que añadió queda firmado como antiguo miembro.
           await firestore()
             .collection('sharedAccounts').doc(accountId)
             .update({
@@ -1428,13 +1430,13 @@ const SettingsScreen = () => {
                               if (!sharedAccount) return;
                               try {
                                 // Solo se quita a ese miembro, sin reescribir la
-                                // lista entera con la copia local
+                                // lista entera con la copia local. Su nombre se
+                                // queda: lo que añadió sigue firmado, tachado.
                                 await firestore()
                                   .collection('sharedAccounts')
                                   .doc(sharedAccount.id)
                                   .update({
                                     members: firestore.FieldValue.arrayRemove(memberId),
-                                    [`memberNames.${memberId}`]: firestore.FieldValue.delete(),
                                   });
                                 Alert.alert('✅', t('sharedAccount.kickSuccess'));
                               } catch (e) {

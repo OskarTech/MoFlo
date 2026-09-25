@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import { Category, MovementType } from '../types';
-import { BASE_CATEGORIES } from '../constants/categories';
+import { BASE_CATEGORIES, getBaseCategoryIcon } from '../constants/categories';
 
 const SHARED_CUSTOM_KEY = '@moflo_shared_custom_categories';
 const SHARED_HIDDEN_KEY = '@moflo_shared_hidden_categories';
@@ -14,6 +14,9 @@ interface SharedCategoryStore {
   sharedCustomCategories: Category[];
   sharedHiddenCategories: string[];
   isLoading: boolean;
+  // El botón + de la barra la activa en la pantalla de categorías compartidas
+  showAddCategoryModal: boolean;
+  setShowAddCategoryModal: (show: boolean) => void;
 
   loadSharedCategories: (accountId: string) => Promise<void>;
   addSharedCategory: (accountId: string, category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
@@ -22,6 +25,8 @@ interface SharedCategoryStore {
   hideSharedBaseCategory: (accountId: string, id: string, type: MovementType) => Promise<void>;
   getSharedCategoriesForType: (type: MovementType) => { id: string; name: string; icon: string; isCustom: boolean }[];
   getSharedCategoryName: (id: string, type: MovementType, t: (key: string) => string) => string;
+  getSharedCategoryIcon: (id: string, type: MovementType) => string;
+  isSharedCategoryDeleted: (id: string, type: MovementType) => boolean;
   resetSharedCategories: () => void;
   subscribeToSharedCategories: (accountId: string) => void;
   unsubscribeCategories: () => void;
@@ -31,6 +36,9 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
   sharedCustomCategories: [],
   sharedHiddenCategories: [],
   isLoading: false,
+  showAddCategoryModal: false,
+
+  setShowAddCategoryModal: (show) => set({ showAddCategoryModal: show }),
 
   resetSharedCategories: () => {
     if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
@@ -191,6 +199,21 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
     const custom = get().sharedCustomCategories.find(c => c.id === id);
     if (custom) return custom.name;
     return t(`movements.categories.${id}`);
+  },
+
+  // Como el nombre, incluye las borradas y las ocultas (getSharedCategoriesForType
+  // no): un movimiento conserva el icono aunque su categoría ya no se pueda elegir
+  getSharedCategoryIcon: (id, type) =>
+    get().sharedCustomCategories.find(c => c.id === id)?.icon
+      ?? getBaseCategoryIcon(id, type)
+      ?? 'ellipsis-horizontal',
+
+  // Borrada, o predeterminada y oculta (en pantalla también se "elimina"): ya no
+  // se puede elegir, pero los movimientos que la usan la muestran tachada
+  isSharedCategoryDeleted: (id, type) => {
+    const custom = get().sharedCustomCategories.find(c => c.id === id);
+    if (custom) return !!custom.deleted;
+    return get().sharedHiddenCategories.includes(`${id}_${type}`);
   },
 
   unsubscribeCategories: () => {

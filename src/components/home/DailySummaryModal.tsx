@@ -15,6 +15,9 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Movement, MovementType } from '../../types';
 import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
+import { getMemberLabel } from '../../utils/memberLabel';
+import MemberName from '../common/MemberName';
+import StrikeText from '../common/StrikeText';
 
 const CAT_COLORS = [
   '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
@@ -72,9 +75,9 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
   const { width: winW, height: winH } = useWindowDimensions();
   const { movements } = useMovementStore();
   const { getCurrencySymbol, language } = useSettingsStore();
-  const { getCategoryName, getCategoriesForType } = useCategoryStore();
+  const { getCategoryName, getCategoryIcon, isCategoryDeleted } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
-  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
+  const { getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted } = useSharedCategoryStore();
 
   // 0 = hoy, -1 = ayer, ...
   const [dayOffset, setDayOffset] = useState(0);
@@ -176,9 +179,16 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
+  // Tachada si la categoría está borrada, igual que en el historial
+  const renderCatName = (id: string, type: MovementType) => (
+    <StrikeText struck={isSharedMode ? isSharedCategoryDeleted(id, type) : isCategoryDeleted(id, type)}>
+      {getCatName(id, type)}
+    </StrikeText>
+  );
+
   const getCatIcon = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
-    const cats = isSharedMode ? getSharedCategoriesForType(type) : getCategoriesForType(type);
-    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+    const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
+    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
   };
 
   // Día seleccionado: de 00:00 a 23:59:59 en hora local (seguro frente a cambios de horario)
@@ -265,7 +275,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
                   </View>
                   <View style={styles.catContent}>
                     <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
-                      {getCatName(g.category, g.type)}
+                      {renderCatName(g.category, g.type)}
                     </Text>
                     <Text style={[styles.catCount, { color: dc.textSecondary }]}>
                       {t('home.movementCount', { count: g.movements.length })}
@@ -286,20 +296,23 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
                     {g.movements.map((mov, idx) => {
                       const d = new Date(mov.date);
                       const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                      const userName = isSharedMode && mov.addedBy
-                        ? sharedAccount?.memberNames?.[mov.addedBy]
+                      // Tachado si quien lo añadió ya no está en la cuenta
+                      const member = isSharedMode
+                        ? getMemberLabel(sharedAccount, mov.addedBy, t('sharedAccount.formerMember'))
                         : undefined;
                       // Los recurrentes se generan a las 00:00: se muestra la etiqueta en vez de la hora
                       const subtitle = mov.isRecurring
                         ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
-                        : userName ? `${time} · ${userName}` : time;
+                        : member
+                          ? <>{`${time} · `}<MemberName member={member} /></>
+                          : time;
                       return (
                         <View key={mov.id}>
                           {idx > 0 && <View style={[styles.movDivider, { backgroundColor: g.color + '30' }]} />}
                           <View style={styles.movRow}>
                             <View style={styles.movInfo}>
                               <Text style={[styles.movTitle, { color: dc.textPrimary }]} numberOfLines={1}>
-                                {mov.note || getCatName(mov.category, mov.type)}
+                                {mov.note || renderCatName(mov.category, mov.type)}
                               </Text>
                               <Text style={[styles.movSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
                                 {subtitle}

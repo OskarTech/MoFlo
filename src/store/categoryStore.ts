@@ -4,7 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Category, MovementType } from '../types';
-import { BASE_CATEGORIES } from '../constants/categories';
+import { BASE_CATEGORIES, getBaseCategoryIcon } from '../constants/categories';
 
 const CUSTOM_KEY = '@moflo_custom_categories';
 const HIDDEN_KEY = '@moflo_hidden_base';
@@ -16,6 +16,9 @@ interface CategoryStore {
   customCategories: Category[];
   hiddenBaseCategories: string[];
   isLoading: boolean;
+  // El botón + de la barra la activa en la pantalla de categorías
+  showAddCategoryModal: boolean;
+  setShowAddCategoryModal: (show: boolean) => void;
 
   loadCategories: () => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
@@ -29,6 +32,8 @@ interface CategoryStore {
     isCustom: boolean;
   }[];
   getCategoryName: (id: string, type: MovementType, t: (key: string) => string) => string;
+  getCategoryIcon: (id: string, type: MovementType) => string;
+  isCategoryDeleted: (id: string, type: MovementType) => boolean;
   subscribeToCategories: () => void;
   unsubscribeCategories: () => void;
   resetStore: () => void;
@@ -38,6 +43,9 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   customCategories: [],
   hiddenBaseCategories: [],
   isLoading: false,
+  showAddCategoryModal: false,
+
+  setShowAddCategoryModal: (show) => set({ showAddCategoryModal: show }),
 
   resetStore: () => {
     if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
@@ -204,6 +212,21 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     const custom = get().customCategories.find(c => c.id === id);
     if (custom) return custom.name;
     return t(`movements.categories.${id}`);
+  },
+
+  // Como el nombre, incluye las borradas y las ocultas (getCategoriesForType no):
+  // un movimiento conserva el icono aunque su categoría ya no se pueda elegir
+  getCategoryIcon: (id, type) =>
+    get().customCategories.find(c => c.id === id)?.icon
+      ?? getBaseCategoryIcon(id, type)
+      ?? 'ellipsis-horizontal',
+
+  // Borrada, o predeterminada y oculta (en pantalla también se "elimina"): ya no
+  // se puede elegir, pero los movimientos que la usan la muestran tachada
+  isCategoryDeleted: (id, type) => {
+    const custom = get().customCategories.find(c => c.id === id);
+    if (custom) return !!custom.deleted;
+    return get().hiddenBaseCategories.includes(`${id}_${type}`);
   },
 
   unsubscribeCategories: () => {

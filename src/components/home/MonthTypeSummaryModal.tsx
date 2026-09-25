@@ -17,6 +17,9 @@ import { Movement, MovementType } from '../../types';
 import AnimatedBar from '../common/AnimatedBar';
 import { DailySummaryOrigin } from './DailySummaryModal';
 import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
+import { getMemberLabel } from '../../utils/memberLabel';
+import MemberName from '../common/MemberName';
+import StrikeText from '../common/StrikeText';
 
 const CAT_COLORS = [
   '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
@@ -66,9 +69,9 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
   const { width: winW, height: winH } = useWindowDimensions();
   const { movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
-  const { getCategoryName, getCategoriesForType } = useCategoryStore();
+  const { getCategoryName, getCategoryIcon, isCategoryDeleted } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
-  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
+  const { getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted } = useSharedCategoryStore();
 
   // 0 = este mes, -1 = mes anterior, ...
   const [monthOffset, setMonthOffset] = useState(0);
@@ -154,9 +157,16 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
   const getCatName = (id: string) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
+  // Tachada si la categoría está borrada, igual que en el historial
+  const renderCatName = (id: string) => (
+    <StrikeText struck={isSharedMode ? isSharedCategoryDeleted(id, type) : isCategoryDeleted(id, type)}>
+      {getCatName(id)}
+    </StrikeText>
+  );
+
   const getCatIcon = (id: string): keyof typeof Ionicons.glyphMap => {
-    const cats = isSharedMode ? getSharedCategoriesForType(type) : getCategoriesForType(type);
-    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+    const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
+    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
   };
 
   const shortMonth = (monthIdx: number) => t(`home.month_${monthIdx}`).slice(0, 3);
@@ -335,7 +345,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                             <View style={styles.catContent}>
                               <View style={styles.catTitleRow}>
                                 <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
-                                  {getCatName(g.category)}
+                                  {renderCatName(g.category)}
                                 </Text>
                                 <Text style={[styles.catAmount, { color: accent }]} numberOfLines={1}>
                                   {sign}{formatAmount(g.amount)} {currencySymbol}
@@ -367,24 +377,26 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                                 const d = new Date(mov.date);
                                 const dayLabel = `${d.getDate()} ${shortMonth(d.getMonth())}`;
                                 const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                                const userName = isSharedMode && mov.addedBy
-                                  ? sharedAccount?.memberNames?.[mov.addedBy]
+                                // Tachado si quien lo añadió ya no está en la cuenta
+                                const member = isSharedMode
+                                  ? getMemberLabel(sharedAccount, mov.addedBy, t('sharedAccount.formerMember'))
                                   : undefined;
                                 // Los recurrentes se generan a las 00:00: etiqueta en vez de hora
                                 const detail = mov.isRecurring
                                   ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
                                   : time;
-                                const subtitle = [dayLabel, detail, userName].filter(Boolean).join(' · ');
+                                const dayAndDetail = [dayLabel, detail].filter(Boolean).join(' · ');
                                 return (
                                   <View key={mov.id}>
                                     {idx > 0 && <View style={[styles.movDivider, { backgroundColor: g.color + '30' }]} />}
                                     <View style={styles.movRow}>
                                       <View style={styles.movInfo}>
                                         <Text style={[styles.movTitle, { color: dc.textPrimary }]} numberOfLines={1}>
-                                          {mov.note || getCatName(mov.category)}
+                                          {mov.note || renderCatName(mov.category)}
                                         </Text>
                                         <Text style={[styles.movSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
-                                          {subtitle}
+                                          {dayAndDetail}
+                                          {member ? <>{' · '}<MemberName member={member} /></> : null}
                                         </Text>
                                       </View>
                                       <Text style={[styles.movAmount, { color: dc.textPrimary }]} numberOfLines={1}>

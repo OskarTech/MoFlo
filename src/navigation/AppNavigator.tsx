@@ -28,6 +28,8 @@ import { deliverPendingInvite } from '../utils/pendingInvite';
 import { navigationRef } from './navigationRef';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
+import { useCategoryStore } from '../store/categoryStore';
+import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -128,6 +130,11 @@ const AppNavigator = () => {
       } else {
         useMovementStore.getState().setShowRecurringModal(true);
       }
+    } else if (current === 'Categories') {
+      // Solo se entra con premium, así que aquí no hace falta comprobarlo
+      useCategoryStore.getState().setShowAddCategoryModal(true);
+    } else if (current === 'SharedCategories') {
+      useSharedCategoryStore.getState().setShowAddCategoryModal(true);
     } else {
       setMovementModalVisible(true);
     }
@@ -182,6 +189,14 @@ const AppNavigator = () => {
                 const nested = activeRoute.state as any;
                 const nestedName = nested.routes[nested.index ?? nested.routes.length - 1]?.name;
                 activeTabRef.current = nestedName === 'HuchaDetail' ? 'HuchaDetail' : 'HuchaTab';
+              } else if (activeRoute?.name === 'Settings' && activeRoute.state) {
+                // Las pantallas de categorías viven dentro de Ajustes: ahí el +
+                // crea una categoría. En el resto de Ajustes sigue igual.
+                const nested = activeRoute.state as any;
+                const nestedName = nested.routes[nested.index ?? nested.routes.length - 1]?.name;
+                activeTabRef.current = nestedName === 'Categories' || nestedName === 'SharedCategories'
+                  ? nestedName
+                  : 'Settings';
               } else {
                 activeTabRef.current = activeRoute?.name ?? 'HomeTab';
               }

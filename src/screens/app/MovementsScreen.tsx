@@ -21,6 +21,9 @@ import AddMovementModal from '../../components/movements/AddMovementModal';
 import { formatDate, getDateLocale } from '../../utils/dateFormat';
 import { formatAmount } from '../../utils/formatAmount';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+import MemberName from '../../components/common/MemberName';
+import StrikeText from '../../components/common/StrikeText';
+import { getMemberLabel } from '../../utils/memberLabel';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
@@ -34,17 +37,20 @@ const MovementRowBase = ({
 }) => {
   const { t } = useTranslation();
   const { getCurrencySymbol, language } = useSettingsStore();
-  const { getCategoryName } = useCategoryStore();
+  const { getCategoryName, isCategoryDeleted } = useCategoryStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
-  const { getSharedCategoryName } = useSharedCategoryStore();
+  const { getSharedCategoryName, isSharedCategoryDeleted } = useSharedCategoryStore();
   const { colors: dc } = useTheme();
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
-  const userName = isSharedMode && movement.isRecurring
+  // En cuenta compartida los recurrentes se firman con su etiqueta, y lo demás
+  // con quien lo añadió (tachado si ya no está en la cuenta)
+  const recurringLabel = isSharedMode && movement.isRecurring
     ? t(movement.type === 'income' ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
-    : isSharedMode && movement.addedBy
-      ? sharedAccount?.memberNames?.[movement.addedBy]
-      : undefined;
+    : undefined;
+  const member = isSharedMode && !movement.isRecurring
+    ? getMemberLabel(sharedAccount, movement.addedBy, t('sharedAccount.formerMember'))
+    : undefined;
 
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
@@ -75,8 +81,11 @@ const MovementRowBase = ({
   const catName = getCatName(movement.category, movement.type);
   const title = movement.note || catName;
   const timeLabel = formatRelativeTime(movement.date);
-  const dateAndCat = movement.note ? `${timeLabel} · ${catName}` : timeLabel;
-  const subtitle = userName ? `${userName} · ${dateAndCat}` : dateAndCat;
+  // Una categoría borrada se sigue viendo, tachada: el movimiento es de ella
+  const catDeleted = isSharedMode
+    ? isSharedCategoryDeleted(movement.category, movement.type)
+    : isCategoryDeleted(movement.category, movement.type);
+  const catLabel = <StrikeText struck={catDeleted}>{catName}</StrikeText>;
 
   // Deslizar hasta la papelera no borra directamente: se confirma antes, por si
   // el gesto ha sido accidental
@@ -111,7 +120,8 @@ const MovementRowBase = ({
       <View style={styles.movementInfo}>
         <View style={styles.movementTitleRow}>
           <Text style={[styles.movementCategory, { color: dc.textPrimary }]} numberOfLines={1}>
-            {title}
+            {/* Con nota, la categoría pasa a la línea de abajo */}
+            {movement.note ? movement.note : catLabel}
           </Text>
           {movement.isRecurring && (
             <View style={[styles.recurringBadge, { backgroundColor: dc.primary + '15' }]}>
@@ -120,7 +130,10 @@ const MovementRowBase = ({
           )}
         </View>
         <Text style={[styles.movementDate, { color: dc.textSecondary }]} numberOfLines={1}>
-          {subtitle}
+          {recurringLabel ? `${recurringLabel} · ` : null}
+          {member ? <><MemberName member={member} />{' · '}</> : null}
+          {timeLabel}
+          {movement.note ? <>{' · '}{catLabel}</> : null}
         </Text>
       </View>
       <Text style={[styles.movementAmount, { color }]}>

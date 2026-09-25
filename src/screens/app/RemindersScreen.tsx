@@ -19,6 +19,8 @@ import auth from '@react-native-firebase/auth';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+import MemberName from '../../components/common/MemberName';
+import { getMemberLabel } from '../../utils/memberLabel';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import { formatDate as formatAppDate } from '../../utils/dateFormat';
 
@@ -44,12 +46,14 @@ const formatTime = (date: Date): string => {
 };
 
 const ReminderCardBase = ({
-  reminder, onDelete, onEdit, creatorName,
+  reminder, onDelete, onEdit, creatorName, creatorIsFormer = false,
 }: {
   reminder: Reminder;
   onDelete: (id: string) => void;
   onEdit: (reminder: Reminder) => void;
   creatorName?: string;
+  // Por separado y no como objeto, para que memo siga evitando renders
+  creatorIsFormer?: boolean;
 }) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
@@ -99,7 +103,7 @@ const ReminderCardBase = ({
           </Text>
           {!!creatorName && (
             <Text style={[styles.cardCreator, { color: dc.textSecondary }]} numberOfLines={1}>
-              👤 {creatorName}
+              👤 <MemberName member={{ name: creatorName, isFormer: creatorIsFormer }} />
             </Text>
           )}
         </View>
@@ -616,17 +620,22 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
             </Text>
           </View>
         ) : (
-          sortedReminders.map((reminder) => (
-            <ReminderCard
-              key={reminder.id}
-              reminder={reminder}
-              onDelete={handleDeleteReminder}
-              onEdit={handleEditReminder}
-              creatorName={inSharedAccount && reminder.createdBy
-                ? sharedAccount?.memberNames?.[reminder.createdBy]
-                : undefined}
-            />
-          ))
+          sortedReminders.map((reminder) => {
+            // Tachado si quien lo creó ya no está en la cuenta
+            const creator = inSharedAccount
+              ? getMemberLabel(sharedAccount, reminder.createdBy, t('sharedAccount.formerMember'))
+              : undefined;
+            return (
+              <ReminderCard
+                key={reminder.id}
+                reminder={reminder}
+                onDelete={handleDeleteReminder}
+                onEdit={handleEditReminder}
+                creatorName={creator?.name}
+                creatorIsFormer={creator?.isFormer}
+              />
+            );
+          })
         )}
       </ScrollView>
 

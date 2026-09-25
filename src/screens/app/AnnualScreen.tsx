@@ -15,6 +15,7 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import StrikeText from '../../components/common/StrikeText';
 import { formatAmount } from '../../utils/formatAmount';
 import SwipeNavigator from '../../components/common/SwipeNavigator';
 import AnimatedTabPill from '../../components/common/AnimatedTabPill';
@@ -128,11 +129,11 @@ const AnnualScreen = () => {
   const personalCurrencySymbol = useSettingsStore((s) => s.getCurrencySymbol());
   const sharedCurrencySymbol = useSharedAccountStore((s) => s.getSharedCurrencySymbol());
   // Los stores de categorías se quedan enteros a propósito: getCategoryName y
-  // getCategoriesForType también leen de get(), y aquí sí se usan en el render,
+  // getCategoryIcon también leen de get(), y aquí sí se usan en el render,
   // así que suscribirse solo a ellas dejaría nombres e iconos obsoletos al
   // renombrar o crear una categoría
-  const { getCategoryName, getCategoriesForType } = useCategoryStore();
-  const { getSharedCategoryName, getSharedCategoriesForType } = useSharedCategoryStore();
+  const { getCategoryName, getCategoryIcon, isCategoryDeleted } = useCategoryStore();
+  const { getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted } = useSharedCategoryStore();
 
   // Local period state — independent of HomeScreen
   const nowDate = new Date();
@@ -157,9 +158,16 @@ const AnnualScreen = () => {
   const getCatName = (id: string, type: MovementType) =>
     isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
 
+  // Tachada si la categoría está borrada, igual que en el historial
+  const renderCatName = (id: string, type: MovementType) => (
+    <StrikeText struck={isSharedMode ? isSharedCategoryDeleted(id, type) : isCategoryDeleted(id, type)}>
+      {getCatName(id, type)}
+    </StrikeText>
+  );
+
   const getCatIcon = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
-    const cats = isSharedMode ? getSharedCategoriesForType(type) : getCategoriesForType(type);
-    return ((cats.find(c => c.id === id)?.icon ?? 'ellipsis-horizontal') + '-outline') as keyof typeof Ionicons.glyphMap;
+    const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
+    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
   };
 
   const shortMonth = (m: number) => t(`home.month_${m - 1}`).slice(0, 3);
@@ -661,7 +669,7 @@ const AnnualScreen = () => {
                         <View style={styles.catContent}>
                           <View style={styles.catTitleRow}>
                             <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
-                              {getCatName(item.category, 'expense')}
+                              {renderCatName(item.category, 'expense')}
                             </Text>
                             <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
                               {formatAmount(item.amount, 0)} {currencySymbol}
@@ -776,7 +784,7 @@ const AnnualScreen = () => {
                                   catMonthMovs.map((mv, idx) => {
                                     const d = new Date(mv.date);
                                     const dayLabel = `${d.getDate()} ${shortMonth(d.getMonth() + 1)}`;
-                                    const title = mv.note || getCatName(item.category, 'expense');
+                                    const title = mv.note || renderCatName(item.category, 'expense');
                                     return (
                                       <View key={mv.id}>
                                         {idx > 0 && <View style={[styles.rowDivider, { backgroundColor: dc.border, marginLeft: 0 }]} />}
@@ -868,7 +876,7 @@ const AnnualScreen = () => {
                         <View style={styles.catContent}>
                           <View style={styles.catTitleRow}>
                             <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
-                              {getCatName(item.category, 'income')}
+                              {renderCatName(item.category, 'income')}
                             </Text>
                             <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
                               {formatAmount(item.amount, 0)} {currencySymbol}
@@ -983,7 +991,7 @@ const AnnualScreen = () => {
                                   catMonthMovs.map((mv, idx) => {
                                     const d = new Date(mv.date);
                                     const dayLabel = `${d.getDate()} ${shortMonth(d.getMonth() + 1)}`;
-                                    const title = mv.note || getCatName(item.category, 'income');
+                                    const title = mv.note || renderCatName(item.category, 'income');
                                     return (
                                       <View key={mv.id}>
                                         {idx > 0 && <View style={[styles.rowDivider, { backgroundColor: dc.border, marginLeft: 0 }]} />}

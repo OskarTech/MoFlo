@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
+import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import { warningHaptic } from '../../utils/haptics';
 
 const AVAILABLE_ICONS: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -317,10 +318,20 @@ const CategoriesScreen = () => {
     deleteCategory,
     hideBaseCategory,
     getCategoriesForType,
+    showAddCategoryModal,
+    setShowAddCategoryModal,
   } = useCategoryStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeType, setActiveType] = useState<MovementType>('expense');
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; icon: string; type: MovementType } | null>(null);
+
+  // El botón + de la barra pide una categoría nueva, del tipo de la pestaña activa
+  useEffect(() => {
+    if (!showAddCategoryModal) return;
+    setShowAddCategoryModal(false);
+    setEditingCategory(null);
+    setShowAddModal(true);
+  }, [showAddCategoryModal, setShowAddCategoryModal]);
 
   const baseCats = getCategoriesForType(activeType).filter(c => !c.isCustom);
   const customCats = getCategoriesForType(activeType).filter(c => c.isCustom);
@@ -366,7 +377,12 @@ const CategoriesScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: dc.background }]}
+      // Cualquier toque de la pantalla cierra la fila deslizada. Devuelve false,
+      // así que no se queda con el gesto y el toque llega igual a su destino.
+      onStartShouldSetResponderCapture={closeOpenSwipeable}
+    >
       <AppHeader title={t('categories.title')} showBack showBell={false} />
 
       {/* TABS DE TIPO */}
@@ -402,8 +418,9 @@ const CategoriesScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={closeOpenSwipeable}
       >
-        {/* CATEGORÍAS BASE */}
+        {/* CATEGORÍAS BASE: solo se pueden quitar, no editar */}
         {baseCats.length > 0 && (
           <>
             <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
@@ -412,22 +429,29 @@ const CategoriesScreen = () => {
             <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
               {baseCats.map((cat, index) => (
                 <View key={cat.id}>
-                  <View style={styles.categoryRow}>
-                    <View style={[styles.categoryIcon, {
-                      backgroundColor: TYPE_COLORS[activeType] + '20',
-                    }]}>
-                      <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+                  {/* Sin radio: las filas van dentro de la tarjeta, que ya recorta las esquinas */}
+                  <SwipeableRow
+                    borderRadius={0}
+                    actions={[
+                      {
+                        icon: 'trash',
+                        background: dc.expense,
+                        onPress: () => handleDeleteBase(cat.id, t(`movements.categories.${cat.id}`)),
+                      },
+                    ]}
+                  >
+                    {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
+                    <View style={[styles.categoryRow, { backgroundColor: dc.surface }]}>
+                      <View style={[styles.categoryIcon, {
+                        backgroundColor: TYPE_COLORS[activeType] + '20',
+                      }]}>
+                        <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+                      </View>
+                      <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
+                        {t(`movements.categories.${cat.id}`)}
+                      </Text>
                     </View>
-                    <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
-                      {t(`movements.categories.${cat.id}`)}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteBase(cat.id, t(`movements.categories.${cat.id}`))}
-                      style={styles.deleteButton}
-                    >
-                      <Ionicons name="trash-outline" size={18} color={colors.expense} />
-                    </TouchableOpacity>
-                  </View>
+                  </SwipeableRow>
                   {index < baseCats.length - 1 && (
                     <View style={[styles.divider, { backgroundColor: dc.border }]} />
                   )}
@@ -449,36 +473,39 @@ const CategoriesScreen = () => {
             <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
               {t('categories.noCustom')}
             </Text>
+            <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>
+              {t('categories.noCustomSubtitle')}
+            </Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
             {customCats.map((cat, index) => (
               <View key={cat.id}>
-                <View style={styles.categoryRow}>
-                  <View style={[styles.categoryIcon, {
-                    backgroundColor: TYPE_COLORS[activeType] + '20',
-                  }]}>
-                    <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+                <SwipeableRow
+                  borderRadius={0}
+                  actions={[
+                    {
+                      icon: 'pencil',
+                      background: dc.primary,
+                      onPress: () => {
+                        setEditingCategory({ id: cat.id, name: cat.name, icon: cat.icon, type: activeType });
+                        setShowAddModal(true);
+                      },
+                    },
+                    { icon: 'trash', background: dc.expense, onPress: () => handleDeleteCustom(cat.id, cat.name) },
+                  ]}
+                >
+                  <View style={[styles.categoryRow, { backgroundColor: dc.surface }]}>
+                    <View style={[styles.categoryIcon, {
+                      backgroundColor: TYPE_COLORS[activeType] + '20',
+                    }]}>
+                      <Ionicons name={cat.icon as any} size={20} color={TYPE_COLORS[activeType]} />
+                    </View>
+                    <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
+                      {cat.name}
+                    </Text>
                   </View>
-                  <Text style={[styles.categoryName, { color: dc.textPrimary }]}>
-                    {cat.name}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingCategory({ id: cat.id, name: cat.name, icon: cat.icon, type: activeType });
-                      setShowAddModal(true);
-                    }}
-                    style={styles.actionButton}
-                  >
-                    <Ionicons name="pencil-outline" size={18} color={dc.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteCustom(cat.id, cat.name)}
-                    style={styles.actionButton}
-                  >
-                    <Ionicons name="trash-outline" size={18} color={colors.expense} />
-                  </TouchableOpacity>
-                </View>
+                </SwipeableRow>
                 {index < customCats.length - 1 && (
                   <View style={[styles.divider, { backgroundColor: dc.border }]} />
                 )}
@@ -486,19 +513,6 @@ const CategoriesScreen = () => {
             ))}
           </View>
         )}
-
-        {/* BOTÓN AÑADIR */}
-        <Button
-          mode="contained"
-          onPress={() => setShowAddModal(true)}
-          style={styles.addButton}
-          contentStyle={styles.addButtonContent}
-          buttonColor={TYPE_COLORS[activeType]}
-          textColor="#FFFFFF"
-          icon="plus"
-        >
-          {t('categories.addCategory')}
-        </Button>
       </ScrollView>
 
       <AddCategoryModal
@@ -532,18 +546,15 @@ const styles = StyleSheet.create({
     borderRadius: 16, padding: 24,
     alignItems: 'center', marginBottom: 20, borderWidth: 0.5,
   },
-  emptyText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
+  emptyText: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center' },
+  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', marginTop: 4 },
   categoryRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   categoryIcon: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   categoryName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  deleteButton: { padding: 4 },
-  actionButton: { padding: 4 },
   divider: { height: 0.5, marginLeft: 66 },
-  addButton: { borderRadius: 12 },
-  addButtonContent: { height: 52 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
