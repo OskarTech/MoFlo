@@ -13,23 +13,12 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { Movement, MovementType } from '../../types';
 import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
 import { getMemberLabel } from '../../utils/memberLabel';
 import MemberName from '../common/MemberName';
 import StrikeText from '../common/StrikeText';
-
-const CAT_COLORS = [
-  '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
-  '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12',
-  '#1ABC9C', '#E67E22', '#3498DB', '#8E44AD',
-];
-
-const INCOME_CAT_COLORS = [
-  '#2ECC71', '#0D9488', '#A8C23F', '#1A7A4A',
-  '#48D1CC', '#6BCB3A', '#00796B', '#C6E03A',
-  '#4DB6AC', '#388E3C', '#B2E061', '#00695C',
-];
 
 const LOCALES: Record<string, string> = {
   es: 'es-ES', en: 'en-US', pl: 'pl-PL', de: 'de-DE', fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT',
@@ -68,9 +57,31 @@ interface Props {
 
 const formatAmount = (n: number) => formatAmountLocalized(n);
 
+// Fuera del componente: solo depende de lo que recibe. colorOf da el color de
+// cada categoría a partir de su puesto (0 = la que más suma)
+const groupByCategory = (
+  dayMovements: Movement[], type: MovementType, colorOf: (category: string, rank: number) => string,
+): CategoryGroup[] => {
+  const groups: Record<string, Movement[]> = {};
+  dayMovements
+    .filter(m => m.type === type)
+    .forEach(m => { (groups[m.category] ??= []).push(m); });
+  return Object.entries(groups)
+    .map(([category, movs]) => ({
+      category,
+      type,
+      movements: movs,
+      amount: movs.reduce((s, m) => s + m.amount, 0),
+      color: '',
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .map((g, i) => ({ ...g, color: colorOf(g.category, i) }));
+};
+
 const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
+  const catColors = useCategoryColors();
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
   const { movements } = useMovementStore();
@@ -100,7 +111,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
     Animated.spring(progress, {
       toValue: 1, damping: 22, stiffness: 220, mass: 0.9, useNativeDriver: true,
     }).start();
-  }, [visible]);
+  }, [visible, progress]);
 
   // A las 00:00 empieza un día nuevo: "Hoy" pasa a ser el nuevo día (vacío)
   // y si se estaba viendo un día anterior se mantiene la misma fecha.
@@ -214,25 +225,15 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
   const totalExpense = dayMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
   const balance = totalIncome - totalExpense;
 
-  const groupByCategory = (type: MovementType, palette: string[]): CategoryGroup[] => {
-    const groups: Record<string, Movement[]> = {};
-    dayMovements
-      .filter(m => m.type === type)
-      .forEach(m => { (groups[m.category] ??= []).push(m); });
-    return Object.entries(groups)
-      .map(([category, movs]) => ({
-        category,
-        type,
-        movements: movs,
-        amount: movs.reduce((s, m) => s + m.amount, 0),
-        color: '',
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .map((g, i) => ({ ...g, color: palette[i % palette.length] }));
-  };
-
-  const expenseGroups = useMemo(() => groupByCategory('expense', CAT_COLORS), [dayMovements]);
-  const incomeGroups = useMemo(() => groupByCategory('income', INCOME_CAT_COLORS), [dayMovements]);
+  // Cada gasto con el color fijo de su categoría; los ingresos, por puesto
+  const expenseGroups = useMemo(
+    () => groupByCategory(dayMovements, 'expense', (category) => catColors.expense(category)),
+    [dayMovements, catColors],
+  );
+  const incomeGroups = useMemo(
+    () => groupByCategory(dayMovements, 'income', (_, rank) => catColors.income(rank)),
+    [dayMovements, catColors],
+  );
 
   const dayLabel = (() => {
     if (dayOffset === 0) return t('home.today');

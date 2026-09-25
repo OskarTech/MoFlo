@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, StyleSheet, Modal, ScrollView,
   TouchableOpacity, Keyboard, Animated, Platform, Alert,
@@ -15,10 +15,13 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../common/PremiumModal';
+import StrikeText from '../common/StrikeText';
 import { navigationRef } from '../../navigation/navigationRef';
 import { MovementType, RecurringMovement } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
 import { parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
+
+type CategoryChip = { id: string; name: string; icon: string; isCustom: boolean; deleted?: boolean };
 
 interface Props {
   visible: boolean;
@@ -33,12 +36,12 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
   const { getCurrencySymbol } = useSettingsStore();
   const {
     customCategories, hiddenBaseCategories,
-    getCategoriesForType, getCategoryName,
+    getCategoriesForType, getCategoryName, getCategoryIcon, isCategoryDeleted,
   } = useCategoryStore();
   const { isSharedMode, sharedAccount, getSharedCurrencySymbol } = useSharedAccountStore();
   const {
     sharedCustomCategories, sharedHiddenCategories,
-    getSharedCategoriesForType, getSharedCategoryName,
+    getSharedCategoriesForType, getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted,
   } = useSharedCategoryStore();
   const { showModal: showPremiumModal, setShowModal: setShowPremiumModal, requirePremium } = usePremium();
   const insets = useSafeAreaInsets();
@@ -99,6 +102,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 
   const categoryList = useMemo(
     () => getSortedCategoriesForType(type),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- son los datos que lee getSortedCategoriesForType, que se crea en cada render
     [
       movements, type, isSharedMode,
       customCategories, hiddenBaseCategories,
@@ -130,6 +134,29 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     isSharedMode
       ? getSharedCategoryName(id, tp, t)
       : getCategoryName(id, tp, t);
+
+  // Al editar un recurrente cuya categoría ya se borró, esa categoría no está en
+  // la lista: se añade al principio, tachada, para que se vea cuál tiene y se
+  // pueda conservar. Solo si está borrada de verdad y el tipo es el suyo.
+  const editingCategoryId = editingRecurring?.type === type ? editingRecurring.category : undefined;
+  const chipCategories: CategoryChip[] = editingCategoryId
+    && !categoryList.some(c => c.id === editingCategoryId)
+    && (isSharedMode
+      ? isSharedCategoryDeleted(editingCategoryId, type)
+      : isCategoryDeleted(editingCategoryId, type))
+    ? [
+        {
+          id: editingCategoryId,
+          name: getCatName(editingCategoryId, type),
+          icon: isSharedMode
+            ? getSharedCategoryIcon(editingCategoryId, type)
+            : getCategoryIcon(editingCategoryId, type),
+          isCustom: true,
+          deleted: true,
+        },
+        ...categoryList,
+      ]
+    : categoryList;
 
   const typeColor = type === 'income' ? dc.income : dc.expense;
   const sheetBg = dc.surface;
@@ -335,7 +362,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
               keyboardShouldPersistTaps="handled"
               style={styles.categoryScroll}
             >
-              {categoryList.map((cat) => (
+              {chipCategories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[
@@ -362,7 +389,9 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
                       color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold',
                     },
                   ]}>
-                    {cat.isCustom ? cat.name : t(`movements.categories.${cat.id}`)}
+                    <StrikeText struck={!!cat.deleted}>
+                      {cat.isCustom ? cat.name : t(`movements.categories.${cat.id}`)}
+                    </StrikeText>
                   </Text>
                 </TouchableOpacity>
               ))}

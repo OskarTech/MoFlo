@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal,
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useMovementStore } from '../../store/movementStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
@@ -163,7 +164,7 @@ const AddCategoryModal = ({ visible, onDismiss, onSave, onEdit, defaultType, edi
         setSelectedType(defaultType);
       }
     }
-  }, [visible, editingCategory]);
+  }, [visible, editingCategory, defaultType]);
 
   const handleSave = () => {
     if (isSavingRef.current) return;
@@ -312,7 +313,6 @@ const CategoriesScreen = () => {
   const { colors: dc } = useTheme();
   const TYPE_COLORS = { income: dc.income, expense: dc.expense };
   const {
-    customCategories,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -321,6 +321,8 @@ const CategoriesScreen = () => {
     showAddCategoryModal,
     setShowAddCategoryModal,
   } = useCategoryStore();
+  // Los del modo actual: esta pantalla solo se abre en modo personal
+  const recurringMovements = useMovementStore((s) => s.recurringMovements);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeType, setActiveType] = useState<MovementType>('expense');
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; icon: string; type: MovementType } | null>(null);
@@ -336,11 +338,19 @@ const CategoriesScreen = () => {
   const baseCats = getCategoriesForType(activeType).filter(c => !c.isCustom);
   const customCats = getCategoriesForType(activeType).filter(c => c.isCustom);
 
+  // Los recurrentes activos siguen usando la categoría aunque se borre: se avisa
+  // en la confirmación de cuántos la usan
+  const deleteMessage = (id: string, name: string) => {
+    const count = recurringMovements
+      .filter(r => r.isActive && r.category === id && r.type === activeType).length;
+    return count > 0 ? `${name}\n\n${t('categories.usedByRecurring', { count })}` : name;
+  };
+
   const handleDeleteBase = (id: string, name: string) => {
     warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
-      name,
+      deleteMessage(id, name),
       [
         { text: t('movements.cancel'), style: 'cancel' },
         {
@@ -356,7 +366,7 @@ const CategoriesScreen = () => {
     warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
-      name,
+      deleteMessage(id, name),
       [
         { text: t('movements.cancel'), style: 'cancel' },
         {

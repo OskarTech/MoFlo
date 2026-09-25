@@ -478,6 +478,10 @@
   "namePlaceholder": "Np. Siłownia, Netflix...",
   "icon": "Ikona",
   "deleteConfirm": "Usunąć tę kategorię?",
+  "usedByRecurring_one": "Używa jej 1 transakcja cykliczna i nadal będzie jej używać (będzie przekreślona). Aby to zmienić, edytuj tę transakcję.",
+  "usedByRecurring_few": "Używają jej {{count}} transakcje cykliczne i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
+  "usedByRecurring_many": "Używa jej {{count}} transakcji cyklicznych i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
+  "usedByRecurring_other": "Używa jej {{count}} transakcji cyklicznych i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
   "delete": "Usuń"
   },
   "export": {

@@ -1,17 +1,30 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, Alert,
+  View, StyleSheet, ScrollView, Alert, Platform,
 } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import Constants from 'expo-constants';
 import { useTheme } from '../../hooks/useTheme';
 import AppHeader from '../../components/common/AppHeader';
 import { useSettingsStore } from '../../store/settingsStore';
-import Constants from 'expo-constants';
 import auth from '@react-native-firebase/auth';
 
-const isValidEmail = (email: string) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+// Versión, build y sistema del usuario, p. ej. "MoFlo 1.4.8 (48) · iOS 18.2".
+// Va al final del mensaje y no en un campo aparte: así sale en el correo sin
+// tener que tocar la plantilla de EmailJS.
+const getAppInfo = () => {
+  const version = Constants.expoConfig?.version ?? '?';
+  const build = Platform.OS === 'ios'
+    ? Constants.expoConfig?.ios?.buildNumber
+    : Constants.expoConfig?.android?.versionCode;
+  const os = Platform.OS === 'ios'
+    ? `iOS ${Platform.Version}`
+    : Platform.OS === 'android'
+      ? `Android ${Platform.constants.Release} (API ${Platform.Version})`
+      : Platform.OS;
+  return `MoFlo ${version}${build ? ` (${build})` : ''} · ${os}`;
+};
 
 const SupportScreen = () => {
   const { t } = useTranslation();
@@ -26,7 +39,6 @@ const SupportScreen = () => {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const isValid = !!name.trim() && !!message.trim();
 
   const handleSend = async () => {
@@ -41,7 +53,7 @@ const SupportScreen = () => {
           name: name.trim(),
           email: userEmail,
           title: 'Soporte MoFlo',
-          message: message.trim(),
+          message: `${message.trim()}\n\n—\n${getAppInfo()}`,
         },
       };
 
@@ -68,7 +80,7 @@ const SupportScreen = () => {
       } else {
         throw new Error(`${response.status}: ${responseText}`);
       }
-    } catch (e: any) {
+    } catch {
       Alert.alert(t('settings.supportError'), t('settings.supportErrorMessage'));
     } finally {
       setSending(false);

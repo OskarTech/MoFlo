@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
@@ -229,18 +230,12 @@ const HomeScreen = () => {
     return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   };
 
-  const catColorHash = (cat: string) => {
-    let h = 0;
-    for (let i = 0; i < cat.length; i++) h = cat.charCodeAt(i) + ((h << 5) - h);
-    return Math.abs(h) % CAT_COLORS.length;
-  };
-
   const recentMovements = useMemo(() =>
     [...movements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
     [movements],
   );
 
-  const CAT_COLORS = ['#E8735A', '#4A6FD9', '#7BC67E', '#F5A623', '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12'];
+  const catColors = useCategoryColors();
 
   const topExpenseCategories = useMemo(() => {
     const expenses = monthMovements.filter(m => m.type === 'expense');
@@ -324,7 +319,7 @@ const HomeScreen = () => {
           ) : (
             <View style={[styles.catCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
               {topExpenseCategories.map(({ category, amount, percentage }, index) => {
-                const catColor = CAT_COLORS[index % CAT_COLORS.length];
+                const catColor = catColors.expense(category);
                 return (
                   <View key={category}>
                     {index > 0 && <View style={[styles.catDivider, { backgroundColor: dc.border }]} />}

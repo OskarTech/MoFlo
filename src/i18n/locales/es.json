@@ -474,6 +474,8 @@
   "namePlaceholder": "Ej. Gimnasio, Netflix...",
   "icon": "Icono",
   "deleteConfirm": "¿Eliminar esta categoría?",
+  "usedByRecurring_one": "La usa 1 movimiento recurrente y la seguirá usando (se verá tachada). Para cambiarla, edita ese recurrente.",
+  "usedByRecurring_other": "La usan {{count}} movimientos recurrentes y la seguirán usando (se verá tachada). Para cambiarla, edita esos recurrentes.",
   "delete": "Eliminar"
   },
   "export": {

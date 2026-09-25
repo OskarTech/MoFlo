@@ -16,7 +16,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { parseAmountInput } from '../../utils/formatAmount';
 
-const PRESET_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
+const PRESET_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
   'home-outline', 'business-outline', 'bed-outline', 'construct-outline',
   'car-outline', 'bicycle-outline', 'bus-outline', 'boat-outline',
   'airplane-outline', 'rocket-outline', 'train-outline', 'map-outline',

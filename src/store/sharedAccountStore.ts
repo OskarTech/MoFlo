@@ -3,10 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { SharedAccount, Movement, RecurringMovement, JoinRequest, PendingJoinRequest } from '../types';
-import { CURRENCIES, ColorPaletteId } from './settingsStore';
+import { CURRENCIES, ColorPaletteId, useSettingsStore } from './settingsStore';
 import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
 import i18n from '../i18n';
+
+// Los demás stores se cargan con require() al usarlos, no con import: reminderStore
+// carga este store, y cargarlos arriba crearía ciclos y cambiaría el orden de arranque
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
@@ -351,7 +355,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           await get().resumeOwnRequestSubscription();
         }
       }
-    } catch (e) {
+    } catch {
       // Sin conexión: se usa la cuenta en caché; el listener de recordatorios
       // trabaja con la caché de Firestore y se sincroniza al recuperar conexión
       const cached = await AsyncStorage.getItem(STORAGE_KEY);
@@ -369,7 +373,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── CREAR CUENTA ───────────────────────────────────────────────
   createSharedAccount: async (name) => {
     const uid = auth().currentUser?.uid;
-    const { useSettingsStore } = require('./settingsStore');
     const displayName = useSettingsStore.getState().displayName
       || auth().currentUser?.displayName
       || auth().currentUser?.email?.split('@')[0]
@@ -418,7 +421,6 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── UNIRSE A CUENTA (envía petición) ───────────────────────────
   joinSharedAccount: async (code) => {
     const uid = auth().currentUser?.uid;
-    const { useSettingsStore } = require('./settingsStore');
     const displayName = useSettingsStore.getState().displayName
       || auth().currentUser?.displayName
       || auth().currentUser?.email?.split('@')[0]
@@ -519,7 +521,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           .collection('sharedAccounts').doc(pendingJoinRequest.accountId)
           .collection('joinRequests').doc(uid)
           .delete();
-      } catch (e) {
+      } catch {
         // si las reglas no permiten borrar tras rechazo, no pasa nada
       }
     }

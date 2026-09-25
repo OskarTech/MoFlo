@@ -220,7 +220,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           await getSharedMovementsCol(sharedAccountId)
             .doc(movement.id)
             .set(sharedMovement);
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'ADD_SHARED_MOVEMENT',
             payload: sharedMovement,
@@ -244,7 +244,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await addMovementToFirestore(movement); }
-      catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: movement }); }
+      catch { await enqueue({ type: 'ADD_MOVEMENT', payload: movement }); }
     } else {
       await enqueue({ type: 'ADD_MOVEMENT', payload: movement });
     }
@@ -263,7 +263,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (netState.isConnected) {
         try {
           await getSharedMovementsCol(sharedAccountId).doc(id).delete();
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'DELETE_SHARED_MOVEMENT',
             payload: id,
@@ -287,7 +287,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await deleteMovementFromFirestore(id); }
-      catch (e) { await enqueue({ type: 'DELETE_MOVEMENT', payload: id }); }
+      catch { await enqueue({ type: 'DELETE_MOVEMENT', payload: id }); }
     } else {
       await enqueue({ type: 'DELETE_MOVEMENT', payload: id });
     }
@@ -320,7 +320,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (netState.isConnected) {
         try {
           await getSharedMovementsCol(sharedAccountId).doc(id).set(sharedMovement);
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'ADD_SHARED_MOVEMENT',
             payload: sharedMovement,
@@ -340,7 +340,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await addMovementToFirestore(updated); }
-      catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: updated }); }
+      catch { await enqueue({ type: 'ADD_MOVEMENT', payload: updated }); }
     } else {
       await enqueue({ type: 'ADD_MOVEMENT', payload: updated });
     }
@@ -361,7 +361,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (netState.isConnected) {
         try {
           await getSharedRecurringCol(sharedAccountId).doc(movement.id).set(sharedRecurring);
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'ADD_SHARED_RECURRING',
             payload: sharedRecurring,
@@ -385,7 +385,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await addRecurringToFirestore(movement); }
-      catch (e) { await enqueue({ type: 'ADD_RECURRING', payload: movement }); }
+      catch { await enqueue({ type: 'ADD_RECURRING', payload: movement }); }
     } else {
       await enqueue({ type: 'ADD_RECURRING', payload: movement });
     }
@@ -412,7 +412,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (netState.isConnected) {
         try {
           await getSharedRecurringCol(sharedAccountId).doc(id).set(sharedRecurring);
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'ADD_SHARED_RECURRING',
             payload: sharedRecurring,
@@ -432,7 +432,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await addRecurringToFirestore(updated); }
-      catch (e) { await enqueue({ type: 'ADD_RECURRING', payload: updated }); }
+      catch { await enqueue({ type: 'ADD_RECURRING', payload: updated }); }
     } else {
       await enqueue({ type: 'ADD_RECURRING', payload: updated });
     }
@@ -451,7 +451,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (netState.isConnected) {
         try {
           await getSharedRecurringCol(sharedAccountId).doc(id).delete();
-        } catch (e) {
+        } catch {
           await enqueue({
             type: 'DELETE_SHARED_RECURRING',
             payload: id,
@@ -475,7 +475,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     const netState = await NetInfo.fetch();
     if (netState.isConnected) {
       try { await deleteRecurringFromFirestore(id); }
-      catch (e) { await enqueue({ type: 'DELETE_RECURRING', payload: id }); }
+      catch { await enqueue({ type: 'DELETE_RECURRING', payload: id }); }
     } else {
       await enqueue({ type: 'DELETE_RECURRING', payload: id });
     }
@@ -575,7 +575,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         for (const m of newMovements) {
           if (netState.isConnected) {
             try { await addMovementToFirestore(m); }
-            catch (e) { await enqueue({ type: 'ADD_MOVEMENT', payload: m }); }
+            catch { await enqueue({ type: 'ADD_MOVEMENT', payload: m }); }
           } else {
             await enqueue({ type: 'ADD_MOVEMENT', payload: m });
           }

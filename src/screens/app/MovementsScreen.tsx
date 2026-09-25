@@ -290,11 +290,10 @@ const MovementsScreen = () => {
   const getCategoryName = useCategoryStore((s) => s.getCategoryName);
   const getSharedCategoryName = useSharedCategoryStore((s) => s.getSharedCategoryName);
   const route = useRoute<any>();
-  // Los modales solo se montan en la pantalla que tiene el foco. AddRecurringModal
-  // se abre con una bandera del store y RecurringScreen (en el stack de Ajustes)
-  // monta otro igual, así que con las dos pantallas montadas se dibujaba duplicado.
-  // El foco no cambia mientras hay un modal abierto, así que la animación de salida
-  // se sigue viendo entera antes de desmontarse.
+  // Los modales solo se montan en la pantalla que tiene el foco: AddRecurringModal
+  // se abre con una bandera del store, y si otra pantalla montara uno igual se
+  // dibujaría duplicado. El foco no cambia mientras hay un modal abierto, así que
+  // la animación de salida se sigue viendo entera antes de desmontarse.
   const isFocused = useIsFocused();
   const [filter, setFilter] = useState<FilterType>(route.params?.initialFilter ?? 'income');
   const [editingRecurring, setEditingRecurring] = useState<RecurringMovement | null>(null);
@@ -316,7 +315,7 @@ const MovementsScreen = () => {
 
   useEffect(() => {
     setActiveHistorialFilter(filter);
-  }, [filter]);
+  }, [filter, setActiveHistorialFilter]);
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -371,6 +370,7 @@ const MovementsScreen = () => {
           || amountRaw.includes(q) || amountShown.includes(q);
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- se recalcula con lo que cambia la lista (movimientos, filtro, búsqueda y modo); isCurrentMonth se crea en cada render
   }, [movements, filter, searchQuery, isSharedMode]);
 
   // Antes se recalculaban en cada render aunque el filtro activo fuera otro:

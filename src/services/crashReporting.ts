@@ -30,6 +30,7 @@ const getModule = (): CrashlyticsModule | null => {
     return cached;
   }
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- solo se carga si el módulo nativo existe: con un import arriba, una build sin Crashlytics se rompía al arrancar
     cached = require('@react-native-firebase/crashlytics') as CrashlyticsModule;
   } catch {
     cached = null;

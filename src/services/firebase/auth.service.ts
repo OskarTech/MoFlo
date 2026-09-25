@@ -1,6 +1,6 @@
 import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-export { signInWithApple } from './appleAuth';
+import { signInWithApple } from './appleAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useMovementStore } from '../../store/movementStore';
@@ -14,6 +14,9 @@ import { useReminderStore } from '../../store/reminderStore';
 import { clearPushTokens } from './pushTokens.service';
 import { processQueue } from '../syncQueue.service';
 import { resetPurchasesUser } from '../revenuecat';
+
+// Se reexporta para quien ya lo importa desde aquí
+export { signInWithApple };
 
 GoogleSignin.configure({
   webClientId: '376703221466-iovth1ic0v85o741s0k6sms9141h35fn.apps.googleusercontent.com',

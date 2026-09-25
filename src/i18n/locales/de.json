@@ -473,6 +473,8 @@
     "namePlaceholder": "Z.B. Fitnessstudio, Netflix...",
     "icon": "Symbol",
     "deleteConfirm": "Diese Kategorie löschen?",
+    "usedByRecurring_one": "1 wiederkehrende Bewegung nutzt sie und wird sie weiter nutzen (durchgestrichen angezeigt). Um das zu ändern, bearbeite diese Bewegung.",
+    "usedByRecurring_other": "{{count}} wiederkehrende Bewegungen nutzen sie und werden sie weiter nutzen (durchgestrichen angezeigt). Um das zu ändern, bearbeite diese Bewegungen.",
     "delete": "Löschen"
   },
   "export": {

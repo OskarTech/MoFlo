@@ -173,7 +173,7 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       await firestore()
         .collection('sharedAccounts').doc(accountId)
         .update({ hiddenCategories: firestore.FieldValue.arrayUnion(key) });
-    } catch (e) {
+    } catch {
       await firestore()
         .collection('sharedAccounts').doc(accountId)
         .set({ hiddenCategories: firestore.FieldValue.arrayUnion(key) }, { merge: true });

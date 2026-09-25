@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -33,7 +33,6 @@ const LoginScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const inputBg = isDark ? colors.surfaceDark : '#FFFFFF';
@@ -64,7 +63,6 @@ const LoginScreen = ({ navigation }: Props) => {
   };
 
   const handleAppleSignIn = async () => {
-    setIsAppleLoading(true);
     try {
       const signedIn = await signInWithApple();
       // Apple solo da el nombre la primera vez y signInWithApple lo guarda en la
@@ -73,10 +71,8 @@ const LoginScreen = ({ navigation }: Props) => {
       if (signedIn) {
         await useSettingsStore.getState().adoptDisplayNameIfMissing(auth().currentUser?.displayName);
       }
-    } catch (e) {
+    } catch {
       Alert.alert(t('common.error'), t('auth.appleSignInError'));
-    } finally {
-      setIsAppleLoading(false);
     }
   };
 
@@ -85,7 +81,7 @@ const LoginScreen = ({ navigation }: Props) => {
     setGoogleLoading(true);
     try {
       await loginWithGoogle();
-    } catch (e: any) {
+    } catch {
       setError(t('auth.errorGeneral'));
     } finally {
       setGoogleLoading(false);

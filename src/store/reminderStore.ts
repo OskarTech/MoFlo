@@ -95,6 +95,7 @@ const cancelNotification = async (notificationId: string) => {
 };
 
 const getSharedAccountState = () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- diferido: sharedAccountStore carga este store y un import arriba crearía un ciclo
   const { useSharedAccountStore } = require('./sharedAccountStore');
   return useSharedAccountStore.getState();
 };

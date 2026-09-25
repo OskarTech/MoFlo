@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal, Platform,
@@ -229,7 +229,6 @@ const AddReminderModal = ({
     setSelectedDate(hasDate ? new Date(editingReminder.date!) : getDefaultDate());
     setShowDatePicker(false);
     setShowTimePicker(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, editingReminder]);
 
   const handleDismiss = () => {
@@ -473,11 +472,11 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
   useEffect(() => {
     loadIndividualReminders();
     requestPermissions();
-  }, [currentUid]);
+  }, [currentUid, loadIndividualReminders]);
 
   useEffect(() => {
     if (sharedAccount?.id) subscribeToSharedReminders(sharedAccount.id);
-  }, [sharedAccount?.id]);
+  }, [sharedAccount?.id, subscribeToSharedReminders]);
 
   // Solo se pregunta la primera vez: las notas no necesitan permiso y no se insiste
   // en cada apertura (el aviso de permiso denegado sale al activar "Añadir fecha y hora")

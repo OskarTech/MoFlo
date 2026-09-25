@@ -4,8 +4,6 @@ import { ActivityIndicator, AppState, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import { navigationRef } from './navigationRef';
-// Se sigue exportando desde aquí para no cambiar a quien ya lo importa (App.tsx)
-export { navigationRef };
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
@@ -21,6 +19,9 @@ import { useReminderStore } from '../store/reminderStore';
 import { processQueue } from '../services/syncQueue.service';
 import { setupPushTokens } from '../services/firebase/pushTokens.service';
 import { reportError, setCrashUser } from '../services/crashReporting';
+
+// Se sigue exportando desde aquí para no cambiar a quien ya lo importa (App.tsx)
+export { navigationRef };
 
 const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
@@ -130,6 +131,7 @@ const RootNavigator = () => {
       unsubscribeShared();
       appStateSub.remove();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- una sola vez al arrancar: escucha la sesión mientras la app está abierta
   }, []);
 
   if (loading) {

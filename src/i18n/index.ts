@@ -13,6 +13,7 @@ import de from './locales/de.json';
 const rawTag = Localization.getLocales()[0]?.languageTag ?? 'en';
 const languageTag = rawTag.split('-')[0];
 
+// eslint-disable-next-line import/no-named-as-default-member -- es el uso que documenta i18next
 i18n.use(initReactI18next).init({
   compatibilityJSON: 'v4',
   resources: {

@@ -13,6 +13,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { Movement, MovementType } from '../../types';
 import AnimatedBar from '../common/AnimatedBar';
 import { DailySummaryOrigin } from './DailySummaryModal';
@@ -20,18 +21,6 @@ import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount'
 import { getMemberLabel } from '../../utils/memberLabel';
 import MemberName from '../common/MemberName';
 import StrikeText from '../common/StrikeText';
-
-const CAT_COLORS = [
-  '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
-  '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12',
-  '#1ABC9C', '#E67E22', '#3498DB', '#8E44AD',
-];
-
-const INCOME_CAT_COLORS = [
-  '#2ECC71', '#0D9488', '#A8C23F', '#1A7A4A',
-  '#48D1CC', '#6BCB3A', '#00796B', '#C6E03A',
-  '#4DB6AC', '#388E3C', '#B2E061', '#00695C',
-];
 
 // Mismo margen lateral que la tarjeta de balance de la home
 const CARD_MARGIN = 16;
@@ -60,11 +49,24 @@ interface Props {
 
 const formatAmount = (n: number) => formatAmountLocalized(n);
 
+// Fuera del componente: solo depende de los movimientos y el tipo que recibe.
+// index = año * 12 + mes (0-11)
+const movementsOfMonth = (movements: Movement[], type: MovementType, index: number) => {
+  const y = Math.floor(index / 12);
+  const m = index % 12;
+  return movements.filter(mov => {
+    if (mov.type !== type) return false;
+    const d = new Date(mov.date);
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+};
+
 // Ingresos o gastos del mes en un rectángulo flotante que se expande desde
 // el importe pulsado en la tarjeta de balance (mismo estilo que el resumen diario)
 const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: Props) => {
   const { t } = useTranslation();
   const { colors: dc } = useTheme();
+  const catColors = useCategoryColors();
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
   const { movements } = useMovementStore();
@@ -94,7 +96,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
     Animated.spring(progress, {
       toValue: 1, damping: 22, stiffness: 220, mass: 0.9, useNativeDriver: true,
     }).start();
-  }, [visible]);
+  }, [visible, progress]);
 
   // Al volver a la app en un mes nuevo, "este mes" pasa a ser el nuevo
   // y si se estaba viendo un mes anterior se mantiene el mismo mes
@@ -176,18 +178,8 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
   const monthIdx = selectedIndex % 12;
   const prevMonthIdx = (selectedIndex - 1) % 12;
 
-  const movementsOfMonth = (index: number) => {
-    const y = Math.floor(index / 12);
-    const m = index % 12;
-    return movements.filter(mov => {
-      if (mov.type !== type) return false;
-      const d = new Date(mov.date);
-      return d.getFullYear() === y && d.getMonth() === m;
-    });
-  };
-
   const monthMovements = useMemo(() =>
-    movementsOfMonth(selectedIndex)
+    movementsOfMonth(movements, type, selectedIndex)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [movements, type, selectedIndex],
   );
@@ -195,13 +187,12 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
 
   // Comparación con el mes anterior (solo si ese mes tiene movimientos)
   const prevTotal = useMemo(() => {
-    const prev = movementsOfMonth(selectedIndex - 1);
+    const prev = movementsOfMonth(movements, type, selectedIndex - 1);
     return prev.length === 0 ? null : prev.reduce((s, m) => s + m.amount, 0);
   }, [movements, type, selectedIndex]);
   const diff = prevTotal === null ? null : total - prevTotal;
 
   const groups = useMemo((): CategoryGroup[] => {
-    const palette = isIncome ? INCOME_CAT_COLORS : CAT_COLORS;
     const byCategory: Record<string, Movement[]> = {};
     monthMovements.forEach(m => { (byCategory[m.category] ??= []).push(m); });
     return Object.entries(byCategory)
@@ -216,9 +207,10 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
       .map((g, i) => ({
         ...g,
         percentage: total > 0 ? (g.amount / total) * 100 : 0,
-        color: palette[i % palette.length],
+        // Cada gasto con el color fijo de su categoría; los ingresos, por puesto
+        color: isIncome ? catColors.income(i) : catColors.expense(g.category),
       }));
-  }, [monthMovements, total, isIncome]);
+  }, [monthMovements, total, isIncome, catColors]);
 
   const goToMonth = (offset: number) => {
     setMonthOffset(Math.min(0, offset));

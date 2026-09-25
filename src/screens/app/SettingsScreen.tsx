@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Linking, Share,
@@ -16,7 +16,7 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode, DateFormat } from '../../store/settingsStore';
-import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
+import { COLOR_PALETTES, ColorPaletteId, colors } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
@@ -25,7 +25,6 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
-import { colors } from '../../theme';
 import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import ColorPaletteModal from '../../components/common/ColorPaletteModal';
@@ -540,7 +539,7 @@ const SettingsScreen = () => {
       });
       setEditingSharedName(false);
       Alert.alert('✅', t('sharedAccount.renameSuccess'));
-    } catch (e) {
+    } catch {
       Alert.alert(t('common.error'), t('sharedAccount.renameError'));
     }
   };
@@ -600,7 +599,7 @@ const SettingsScreen = () => {
         {
           text: t('sharedAccount.exportFirst'),
           onPress: async () => {
-            try { await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames); } catch (e) {}
+            try { await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames); } catch {}
             confirmDeleteShared();
           },
         },
@@ -693,7 +692,7 @@ const SettingsScreen = () => {
         message: t('settings.shareAppMessage', { iosUrl, androidUrl }),
         title: t('settings.shareAppTitle'),
       });
-    } catch (e) {}
+    } catch {}
   };
 
   const handleExportCSV = () => {
@@ -705,7 +704,7 @@ const SettingsScreen = () => {
       requirePremium(async () => {
         try {
           await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t);
-        } catch (e) {
+        } catch {
           Alert.alert(t('common.error'), t('export.error'));
         }
       });

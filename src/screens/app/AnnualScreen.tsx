@@ -13,6 +13,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { MovementType } from '../../types';
 import AppHeader from '../../components/common/AppHeader';
 import StrikeText from '../../components/common/StrikeText';
@@ -21,18 +22,6 @@ import SwipeNavigator from '../../components/common/SwipeNavigator';
 import AnimatedTabPill from '../../components/common/AnimatedTabPill';
 
 type SummaryTab = 'expense' | 'income' | 'hucha';
-
-const CAT_COLORS = [
-  '#E8735A', '#4A6FD9', '#7BC67E', '#F5A623',
-  '#9B59B6', '#E74C3C', '#2ECC71', '#F39C12',
-  '#1ABC9C', '#E67E22', '#3498DB', '#8E44AD',
-];
-
-const INCOME_CAT_COLORS = [
-  '#2ECC71', '#0D9488', '#A8C23F', '#1A7A4A',
-  '#48D1CC', '#6BCB3A', '#00796B', '#C6E03A',
-  '#4DB6AC', '#388E3C', '#B2E061', '#00695C',
-];
 
 const FLOW_BAR_H = 72;
 const STACK_BAR_H = 80;
@@ -117,6 +106,7 @@ const DonutChart = ({
 const AnnualScreen = () => {
   const { t, i18n } = useTranslation();
   const { colors: dc } = useTheme();
+  const catColors = useCategoryColors();
   // Selectores en vez del store entero, para no renderizar la pantalla ante
   // cambios que no le afectan
   const movements = useMovementStore((s) => s.movements);
@@ -181,6 +171,7 @@ const AnnualScreen = () => {
       result.push({ month: d.getMonth() + 1, year: d.getFullYear() });
     }
     return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- los 12 meses se calculan una vez, al abrir la pantalla
   }, []);
 
   // ── SELECTED MONTH DATA ────────────────────────────────────────────────────
@@ -233,13 +224,13 @@ const AnnualScreen = () => {
       .forEach(m => { byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount; });
     return Object.entries(byCategory)
       .sort((a, b) => b[1] - a[1])
-      .map(([category, amount], i) => ({
+      .map(([category, amount]) => ({
         category,
         amount,
         percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
-        color: CAT_COLORS[i % CAT_COLORS.length],
+        color: catColors.expense(category),
       }));
-  }, [monthMovements, totalExpense]);
+  }, [monthMovements, totalExpense, catColors]);
 
   // ── INCOME BREAKDOWN ──────────────────────────────────────────────────────
   const incomeBreakdown = useMemo(() => {
@@ -253,9 +244,9 @@ const AnnualScreen = () => {
         category,
         amount,
         percentage: totalIncome > 0 ? (amount / totalIncome) * 100 : 0,
-        color: INCOME_CAT_COLORS[i % INCOME_CAT_COLORS.length],
+        color: catColors.income(i),
       }));
-  }, [monthMovements, totalIncome]);
+  }, [monthMovements, totalIncome, catColors]);
 
   // ── MONTHLY FLOW (last 12 months) ─────────────────────────────────────────
   const flowData = useMemo(() => {
@@ -277,6 +268,7 @@ const AnnualScreen = () => {
     });
     // i18n.language: las etiquetas salen de t(), hay que recalcularlas al
     // cambiar de idioma
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
   }, [movements, selectedMonth, selectedYear, i18n.language]);
 
   const flowMax = useMemo(() =>
@@ -338,6 +330,7 @@ const AnnualScreen = () => {
         });
       return { month: m, year: y, label: shortMonth(m), net };
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
   }, [huchaMovements, i18n.language]);
 
   const huchasBarMax = useMemo(() =>
@@ -351,8 +344,12 @@ const AnnualScreen = () => {
   const huchasTotalThisYear = huchas.reduce((acc, h) => acc + getHuchaThisYear(h.id), 0);
 
   // ── PIE DATA ──────────────────────────────────────────────────────────────
+  // Los gastos, siempre en el mismo orden en el gráfico: cada categoría conserva
+  // su color y su sitio aunque cambie de puesto (la lista de abajo va por importe)
   const pieData = expenseBreakdown.length > 0
-    ? expenseBreakdown.map(item => ({ value: item.amount, color: item.color }))
+    ? [...expenseBreakdown]
+      .sort((a, b) => catColors.expenseOrder(a.category) - catColors.expenseOrder(b.category))
+      .map(item => ({ value: item.amount, color: item.color }))
     : [{ value: 1, color: dc.border }];
 
   const incomePieData = incomeBreakdown.length > 0
@@ -388,6 +385,7 @@ const AnnualScreen = () => {
       .slice(0, 2);
 
     return { bars, monthlyAvg, barMax, sortedYears, total };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
   }, [selectedIncomeCategory, movements, i18n.language]);
 
   // ── EXPENSE CATEGORY DETAIL ───────────────────────────────────────────────
@@ -419,6 +417,7 @@ const AnnualScreen = () => {
       .slice(0, 2);
 
     return { bars, monthlyAvg, barMax, sortedYears, total };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
   }, [selectedCategory, movements, i18n.language]);
 
   // ── RENDER ─────────────────────────────────────────────────────────────────

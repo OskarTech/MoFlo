@@ -474,6 +474,8 @@
   "namePlaceholder": "E.g. Gym, Netflix...",
   "icon": "Icon",
   "deleteConfirm": "Delete this category?",
+  "usedByRecurring_one": "1 recurring movement uses it and will keep using it (shown struck through). To change it, edit that recurring movement.",
+  "usedByRecurring_other": "{{count}} recurring movements use it and will keep using it (shown struck through). To change it, edit those recurring movements.",
   "delete": "Delete"
   },
   "export": {

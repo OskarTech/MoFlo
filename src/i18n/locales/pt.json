@@ -473,6 +473,8 @@
     "namePlaceholder": "Ex. Ginásio, Netflix...",
     "icon": "Ícone",
     "deleteConfirm": "Eliminar esta categoria?",
+    "usedByRecurring_one": "É usada por 1 movimento recorrente, que continuará a usá-la (aparecerá riscada). Para a mudar, edite esse movimento recorrente.",
+    "usedByRecurring_other": "É usada por {{count}} movimentos recorrentes, que continuarão a usá-la (aparecerá riscada). Para a mudar, edite esses movimentos recorrentes.",
     "delete": "Eliminar"
   },
   "export": {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { getDynamicColors, colors, COLOR_PALETTES, ColorPaletteId } from '../theme';
+import { CATEGORY_COLORS } from '../theme/categoryColors';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 
@@ -35,6 +36,8 @@ export const useTheme = () => {
         ...colors,
         ...getDynamicColors(isDark, effectivePalette),
       },
+      // Los de las categorías, de la paleta y el modo activos (ver useCategoryColors)
+      categoryColors: CATEGORY_COLORS[effectivePalette][isDark ? 'dark' : 'light'],
     }),
     [isDark, effectivePalette],
   );

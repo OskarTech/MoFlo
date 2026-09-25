@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Share,
@@ -7,10 +7,10 @@ import {
 } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import auth from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
@@ -31,7 +31,6 @@ const SharedAccountScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'SharedAccount'>>();
   const { isPremium, showModal, setShowModal } = usePremium();
-  const insets = useSafeAreaInsets();
 
   const {
     sharedAccount, isLoading,
@@ -44,7 +43,7 @@ const SharedAccountScreen = () => {
     subscribeToIncomingRequests,
   } = useSharedAccountStore();
   const { loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
-  const currentUid = require('@react-native-firebase/auth').default().currentUser?.uid;
+  const currentUid = auth().currentUser?.uid;
   const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
   const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
 
@@ -67,6 +66,7 @@ const SharedAccountScreen = () => {
     if (sharedAccount && sharedAccount.createdBy === currentUid) {
       subscribeToIncomingRequests(sharedAccount.id);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- la cuenta cambia de objeto con cada actualización: solo se vuelve a suscribir al cambiar de cuenta, de creador o de usuario
   }, [sharedAccount?.id, sharedAccount?.createdBy, currentUid]);
 
   useEffect(() => {
@@ -78,6 +78,7 @@ const SharedAccountScreen = () => {
       setInviteCode(route.params.code);
       setMode('join');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando llega un código por enlace: repetirlo al cambiar la solicitud volvería a abrir el formulario
   }, [route.params]);
 
   const activateSharedMode = async (accountId: string) => {
@@ -103,7 +104,7 @@ const SharedAccountScreen = () => {
         await activateSharedMode(created.id);
         navigation.navigate('HomeTab');
       }
-    } catch (e) {
+    } catch {
       Alert.alert(t('common.error'), t('sharedAccount.createError'));
     } finally {
       setLoading(false);
@@ -126,7 +127,7 @@ const SharedAccountScreen = () => {
       } else {
         Alert.alert(t('common.error'), t('sharedAccount.joinError'));
       }
-    } catch (e) {
+    } catch {
       Alert.alert(t('common.error'), t('sharedAccount.joinError'));
     } finally {
       setLoading(false);
@@ -355,7 +356,7 @@ const SharedAccountScreen = () => {
                 {sharedAccount.members.map((uid, index) => {
                   const name = sharedAccount.memberNames[uid] ?? t('common.user');
                   const isCreator = uid === sharedAccount.createdBy;
-                  const isCurrentUser = uid === require('@react-native-firebase/auth').default().currentUser?.uid;
+                  const isCurrentUser = uid === auth().currentUser?.uid;
                   return (
                     <View key={uid}>
                       <View style={styles.memberRow}>

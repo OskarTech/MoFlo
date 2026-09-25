@@ -14,6 +14,7 @@ let cached: HapticsModule | null | undefined;
 const getHaptics = (): HapticsModule | null => {
   if (cached !== undefined) return cached;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- opcional: si la build no trae el módulo nativo, la app sigue funcionando sin vibrar
     cached = require('expo-haptics') as HapticsModule;
   } catch {
     cached = null;

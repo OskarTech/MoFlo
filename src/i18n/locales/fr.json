@@ -473,6 +473,8 @@
     "namePlaceholder": "Ex. Gym, Netflix...",
     "icon": "Icône",
     "deleteConfirm": "Supprimer cette catégorie ?",
+    "usedByRecurring_one": "1 mouvement récurrent l'utilise et continuera de l'utiliser (elle apparaîtra barrée). Pour la changer, modifiez ce mouvement récurrent.",
+    "usedByRecurring_other": "{{count}} mouvements récurrents l'utilisent et continueront de l'utiliser (elle apparaîtra barrée). Pour la changer, modifiez ces mouvements récurrents.",
     "delete": "Supprimer"
   },
   "export": {

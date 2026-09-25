@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -15,7 +15,6 @@ import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
 import CategoriesScreen from '../screens/app/CategoriesScreen';
 import SharedAccountScreen from '../screens/app/SharedAccountScreen';
-import RecurringScreen from '../screens/app/RecurringScreen';
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
 import AddTabButton from '../components/common/AddTabButton';
@@ -62,7 +61,6 @@ const SettingsNavigator = () => (
     <SettingsStack.Screen name="Support" component={SupportScreen} />
     <SettingsStack.Screen name="Categories" component={CategoriesScreen} />
     <SettingsStack.Screen name="SharedAccount" component={SharedAccountScreen} />
-    <SettingsStack.Screen name="Recurring" component={RecurringScreen} />
     <SettingsStack.Screen name="SharedCategories" component={SharedCategoriesScreen} />
   </SettingsStack.Navigator>
 );

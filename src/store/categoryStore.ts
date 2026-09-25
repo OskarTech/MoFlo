@@ -185,7 +185,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       await firestore()
         .collection('users').doc(uid)
         .update({ hiddenCategories: firestore.FieldValue.arrayUnion(key) });
-    } catch (e) {
+    } catch {
       // Si el doc no existe, usa set con merge
       await firestore()
         .collection('users').doc(uid)

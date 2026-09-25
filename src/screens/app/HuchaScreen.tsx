@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';

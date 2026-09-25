@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Modal,
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { useMovementStore } from '../../store/movementStore';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../theme';
 import { MovementType } from '../../types';
@@ -128,6 +129,8 @@ const SharedCategoriesScreen = () => {
     setShowAddCategoryModal,
   } = useSharedCategoryStore();
 
+  // En modo compartido el store de movimientos tiene los recurrentes de la cuenta
+  const recurringMovements = useMovementStore((s) => s.recurringMovements);
   const [activeType, setActiveType] = useState<MovementType>('expense');
   const [showAddModal, setShowAddModal] = useState(false);
   const [name, setName] = useState('');
@@ -180,16 +183,24 @@ const SharedCategoriesScreen = () => {
         setSelectedType(activeType);
       }
     }
-  }, [showAddModal, editingCategory]);
+  }, [showAddModal, editingCategory, activeType]);
 
   const baseCats = getSharedCategoriesForType(activeType).filter(c => !c.isCustom);
   const customCats = getSharedCategoriesForType(activeType).filter(c => c.isCustom);
+
+  // Los recurrentes activos siguen usando la categoría aunque se borre: se avisa
+  // en la confirmación de cuántos la usan
+  const deleteMessage = (id: string, catName: string) => {
+    const count = recurringMovements
+      .filter(r => r.isActive && r.category === id && r.type === activeType).length;
+    return count > 0 ? `${catName}\n\n${t('categories.usedByRecurring', { count })}` : catName;
+  };
 
   const handleDeleteBase = (id: string, catName: string) => {
     warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
-      catName,
+      deleteMessage(id, catName),
       [
         { text: t('movements.cancel'), style: 'cancel' },
         {
@@ -205,7 +216,7 @@ const SharedCategoriesScreen = () => {
     warningHaptic();
     Alert.alert(
       t('categories.deleteConfirm'),
-      catName,
+      deleteMessage(id, catName),
       [
         { text: t('movements.cancel'), style: 'cancel' },
         {

@@ -28,6 +28,7 @@ const AnimatedBar = ({ size, unit = '%', axis = 'width', delay = 0, style }: Pro
     firstRef.current = false;
     animation.start();
     return () => animation.stop();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- solo se anima al cambiar el tamaño; el retraso cuenta solo la primera vez
   }, [size]);
 
   const dimension = unit === '%'

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, Animated, Platform, StatusBar, Keyboard, Switch,
@@ -16,7 +16,6 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../../components/common/PremiumModal';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
 import { HuchaMovementType } from '../../types';
 import { formatDate } from '../../utils/dateFormat';
 import { formatAmount, parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
@@ -267,7 +266,7 @@ const HuchaDetailScreen = () => {
       duration: 900,
       useNativeDriver: false,
     }).start();
-  }, [pct, hasTarget]);
+  }, [pct, hasTarget, fillAnim]);
 
   useEffect(() => {
     AsyncStorage.getItem('@moflo_quick_amounts').then(stored => {
@@ -920,7 +919,10 @@ const HuchaDetailScreen = () => {
 
               <TouchableOpacity
                 style={[styles.actionRow, { borderTopColor: dc.border }]}
-                onPress={() => { setShowActionsMenu(false); isClosed ? handleReopen() : handleClose(); }}
+                onPress={() => {
+                  setShowActionsMenu(false);
+                  if (isClosed) handleReopen(); else handleClose();
+                }}
                 activeOpacity={0.6}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: (isClosed ? dc.income : dc.savings) + '15' }]}>
