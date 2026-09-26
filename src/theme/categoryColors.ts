@@ -2,12 +2,16 @@ import type { ColorPaletteId } from './index';
 
 // Colores de las categorías de cada paleta, con un juego para modo claro y otro
 // para oscuro (en oscuro, todos con al menos 3:1 de contraste sobre la tarjeta).
-// Comprobados con un simulador de daltonismo (protanopía y deuteranopía): los
-// colores que quedan juntos en el gráfico se distinguen en las 10 paletas.
 //
-// - Gastos: 8 colores, uno fijo para cada categoría (ver utils/categoryColors),
-//   más un gris con un toque de la paleta para "Otros". Ninguno es verde ni
-//   turquesa: esos tonos quedan para los ingresos, para no confundirlos.
+// - Gastos: 12 colores, uno fijo para cada categoría (ver utils/categoryColors),
+//   más un gris con un toque de la paleta para "Otros". Los 8 primeros son uno
+//   de cada familia (rojo, naranja, amarillo, marrón, azul, celeste, morado y
+//   rosa), con el matiz de la paleta; el primero, de Hogar, es su color
+//   característico. Los 4 últimos, para la 3.ª a 6.ª categoría propia, son
+//   tonos más claros u oscuros de esas familias. Se distinguen todas las
+//   parejas, no solo las que quedan juntas en el gráfico, también simulando
+//   daltonismo. Ninguno es verde ni turquesa: esos tonos quedan para los
+//   ingresos, para no confundirlos.
 // - Ingresos: 12 verdes, que se reparten por puesto (el que más suma, el
 //   primero). Son los de siempre, con un ligero toque de cada paleta.
 export interface CategoryColorSet {
@@ -21,10 +25,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   green: {
     light: {
       expense: [
-        '#E0A907', '#07A0D1', '#E85896', '#816BEF',
-        '#D89D59', '#DF65C6', '#C73214', '#2D93FC',
+        '#E6AC3D', '#215DA5', '#AE6626', '#6861F1',
+        '#633C2E', '#51A3CC', '#8B397C', '#F68390',
+        '#DC428A', '#DD7EF6', '#A845CC', '#B6303E',
       ],
-      expenseOther: '#5D685F',
+      expenseOther: '#5A6F5F',
       income: [
         '#2FC73A', '#029479', '#ADB834', '#1E782A',
         '#07B8AE', '#2ACD22', '#057E61', '#A0AA06',
@@ -33,10 +38,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#BB8D04', '#0F8FBA', '#D54685', '#7861E4',
-        '#BC833D', '#CA50B2', '#C73113', '#1383EA',
+        '#C38D36', '#4278AD', '#FAB18A', '#6F5DD7',
+        '#B35537', '#52B3D1', '#A94F8D', '#F06F80',
+        '#F686F4', '#A67DF2', '#D936AE', '#D43063',
       ],
-      expenseOther: '#616D64',
+      expenseOther: '#5D6E60',
       income: [
         '#0BB325', '#00866D', '#939D0E', '#217B2C',
         '#18A59D', '#08B300', '#018365', '#939D00',
@@ -48,10 +54,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   earth: {
     light: {
       expense: [
-        '#CA6744', '#036E9A', '#D2B12C', '#CE667A',
-        '#32B1C1', '#6069C8', '#C07005', '#A94E91',
+        '#CB653E', '#A42741', '#E3B572', '#623F0B',
+        '#215DA5', '#4CA0DC', '#6F5EF0', '#D166AF',
+        '#F68486', '#A21F8F', '#925B0C', '#DF3068',
       ],
-      expenseOther: '#A0AFA8',
+      expenseOther: '#717674',
       income: [
         '#64C250', '#038B6A', '#ADB746', '#37812F',
         '#17B7AE', '#93AA0E', '#108E6A', '#9EAA06',
@@ -60,10 +67,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#BE5C39', '#1575A2', '#B09200', '#C0596E',
-        '#029BAB', '#5E67C5', '#B26805', '#A64B8F',
+        '#BD5834', '#F7A3AA', '#E4C969', '#D98943',
+        '#98AEF1', '#2890C4', '#6F5DD7', '#BA54A1',
+        '#F5558F', '#EF57D6', '#CEAF33', '#CD285E',
       ],
-      expenseOther: '#85948D',
+      expenseOther: '#6C706E',
       income: [
         '#4FAD3A', '#017D5F', '#939C25', '#307A28',
         '#00A199', '#8AA000', '#067F5D', '#929D00',
@@ -75,10 +83,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   mint: {
     light: {
       expense: [
-        '#3D5BC6', '#C358A1', '#CF6922', '#8565E0',
-        '#C34A7E', '#FE973B', '#0278AD', '#D84951',
+        '#3A5FC9', '#F68390', '#AC6721', '#DAB060',
+        '#5F3E34', '#58A9D3', '#8D3879', '#9572E7',
+        '#D3316A', '#AF2D18', '#C85EB4', '#E4752E',
       ],
-      expenseOther: '#A4AAB7',
+      expenseOther: '#6C7487',
       income: [
         '#34B816', '#03A9A0', '#9AA506', '#04813C',
         '#02BDB3', '#9DB73B', '#03968E', '#A5B30B',
@@ -87,10 +96,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#4B6CD9', '#B84E97', '#C25D0F', '#7E5DD8',
-        '#C0477C', '#DC7702', '#0B7BB0', '#CE3F49',
+        '#5071DE', '#E62E23', '#F48A64', '#EBD070',
+        '#9C6F53', '#3AB1E8', '#AD5697', '#E1B8F9',
+        '#F764CB', '#F36A8A', '#D33ABB', '#D8732B',
       ],
-      expenseOther: '#8A909C',
+      expenseOther: '#9598A0',
       income: [
         '#2BAE07', '#089B93', '#939D11', '#0F853F',
         '#13AAA1', '#7A9104', '#0FA89F', '#7E8900',
@@ -102,10 +112,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   rose: {
     light: {
       expense: [
-        '#E06DCA', '#D1853C', '#4C47C3', '#BF4A5C',
-        '#049ED8', '#D4AF15', '#9B55A2', '#258EFE',
+        '#E16DC8', '#B92848', '#1855C1', '#F06A2A',
+        '#623F0B', '#35A1E7', '#79438E', '#D5BD67',
+        '#8C67F2', '#E29098', '#B747A4', '#B0652A',
       ],
-      expenseOther: '#63575F',
+      expenseOther: '#7D797B',
       income: [
         '#0BBE2F', '#15A299', '#ACB60B', '#037932',
         '#18B7AE', '#31CD24', '#0F8D76', '#A0AA07',
@@ -114,10 +125,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#C857B4', '#BC7226', '#5856D4', '#BB4659',
-        '#0A8EC2', '#B09111', '#99529F', '#0A7FEE',
+        '#CB5AB6', '#F7A3AA', '#3E8BD1', '#F5642B',
+        '#976851', '#60C8DD', '#705ADC', '#DAB249',
+        '#959AF4', '#E2406F', '#F5ADF9', '#C8875A',
       ],
-      expenseOther: '#6F636B',
+      expenseOther: '#A999A3',
       income: [
         '#00B329', '#01958C', '#939D01', '#017831',
         '#02A299', '#17B304', '#058A73', '#939D01',
@@ -129,10 +141,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   mono: {
     light: {
       expense: [
-        '#2864AC', '#D2834C', '#16A4B9', '#6356AF',
-        '#B74E71', '#EBA240', '#AE78D1', '#B65239',
+        '#2A63AB', '#F68390', '#B56124', '#DDAF61',
+        '#5F3F33', '#52A9D9', '#7567F1', '#883C7A',
+        '#C861AD', '#C32853', '#5B3ACB', '#F76EDE',
       ],
-      expenseOther: '#9DA6B2',
+      expenseOther: '#767B82',
       income: [
         '#51BB39', '#068D74', '#83B630', '#2D7F30',
         '#1AB7AE', '#61CF3A', '#05876C', '#ACB70B',
@@ -141,10 +154,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#2E69B2', '#BE7039', '#1093A6', '#675BB4',
-        '#B34B6E', '#CA8411', '#9E68C0', '#B34F37',
+        '#3A75BF', '#F7A3AA', '#F5642B', '#CCB76A',
+        '#976851', '#4FBADE', '#714FF1', '#A55095',
+        '#D667F3', '#EA306D', '#8680D1', '#F793F5',
       ],
-      expenseOther: '#858E9A',
+      expenseOther: '#8E939A',
       income: [
         '#43AF2A', '#00856C', '#74A617', '#247728',
         '#179F97', '#40B000', '#07886D', '#939D00',
@@ -156,10 +170,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   navy: {
     light: {
       expense: [
-        '#C39912', '#02759B', '#D45053', '#4857BA',
-        '#D66DA6', '#4192F7', '#E09412', '#A96BDA',
+        '#BF8F34', '#5E3F30', '#E29098', '#C55123',
+        '#2954BC', '#3096CB', '#893F71', '#815AE4',
+        '#E046A4', '#B199F4', '#D3BD70', '#C468F2',
       ],
-      expenseOther: '#5B616D',
+      expenseOther: '#737478',
       income: [
         '#38C746', '#0F9680', '#ACB607', '#02773B',
         '#2FB6AD', '#41CB33', '#01826A', '#A0AA06',
@@ -168,10 +183,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#AA8406', '#09779D', '#CA474A', '#5060C4',
-        '#C25B94', '#3082E6', '#C07E0A', '#9C5DCC',
+        '#C28D36', '#B35537', '#F56A7E', '#FAB18A',
+        '#4A64E7', '#539AC9', '#EDACDE', '#9953AB',
+        '#E965F2', '#8079D0', '#CEAF33', '#BB60F4',
       ],
-      expenseOther: '#626873',
+      expenseOther: '#67696C',
       income: [
         '#13B22E', '#008A75', '#939D10', '#03783C',
         '#0CA69D', '#1CB203', '#068A71', '#939D00',
@@ -183,10 +199,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   wine: {
     light: {
       expense: [
-        '#A5334B', '#0295D5', '#DAAD44', '#CA67B3',
-        '#D1611B', '#674FB4', '#C24A7A', '#268DE5',
+        '#A7344A', '#F5642B', '#E3B842', '#5F4118',
+        '#256292', '#50A1D5', '#6A37BF', '#EB59B0',
+        '#A267F0', '#E2909B', '#AB2590', '#905C06',
       ],
-      expenseOther: '#B6A5A6',
+      expenseOther: '#857677',
       income: [
         '#58B928', '#109176', '#ABB90F', '#367C26',
         '#10BDB3', '#46BA06', '#037959', '#A0AA06',
@@ -195,10 +212,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#B03C53', '#0F88C1', '#B98E19', '#B958A3',
-        '#C55606', '#6B54BA', '#BC4575', '#1281D8',
+        '#BB475D', '#F06A2A', '#CCAE63', '#A06602',
+        '#297CEF', '#6CB4E3', '#7D5CC7', '#D967C4',
+        '#8D8AF1', '#F996A9', '#BB29A6', '#F1CF4B',
       ],
-      expenseOther: '#9B8B8C',
+      expenseOther: '#908B8B',
       income: [
         '#4DAE14', '#01856C', '#929D10', '#2E741D',
         '#0B9C94', '#40B000', '#04805E', '#939D00',
@@ -210,10 +228,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   lime: {
     light: {
       expense: [
-        '#2361DD', '#C62686', '#DCAD10', '#2198CA',
-        '#F4830C', '#9545D2', '#F8523C', '#6640D2',
+        '#2B63E0', '#F68390', '#6B3724', '#DAA850',
+        '#9477DD', '#B56124', '#903081', '#5BA8D4',
+        '#DB3E98', '#6A37BF', '#BA2842', '#2783B2',
       ],
-      expenseOther: '#AFAA9C',
+      expenseOther: '#6A6965',
       income: [
         '#67C228', '#0F8B65', '#A9BA04', '#31821C',
         '#09B8AE', '#4EC601', '#088F61', '#A0AA06',
@@ -222,10 +241,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#2463DF', '#C32284', '#B78F0A', '#128ABA',
-        '#D1700D', '#9342D0', '#E53F29', '#6B46D8',
+        '#2C6BE7', '#F7A3AA', '#936A4A', '#CEB660',
+        '#898EE7', '#F5642B', '#A94F8D', '#3EC9F5',
+        '#EC52C0', '#7461C6', '#EB3065', '#3D96C6',
       ],
-      expenseOther: '#959082',
+      expenseOther: '#9B9890',
       income: [
         '#52A903', '#077C5A', '#8F9E06', '#1E7301',
         '#05978F', '#44AF00', '#0B7952', '#939D00',
@@ -237,10 +257,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   teal: {
     light: {
       expense: [
-        '#DB682D', '#C05DB9', '#4D90F8', '#C23D60',
-        '#01789C', '#D4B108', '#BB3C33', '#B068D4',
+        '#D86728', '#D3BD70', '#AE2845', '#2E5E9A',
+        '#623F0B', '#35A1E7', '#D86CB5', '#7640D2',
+        '#8676F2', '#966212', '#E3928A', '#E73966',
       ],
-      expenseOther: '#546466',
+      expenseOther: '#7C8182',
       income: [
         '#08C644', '#039983', '#7AB90D', '#06784F',
         '#14ADA1', '#47C335', '#0A968E', '#A9B608',
@@ -249,10 +270,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#CB5A1A', '#B351AD', '#3D80E7', '#BF3A5D',
-        '#04799D', '#B09304', '#BC3D34', '#A35BC6',
+        '#CC5825', '#E8C869', '#F7A3AA', '#2A8EEF',
+        '#C19469', '#5BC1D9', '#AA4C93', '#6461DA',
+        '#A392D6', '#F77132', '#EC4F8F', '#CE2857',
       ],
-      expenseOther: '#5A6B6C',
+      expenseOther: '#656A6A',
       income: [
         '#05B23C', '#008A75', '#6DA806', '#06784F',
         '#09AA9E', '#187A03', '#029B93', '#929D02',
@@ -264,10 +286,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
   cocoa: {
     light: {
       expense: [
-        '#3D95E9', '#A75559', '#1080AC', '#D17D18',
-        '#9B63A8', '#E3A907', '#BB446A', '#727EE9',
+        '#4296EA', '#E29098', '#5F3E34', '#C55123',
+        '#237FA4', '#E1AF4A', '#4F45C4', '#93356D',
+        '#9857E7', '#CF399E', '#F668C3', '#D5812D',
       ],
-      expenseOther: '#675C53',
+      expenseOther: '#948374',
       income: [
         '#51C453', '#068E6F', '#A7B730', '#2D7C2D',
         '#20B7AD', '#69CD3B', '#017F5D', '#A0AA07',
@@ -276,10 +299,11 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
     },
     dark: {
       expense: [
-        '#2A86D8', '#A65459', '#077DA9', '#BC6E09',
-        '#955DA2', '#BD8C03', '#B84268', '#6771DC',
+        '#2983D5', '#EB4766', '#A06522', '#E78B2E',
+        '#54BBD2', '#F1CF4B', '#6A55EE', '#F599A6',
+        '#A24FA0', '#D279F3', '#CA40CA', '#F5AB77',
       ],
-      expenseOther: '#6F645A',
+      expenseOther: '#8F8B88',
       income: [
         '#3AAF3D', '#028063', '#8F9E0B', '#247524',
         '#169C94', '#49AE00', '#0C7C5B', '#939D00',

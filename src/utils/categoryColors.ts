@@ -20,7 +20,7 @@ export const buildExpenseOrder = (customCategories: Category[]): Map<string, num
 
 export interface CategoryColors {
   // Color de una categoría de gasto: siempre el mismo, sea cual sea su puesto.
-  // A partir de la 9.ª se repiten, siempre con su icono y su nombre al lado
+  // A partir de la 13.ª se repiten, siempre con su icono y su nombre al lado
   expense: (id: string) => string;
   // Para dibujar el gráfico de gastos siempre en el mismo orden, "Otros" al final
   expenseOrder: (id: string) => number;

@@ -27,7 +27,11 @@ describe('makeCategoryColors', () => {
     ]);
     expect(c.expense('a')).toBe(set.expense[6]);
     expect(c.expense('b')).toBe(set.expense[7]);
-    expect(c.expense('c')).toBe(set.expense[0]);
+    expect(c.expense('c')).toBe(set.expense[8]);
+    // La 7.ª propia es la 13.ª categoría: vuelve al primer color
+    const seven = makeCategoryColors(set, [1, 2, 3, 4, 5, 6, 7].map((n) => custom(`p${n}`, `2026-0${n}-01`)));
+    expect(seven.expense('p6')).toBe(set.expense[11]);
+    expect(seven.expense('p7')).toBe(set.expense[0]);
   });
 
   it('borrar una no cambia el color de las demás, y la borrada conserva el suyo', () => {
@@ -68,7 +72,7 @@ describe('CATEGORY_COLORS', () => {
       expect(entry).toBeDefined();
       (['light', 'dark'] as const).forEach((mode) => {
         const s = entry[mode];
-        expect(s.expense).toHaveLength(8);
+        expect(s.expense).toHaveLength(12);
         expect(s.income).toHaveLength(12);
         [...s.expense, s.expenseOther, ...s.income].forEach((c) => expect(c).toMatch(hex));
       });
