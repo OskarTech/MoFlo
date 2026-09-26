@@ -37,7 +37,7 @@ import { reportError } from '../../services/crashReporting';
 import { resetPurchasesUser } from '../../services/revenuecat';
 import { deleteSubcollections } from '../../services/firebase/batchDelete';
 import { reauthenticate, needsPasswordToReauthenticate } from '../../services/firebase/reauth.service';
-import { exportMovementsToCSV } from '../../services/export.service';
+import ExportDataModal from '../../components/common/ExportDataModal';
 import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
 import * as Font from 'expo-font';
@@ -204,8 +204,6 @@ const SettingsScreen = () => {
 
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
-  const { movements, recurringMovements } = useMovementStore();
-  const { huchas, huchaMovements } = useSavingsStore();
   const {
     isSharedMode, sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
@@ -235,6 +233,8 @@ const SettingsScreen = () => {
   const [showDateFormatModal, setShowDateFormatModal] = useState(false);
   const [showColorPaletteModal, setShowColorPaletteModal] = useState(false);
   const [showFontModal, setShowFontModal] = useState(false);
+  // Elegir formato de exportación; 'beforeDelete': al terminar sigue con el borrado de la cuenta compartida
+  const [exportMode, setExportMode] = useState<null | 'export' | 'beforeDelete'>(null);
   const [selectedFont, setSelectedFont] = useState<AppFontId>(getActiveFont());
   const [editingName, setEditingName] = useState(false);
 
@@ -598,10 +598,7 @@ const SettingsScreen = () => {
         { text: t('movements.cancel'), style: 'cancel' },
         {
           text: t('sharedAccount.exportFirst'),
-          onPress: async () => {
-            try { await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames); } catch {}
-            confirmDeleteShared();
-          },
+          onPress: () => setExportMode('beforeDelete'),
         },
         {
           text: t('sharedAccount.deleteAnyway'),
@@ -695,20 +692,11 @@ const SettingsScreen = () => {
     } catch {}
   };
 
-  const handleExportCSV = () => {
-    if (isSharedMode) {
-      exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t, sharedAccount?.memberNames).catch(() => {
-        Alert.alert(t('common.error'), t('export.error'));
-      });
-    } else {
-      requirePremium(async () => {
-        try {
-          await exportMovementsToCSV(movements, huchas, recurringMovements, huchaMovements, t);
-        } catch {
-          Alert.alert(t('common.error'), t('export.error'));
-        }
-      });
-    }
+  // Se exportan los datos de la cuenta activa (compartida o individual). En la
+  // individual es una función premium; en la compartida, no
+  const handleExportData = () => {
+    if (isSharedMode) setExportMode('export');
+    else requirePremium(() => setExportMode('export'));
   };
 
   // ── COMPUTED VALUES ───────────────────────────────────────────
@@ -1154,7 +1142,7 @@ const SettingsScreen = () => {
             subtitle={!isSharedMode && !isPremium
               ? `⭐ ${t('premium.badge')}`
               : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
-            onPress={handleExportCSV}
+            onPress={handleExportData}
           />
           {/* Apariencia: afecta a toda la app, no a la cuenta activa */}
           <View style={[styles.divider, { backgroundColor: dc.border }]} />
@@ -1333,6 +1321,11 @@ const SettingsScreen = () => {
         options={DATE_FORMAT_OPTIONS} selectedValue={dateFormat}
         onSelect={code => saveSettings({ dateFormat: code as DateFormat })}
         onDismiss={() => setShowDateFormatModal(false)}
+      />
+      <ExportDataModal
+        visible={exportMode !== null}
+        onClose={() => setExportMode(null)}
+        onExported={exportMode === 'beforeDelete' ? confirmDeleteShared : undefined}
       />
       <ColorPaletteModal
         visible={showColorPaletteModal}

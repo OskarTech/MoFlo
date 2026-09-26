@@ -27,7 +27,7 @@ const SEPARATORS: Record<string, Separators> = {
 
 const DEFAULT_SEPARATORS = SEPARATORS.en;
 
-const getSeparators = (): Separators => {
+export const getSeparators = (): Separators => {
   // El idioma del ajuste manda; i18n es el respaldo al arrancar
   const lang = useSettingsStore.getState().language || i18n.language || 'en';
   return SEPARATORS[lang.split('-')[0]] ?? DEFAULT_SEPARATORS;
