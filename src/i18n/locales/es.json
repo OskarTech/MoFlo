@@ -25,14 +25,17 @@
     "sendResetEmail": "Enviar correo de recuperación",
     "resetEmailSent": "¡Correo enviado!",
     "resetEmailSentSubtitle": "Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "or": "o",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
   },
   "home": {
     "balance": "Balance Actual",
     "income": "Ingresos",
     "expenses": "Gastos",
     "savings": "Ahorros",
-    "recentMovements": "Últimos Movimientos",
+    "recentMovements": "Últimos movimientos",
     "whereMoneyGoes": "Dónde va tu dinero",
     "noExpenses": "Sin gastos este mes",
     "noMovements": "Sin movimientos",
@@ -61,7 +64,9 @@
     "dayBalance": "Balance del día",
     "noMovementsDay": "Sin movimientos este día",
     "movementCount_one": "{{count}} movimiento",
-    "movementCount_other": "{{count}} movimientos"
+    "movementCount_other": "{{count}} movimientos",
+    "showAmounts": "Mostrar importes",
+    "hideAmounts": "Ocultar importes"
   },
   "resumen": {
     "balance": "Balance",
@@ -95,7 +100,12 @@
     "avgPerMonth": "Media/Mes",
     "total": "Total",
     "categAbbr": "Categ.",
-    "viewAllMovements": "Ver todos los movimientos"
+    "viewAllMovements": "Ver todos los movimientos",
+    "month": "Mes",
+    "year": "Año",
+    "rhythmTitle": "Ritmo del mes",
+    "lessThanPrev": "{{amount}} menos que el mes pasado a día {{day}}",
+    "moreThanPrev": "{{amount}} más que el mes pasado a día {{day}}"
   },
   "movements": {
   "add": "Añadir Movimiento",
@@ -133,7 +143,9 @@
       "emergency": "Fondo de emergencia",
       "retirement": "Jubilación",
       "travel": "Viajes"
-    }
+    },
+    "saveExpense": "Guardar gasto",
+    "saveIncome": "Guardar ingreso"
   }, 
   "recurring": {
   "title": "Recurrentes",
@@ -156,7 +168,8 @@
   "income": "Ingresos",
   "expense": "Gastos",
   "net": "Neto",
-  "perMonth": "/ mes"
+  "perMonth": "/ mes",
+  "dayPickerLabel": "Día de cada mes"
   },
   "movementsList": {
   "title": "Movimientos",
@@ -313,7 +326,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "Para los importes de tu cuenta individual",
+    "currencyHintShared": "Para los importes de la cuenta compartida",
+    "themeHint": "Automático sigue el modo de tu móvil",
+    "paletteHint": "Cambia la cabecera, los botones y los colores de las categorías",
+    "fontHint": "Solo en este móvil, como la apariencia"
   },
   "hucha": {
   "title": "Hucha",
@@ -391,7 +409,13 @@
   "editQuickAmounts": "Editar",
   "saveQuickAmounts": "Guardar",
   "viewAllHistory": "Ver todos",
-  "hideHistory": "Ocultar"
+  "hideHistory": "Ocultar",
+  "options": "Opciones de la hucha",
+  "goalBy": "Meta para {{date}}",
+  "willReach": "Llegarás a {{amount}}",
+  "willRemain": "Quedarán {{amount}}",
+  "depositCta": "Añadir {{amount}}",
+  "withdrawCta": "Sacar {{amount}}"
   },
   "tabs": {
   "home": "Inicio",
@@ -436,7 +460,11 @@
   "permissionDeniedMessage": "Activa las notificaciones en los ajustes de tu dispositivo para usar recordatorios.",
   "scheduled": "¡Recordatorio programado!",
   "pastDateError": "Elige una fecha y hora futuras",
-  "scheduledMessage": "Recibirás una notificación el {{date}} a las {{time}}"
+  "scheduledMessage": "Recibirás una notificación el {{date}} a las {{time}}",
+  "upcoming": "Próximos",
+  "notes": "Notas",
+  "past": "Pasados",
+  "nextLabel": "Próximo aviso"
   },
   "premium": {
   "title": "MoFlo Premium",
@@ -476,7 +504,11 @@
   "deleteConfirm": "¿Eliminar esta categoría?",
   "usedByRecurring_one": "La usa 1 movimiento recurrente y la seguirá usando (se verá tachada). Para cambiarla, edita ese recurrente.",
   "usedByRecurring_other": "La usan {{count}} movimientos recurrentes y la seguirán usando (se verá tachada). Para cambiarla, edita esos recurrentes.",
-  "delete": "Eliminar"
+  "delete": "Eliminar",
+  "new": "Nueva",
+  "swipeHint": "Desliza una categoría a la izquierda para editarla o quitarla",
+  "color": "Color",
+  "colorAuto": "Automático"
   },
   "export": {
   "title": "Exportar datos",
@@ -690,6 +722,17 @@
   },
   "common": {
     "user": "Usuario",
-    "error": "Error"
+    "error": "Error",
+    "back": "Volver",
+    "close": "Cerrar",
+    "add": "Añadir",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "colorPickerTitle": "Color personalizado",
+    "colorPickerHint": "Toca o arrastra el dedo para elegir el tono",
+    "colorPickerUse": "Usar este color",
+    "customColor": "Color personalizado"
   }
 }

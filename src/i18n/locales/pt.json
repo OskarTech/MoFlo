@@ -25,7 +25,10 @@
     "sendResetEmail": "Enviar e-mail de recuperação",
     "resetEmailSent": "E-mail enviado!",
     "resetEmailSentSubtitle": "Verifique a sua caixa de entrada e siga as instruções para redefinir a palavra-passe.",
-    "backToLogin": "Voltar ao início de sessão"
+    "backToLogin": "Voltar ao início de sessão",
+    "or": "ou",
+    "showPassword": "Mostrar palavra-passe",
+    "hidePassword": "Ocultar palavra-passe"
   },
   "home": {
     "balance": "Saldo Atual",
@@ -61,7 +64,9 @@
     "dayBalance": "Saldo do dia",
     "noMovementsDay": "Sem movimentos neste dia",
     "movementCount_one": "{{count}} movimento",
-    "movementCount_other": "{{count}} movimentos"
+    "movementCount_other": "{{count}} movimentos",
+    "showAmounts": "Mostrar valores",
+    "hideAmounts": "Ocultar valores"
   },
   "resumen": {
     "balance": "Saldo",
@@ -95,7 +100,12 @@
     "avgPerMonth": "Média/Mês",
     "total": "Total",
     "categAbbr": "Categ.",
-    "viewAllMovements": "Ver todos os movimentos"
+    "viewAllMovements": "Ver todos os movimentos",
+    "month": "Mês",
+    "year": "Ano",
+    "rhythmTitle": "Ritmo do mês",
+    "lessThanPrev": "{{amount}} a menos do que no mês passado ao dia {{day}}",
+    "moreThanPrev": "{{amount}} a mais do que no mês passado ao dia {{day}}"
   },
   "movements": {
     "add": "Adicionar Movimento",
@@ -133,7 +143,9 @@
       "emergency": "Fundo de emergência",
       "retirement": "Reforma",
       "travel": "Viagens"
-    }
+    },
+    "saveExpense": "Guardar despesa",
+    "saveIncome": "Guardar receita"
   },
   "recurring": {
     "title": "Recorrentes",
@@ -156,7 +168,8 @@
     "income": "Receitas",
     "expense": "Despesas",
     "net": "Líquido",
-    "perMonth": "/ mês"
+    "perMonth": "/ mês",
+    "dayPickerLabel": "Dia de cada mês"
   },
   "movementsList": {
     "title": "Movimentos",
@@ -313,7 +326,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "Para os valores da sua conta individual",
+    "currencyHintShared": "Para os valores da conta partilhada",
+    "themeHint": "Automático segue o modo do seu dispositivo",
+    "paletteHint": "Muda o cabeçalho, os botões e as cores das categorias",
+    "fontHint": "Só neste dispositivo, como a aparência"
   },
   "hucha": {
     "title": "Poupança",
@@ -391,7 +409,13 @@
     "editQuickAmounts": "Editar",
     "saveQuickAmounts": "Guardar",
     "viewAllHistory": "Ver tudo",
-    "hideHistory": "Ocultar"
+    "hideHistory": "Ocultar",
+    "options": "Opções do objetivo",
+    "goalBy": "Meta para {{date}}",
+    "willReach": "Vai chegar a {{amount}}",
+    "willRemain": "Ficam {{amount}}",
+    "depositCta": "Adicionar {{amount}}",
+    "withdrawCta": "Retirar {{amount}}"
   },
   "tabs": {
     "home": "Início",
@@ -435,7 +459,11 @@
     "permissionDeniedMessage": "Ative as notificações nas definições do seu dispositivo para usar lembretes.",
     "scheduled": "Lembrete programado!",
     "pastDateError": "Escolha uma data e hora futuras",
-    "scheduledMessage": "Receberá uma notificação a {{date}} às {{time}}"
+    "scheduledMessage": "Receberá uma notificação a {{date}} às {{time}}",
+    "upcoming": "Próximos",
+    "notes": "Notas",
+    "past": "Passados",
+    "nextLabel": "Próximo lembrete"
   },
   "premium": {
     "title": "MoFlo Premium",
@@ -475,7 +503,11 @@
     "deleteConfirm": "Eliminar esta categoria?",
     "usedByRecurring_one": "É usada por 1 movimento recorrente, que continuará a usá-la (aparecerá riscada). Para a mudar, edite esse movimento recorrente.",
     "usedByRecurring_other": "É usada por {{count}} movimentos recorrentes, que continuarão a usá-la (aparecerá riscada). Para a mudar, edite esses movimentos recorrentes.",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "new": "Nova",
+    "swipeHint": "Deslize uma categoria para a esquerda para a editar ou remover",
+    "color": "Cor",
+    "colorAuto": "Automático"
   },
   "export": {
     "title": "Exportar dados",
@@ -689,6 +721,17 @@
   },
   "common": {
     "user": "Utilizador",
-    "error": "Erro"
+    "error": "Erro",
+    "back": "Voltar",
+    "close": "Fechar",
+    "add": "Adicionar",
+    "previousMonth": "Mês anterior",
+    "nextMonth": "Mês seguinte",
+    "previous": "Anterior",
+    "next": "Seguinte",
+    "colorPickerTitle": "Cor personalizada",
+    "colorPickerHint": "Toque ou arraste o dedo para escolher o tom",
+    "colorPickerUse": "Usar esta cor",
+    "customColor": "Cor personalizada"
   }
 }

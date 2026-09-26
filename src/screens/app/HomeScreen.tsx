@@ -1,62 +1,68 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
-import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
-import { useCategoryColors } from '../../hooks/useCategoryColors';
+import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { MovementType } from '../../types';
-import AppHeader from '../../components/common/AppHeader';
 import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
+import { withAlpha } from '../../utils/color';
 import { getDateLocale } from '../../utils/dateFormat';
-import { getMemberLabel } from '../../utils/memberLabel';
-import MemberName from '../../components/common/MemberName';
-import StrikeText from '../../components/common/StrikeText';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
+import { HeroScrollScreen } from '../../components/layout/HeroScreen';
+import { HeroIconButton } from '../../components/layout/HeroBar';
+import { SectionHeader } from '../../components/layout/SheetSection';
+import AccountSwitcher from '../../components/common/AccountSwitcher';
+import MovementItem from '../../components/common/MovementItem';
+import StrikeText from '../../components/common/StrikeText';
 import DailySummaryModal, { DailySummaryOrigin } from '../../components/home/DailySummaryModal';
 import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
-const BALANCE_INT_MAX_SIZE = 52;
+const BALANCE_INT_MAX_SIZE = 48;
 const BALANCE_INT_MIN_SIZE = 22;
+const HIDE_KEY = '@moflo_hide_balance';
+const HIDDEN = '••••';
 
-const BalanceCard = ({
-  balance, month, currencySymbol, totalIncome, totalExpense, onPressIncome, onPressExpense, onPressDaily,
+// Posición del elemento pulsado: la ventana flotante crece desde ahí
+const pressWithOrigin = (
+  ref: React.RefObject<View | null>,
+  onPress: (origin: DailySummaryOrigin | null) => void,
+) => {
+  if (!ref.current) return onPress(null);
+  ref.current.measureInWindow((x, y, width, height) => {
+    onPress(width > 0 ? { x, y, width, height } : null);
+  });
+};
+
+/** Cabecera de color de Inicio: balance del mes, barra de lo gastado, y lo que entra y sale */
+const BalanceHero = ({
+  balance, month, currencySymbol, totalIncome, totalExpense, hidden, onToggleHidden,
+  onPressIncome, onPressExpense, onPressDaily,
 }: {
   balance: number; month: number; currencySymbol: string;
   totalIncome: number; totalExpense: number;
+  hidden: boolean; onToggleHidden: () => void;
   onPressIncome: (origin: DailySummaryOrigin | null) => void;
   onPressExpense: (origin: DailySummaryOrigin | null) => void;
   onPressDaily: (origin: DailySummaryOrigin | null) => void;
 }) => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { ui } = useTheme();
   const balanceRef = useWalkthroughTarget('home_balance');
   const dailyBtnRef = useRef<View>(null);
   const incomeRef = useRef<View>(null);
   const expenseRef = useRef<View>(null);
 
-  // Posición del elemento pulsado: la pantalla flotante se expande desde ahí
-  const pressWithOrigin = (
-    ref: React.RefObject<View | null>,
-    onPress: (origin: DailySummaryOrigin | null) => void,
-  ) => {
-    if (!ref.current) return onPress(null);
-    ref.current.measureInWindow((x, y, width, height) => {
-      onPress(width > 0 ? { x, y, width, height } : null);
-    });
-  };
-
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
-  const absBalance = Math.abs(balance);
-  const { intPart, decPart, decimalSeparator } = splitAmountParts(absBalance);
+  const { intPart, decPart, decimalSeparator } = splitAmountParts(Math.abs(balance));
 
   // iOS (nueva arquitectura) puede dibujar vacío un Text con adjustsFontSizeToFit dentro
   // de una fila con flexShrink: el tamaño de la parte entera se calcula a mano según
@@ -64,80 +70,102 @@ const BalanceCard = ({
   const [amountRowWidth, setAmountRowWidth] = useState(0);
   const intFontSize = useMemo(() => {
     if (!amountRowWidth) return BALANCE_INT_MAX_SIZE;
-    const decWidth = (decPart.length + 2 + currencySymbol.length) * 26 * 0.65; // ",00 €"
+    const decWidth = (decPart.length + 2 + currencySymbol.length) * 25 * 0.65; // ",00 €"
     const signWidth = balance < 0 ? 40 * 0.6 + 2 : 0;
     const available = amountRowWidth - decWidth - signWidth - 4;
-    // Ancho aproximado por dígito en Poppins Bold: 0.7em - 2px de letterSpacing
-    const size = (available / intPart.length + 2) / 0.7;
+    // Ancho aproximado por dígito en Poppins Bold: 0.7em - 1.5px de letterSpacing
+    const size = (available / intPart.length + 1.5) / 0.7;
     return Math.max(BALANCE_INT_MIN_SIZE, Math.min(BALANCE_INT_MAX_SIZE, Math.floor(size)));
   }, [amountRowWidth, intPart, decPart, currencySymbol, balance]);
-  const intLineHeight = Math.round(intFontSize * (Platform.OS === 'ios' ? 66 / 52 : 56 / 52));
+  const intLineHeight = Math.round(intFontSize * (Platform.OS === 'ios' ? 62 / 48 : 56 / 48));
+
+  const stat = (
+    ref: React.RefObject<View | null>, onPress: (o: DailySummaryOrigin | null) => void,
+    icon: 'arrow-down' | 'arrow-up', label: string, amount: number, alignEnd?: boolean,
+  ) => (
+    <View ref={ref} collapsable={false} style={alignEnd && styles.statEnd}>
+      <TouchableOpacity onPress={() => pressWithOrigin(ref, onPress)} activeOpacity={0.7} hitSlop={6}>
+        <View style={[styles.statLabelRow, alignEnd && styles.statLabelRowEnd]}>
+          <View style={[styles.statIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <Ionicons name={icon} size={13} color={ui.onHero} />
+          </View>
+          <Text style={[styles.statLabel, { color: ui.onHeroSoft }]}>{label}</Text>
+        </View>
+        <Text style={[styles.statAmount, { color: ui.onHero }]} numberOfLines={1}>
+          {hidden ? `${HIDDEN} ${currencySymbol}` : `${formatAmount(amount)} ${currencySymbol}`}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <View ref={balanceRef} style={[styles.balanceCard, { backgroundColor: dc.balanceCard }]}>
-      <View style={styles.balanceTopRow}>
-        <Text style={styles.balanceLabelTop}>{t('home.availableBalance').toUpperCase()}</Text>
+    <View ref={balanceRef} collapsable={false} style={styles.balance}>
+      <View style={styles.balanceTop}>
+        <View style={styles.labelRow}>
+          <Text style={[styles.balanceLabel, { color: ui.onHeroSoft }]} numberOfLines={1}>
+            {t('home.availableBalance')} · {t(`home.month_${month - 1}`)}
+          </Text>
+          <TouchableOpacity
+            onPress={onToggleHidden}
+            hitSlop={10}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t(hidden ? 'home.showAmounts' : 'home.hideAmounts')}
+          >
+            <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={17} color={ui.onHeroSoft} />
+          </TouchableOpacity>
+        </View>
         <View ref={dailyBtnRef} collapsable={false}>
           <TouchableOpacity
-            style={styles.dailyBtn}
+            style={[styles.todayBtn, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
             onPress={() => pressWithOrigin(dailyBtnRef, onPressDaily)}
             activeOpacity={0.7}
             hitSlop={8}
           >
-            <Text style={styles.dailyBtnText}>{t('home.today')}</Text>
+            <Text style={[styles.todayText, { color: ui.onHero }]}>{t('home.today')}</Text>
           </TouchableOpacity>
         </View>
       </View>
-      <View
-        style={styles.balanceAmountRow}
-        onLayout={e => setAmountRowWidth(e.nativeEvent.layout.width)}
-      >
-        {balance < 0 && <Text style={styles.balanceSign}>-</Text>}
-        <Text
-          style={[styles.balanceInt, { fontSize: intFontSize, lineHeight: intLineHeight }]}
-          numberOfLines={1}
-        >
-          {intPart}
-        </Text>
-        <Text style={styles.balanceDec}>{decimalSeparator}{decPart} {currencySymbol}</Text>
-      </View>
-      <View style={styles.progressRow}>
-        <Text style={styles.progressMonth}>{t(`home.month_${month - 1}`)}</Text>
-        {totalIncome > 0 && (
-          <Text style={styles.progressPct}>{spentPct}% {t('home.ofIncomeSpent')}</Text>
+
+      <View style={styles.amountRow} onLayout={(e) => setAmountRowWidth(e.nativeEvent.layout.width)}>
+        {hidden ? (
+          <Text style={[styles.amountInt, { fontSize: BALANCE_INT_MAX_SIZE, lineHeight: intLineHeight, color: ui.onHero }]}>
+            {HIDDEN}
+          </Text>
+        ) : (
+          <>
+            {balance < 0 && <Text style={[styles.amountSign, { color: ui.onHero }]}>-</Text>}
+            <Text
+              style={[styles.amountInt, { fontSize: intFontSize, lineHeight: intLineHeight, color: ui.onHero }]}
+              numberOfLines={1}
+            >
+              {intPart}
+            </Text>
+            <Text style={styles.amountDec}>{decimalSeparator}{decPart} {currencySymbol}</Text>
+          </>
         )}
       </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${spentPct}%` as any, backgroundColor: dc.expense }]} />
+
+      <View style={styles.track}>
+        <View style={[styles.trackFill, { width: `${spentPct}%` }]} />
       </View>
+      <Text style={[styles.trackCaption, { color: ui.onHeroSoft }]} numberOfLines={1}>
+        {totalIncome > 0 ? `${spentPct}% ${t('home.ofIncomeSpent')}` : t('resumen.noIncome')}
+      </Text>
+
       <View style={styles.statsRow}>
-        <View ref={incomeRef} collapsable={false}>
-          <TouchableOpacity onPress={() => pressWithOrigin(incomeRef, onPressIncome)} activeOpacity={0.7}>
-            <View style={styles.statLabelRow}>
-              <View style={[styles.statDot, { backgroundColor: dc.income }]} />
-              <Text style={styles.statLabelText}>{t('home.income').toUpperCase()}</Text>
-            </View>
-            <Text style={styles.statAmount}>+{formatAmount(totalIncome)} {currencySymbol}</Text>
-          </TouchableOpacity>
-        </View>
-        <View ref={expenseRef} collapsable={false}>
-          <TouchableOpacity onPress={() => pressWithOrigin(expenseRef, onPressExpense)} activeOpacity={0.7}>
-            <View style={styles.statLabelRow}>
-              <View style={[styles.statDot, { backgroundColor: dc.expense }]} />
-              <Text style={styles.statLabelText}>{t('home.expenses').toUpperCase()}</Text>
-            </View>
-            <Text style={styles.statAmount}>-{formatAmount(totalExpense)} {currencySymbol}</Text>
-          </TouchableOpacity>
-        </View>
+        {stat(incomeRef, onPressIncome, 'arrow-down', t('home.income'), totalIncome)}
+        {stat(expenseRef, onPressExpense, 'arrow-up', t('home.expenses'), totalExpense, true)}
       </View>
     </View>
   );
 };
 
-
 const HomeScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
+  const cat = useCategoryInfo();
+  const navigation = useNavigation<any>();
   const scrollRef = useRef<ScrollView>(null);
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [dailyOrigin, setDailyOrigin] = useState<DailySummaryOrigin | null>(null);
@@ -146,8 +174,20 @@ const HomeScreen = () => {
   const [typeSummary, setTypeSummary] = useState<{ type: MovementType; origin: DailySummaryOrigin | null }>({
     type: 'expense', origin: null,
   });
+  const [hidden, setHidden] = useState(false);
   const wtIsActive = useWalkthroughStore(s => s.isActive);
   const wtCurrentStep = useWalkthroughStore(s => s.currentStep);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HIDE_KEY).then((v) => setHidden(v === '1')).catch(() => {});
+  }, []);
+  const toggleHidden = () => {
+    lightHaptic();
+    setHidden((h) => {
+      AsyncStorage.setItem(HIDE_KEY, h ? '0' : '1').catch(() => {});
+      return !h;
+    });
+  };
 
   useEffect(() => {
     if (!wtIsActive) return;
@@ -157,11 +197,8 @@ const HomeScreen = () => {
     }
   }, [wtIsActive, wtCurrentStep]);
 
-  const { getCurrencySymbol, displayName, language } = useSettingsStore();
-  const { getCategoryName, getCategoryIcon, isCategoryDeleted } = useCategoryStore();
+  const { getCurrencySymbol, language } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
-  const { getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted } = useSharedCategoryStore();
-  const navigation = useNavigation<any>();
 
   const {
     movements, getMonthlySummary, getMovementsForSelectedMonth,
@@ -190,26 +227,12 @@ const HomeScreen = () => {
   const monthMovements = getMovementsForSelectedMonth();
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
+  const recentMovements = useMemo(() =>
+    [...movements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
+  [movements]);
 
-  const displayBalance = summary.balance;
-
-  const getCatName = (id: string, type: MovementType) =>
-    isSharedMode ? getSharedCategoryName(id, type, t) : getCategoryName(id, type, t);
-
-  // Tachada si la categoría está borrada, igual que en el historial
-  const renderCatName = (id: string, type: MovementType) => (
-    <StrikeText struck={isSharedMode ? isSharedCategoryDeleted(id, type) : isCategoryDeleted(id, type)}>
-      {getCatName(id, type)}
-    </StrikeText>
-  );
-
-  const getCatIconForType = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
-    const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
-    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
-  };
-
-  const getCatIcon = (id: string): keyof typeof Ionicons.glyphMap => getCatIconForType(id, 'expense');
-
+  // La fecha de cada movimiento, como antes del rediseño: hoy con la hora,
+  // ayer, y el resto con el día y el mes
   const formatMovementTime = (dateStr: string): string => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -226,27 +249,18 @@ const HomeScreen = () => {
     if (movMidnight.getTime() === yesterdayMidnight.getTime()) {
       return t('home.yesterday');
     }
-    const locale = getDateLocale(language);
-    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString(getDateLocale(language), { day: 'numeric', month: 'short' });
   };
 
-  const recentMovements = useMemo(() =>
-    [...movements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
-    [movements],
-  );
-
-  const catColors = useCategoryColors();
-
-  const topExpenseCategories = useMemo(() => {
-    const expenses = monthMovements.filter(m => m.type === 'expense');
+  // Todas las categorías con gasto este mes, de la que más a la que menos
+  const expenseCategories = useMemo(() => {
     const byCategory: Record<string, number> = {};
-    expenses.forEach(m => {
+    monthMovements.filter(m => m.type === 'expense').forEach(m => {
       byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount;
     });
     const total = summary.totalExpense;
     return Object.entries(byCategory)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
       .map(([category, amount]) => ({
         category,
         amount,
@@ -254,113 +268,97 @@ const HomeScreen = () => {
       }));
   }, [monthMovements, summary.totalExpense]);
 
-  return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('header.home')} showAccountSelector={true} />
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={dc.primary}
-            colors={[dc.primary]}
+  const hero = (
+    <>
+      <View style={styles.bar}>
+        <AccountSwitcher />
+        <View style={styles.barRight}>
+          <HeroIconButton
+            icon="notifications-outline"
+            onPress={() => navigation.navigate('Reminders')}
+            accessibilityLabel={t('header.reminders')}
           />
-        }
-      >
-        {(() => {
-          const today = new Date();
-          const locale = getDateLocale(language);
-          const dayName = today.toLocaleDateString(locale, { weekday: 'long' }).toUpperCase();
-          const monthName = t(`home.month_${today.getMonth()}`).toUpperCase();
-          return (
-            <View style={styles.dateHeader}>
-              <Text style={[styles.dateText, { color: dc.textSecondary }]}>
-                {dayName} · {today.getDate()} {monthName}
-              </Text>
-              <Text style={[styles.greetingText, { color: dc.textPrimary }]}>
-                {t('home.hello')}, {displayName || t('common.user')}
-              </Text>
-            </View>
-          );
-        })()}
-
-        <BalanceCard
-          balance={displayBalance}
-          month={summary.month}
-          currencySymbol={currencySymbol}
-          totalIncome={summary.totalIncome}
-          totalExpense={summary.totalExpense}
-          onPressIncome={(origin) => { setTypeSummary({ type: 'income', origin }); setShowTypeSummary(true); }}
-          onPressExpense={(origin) => { setTypeSummary({ type: 'expense', origin }); setShowTypeSummary(true); }}
-          onPressDaily={(origin) => { setDailyOrigin(origin); setShowDailySummary(true); }}
-        />
-
-        {/* TOP CATEGORÍAS DE GASTO */}
-        <View style={styles.topSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-              {t('home.whereMoneyGoes')}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('AnnualTab')} activeOpacity={0.7}>
-              <Text style={[styles.seeAllText, { color: dc.textSecondary }]}>
-                {t('home.seeAll')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {topExpenseCategories.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
-                {t('home.noExpenses')}
-              </Text>
-            </View>
-          ) : (
-            <View style={[styles.catCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              {topExpenseCategories.map(({ category, amount, percentage }, index) => {
-                const catColor = catColors.expense(category);
-                return (
-                  <View key={category}>
-                    {index > 0 && <View style={[styles.catDivider, { backgroundColor: dc.border }]} />}
-                    <View style={styles.catRow}>
-                      <View style={[styles.catIconCircle, { backgroundColor: catColor + '20' }]}>
-                        <Ionicons name={getCatIcon(category)} size={18} color={catColor} />
-                      </View>
-                      <View style={styles.catContent}>
-                        <View style={styles.catHeader}>
-                          <Text style={[styles.categoryName, { color: dc.textPrimary }]} numberOfLines={1}>
-                            {renderCatName(category, 'expense')}
-                          </Text>
-                          <Text style={[styles.categoryAmount, { color: dc.textPrimary }]}>
-                            {formatAmount(amount)} {currencySymbol}
-                          </Text>
-                        </View>
-                        <View style={[styles.barTrack, { backgroundColor: catColor + '25' }]}>
-                          <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: catColor }]} />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+          <HeroIconButton
+            icon="settings-outline"
+            onPress={() => navigation.navigate('Settings', { screen: 'SettingsMain' })}
+            accessibilityLabel={t('header.settings_screen')}
+          />
         </View>
+      </View>
+      <BalanceHero
+        balance={summary.balance}
+        month={summary.month}
+        currencySymbol={currencySymbol}
+        totalIncome={summary.totalIncome}
+        totalExpense={summary.totalExpense}
+        hidden={hidden}
+        onToggleHidden={toggleHidden}
+        onPressIncome={(origin) => { setTypeSummary({ type: 'income', origin }); setShowTypeSummary(true); }}
+        onPressExpense={(origin) => { setTypeSummary({ type: 'expense', origin }); setShowTypeSummary(true); }}
+        onPressDaily={(origin) => { setDailyOrigin(origin); setShowDailySummary(true); }}
+      />
+    </>
+  );
+
+  return (
+    <>
+      <HeroScrollScreen
+        hero={hero}
+        scrollRef={scrollRef}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      >
+        {/* DÓNDE VA TU DINERO */}
+        <SectionHeader
+          title={t('home.whereMoneyGoes')}
+          action={t('home.seeAll')}
+          onAction={() => navigation.navigate('AnnualTab')}
+        />
+        {expenseCategories.length === 0 ? (
+          <Text style={[styles.emptyText, styles.emptyPad, { color: dc.textSecondary }]}>
+            {t('home.noExpenses')}
+          </Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cards}
+          >
+            {expenseCategories.map(({ category, amount, percentage }) => {
+              const color = cat.colors.expense(category);
+              return (
+                <View key={category} style={[styles.catCard, { backgroundColor: ui.field }]}>
+                  <View style={[styles.catIcon, { backgroundColor: withAlpha(color, 0.16) }]}>
+                    <Ionicons name={cat.icon(category, 'expense')} size={18} color={color} />
+                  </View>
+                  <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
+                    <StrikeText struck={cat.deleted(category, 'expense')}>{cat.name(category, 'expense')}</StrikeText>
+                  </Text>
+                  <Text style={[styles.catAmount, { color: dc.textPrimary }]} numberOfLines={1}>
+                    {formatAmount(amount)} {currencySymbol}
+                  </Text>
+                  <View style={[styles.catTrack, { backgroundColor: ui.fill2 }]}>
+                    <View style={[styles.catFill, { width: `${percentage}%`, backgroundColor: color }]} />
+                  </View>
+                  <Text style={[styles.catPct, { color: dc.textSecondary }]} numberOfLines={1}>
+                    {Math.round(percentage)}% {t('resumen.ofExpense')}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* ÚLTIMOS MOVIMIENTOS */}
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: dc.textPrimary }]}>
-              {t('home.recentMovements')}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('HistorialTab')} activeOpacity={0.7}>
-              <Text style={[styles.seeAllText, { color: dc.textSecondary }]}>{t('home.seeAll')}</Text>
-            </TouchableOpacity>
-          </View>
-
+        <SectionHeader
+          title={t('home.recentMovements')}
+          action={t('home.seeAll')}
+          onAction={() => navigation.navigate('HistorialTab')}
+          style={styles.recentHeader}
+        />
+        <View style={styles.list}>
           {recentMovements.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+            <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: dc.textSecondary }]}>{t('home.noMovements')}</Text>
               <TouchableOpacity
                 style={[styles.emptyAction, { backgroundColor: dc.primary }]}
@@ -371,55 +369,16 @@ const HomeScreen = () => {
                 <Text style={styles.emptyActionText}>{t('home.addFirstMovement')}</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            <View style={[styles.recentCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              {recentMovements.map((mov, index) => {
-                const isIncome = mov.type === 'income';
-                const color = isIncome ? dc.income : dc.expense;
-                const icon = getCatIconForType(mov.category, mov.type as MovementType);
-                const hasNote = !!mov.note;
-                const catLabel = renderCatName(mov.category, mov.type as MovementType);
-                // Con nota, la categoría pasa a la línea de abajo
-                const title = mov.note || catLabel;
-                const timeLabel = formatMovementTime(mov.date);
-                // Recurrentes con su etiqueta; lo demás, con quien lo añadió
-                // (tachado si ya no está en la cuenta)
-                const recurringLabel = isSharedMode && mov.isRecurring
-                  ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
-                  : undefined;
-                const member = isSharedMode && !mov.isRecurring
-                  ? getMemberLabel(sharedAccount, mov.addedBy, t('sharedAccount.formerMember'))
-                  : undefined;
-                const amountColor = isIncome ? dc.income : dc.expense;
-                const amountStr = `${isIncome ? '+' : '-'}${formatAmount(mov.amount)} ${currencySymbol}`;
-
-                return (
-                  <View key={mov.id}>
-                    {index > 0 && <View style={[styles.recentDivider, { backgroundColor: dc.border }]} />}
-                    <View style={styles.recentRow}>
-                      <View style={[styles.recentIcon, { backgroundColor: color + '18' }]}>
-                        <Ionicons name={icon} size={18} color={color} />
-                      </View>
-                      <View style={styles.recentInfo}>
-                        <Text style={[styles.recentTitle, { color: dc.textPrimary }]} numberOfLines={1}>
-                          {title}
-                        </Text>
-                        <Text style={[styles.recentSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>
-                          {recurringLabel ? `${recurringLabel} · ` : null}
-                          {member ? <><MemberName member={member} />{' · '}</> : null}
-                          {timeLabel}
-                          {hasNote ? <>{' · '}{catLabel}</> : null}
-                        </Text>
-                      </View>
-                      <Text style={[styles.recentAmount, { color: amountColor }]}>{amountStr}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+          ) : recentMovements.map((mov) => (
+            <MovementItem
+              key={mov.id}
+              movement={mov}
+              currencySymbol={currencySymbol}
+              detail={formatMovementTime(mov.date)}
+            />
+          ))}
         </View>
-      </ScrollView>
+      </HeroScrollScreen>
 
       <DailySummaryModal
         visible={showDailySummary}
@@ -433,101 +392,66 @@ const HomeScreen = () => {
         onDismiss={() => setShowTypeSummary(false)}
         onSeeAll={(type) => navigation.navigate('HistorialTab', { initialFilter: type })}
       />
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  bar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingLeft: 18, paddingRight: 16, paddingTop: 8, minHeight: 54,
+  },
+  barRight: { marginLeft: 'auto', flexDirection: 'row', gap: 8 },
 
-  // Date header
-  dateHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  dateText: { fontSize: 12, fontFamily: 'Poppins_500Medium', letterSpacing: 0.5, marginBottom: 4 },
-  greetingText: { fontSize: 26, fontFamily: 'Poppins_700Bold' },
-
-  // Balance card
-  balanceCard: {
-    marginHorizontal: 16, marginBottom: 20, borderRadius: 24, padding: 24,
-    overflow: 'hidden', elevation: 6, shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6,
-  },
-  balanceTopRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
-  },
-  balanceLabelTop: {
-    color: 'rgba(255,255,255,0.6)', fontSize: 11,
-    fontFamily: 'Poppins_600SemiBold', letterSpacing: 1.5, flexShrink: 1, marginRight: 8,
-  },
-  dailyBtn: {
-    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: 4,
-  },
-  dailyBtnText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
-  balanceAmountRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 20 },
-  balanceSign: {
-    color: '#FFFFFF', fontSize: 40, fontFamily: 'Poppins_700Bold',
-    lineHeight: 52, marginRight: 2,
-  },
-  // fontSize y lineHeight se calculan en BalanceCard según el ancho disponible.
+  // Cabecera de color
+  balance: { paddingHorizontal: 20, paddingTop: 14 },
+  balanceTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  balanceLabel: { fontSize: 13.5, fontFamily: 'Poppins_500Medium', flexShrink: 1 },
+  todayBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
+  todayText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
+  amountRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 4 },
+  amountSign: { fontSize: 38, fontFamily: 'Poppins_700Bold', lineHeight: 50, marginRight: 2 },
+  // fontSize y lineHeight se calculan según el ancho disponible.
   // Sin flexShrink: en iOS comprimía la parte entera hasta dejarla invisible.
-  balanceInt: {
-    color: '#FFFFFF', fontFamily: 'Poppins_700Bold', letterSpacing: -2,
+  amountInt: { fontFamily: 'Poppins_700Bold', letterSpacing: -1.5 },
+  amountDec: {
+    color: 'rgba(255,255,255,0.8)', fontSize: 25,
+    fontFamily: 'Poppins_600SemiBold', marginBottom: 5, marginLeft: 1,
   },
-  balanceDec: {
-    color: 'rgba(255,255,255,0.8)', fontSize: 26,
-    fontFamily: 'Poppins_500Medium', marginBottom: 5, marginLeft: 1,
+  track: {
+    height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)',
+    marginTop: 14, overflow: 'hidden',
   },
-  progressRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6,
-  },
-  progressMonth: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  progressPct: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'Poppins_400Regular' },
-  progressTrack: {
-    height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 20, overflow: 'hidden',
-  },
-  progressFill: { height: 4, borderRadius: 2 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
-  statDot: { width: 6, height: 6, borderRadius: 3 },
-  statLabelText: {
-    color: 'rgba(255,255,255,0.7)', fontSize: 10,
-    fontFamily: 'Poppins_600SemiBold', letterSpacing: 0.8,
-  },
-  statAmount: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Poppins_700Bold' },
-  topSection: { paddingHorizontal: 16 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontFamily: 'Poppins_600SemiBold' },
-  sectionMonth: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
-  emptyCard: { borderRadius: 16, padding: 24, borderWidth: 0.5, alignItems: 'center' },
+  trackFill: { height: 6, borderRadius: 3, backgroundColor: '#FFFFFF' },
+  trackCaption: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 7 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, gap: 12 },
+  statEnd: { alignItems: 'flex-end' },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },
+  statLabelRowEnd: { justifyContent: 'flex-end' },
+  statIcon: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  statLabel: { fontSize: 12.5, fontFamily: 'Poppins_500Medium' },
+  statAmount: { fontSize: 18, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3 },
+
+  // Hoja
+  cards: { paddingHorizontal: 20, gap: 10, paddingBottom: 4 },
+  catCard: { width: 128, borderRadius: 20, padding: 14 },
+  catIcon: { width: 34, height: 34, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  catName: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginTop: 12 },
+  catAmount: { fontSize: 16, fontFamily: 'Poppins_700Bold', marginTop: 1 },
+  catTrack: { height: 4, borderRadius: 2, marginTop: 10, overflow: 'hidden' },
+  catFill: { height: 4, borderRadius: 2 },
+  catPct: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 4 },
+  recentHeader: { marginTop: 26 },
+  list: { paddingHorizontal: 20 },
+  empty: { alignItems: 'center', paddingVertical: 20 },
+  emptyPad: { paddingHorizontal: 20 },
+  emptyText: { fontSize: 13.5, fontFamily: 'Poppins_400Regular' },
   emptyAction: {
     marginTop: 14, paddingHorizontal: 18, paddingVertical: 10,
     borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   emptyActionText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', color: '#FFFFFF' },
-  emptyText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  catCard: { borderRadius: 16, borderWidth: 0.5, overflow: 'hidden' },
-  catRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
-  catIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  catContent: { flex: 1 },
-  catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  catDivider: { height: 0.5, marginLeft: 66 },
-  categoryName: { fontSize: 14, fontFamily: 'Poppins_500Medium', flex: 1, marginRight: 8 },
-  categoryAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: 6, borderRadius: 3 },
-
-  recentSection: { paddingHorizontal: 16, marginTop: 24 },
-  seeAllText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
-  recentCard: { borderRadius: 16, borderWidth: 0.5, overflow: 'hidden' },
-  recentRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
-  recentIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  recentInfo: { flex: 1 },
-  recentTitle: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  recentSubtitle: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  recentAmount: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', marginLeft: 4 },
-  recentDivider: { height: 0.5, marginLeft: 66 },
 });
 
 export default HomeScreen;

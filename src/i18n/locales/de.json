@@ -25,7 +25,10 @@
     "sendResetEmail": "Wiederherstellungs-E-Mail senden",
     "resetEmailSent": "E-Mail gesendet!",
     "resetEmailSentSubtitle": "Überprüfe dein Postfach und folge den Anweisungen, um dein Passwort zurückzusetzen.",
-    "backToLogin": "Zurück zur Anmeldung"
+    "backToLogin": "Zurück zur Anmeldung",
+    "or": "oder",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen"
   },
   "home": {
     "balance": "Aktueller Kontostand",
@@ -61,7 +64,9 @@
     "dayBalance": "Tagesbilanz",
     "noMovementsDay": "Keine Bewegungen an diesem Tag",
     "movementCount_one": "{{count}} Bewegung",
-    "movementCount_other": "{{count}} Bewegungen"
+    "movementCount_other": "{{count}} Bewegungen",
+    "showAmounts": "Beträge anzeigen",
+    "hideAmounts": "Beträge ausblenden"
   },
   "resumen": {
     "balance": "Kontostand",
@@ -95,7 +100,12 @@
     "avgPerMonth": "Ø/Monat",
     "total": "Gesamt",
     "categAbbr": "Kateg.",
-    "viewAllMovements": "Alle Bewegungen anzeigen"
+    "viewAllMovements": "Alle Bewegungen anzeigen",
+    "month": "Monat",
+    "year": "Jahr",
+    "rhythmTitle": "Monatsverlauf",
+    "lessThanPrev": "{{amount}} weniger als letzten Monat bis Tag {{day}}",
+    "moreThanPrev": "{{amount}} mehr als letzten Monat bis Tag {{day}}"
   },
   "movements": {
     "add": "Bewegung hinzufügen",
@@ -133,7 +143,9 @@
       "emergency": "Notgroschen",
       "retirement": "Ruhestand",
       "travel": "Reisen"
-    }
+    },
+    "saveExpense": "Ausgabe speichern",
+    "saveIncome": "Einnahme speichern"
   },
   "recurring": {
     "title": "Wiederkehrend",
@@ -156,7 +168,8 @@
     "income": "Einnahmen",
     "expense": "Ausgaben",
     "net": "Netto",
-    "perMonth": "/ Monat"
+    "perMonth": "/ Monat",
+    "dayPickerLabel": "Tag jedes Monats"
   },
   "movementsList": {
     "title": "Bewegungen",
@@ -313,7 +326,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "Für die Beträge deines persönlichen Kontos",
+    "currencyHintShared": "Für die Beträge des geteilten Kontos",
+    "themeHint": "Automatisch folgt dem Modus deines Handys",
+    "paletteHint": "Ändert die Kopfzeile, die Schaltflächen und die Kategoriefarben",
+    "fontHint": "Nur auf diesem Handy, wie das Erscheinungsbild"
   },
   "hucha": {
     "title": "Sparen",
@@ -391,7 +409,13 @@
     "editQuickAmounts": "Bearbeiten",
     "saveQuickAmounts": "Speichern",
     "viewAllHistory": "Alle anzeigen",
-    "hideHistory": "Ausblenden"
+    "hideHistory": "Ausblenden",
+    "options": "Sparziel-Optionen",
+    "goalBy": "Ziel bis {{date}}",
+    "willReach": "Du erreichst {{amount}}",
+    "willRemain": "Es bleiben {{amount}}",
+    "depositCta": "{{amount}} hinzufügen",
+    "withdrawCta": "{{amount}} abheben"
   },
   "tabs": {
     "home": "Start",
@@ -435,7 +459,11 @@
     "permissionDeniedMessage": "Aktiviere Benachrichtigungen in den Einstellungen deines Geräts, um Erinnerungen zu nutzen.",
     "scheduled": "Erinnerung geplant!",
     "pastDateError": "Wähle ein Datum und eine Uhrzeit in der Zukunft",
-    "scheduledMessage": "Du wirst am {{date}} um {{time}} benachrichtigt"
+    "scheduledMessage": "Du wirst am {{date}} um {{time}} benachrichtigt",
+    "upcoming": "Anstehend",
+    "notes": "Notizen",
+    "past": "Vergangen",
+    "nextLabel": "Nächste Erinnerung"
   },
   "premium": {
     "title": "MoFlo Premium",
@@ -475,7 +503,11 @@
     "deleteConfirm": "Diese Kategorie löschen?",
     "usedByRecurring_one": "1 wiederkehrende Bewegung nutzt sie und wird sie weiter nutzen (durchgestrichen angezeigt). Um das zu ändern, bearbeite diese Bewegung.",
     "usedByRecurring_other": "{{count}} wiederkehrende Bewegungen nutzen sie und werden sie weiter nutzen (durchgestrichen angezeigt). Um das zu ändern, bearbeite diese Bewegungen.",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "new": "Neu",
+    "swipeHint": "Wische eine Kategorie nach links, um sie zu bearbeiten oder zu entfernen",
+    "color": "Farbe",
+    "colorAuto": "Automatisch"
   },
   "export": {
     "title": "Daten exportieren",
@@ -689,6 +721,17 @@
   },
   "common": {
     "user": "Nutzer",
-    "error": "Fehler"
+    "error": "Fehler",
+    "back": "Zurück",
+    "close": "Schließen",
+    "add": "Hinzufügen",
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "colorPickerTitle": "Eigene Farbe",
+    "colorPickerHint": "Tippe oder ziehe mit dem Finger, um den Farbton zu wählen",
+    "colorPickerUse": "Diese Farbe verwenden",
+    "customColor": "Eigene Farbe"
   }
 }

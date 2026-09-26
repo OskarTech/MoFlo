@@ -62,6 +62,42 @@ describe('makeCategoryColors', () => {
     expect(c.income(0)).toBe(set.income[0]);
     expect(c.income(set.income.length)).toBe(set.income[0]);
   });
+
+  it('el color elegido manda sobre el de su puesto, solo en su tipo', () => {
+    const c = makeCategoryColors(set, [], { housing_expense: 4, salary_income: 3, other_expense: 0 });
+    expect(c.expense('housing')).toBe(set.expense[4]);
+    // "Otros" también puede tener color propio
+    expect(c.expense('other')).toBe(set.expense[0]);
+    expect(c.income(0, 'salary')).toBe(set.income[3]);
+    // Otra categoría con el mismo id pero de otro tipo sigue con el suyo
+    expect(c.income(0, 'housing')).toBe(set.income[0]);
+    // Sin id (gráficos por puesto) no se aplica
+    expect(c.income(1)).toBe(set.income[1]);
+  });
+
+  it('elegir color no cambia el de las demás', () => {
+    const c = makeCategoryColors(set, [custom('a', '2026-01-01')], { housing_expense: 9 });
+    expect(c.expense('food')).toBe(set.expense[1]);
+    expect(c.expense('a')).toBe(set.expense[6]);
+  });
+
+  it('un color libre (#RRGGBB) se usa tal cual, en gastos y en ingresos', () => {
+    const c = makeCategoryColors(set, [], { housing_expense: '#123456', salary_income: '#ABCDEF' });
+    expect(c.expense('housing')).toBe('#123456');
+    expect(c.income(0, 'salary')).toBe('#ABCDEF');
+  });
+
+  it('un texto que no es un color se ignora', () => {
+    const c = makeCategoryColors(set, [], { housing_expense: 'rojo', food_expense: '#12345' });
+    expect(c.expense('housing')).toBe(set.expense[0]);
+    expect(c.expense('food')).toBe(set.expense[1]);
+  });
+
+  it('un índice guardado fuera de rango se repite y uno no válido se ignora', () => {
+    const c = makeCategoryColors(set, [], { housing_expense: set.expense.length + 2, food_expense: -1 });
+    expect(c.expense('housing')).toBe(set.expense[2]);
+    expect(c.expense('food')).toBe(set.expense[1]);
+  });
 });
 
 describe('CATEGORY_COLORS', () => {

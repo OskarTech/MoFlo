@@ -14,11 +14,8 @@ export interface TargetRect {
 export interface WalkthroughStep {
   id: string;
   tab: 'HomeTab' | 'HistorialTab' | 'AnnualTab' | 'HuchaTab';
-  // Si isTab es true, el target se calcula geométricamente (índice de la pestaña en el tab bar).
-  isTab?: boolean;
-  tabIndex?: 0 | 1 | 2 | 3 | 4;
-  // Si target es 'header', el spotlight cubre el header completo (selector de cuenta).
-  customTarget?: 'header';
+  // Cada paso señala la vista registrada con su id (useWalkthroughTarget): las
+  // pestañas y el + los registra la barra de abajo, y la cuenta, su pastilla.
   // Radio del recorte del spotlight (default 14). Usar 'circle' para spotlight totalmente circular.
   spotlightShape?: number | 'circle';
   titleKey: string;
@@ -27,12 +24,12 @@ export interface WalkthroughStep {
 
 export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
   { id: 'home_balance',     tab: 'HomeTab',      spotlightShape: 24, titleKey: 'walkthrough.balance.title',   bodyKey: 'walkthrough.balance.body' },
-  { id: 'home_fab',         tab: 'HomeTab',      isTab: true, tabIndex: 2, spotlightShape: 'circle', titleKey: 'walkthrough.fab.title', bodyKey: 'walkthrough.fab.body' },
-  { id: 'recurring',        tab: 'HistorialTab', isTab: true, tabIndex: 1, titleKey: 'walkthrough.recurring.title', bodyKey: 'walkthrough.recurring.body' },
+  { id: 'home_fab',         tab: 'HomeTab',      spotlightShape: 'circle', titleKey: 'walkthrough.fab.title', bodyKey: 'walkthrough.fab.body' },
+  { id: 'recurring',        tab: 'HistorialTab', spotlightShape: 26, titleKey: 'walkthrough.recurring.title', bodyKey: 'walkthrough.recurring.body' },
   { id: 'swipe_actions',     tab: 'HistorialTab', titleKey: 'walkthrough.swipeActions.title', bodyKey: 'walkthrough.swipeActions.body' },
-  { id: 'hucha_tab',        tab: 'HuchaTab',     isTab: true, tabIndex: 4, titleKey: 'walkthrough.hucha.title',     bodyKey: 'walkthrough.hucha.body' },
-  { id: 'annual_tab',       tab: 'AnnualTab',    isTab: true, tabIndex: 3, titleKey: 'walkthrough.annual.title',    bodyKey: 'walkthrough.annual.body' },
-  { id: 'header_account',   tab: 'HomeTab',      customTarget: 'header', titleKey: 'walkthrough.account.title',     bodyKey: 'walkthrough.account.body' },
+  { id: 'hucha_tab',        tab: 'HuchaTab',     spotlightShape: 26, titleKey: 'walkthrough.hucha.title',     bodyKey: 'walkthrough.hucha.body' },
+  { id: 'annual_tab',       tab: 'AnnualTab',    spotlightShape: 26, titleKey: 'walkthrough.annual.title',    bodyKey: 'walkthrough.annual.body' },
+  { id: 'header_account',   tab: 'HomeTab',      spotlightShape: 22, titleKey: 'walkthrough.account.title',     bodyKey: 'walkthrough.account.body' },
 ];
 
 interface WalkthroughStore {

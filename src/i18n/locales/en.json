@@ -25,7 +25,10 @@
     "sendResetEmail": "Send reset email",
     "resetEmailSent": "Email sent!",
     "resetEmailSentSubtitle": "Check your inbox and follow the instructions to reset your password.",
-    "backToLogin": "Back to login"    
+    "backToLogin": "Back to login",
+    "or": "or",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "home": {
     "balance": "Current Balance",
@@ -61,7 +64,9 @@
     "dayBalance": "Day balance",
     "noMovementsDay": "No movements on this day",
     "movementCount_one": "{{count}} movement",
-    "movementCount_other": "{{count}} movements"
+    "movementCount_other": "{{count}} movements",
+    "showAmounts": "Show amounts",
+    "hideAmounts": "Hide amounts"
   },
   "resumen": {
     "balance": "Balance",
@@ -95,7 +100,12 @@
     "avgPerMonth": "Avg/Month",
     "total": "Total",
     "categAbbr": "Categ.",
-    "viewAllMovements": "View all movements"
+    "viewAllMovements": "View all movements",
+    "month": "Month",
+    "year": "Year",
+    "rhythmTitle": "Monthly pace",
+    "lessThanPrev": "{{amount}} less than last month by day {{day}}",
+    "moreThanPrev": "{{amount}} more than last month by day {{day}}"
   },
   "movements": {
   "add": "Add Movement",
@@ -133,7 +143,9 @@
       "emergency": "Emergency Fund",
       "retirement": "Retirement",
       "travel": "Travel"
-    } 
+    },
+    "saveExpense": "Save expense",
+    "saveIncome": "Save income"
   },
   "recurring": {
   "title": "Recurring",
@@ -156,7 +168,8 @@
   "income": "Income",
   "expense": "Expenses",
   "net": "Net",
-  "perMonth": "/ month"
+  "perMonth": "/ month",
+  "dayPickerLabel": "Day of each month"
   },
   "movementsList": {
   "title": "Movements",
@@ -313,7 +326,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "For the amounts in your individual account",
+    "currencyHintShared": "For the amounts in the shared account",
+    "themeHint": "Automatic follows your phone’s mode",
+    "paletteHint": "Changes the header, the buttons and the category colors",
+    "fontHint": "Only on this phone, like the appearance"
   },
   "hucha": {
   "title": "Savings",
@@ -391,7 +409,13 @@
   "editQuickAmounts": "Edit",
   "saveQuickAmounts": "Save",
   "viewAllHistory": "See all",
-  "hideHistory": "Hide"
+  "hideHistory": "Hide",
+  "options": "Goal options",
+  "goalBy": "Goal for {{date}}",
+  "willReach": "You will reach {{amount}}",
+  "willRemain": "{{amount}} will remain",
+  "depositCta": "Add {{amount}}",
+  "withdrawCta": "Withdraw {{amount}}"
   },
   "tabs": {
   "home": "Home",
@@ -436,7 +460,11 @@
   "permissionDeniedMessage": "Please enable notifications in your device settings to use reminders.",
   "scheduled": "Reminder scheduled!",
   "pastDateError": "Choose a future date and time",
-  "scheduledMessage": "You will be notified on {{date}} at {{time}}"
+  "scheduledMessage": "You will be notified on {{date}} at {{time}}",
+  "upcoming": "Upcoming",
+  "notes": "Notes",
+  "past": "Past",
+  "nextLabel": "Next reminder"
   },
   "premium": {
   "title": "MoFlo Premium",
@@ -476,7 +504,11 @@
   "deleteConfirm": "Delete this category?",
   "usedByRecurring_one": "1 recurring movement uses it and will keep using it (shown struck through). To change it, edit that recurring movement.",
   "usedByRecurring_other": "{{count}} recurring movements use it and will keep using it (shown struck through). To change it, edit those recurring movements.",
-  "delete": "Delete"
+  "delete": "Delete",
+  "new": "New",
+  "swipeHint": "Swipe a category to the left to edit or remove it",
+  "color": "Color",
+  "colorAuto": "Automatic"
   },
   "export": {
   "title": "Export data",
@@ -690,6 +722,17 @@
   },
   "common": {
     "user": "User",
-    "error": "Error"
+    "error": "Error",
+    "back": "Back",
+    "close": "Close",
+    "add": "Add",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "previous": "Previous",
+    "next": "Next",
+    "colorPickerTitle": "Custom color",
+    "colorPickerHint": "Tap or drag your finger to pick the shade",
+    "colorPickerUse": "Use this color",
+    "customColor": "Custom color"
   }
 }

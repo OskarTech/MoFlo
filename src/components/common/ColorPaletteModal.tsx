@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
+import { getDynamicColors, ColorPaletteId } from '../../theme';
+import { CATEGORY_COLORS } from '../../theme/categoryColors';
+import { formatAmount } from '../../utils/formatAmount';
+import BottomSheet from './BottomSheet';
 
 export const PALETTE_ORDER: ColorPaletteId[] = [
   'green', 'earth', 'mint', 'rose', 'mono', 'navy', 'wine', 'lime',
@@ -17,78 +19,84 @@ interface Props {
   selectedPalette: ColorPaletteId;
   onSelect: (id: ColorPaletteId) => void;
   onDismiss: () => void;
+  /** Símbolo de la moneda de la cuenta, para el importe de muestra */
+  currencySymbol?: string;
 }
 
-const ColorPaletteModal = ({ visible, selectedPalette, onSelect, onDismiss }: Props) => {
+/**
+ * Color de la app: cada paleta con su cabecera y cuatro de sus colores de
+ * categoría, en el modo (claro u oscuro) que se está usando.
+ */
+const ColorPaletteModal = ({ visible, selectedPalette, onSelect, onDismiss, currencySymbol = '€' }: Props) => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { isDark, ui } = useTheme();
+  const sample = `${formatAmount(839.82)} ${currencySymbol}`;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.sheet, {
-          backgroundColor: dc.surface,
-          paddingBottom: insets.bottom + 24,
-        }]}>
-          <View style={[styles.handle, { backgroundColor: dc.border }]} />
-          <Text style={[styles.title, { color: dc.textPrimary }]}>
-            {t('settings.selectColorPalette')}
-          </Text>
-          <View style={styles.grid}>
-            {PALETTE_ORDER.map((id) => {
-              const p = COLOR_PALETTES[id];
-              const isSelected = selectedPalette === id;
-              const label = t(`settings.palette${id.charAt(0).toUpperCase() + id.slice(1)}`);
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={styles.item}
-                  onPress={() => { onSelect(id); onDismiss(); }}
-                  activeOpacity={0.75}
-                >
-                  <View style={[
-                    styles.circle,
-                    { backgroundColor: p.primary },
-                    isSelected && styles.circleSelected,
-                  ]}>
-                    {isSelected && <Ionicons name="checkmark" size={22} color="#FFFFFF" />}
-                  </View>
-                  <Text style={[styles.label, { color: dc.textSecondary }]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+    <BottomSheet
+      visible={visible}
+      onClose={onDismiss}
+      title={t('settings.colorPalette')}
+      subtitle={t('settings.paletteHint')}
+      bodyStyle={styles.body}
+    >
+      <View style={styles.grid}>
+        {PALETTE_ORDER.map((id) => {
+          const c = getDynamicColors(isDark, id);
+          const dots = CATEGORY_COLORS[id][isDark ? 'dark' : 'light'].expense.slice(0, 4);
+          const on = selectedPalette === id;
+          const label = t(`settings.palette${id.charAt(0).toUpperCase() + id.slice(1)}`);
+          return (
+            <TouchableOpacity
+              key={id}
+              style={[styles.card, { backgroundColor: c.surface, borderColor: on ? ui.accent : ui.hair }]}
+              onPress={() => { onSelect(id); onDismiss(); }}
+              activeOpacity={0.8}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={label}
+            >
+              <View style={[styles.hero, { backgroundColor: c.balanceCard }]}>
+                <Text style={styles.heroLabel}>{t('resumen.balance')}</Text>
+                <Text style={styles.heroAmount} numberOfLines={1}>{sample}</Text>
+              </View>
+              <View style={[styles.foot, { backgroundColor: c.surface }]}>
+                <Text style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>{label}</Text>
+                <View style={styles.dots}>
+                  {dots.map((d, i) => <View key={i} style={[styles.dot, { backgroundColor: d }]} />)}
+                </View>
+              </View>
+              {on && (
+                <View style={styles.check}>
+                  <Ionicons name="checkmark" size={14} color="#111111" />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
-    </Modal>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: {
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24,
+  body: { paddingBottom: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  card: { width: '48.5%', borderRadius: 18, overflow: 'hidden', borderWidth: 2.5 },
+  hero: { height: 56, paddingVertical: 8, paddingHorizontal: 11 },
+  heroLabel: { fontSize: 10, fontFamily: 'Poppins_400Regular', color: 'rgba(255,255,255,0.8)' },
+  heroAmount: { fontSize: 17, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', letterSpacing: -0.4 },
+  foot: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+    paddingHorizontal: 11, paddingTop: 8, paddingBottom: 9,
   },
-  handle: {
-    width: 40, height: 4, borderRadius: 2,
-    alignSelf: 'center', marginBottom: 20,
+  name: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', flexShrink: 1 },
+  dots: { flexDirection: 'row', gap: 3 },
+  dot: { width: 9, height: 9, borderRadius: 5 },
+  check: {
+    position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center',
   },
-  title: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center' },
-  item: { alignItems: 'center', gap: 6, width: 72 },
-  circle: {
-    width: 56, height: 56, borderRadius: 28,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  circleSelected: {
-    borderWidth: 3, borderColor: 'rgba(255,255,255,0.6)',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
-  },
-  label: { fontSize: 11, fontFamily: 'Poppins_400Regular', textAlign: 'center' },
 });
 
 export default ColorPaletteModal;

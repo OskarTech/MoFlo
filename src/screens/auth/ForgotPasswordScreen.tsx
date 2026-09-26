@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Alert,
-} from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
+import { FilledInput, SheetButton } from '../../components/common/BottomSheet';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { AuthScreen } from '../../components/auth/AuthScreen';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
@@ -18,13 +17,10 @@ type Props = {
 
 const ForgotPasswordScreen = ({ navigation }: Props) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors: dc, ui } = useTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-
-  const inputBg = isDark ? colors.surfaceDark : '#FFFFFF';
 
   const handleSend = async () => {
     if (!email.trim()) return;
@@ -45,148 +41,57 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + 16 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* BACK */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={dc.textPrimary} />
-        </TouchableOpacity>
-
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View style={[styles.iconContainer, {
-            backgroundColor: colors.primary + '20',
-          }]}>
-            <Ionicons name="lock-open-outline" size={48} color={colors.primary} />
+    <AuthScreen
+      hero={(
+        <>
+          <HeroTitleBar title={t('auth.forgotPassword')} onBack={() => navigation.goBack()} />
+          <Text style={[styles.heroText, { color: ui.onHeroSoft }]}>{t('auth.forgotPasswordSubtitle')}</Text>
+        </>
+      )}
+    >
+      {!sent ? (
+        <>
+          <FilledInput
+            icon="mail-outline"
+            value={email}
+            onChangeText={setEmail}
+            placeholder={t('auth.email')}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            onSubmitEditing={handleSend}
+          />
+          <SheetButton
+            label={t('auth.sendResetEmail')}
+            onPress={handleSend}
+            loading={loading}
+            disabled={!email.trim()}
+            style={styles.button}
+          />
+        </>
+      ) : (
+        <View style={styles.sent}>
+          <View style={[styles.sentIcon, { backgroundColor: ui.accentSoft }]}>
+            <Ionicons name="mail-open-outline" size={32} color={ui.accent} />
           </View>
-          <Text style={[styles.title, { color: dc.textPrimary }]}>
-            {t('auth.forgotPassword')}
-          </Text>
-          <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
-            {t('auth.forgotPasswordSubtitle')}
-          </Text>
+          <Text style={[styles.sentTitle, { color: dc.textPrimary }]}>{t('auth.resetEmailSent')}</Text>
+          <Text style={[styles.sentText, { color: dc.textSecondary }]}>{t('auth.resetEmailSentSubtitle')}</Text>
+          <SheetButton label={t('auth.backToLogin')} onPress={() => navigation.goBack()} style={styles.sentButton} />
         </View>
-
-        {!sent ? (
-          <>
-            <TextInput
-              label={t('auth.email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-            />
-
-            <Button
-              mode="contained"
-              onPress={handleSend}
-              loading={loading}
-              disabled={!email.trim() || loading}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.sendResetEmail')}
-            </Button>
-          </>
-        ) : (
-          <View style={[styles.successCard, {
-            backgroundColor: colors.primary + '15',
-            borderColor: colors.primary + '30',
-          }]}>
-            <Ionicons name="checkmark-circle" size={56} color={colors.primary} />
-            <Text style={[styles.successText, { color: dc.textPrimary }]}>
-              {t('auth.resetEmailSent')}
-            </Text>
-            <Text style={[styles.successSubtext, { color: dc.textSecondary }]}>
-              {t('auth.resetEmailSentSubtitle')}
-            </Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.goBack()}
-              style={[styles.button, { marginTop: 16 }]}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.backToLogin')}
-            </Button>
-          </View>
-        )}
-      </ScrollView>
-    </View>
+      )}
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  backButton: {
-    marginBottom: 24,
-    alignSelf: 'flex-start',
-    padding: 4,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  iconContainer: {
-    width: 96, height: 96, borderRadius: 48,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: 'Poppins_700Bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  input: { marginBottom: 16 },
-  button: { borderRadius: 12 },
-  buttonContent: { height: 52 },
-  successCard: {
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 0.5,
-  },
-  successText: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  successSubtext: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  heroText: { fontSize: 14, fontFamily: 'Poppins_400Regular', lineHeight: 21, paddingHorizontal: 20, paddingTop: 10 },
+  button: { marginTop: 20 },
+  sent: { alignItems: 'center', paddingTop: 8 },
+  sentIcon: { width: 68, height: 68, borderRadius: 34, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  sentTitle: { fontSize: 19, fontFamily: 'Poppins_700Bold', textAlign: 'center', marginBottom: 6 },
+  sentText: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 21 },
+  sentButton: { marginTop: 22, alignSelf: 'stretch' },
 });
 
 export default ForgotPasswordScreen;

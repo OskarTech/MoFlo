@@ -15,7 +15,7 @@ const AppleSignInButton = ({ onPress }: Props) => {
       buttonStyle={isDark
         ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
         : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-      cornerRadius={12}
+      cornerRadius={16}
       style={styles.button}
       onPress={onPress}
     />
@@ -23,7 +23,7 @@ const AppleSignInButton = ({ onPress }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  button: { width: '100%', height: 50, marginTop: 12 },
+  button: { width: '100%', height: 52, marginTop: 12 },
 });
 
 export default AppleSignInButton;

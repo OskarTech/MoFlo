@@ -47,6 +47,7 @@ const collectInput = (): ExportInput => {
   const colors = makeCategoryColors(
     CATEGORY_COLORS[palette].light,
     isShared ? sharedCategoryStore.sharedCustomCategories : categoryStore.customCategories,
+    isShared ? sharedCategoryStore.sharedCategoryColors : categoryStore.categoryColors,
   );
   const formerLabel = t('sharedAccount.formerMember');
 

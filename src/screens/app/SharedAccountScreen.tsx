@@ -5,7 +5,7 @@ import {
   Clipboard, Keyboard, Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
+import { Text, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import auth from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,10 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { usePremium } from '../../hooks/usePremium';
 import { useTheme } from '../../hooks/useTheme';
-import AppHeader from '../../components/common/AppHeader';
+import { HeroScrollScreen } from '../../components/layout/HeroScreen';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { SheetButton, FilledInput, SheetLabel } from '../../components/common/BottomSheet';
+import { withAlpha } from '../../utils/color';
 import PremiumModal from '../../components/common/PremiumModal';
 import { warningHaptic } from '../../utils/haptics';
 
@@ -27,7 +30,7 @@ type RouteParams = {
 
 const SharedAccountScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'SharedAccount'>>();
   const { isPremium, showModal, setShowModal } = usePremium();
@@ -202,422 +205,371 @@ const SharedAccountScreen = () => {
     });
   };
 
+  const heroIntro = (
+    <View style={styles.heroBody}>
+      <View style={styles.heroAvatar}>
+        <Ionicons name="people" size={28} color={ui.hero} />
+      </View>
+      <Text style={[styles.heroText, { color: ui.onHeroSoft }]}>{t('sharedAccount.intro')}</Text>
+    </View>
+  );
+
   if (!isPremium) {
     return (
-      <View style={[styles.container, { backgroundColor: dc.background }]}>
-        <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
-        <View style={styles.premiumGate}>
-          <Text style={styles.premiumEmoji}>⭐</Text>
-          <Text style={[styles.premiumTitle, { color: dc.textPrimary }]}>
-            {t('premium.title')}
-          </Text>
-          <Text style={[styles.premiumSubtitle, { color: dc.textSecondary }]}>
-            {t('sharedAccount.intro')}
-          </Text>
-          <Button
-            mode="contained"
-            onPress={() => setShowModal(true)}
-            style={styles.premiumButton}
-            buttonColor={dc.primary}
-            textColor="#FFFFFF"
-          >
-            {t('premium.purchase')}
-          </Button>
-        </View>
+      <>
+        <HeroScrollScreen
+          hero={(
+            <>
+              <HeroTitleBar title={t('sharedAccount.title')} onBack={() => navigation.goBack()} />
+              {heroIntro}
+            </>
+          )}
+          sheetStyle={styles.sheet}
+        >
+          <View style={styles.status}>
+            <View style={[styles.statusIcon, { backgroundColor: withAlpha(dc.savings, 0.14) }]}>
+              <Ionicons name="star" size={28} color={ui.savingsText} />
+            </View>
+            <Text style={[styles.statusTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
+            <Text style={[styles.statusText, { color: dc.textSecondary }]}>{t('sharedAccount.intro')}</Text>
+          </View>
+          <SheetButton label={t('premium.purchase')} onPress={() => setShowModal(true)} icon="star-outline" />
+        </HeroScrollScreen>
         <PremiumModal
           visible={showModal}
           onDismiss={() => setShowModal(false)}
           onPurchase={() => setShowModal(false)}
         />
-      </View>
+      </>
     );
   }
 
+  const hero = (
+    <>
+      <HeroTitleBar title={t('sharedAccount.title')} onBack={() => navigation.goBack()} />
+      {sharedAccount && !isLoading ? (
+        <View style={styles.heroBody}>
+          <View style={styles.heroAvatar}>
+            <Ionicons name="people" size={28} color={ui.hero} />
+          </View>
+          <View style={styles.heroInfo}>
+            <Text style={[styles.heroName, { color: ui.onHero }]} numberOfLines={1}>{sharedAccount.name}</Text>
+            <Text style={[styles.heroText, { color: ui.onHeroSoft }]}>
+              {t('sharedAccount.code')}: {sharedAccount.inviteCode}
+            </Text>
+          </View>
+        </View>
+      ) : heroIntro}
+    </>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('sharedAccount.title')} showBack showBell={false} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -120}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -120}
+    >
+      <HeroScrollScreen
+        hero={hero}
+        scrollRef={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        sheetStyle={styles.sheet}
       >
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets
-        >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color={dc.primary} size="large" />
-            </View>
-          ) : sharedAccount ? (
-            <>
-              <View style={[styles.accountCard, { backgroundColor: dc.primary }]}>
-                <Text style={styles.accountEmoji}>👥</Text>
-                <Text style={styles.accountCardName}>{sharedAccount.name}</Text>
-                <Text style={styles.accountCardCode}>
-                  {t('sharedAccount.code')}: {sharedAccount.inviteCode}
-                </Text>
-              </View>
-
-              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                {t('sharedAccount.inviteLink')}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color={ui.accent} size="large" />
+          </View>
+        ) : sharedAccount ? (
+          <>
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('sharedAccount.inviteLink')}
+            </Text>
+            <View style={[styles.linkCard, { backgroundColor: ui.field }]}>
+              <Text style={[styles.linkText, { color: dc.textSecondary }]} numberOfLines={2}>
+                {getInviteLink()}
               </Text>
-              <View style={[styles.linkCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                <Text style={[styles.linkText, { color: dc.textSecondary }]} numberOfLines={2}>
-                  {getInviteLink()}
-                </Text>
-                <View style={styles.linkButtons}>
-                  <TouchableOpacity
-                    style={[styles.linkButton, { backgroundColor: linkCopied ? dc.income + '20' : dc.background }]}
-                    onPress={handleCopyLink}
-                  >
-                    <Ionicons
-                      name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
-                      size={18}
-                      color={linkCopied ? dc.income : dc.primary}
-                    />
-                    <Text style={[styles.linkButtonText, {
-                      color: linkCopied ? dc.income : dc.primary,
-                    }]}>
-                      {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.linkButton, { backgroundColor: dc.background }]}
-                    onPress={handleShareLink}
-                  >
-                    <Ionicons name="share-social-outline" size={18} color={dc.primary} />
-                    <Text style={[styles.linkButtonText, { color: dc.primary }]}>
-                      {t('sharedAccount.shareLink')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {isCreator && visibleRequests.length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                    {t('sharedAccount.pendingRequests')}
+              <View style={styles.linkButtons}>
+                <TouchableOpacity
+                  style={[styles.linkButton, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.sheet }]}
+                  onPress={handleCopyLink}
+                >
+                  <Ionicons
+                    name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+                    size={18}
+                    color={linkCopied ? ui.incomeText : ui.accent}
+                  />
+                  <Text style={[styles.linkButtonText, { color: linkCopied ? ui.incomeText : ui.accent }]}>
+                    {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
                   </Text>
-                  <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                    {visibleRequests.map((req, idx) => (
-                      <View key={req.uid}>
-                        <View style={styles.requestRow}>
-                          <View style={[styles.memberAvatar, { backgroundColor: dc.savings + '20' }]}>
-                            <Text style={[styles.memberInitial, { color: dc.savings }]}>
-                              {req.displayName[0]?.toUpperCase() ?? '?'}
-                            </Text>
-                          </View>
-                          <View style={styles.memberInfo}>
-                            <Text style={[styles.memberName, { color: dc.textPrimary }]}>
-                              {req.displayName}
-                            </Text>
-                            <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
-                              {t('sharedAccount.wantsToJoin')}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.requestActions}>
-                          <TouchableOpacity
-                            style={[styles.requestBtn, { backgroundColor: dc.expense + '15' }]}
-                            onPress={() => handleReject(req.uid, req.displayName)}
-                          >
-                            <Ionicons name="close" size={16} color={dc.expense} />
-                            <Text style={[styles.requestBtnText, { color: dc.expense }]}>
-                              {t('sharedAccount.reject')}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.requestBtn, { backgroundColor: dc.income + '15' }]}
-                            onPress={() => handleApprove(req.uid, req.displayName)}
-                          >
-                            <Ionicons name="checkmark" size={16} color={dc.income} />
-                            <Text style={[styles.requestBtnText, { color: dc.income }]}>
-                              {t('sharedAccount.approve')}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                        {idx < visibleRequests.length - 1 && (
-                          <View style={[styles.divider, { backgroundColor: dc.border, marginLeft: 0 }]} />
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.linkButton, { backgroundColor: ui.sheet }]}
+                  onPress={handleShareLink}
+                >
+                  <Ionicons name="share-social-outline" size={18} color={ui.accent} />
+                  <Text style={[styles.linkButtonText, { color: ui.accent }]}>
+                    {t('sharedAccount.shareLink')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
-              <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                {t('sharedAccount.members')}
-              </Text>
-              <View style={[styles.membersCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                {sharedAccount.members.map((uid, index) => {
-                  const name = sharedAccount.memberNames[uid] ?? t('common.user');
-                  const isCreator = uid === sharedAccount.createdBy;
-                  const isCurrentUser = uid === auth().currentUser?.uid;
-                  return (
-                    <View key={uid}>
-                      <View style={styles.memberRow}>
-                        <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
-                          <Text style={[styles.memberInitial, { color: dc.primary }]}>
-                            {name[0].toUpperCase()}
-                          </Text>
-                        </View>
-                        <View style={styles.memberInfo}>
-                          <Text style={[styles.memberName, { color: dc.textPrimary }]}>
-                            {name}{isCurrentUser ? ` ${t('sharedAccount.you')}` : ''}
-                          </Text>
-                          {isCreator && (
-                            <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
-                              {t('sharedAccount.creator')}
-                            </Text>
-                          )}
-                        </View>
+            {isCreator && visibleRequests.length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+                  {t('sharedAccount.pendingRequests')}
+                </Text>
+                {visibleRequests.map((req, idx) => (
+                  <View key={req.uid}>
+                    {idx > 0 && <View style={[styles.divider, { backgroundColor: ui.hair }]} />}
+                    <View style={styles.memberRow}>
+                      <View style={[styles.memberAvatar, { backgroundColor: withAlpha(ui.savingsText, 0.15) }]}>
+                        <Text style={[styles.memberInitial, { color: ui.savingsText }]}>
+                          {req.displayName[0]?.toUpperCase() ?? '?'}
+                        </Text>
                       </View>
-                      {index < sharedAccount.members.length - 1 && (
-                        <View style={[styles.divider, { backgroundColor: dc.border }]} />
+                      <View style={styles.memberInfo}>
+                        <Text style={[styles.memberName, { color: dc.textPrimary }]}>{req.displayName}</Text>
+                        <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                          {t('sharedAccount.wantsToJoin')}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity
+                        style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
+                        onPress={() => handleReject(req.uid, req.displayName)}
+                      >
+                        <Ionicons name="close" size={16} color={ui.expenseText} />
+                        <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
+                          {t('sharedAccount.reject')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
+                        onPress={() => handleApprove(req.uid, req.displayName)}
+                      >
+                        <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                        <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
+                          {t('sharedAccount.approve')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+
+            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
+              {t('sharedAccount.members')}
+            </Text>
+            {sharedAccount.members.map((uid, index) => {
+              const name = sharedAccount.memberNames[uid] ?? t('common.user');
+              const isMemberCreator = uid === sharedAccount.createdBy;
+              const isCurrentUser = uid === auth().currentUser?.uid;
+              return (
+                <View key={uid}>
+                  {index > 0 && <View style={[styles.divider, { backgroundColor: ui.hair }]} />}
+                  <View style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+                      <Text style={[styles.memberInitial, { color: ui.accent }]}>
+                        {name[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                        {name}{isCurrentUser ? ` ${t('sharedAccount.you')}` : ''}
+                      </Text>
+                      {isMemberCreator && (
+                        <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                          {t('sharedAccount.creator')}
+                        </Text>
                       )}
                     </View>
-                  );
-                })}
-              </View>
+                  </View>
+                </View>
+              );
+            })}
 
-              <Button
-                mode="contained"
-                onPress={handleOpenShared}
-                style={styles.openButton}
-                contentStyle={styles.openButtonContent}
-                buttonColor={dc.primary}
-                textColor="#FFFFFF"
+            <SheetButton
+              label={t('sharedAccount.openShared')}
+              onPress={handleOpenShared}
+              icon="arrow-forward"
+              style={styles.bigButton}
+            />
+          </>
+        ) : pendingJoinRequest ? (
+          <>
+            <View style={styles.status}>
+              <View
+                style={[
+                  styles.statusIcon,
+                  { backgroundColor: pendingJoinRequest.status === 'rejected' ? ui.expenseSoft : ui.accentSoft },
+                ]}
               >
-                {t('sharedAccount.openShared')}
-              </Button>
-            </>
-          ) : pendingJoinRequest ? (
-            <>
-              <View style={styles.introSection}>
-                <Text style={styles.introEmoji}>
-                  {pendingJoinRequest.status === 'rejected' ? '❌' : '⏳'}
-                </Text>
-                <Text style={[styles.introTitle, { color: dc.textPrimary }]}>
-                  {pendingJoinRequest.status === 'rejected'
-                    ? t('sharedAccount.rejectedTitle')
-                    : t('sharedAccount.waitingApprovalTitle')}
-                </Text>
-                <Text style={[styles.introText, { color: dc.textSecondary }]}>
-                  {pendingJoinRequest.status === 'rejected'
-                    ? t('sharedAccount.rejectedBody', { name: pendingJoinRequest.accountName })
-                    : t('sharedAccount.waitingApprovalBody', { name: pendingJoinRequest.accountName })}
-                </Text>
+                <Ionicons
+                  name={pendingJoinRequest.status === 'rejected' ? 'close' : 'hourglass-outline'}
+                  size={28}
+                  color={pendingJoinRequest.status === 'rejected' ? ui.expenseText : ui.accent}
+                />
               </View>
+              <Text style={[styles.statusTitle, { color: dc.textPrimary }]}>
+                {pendingJoinRequest.status === 'rejected'
+                  ? t('sharedAccount.rejectedTitle')
+                  : t('sharedAccount.waitingApprovalTitle')}
+              </Text>
+              <Text style={[styles.statusText, { color: dc.textSecondary }]}>
+                {pendingJoinRequest.status === 'rejected'
+                  ? t('sharedAccount.rejectedBody', { name: pendingJoinRequest.accountName })
+                  : t('sharedAccount.waitingApprovalBody', { name: pendingJoinRequest.accountName })}
+              </Text>
+            </View>
 
-              {pendingJoinRequest.status === 'rejected' ? (
-                <Button
-                  mode="contained"
-                  onPress={() => { clearRejectedRequest().catch(() => {}); }}
-                  style={styles.actionButton}
-                  contentStyle={styles.actionButtonContent}
-                  buttonColor={dc.primary}
-                  textColor="#FFFFFF"
+            {pendingJoinRequest.status === 'rejected' ? (
+              <SheetButton
+                label={t('sharedAccount.acceptRejection')}
+                onPress={() => { clearRejectedRequest().catch(() => {}); }}
+              />
+            ) : (
+              <SheetButton
+                label={t('sharedAccount.cancelRequest')}
+                onPress={handleCancelRequest}
+                variant="danger"
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {mode === 'menu' && (
+              <>
+                <TouchableOpacity
+                  style={[styles.option, { backgroundColor: ui.field }]}
+                  onPress={() => setMode('create')}
+                  activeOpacity={0.8}
                 >
-                  {t('sharedAccount.acceptRejection')}
-                </Button>
-              ) : (
-                <Button
-                  mode="outlined"
-                  onPress={handleCancelRequest}
-                  style={styles.actionButton}
-                  contentStyle={styles.actionButtonContent}
-                  textColor={dc.expense}
+                  <View style={[styles.optionIcon, { backgroundColor: ui.accentSoft }]}>
+                    <Ionicons name="add" size={22} color={ui.accent} />
+                  </View>
+                  <Text style={[styles.optionTitle, { color: dc.textPrimary }]}>{t('sharedAccount.createTitle')}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.option, { backgroundColor: ui.field }]}
+                  onPress={() => setMode('join')}
+                  activeOpacity={0.8}
                 >
-                  {t('sharedAccount.cancelRequest')}
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <View style={styles.introSection}>
-                <Text style={styles.introEmoji}>👥</Text>
-                <Text style={[styles.introTitle, { color: dc.textPrimary }]}>
-                  {t('sharedAccount.title')}
-                </Text>
-                <Text style={[styles.introText, { color: dc.textSecondary }]}>
-                  {t('sharedAccount.intro')}
-                </Text>
-              </View>
-
-              {mode === 'menu' && (
-                <>
-                  <Button
-                    mode="contained"
-                    onPress={() => setMode('create')}
-                    style={styles.actionButton}
-                    contentStyle={styles.actionButtonContent}
-                    buttonColor={dc.primary}
-                    textColor="#FFFFFF"
-                    icon="plus-circle-outline"
-                  >
-                    {t('sharedAccount.createTitle')}
-                  </Button>
-                  <TouchableOpacity
-                    onPress={() => setMode('join')}
-                    style={styles.secondaryLink}
-                  >
-                    <Text style={[styles.secondaryLinkText, { color: dc.primary }]}>
-                      {t('sharedAccount.orJoin')}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {mode === 'create' && (
-                <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                  <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-                    {t('sharedAccount.createTitle')}
-                  </Text>
-                  <TextInput
-                    label={t('sharedAccount.accountName')}
-                    value={accountName}
-                    onChangeText={setAccountName}
-                    mode="outlined"
-                    placeholder={t('sharedAccount.accountNamePlaceholder')}
-                    style={[styles.input, { backgroundColor: dc.surface }]}
-                    outlineColor={dc.primary}
-                    activeOutlineColor={dc.primary}
-                  />
-                  <View style={styles.formButtons}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => setMode('menu')}
-                      style={styles.cancelBtn}
-                      textColor={dc.textSecondary}
-                    >
-                      {t('movements.cancel')}
-                    </Button>
-                    <Button
-                      mode="contained"
-                      onPress={handleCreate}
-                      loading={loading}
-                      disabled={!accountName.trim() || loading}
-                      style={styles.confirmBtn}
-                      buttonColor={dc.primary}
-                      textColor="#FFFFFF"
-                    >
-                      {t('sharedAccount.createButton')}
-                    </Button>
+                  <View style={[styles.optionIcon, { backgroundColor: ui.accentSoft }]}>
+                    <Ionicons name="key-outline" size={20} color={ui.accent} />
                   </View>
-                </View>
-              )}
+                  <Text style={[styles.optionTitle, { color: dc.textPrimary }]}>{t('sharedAccount.joinTitle')}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                </TouchableOpacity>
+              </>
+            )}
 
-              {mode === 'join' && (
-                <View style={[styles.formCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                  <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-                    {t('sharedAccount.joinTitle')}
-                  </Text>
-                  <TextInput
-                    label={t('sharedAccount.enterCode')}
-                    value={inviteCode}
-                    onChangeText={(v) => setInviteCode(v.toUpperCase())}
-                    mode="outlined"
-                    placeholder={t('sharedAccount.enterCodePlaceholder')}
-                    autoCapitalize="characters"
-                    maxLength={6}
-                    style={[styles.input, { backgroundColor: dc.surface }]}
-                    outlineColor={dc.primary}
-                    activeOutlineColor={dc.primary}
-                  />
-                  <View style={styles.formButtons}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => setMode('menu')}
-                      style={styles.cancelBtn}
-                      textColor={dc.textSecondary}
-                    >
-                      {t('movements.cancel')}
-                    </Button>
-                    <Button
-                      mode="contained"
-                      onPress={handleJoin}
-                      loading={loading}
-                      disabled={inviteCode.length < 6 || loading}
-                      style={styles.confirmBtn}
-                      buttonColor={dc.primary}
-                      textColor="#FFFFFF"
-                    >
-                      {t('sharedAccount.joinButton')}
-                    </Button>
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+            {mode === 'create' && (
+              <>
+                <Text style={[styles.formTitle, { color: dc.textPrimary }]}>{t('sharedAccount.createTitle')}</Text>
+                <SheetLabel>{t('sharedAccount.accountName')}</SheetLabel>
+                <FilledInput
+                  icon="people-outline"
+                  value={accountName}
+                  onChangeText={setAccountName}
+                  placeholder={t('sharedAccount.accountNamePlaceholder')}
+                  maxLength={40}
+                />
+                <SheetButton
+                  label={t('sharedAccount.createButton')}
+                  onPress={handleCreate}
+                  loading={loading}
+                  disabled={!accountName.trim()}
+                  style={styles.bigButton}
+                />
+                <TouchableOpacity onPress={() => setMode('menu')} style={styles.secondaryLink}>
+                  <Text style={[styles.secondaryLinkText, { color: dc.textSecondary }]}>{t('movements.cancel')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {mode === 'join' && (
+              <>
+                <Text style={[styles.formTitle, { color: dc.textPrimary }]}>{t('sharedAccount.joinTitle')}</Text>
+                <SheetLabel>{t('sharedAccount.enterCode')}</SheetLabel>
+                <FilledInput
+                  icon="key-outline"
+                  value={inviteCode}
+                  onChangeText={(v) => setInviteCode(v.toUpperCase())}
+                  placeholder={t('sharedAccount.enterCodePlaceholder')}
+                  autoCapitalize="characters"
+                  maxLength={6}
+                  style={styles.codeInput}
+                />
+                <SheetButton
+                  label={t('sharedAccount.joinButton')}
+                  onPress={handleJoin}
+                  loading={loading}
+                  disabled={inviteCode.length < 6}
+                  style={styles.bigButton}
+                />
+                <TouchableOpacity onPress={() => setMode('menu')} style={styles.secondaryLink}>
+                  <Text style={[styles.secondaryLinkText, { color: dc.textSecondary }]}>{t('movements.cancel')}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </>
+        )}
+      </HeroScrollScreen>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   flex: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40, flexGrow: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  premiumGate: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, paddingTop: 60 },
-  premiumEmoji: { fontSize: 56, marginBottom: 16 },
-  premiumTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 8, textAlign: 'center' },
-  premiumSubtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  premiumButton: { borderRadius: 12, width: '100%' },
-  accountCard: { borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 24, elevation: 4 },
-  accountEmoji: { fontSize: 40, marginBottom: 8 },
-  accountCardName: { fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', marginBottom: 4 },
-  accountCardCode: { fontSize: 13, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
-  sectionLabel: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    marginBottom: 8, marginLeft: 4,
+  sheet: { paddingHorizontal: 20 },
+  heroBody: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 14 },
+  heroAvatar: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFFFFF',
+    justifyContent: 'center', alignItems: 'center',
   },
-  linkCard: { borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 0.5 },
+  heroInfo: { flex: 1, minWidth: 0 },
+  heroName: { fontSize: 21, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3 },
+  heroText: { flex: 1, fontSize: 13.5, fontFamily: 'Poppins_400Regular', lineHeight: 20 },
+  loadingContainer: { justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
+  sectionLabel: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', marginTop: 6, marginBottom: 6 },
+  linkCard: { borderRadius: 18, padding: 14, marginBottom: 16 },
   linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
   linkButtons: { flexDirection: 'row', gap: 8 },
   linkButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 12,
   },
-  linkButtonText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
-  membersCard: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  memberAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  memberInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
+  linkButtonText: { fontSize: 12.5, fontFamily: 'Poppins_600SemiBold' },
+  memberRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
+  memberAvatar: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  memberInitial: { fontSize: 15, fontFamily: 'Poppins_700Bold' },
   memberInfo: { flex: 1 },
   memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  divider: { height: 0.5, marginLeft: 66 },
-  openButton: { borderRadius: 12, marginBottom: 12 },
-  openButtonContent: { height: 52 },
-  settingsButton: { borderRadius: 12 },
-  introSection: { alignItems: 'center', paddingVertical: 32 },
-  introEmoji: { fontSize: 56, marginBottom: 16 },
-  introTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 8 },
-  introText: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  actionButton: { borderRadius: 12, marginBottom: 16 },
-  actionButtonContent: { height: 52 },
-  secondaryLink: { alignItems: 'center', padding: 12 },
-  secondaryLinkText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  formCard: { borderRadius: 20, padding: 20, borderWidth: 0.5 },
-  formTitle: { fontSize: 18, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
-  input: { marginBottom: 16 },
-  formButtons: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1 },
-  confirmBtn: { flex: 2 },
-  requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  requestActions: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 },
+  memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 1 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 46 },
+  requestActions: { flexDirection: 'row', gap: 8, paddingBottom: 10, paddingLeft: 46 },
   requestBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 12,
   },
   requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+  bigButton: { marginTop: 20 },
+  status: { alignItems: 'center', paddingVertical: 20 },
+  statusIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  statusTitle: { fontSize: 19, fontFamily: 'Poppins_700Bold', marginBottom: 6, textAlign: 'center' },
+  statusText: { fontSize: 14, fontFamily: 'Poppins_400Regular', textAlign: 'center', lineHeight: 21, marginBottom: 20 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, marginBottom: 10 },
+  optionIcon: { width: 40, height: 40, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  optionTitle: { flex: 1, fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  formTitle: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
+  codeInput: { letterSpacing: 4, fontFamily: 'Poppins_600SemiBold' },
+  secondaryLink: { alignItems: 'center', padding: 12 },
+  secondaryLinkText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
 });
 
 export default SharedAccountScreen;

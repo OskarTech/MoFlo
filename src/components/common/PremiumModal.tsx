@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View, StyleSheet, Modal,
-  TouchableOpacity, Alert, Linking
-} from 'react-native';
-import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
+import { Text, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import Purchases, { PurchasesOffering, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
-import { colors } from '../../theme';
 import { ensurePurchasesUser, hasPremiumEntitlement } from '../../services/revenuecat';
 import { reportError } from '../../services/crashReporting';
+import HeroDialog from './HeroDialog';
+import { SheetButton } from './BottomSheet';
 
 interface Props {
   visible: boolean;
@@ -19,18 +17,18 @@ interface Props {
   onPurchase: () => void;
 }
 
-const FEATURES = [
-  'premium.featureSharedAccount',
-  'premium.featureCustomCategories',
-  'premium.featureExportCSV',
-  'premium.featureUnlimitedRecurring',
-  'premium.featureUnlimitedHuchas',
-  'premium.featureCustomColor',
+const FEATURES: { key: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'premium.featureSharedAccount', icon: 'people-outline' },
+  { key: 'premium.featureCustomCategories', icon: 'pricetags-outline' },
+  { key: 'premium.featureExportCSV', icon: 'download-outline' },
+  { key: 'premium.featureUnlimitedRecurring', icon: 'repeat-outline' },
+  { key: 'premium.featureUnlimitedHuchas', icon: 'cash-outline' },
+  { key: 'premium.featureCustomColor', icon: 'color-palette-outline' },
 ];
 
 const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
   const { setPremium } = usePremiumStore();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -113,155 +111,73 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
     }
   };
 
+  const busy = loading || restoring;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.card, {
-          backgroundColor: isDark ? colors.surfaceDark : '#FFFFFF',
-        }]}>
-
-          {/* HEADER */}
-          <View style={[styles.header, { backgroundColor: colors.primary }]}>
-            <Text style={styles.headerEmoji}>⭐</Text>
-            <Text style={styles.headerTitle}>{t('premium.title')}</Text>
-            <Text style={styles.headerPrice}>2,99€</Text>
-            <Text style={styles.headerTax}>{t('premium.taxNote')}</Text>
+    <HeroDialog
+      visible={visible}
+      onRequestClose={onDismiss}
+      onClose={onDismiss}
+      closeDisabled={busy}
+      icon="star"
+      title={t('premium.title')}
+      heroExtra={(
+        <>
+          <Text style={[styles.price, { color: ui.onHero }]}>2,99€</Text>
+          <Text style={[styles.tax, { color: ui.onHeroSoft }]}>{t('premium.taxNote')}</Text>
+        </>
+      )}
+    >
+      <Text style={[styles.featuresTitle, { color: dc.textSecondary }]}>{t('premium.includes')}</Text>
+      {FEATURES.map(({ key, icon }) => (
+        <View key={key} style={styles.featureRow}>
+          <View style={[styles.featureIcon, { backgroundColor: ui.accentSoft }]}>
+            <Ionicons name={icon} size={18} color={ui.accent} />
           </View>
-
-          {/* FEATURES */}
-          <View style={styles.features}>
-            <Text style={[styles.featuresTitle, { color: dc.textSecondary }]}>
-              {t('premium.includes')}
-            </Text>
-            {FEATURES.map((key) => (
-              <View key={key} style={styles.featureRow}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                <Text style={[styles.featureText, { color: dc.textPrimary }]}>
-                  {t(key)}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* BOTÓN COMPRAR */}
-          <Button
-            mode="contained"
-            onPress={handlePurchase}
-            loading={loading}
-            disabled={loading || restoring}
-            style={styles.purchaseButton}
-            contentStyle={styles.purchaseButtonContent}
-            buttonColor={colors.primary}
-            textColor="#FFFFFF"
-          >
-            {t('premium.purchase')}
-          </Button>
-
-          {/* RESTAURAR */}
-          <TouchableOpacity
-            onPress={handleRestore}
-            disabled={loading || restoring}
-            style={styles.restoreButton}
-          >
-            {restoring
-              ? <ActivityIndicator size={16} color={dc.textSecondary} />
-              : (
-                <Text style={[styles.restoreText, { color: dc.textSecondary }]}>
-                  {t('premium.restore')}
-                </Text>
-              )
-            }
-          </TouchableOpacity>
-
-          {/* QUIZÁS MÁS TARDE */}
-          <TouchableOpacity
-            onPress={onDismiss}
-            disabled={loading || restoring}
-            style={styles.dismissButton}
-          >
-            <Text style={[styles.dismissText, { color: dc.textSecondary }]}>
-              {t('premium.maybeLater')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* ENLACES LEGALES */}
-          <View style={styles.legalContainer}>
-            <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}>
-              <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.termsOfService')}</Text>
-            </TouchableOpacity>
-            <Text style={[styles.legalSeparator, { color: dc.textSecondary }]}>|</Text>
-            <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}>
-              <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.privacyPolicy')}</Text>
-            </TouchableOpacity>
-          </View>
-
+          <Text style={[styles.featureText, { color: dc.textPrimary }]}>{t(key)}</Text>
         </View>
+      ))}
+
+      <SheetButton
+        label={t('premium.purchase')}
+        onPress={handlePurchase}
+        loading={loading}
+        disabled={restoring}
+        style={styles.purchase}
+      />
+
+      <TouchableOpacity onPress={handleRestore} disabled={busy} style={styles.restore}>
+        {restoring
+          ? <ActivityIndicator size={16} color={dc.textSecondary} />
+          : <Text style={[styles.restoreText, { color: ui.accent }]}>{t('premium.restore')}</Text>}
+      </TouchableOpacity>
+
+      <View style={styles.legal}>
+        <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}>
+          <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.termsOfService')}</Text>
+        </TouchableOpacity>
+        <Text style={[styles.legalDot, { color: dc.textSecondary }]}>·</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}>
+          <Text style={[styles.legalText, { color: dc.textSecondary }]}>{t('settings.privacyPolicy')}</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </HeroDialog>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1, justifyContent: 'center',
-    alignItems: 'center', padding: 24,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  backdrop: { ...StyleSheet.absoluteFillObject },
-  card: {
-    width: '100%', borderRadius: 24,
-    overflow: 'hidden', elevation: 8,
-  },
-  header: { padding: 24, alignItems: 'center' },
-  headerEmoji: { fontSize: 40, marginBottom: 8 },
-  headerTitle: {
-    fontSize: 24, fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF', marginBottom: 4,
-  },
-  headerPrice: {
-    fontSize: 28, fontFamily: 'Poppins_700Bold',
-    color: '#FFFFFF',
-  },
-  headerTax: {
-    fontSize: 11, fontFamily: 'Poppins_400Regular',
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 4, textAlign: 'center',
-  },
-  features: { padding: 24 },
-  featuresTitle: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    marginBottom: 16,
-  },
-  featureRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, marginBottom: 12,
-  },
-  featureText: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  purchaseButton: { marginHorizontal: 24, borderRadius: 12 },
-  purchaseButtonContent: { height: 52 },
-  restoreButton: { padding: 12, alignItems: 'center', marginTop: 4 },
-  restoreText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  dismissButton: { paddingBottom: 16, alignItems: 'center' },
-  dismissText: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
-  legalContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 24,
-    gap: 8,
-  },
-  legalText: {
-    fontSize: 11,
-    fontFamily: 'Poppins_400Regular',
-    textDecorationLine: 'underline',
-    opacity: 0.7,
-  },
-  legalSeparator: {
-    fontSize: 11,
-    opacity: 0.5,
-  },
+  price: { fontSize: 30, fontFamily: 'Poppins_700Bold', letterSpacing: -0.8, marginTop: 2 },
+  tax: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', textAlign: 'center', marginTop: 2 },
+  featuresTitle: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', marginBottom: 6 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  featureIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  featureText: { flex: 1, fontSize: 14.5, fontFamily: 'Poppins_500Medium' },
+  purchase: { marginTop: 18 },
+  restore: { paddingVertical: 12, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  restoreText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  legal: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  legalText: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', textDecorationLine: 'underline', opacity: 0.8 },
+  legalDot: { fontSize: 11.5, opacity: 0.6 },
 });
 
 export default PremiumModal;

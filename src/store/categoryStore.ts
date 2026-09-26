@@ -5,9 +5,11 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Category, MovementType } from '../types';
 import { BASE_CATEGORIES, getBaseCategoryIcon } from '../constants/categories';
+import { CategoryColorChoice, CategoryColorChoices, categoryColorKey } from '../utils/categoryColors';
 
 const CUSTOM_KEY = '@moflo_custom_categories';
 const HIDDEN_KEY = '@moflo_hidden_base';
+const COLORS_KEY = '@moflo_category_colors';
 
 let categoriesUnsubscribe: (() => void) | null = null;
 let hiddenUnsubscribe: (() => void) | null = null;
@@ -15,16 +17,21 @@ let hiddenUnsubscribe: (() => void) | null = null;
 interface CategoryStore {
   customCategories: Category[];
   hiddenBaseCategories: string[];
+  // Colores elegidos por el usuario (ver utils/categoryColors)
+  categoryColors: CategoryColorChoices;
   isLoading: boolean;
   // El botón + de la barra la activa en la pantalla de categorías
   showAddCategoryModal: boolean;
   setShowAddCategoryModal: (show: boolean) => void;
 
   loadCategories: () => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
+  // Devuelve el id de la nueva, para poder guardarle el color
+  addCategory: (category: Omit<Category, 'id' | 'createdAt'>) => Promise<string | undefined>;
   updateCategory: (id: string, updates: { name: string; icon: string }) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   hideBaseCategory: (id: string, type: MovementType) => Promise<void>;
+  // null vuelve al color automático de la paleta
+  setCategoryColor: (id: string, type: MovementType, colorIndex: CategoryColorChoice | null) => Promise<void>;
   getCategoriesForType: (type: MovementType) => {
     id: string;
     name: string;
@@ -42,6 +49,7 @@ interface CategoryStore {
 export const useCategoryStore = create<CategoryStore>((set, get) => ({
   customCategories: [],
   hiddenBaseCategories: [],
+  categoryColors: {},
   isLoading: false,
   showAddCategoryModal: false,
 
@@ -53,6 +61,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
     set({
       customCategories: [],
       hiddenBaseCategories: [],
+      categoryColors: {},
     });
   },
 
@@ -70,6 +79,9 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       const hiddenRaw = await AsyncStorage.getItem(`${HIDDEN_KEY}_${uid}`);
       const localHidden: string[] = hiddenRaw ? JSON.parse(hiddenRaw) : [];
       if (localHidden.length) set({ hiddenBaseCategories: localHidden });
+
+      const colorsRaw = await AsyncStorage.getItem(`${COLORS_KEY}_${uid}`);
+      if (colorsRaw) set({ categoryColors: JSON.parse(colorsRaw) });
 
       const netState = await NetInfo.fetch();
       if (!netState.isConnected) return;
@@ -100,6 +112,12 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       }
       set({ hiddenBaseCategories: mergedHidden });
       await AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(mergedHidden));
+
+      const remoteColors: CategoryColorChoices | undefined = userDoc.data()?.categoryColors;
+      if (remoteColors) {
+        set({ categoryColors: remoteColors });
+        await AsyncStorage.setItem(`${COLORS_KEY}_${uid}`, JSON.stringify(remoteColors));
+      }
     } catch (e) {
       console.error('Error loading categories:', e);
     } finally {
@@ -127,6 +145,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
       .collection('categories').doc(newCategory.id)
       .set(newCategory)
       .catch((e) => console.error('Error saving category to Firestore:', e));
+    return newCategory.id;
   },
 
   updateCategory: async (id, updates) => {
@@ -191,6 +210,29 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
         .collection('users').doc(uid)
         .set({ hiddenCategories: firestore.FieldValue.arrayUnion(key) }, { merge: true });
     }
+  },
+
+  setCategoryColor: async (id, type, colorIndex) => {
+    const uid = auth().currentUser?.uid;
+    if (!uid) return;
+
+    const key = categoryColorKey(id, type);
+    const updated = { ...get().categoryColors };
+    if (colorIndex === null) delete updated[key];
+    else updated[key] = colorIndex;
+    set({ categoryColors: updated });
+    await AsyncStorage.setItem(`${COLORS_KEY}_${uid}`, JSON.stringify(updated));
+
+    // Solo el campo de esta categoría: dos dispositivos cambiando colores a la
+    // vez no se pisan. Sin await: con mala conexión no bloquea la ventana
+    const ref = firestore().collection('users').doc(uid);
+    const value = colorIndex === null ? firestore.FieldValue.delete() : colorIndex;
+    ref.update({ [`categoryColors.${key}`]: value }).catch(() => {
+      // Si el doc no existe, set con merge (borrar un campo que no existe no hace falta)
+      if (colorIndex === null) return;
+      ref.set({ categoryColors: { [key]: colorIndex } }, { merge: true })
+        .catch((e) => console.error('Error saving category color:', e));
+    });
   },
 
   getCategoriesForType: (type) => {
@@ -258,6 +300,9 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
           const hidden: string[] = doc.data()?.hiddenCategories ?? [];
           set({ hiddenBaseCategories: hidden });
           AsyncStorage.setItem(`${HIDDEN_KEY}_${uid}`, JSON.stringify(hidden)).catch(() => {});
+          const colors: CategoryColorChoices = doc.data()?.categoryColors ?? {};
+          set({ categoryColors: colors });
+          AsyncStorage.setItem(`${COLORS_KEY}_${uid}`, JSON.stringify(colors)).catch(() => {});
         }
       }, (e) => {
         console.error('Error listening to hidden categories:', e);

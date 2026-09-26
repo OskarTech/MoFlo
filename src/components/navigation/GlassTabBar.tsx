@@ -1,0 +1,155 @@
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Keyboard, Platform } from 'react-native';
+import { Text } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CommonActions } from '@react-navigation/native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useTheme } from '../../hooks/useTheme';
+import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
+
+export const TAB_BAR_HEIGHT = 62;
+
+// Separación de la cápsula con el borde de abajo: por encima de la barra de
+// gestos del sistema, pero sin dejar un hueco grande
+export const useTabBarOffset = () => {
+  const insets = useSafeAreaInsets();
+  return Math.max(12, insets.bottom - 6);
+};
+
+// Lo que debe dejar libre abajo una pantalla para que la barra no tape su final
+export const useTabBarSpace = () => TAB_BAR_HEIGHT + useTabBarOffset() + 24;
+
+type TabIcon = keyof typeof Ionicons.glyphMap;
+const TABS: Record<string, { label: string; icon: TabIcon; iconOn: TabIcon; target?: string }> = {
+  HomeTab: { label: 'tabs.home', icon: 'home-outline', iconOn: 'home' },
+  HistorialTab: { label: 'tabs.historial', icon: 'time-outline', iconOn: 'time', target: 'recurring' },
+  AnnualTab: { label: 'tabs.annual', icon: 'bar-chart-outline', iconOn: 'bar-chart', target: 'annual_tab' },
+  HuchaTab: { label: 'tabs.hucha', icon: 'cash-outline', iconOn: 'cash', target: 'hucha_tab' },
+};
+
+const TabButton = ({
+  routeName, focused, onPress,
+}: { routeName: string; focused: boolean; onPress: () => void }) => {
+  const { t } = useTranslation();
+  const { colors: dc, ui } = useTheme();
+  const tab = TABS[routeName];
+  const targetRef = useWalkthroughTarget(tab.target ?? `tab_${routeName}`);
+  const color = focused ? ui.accent : dc.textPrimary;
+  return (
+    <View ref={targetRef} collapsable={false} style={styles.tabWrap}>
+      <TouchableOpacity
+        style={[styles.tab, focused && { backgroundColor: ui.accentSoft }]}
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+        accessibilityLabel={t(tab.label)}
+      >
+        <Ionicons name={focused ? tab.iconOn : tab.icon} size={22} color={color} />
+        <Text style={[styles.label, { color }]} numberOfLines={1}>{t(tab.label)}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+/**
+ * Barra de abajo: una cápsula flotante de cristal con las cuatro pestañas y,
+ * aparte, el botón + (su acción depende de la pantalla, ver AppNavigator).
+ * Las pestañas ocultas (Ajustes, Recordatorios) no salen y, mientras se está
+ * en ellas, ninguna aparece marcada. Con el teclado abierto se esconde.
+ */
+const GlassTabBar = ({
+  state, navigation, onFabPress,
+}: BottomTabBarProps & { onFabPress: () => void }) => {
+  const { t } = useTranslation();
+  const { colors: dc, ui, isDark } = useTheme();
+  const bottom = useTabBarOffset();
+  const fabRef = useWalkthroughTarget('home_fab');
+  const [keyboardShown, setKeyboardShown] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, () => setKeyboardShown(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardShown(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  if (keyboardShown) return null;
+
+  const focusedKey = state.routes[state.index]?.key;
+
+  const handlePress = (routeKey: string, routeName: string) => {
+    const isFocused = focusedKey === routeKey;
+    const event = navigation.emit({ type: 'tabPress', target: routeKey, canPreventDefault: true });
+    if (!isFocused && !event.defaultPrevented) {
+      navigation.dispatch({ ...CommonActions.navigate({ name: routeName, merge: true }), target: state.key });
+    }
+  };
+
+  return (
+    <View pointerEvents="box-none" style={[styles.root, { bottom }]}>
+      <View style={styles.capsuleShadow}>
+        <View style={[styles.capsule, { borderColor: ui.glassEdge }]}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 60 : 40}
+            tint={isDark ? 'dark' : 'light'}
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />
+          {state.routes.filter((r) => TABS[r.name]).map((route) => (
+            <TabButton
+              key={route.key}
+              routeName={route.name}
+              focused={route.key === focusedKey}
+              onPress={() => handlePress(route.key, route.name)}
+            />
+          ))}
+        </View>
+      </View>
+      <View ref={fabRef} collapsable={false}>
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: dc.primary, shadowColor: dc.primary }]}
+          onPress={onFabPress}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.add')}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  root: {
+    position: 'absolute', left: 14, right: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  capsuleShadow: {
+    flex: 1, borderRadius: TAB_BAR_HEIGHT / 2,
+    shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 15, shadowOffset: { width: 0, height: 10 },
+  },
+  capsule: {
+    height: TAB_BAR_HEIGHT, borderRadius: TAB_BAR_HEIGHT / 2, overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  tabWrap: { flex: 1 },
+  tab: {
+    height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', gap: 1,
+  },
+  label: { fontSize: 10, fontFamily: 'Poppins_600SemiBold' },
+  fab: {
+    width: TAB_BAR_HEIGHT, height: TAB_BAR_HEIGHT, borderRadius: TAB_BAR_HEIGHT / 2,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 8, shadowOpacity: 0.38, shadowRadius: 12, shadowOffset: { width: 0, height: 8 },
+  },
+});
+
+export default GlassTabBar;

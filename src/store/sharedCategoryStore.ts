@@ -3,9 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import { Category, MovementType } from '../types';
 import { BASE_CATEGORIES, getBaseCategoryIcon } from '../constants/categories';
+import { CategoryColorChoice, CategoryColorChoices, categoryColorKey } from '../utils/categoryColors';
 
 const SHARED_CUSTOM_KEY = '@moflo_shared_custom_categories';
 const SHARED_HIDDEN_KEY = '@moflo_shared_hidden_categories';
+const SHARED_COLORS_KEY = '@moflo_shared_category_colors';
 
 let categoriesUnsubscribe: (() => void) | null = null;
 let hiddenUnsubscribe: (() => void) | null = null;
@@ -13,16 +15,21 @@ let hiddenUnsubscribe: (() => void) | null = null;
 interface SharedCategoryStore {
   sharedCustomCategories: Category[];
   sharedHiddenCategories: string[];
+  // Colores elegidos para la cuenta, los mismos para todos los miembros
+  sharedCategoryColors: CategoryColorChoices;
   isLoading: boolean;
   // El botón + de la barra la activa en la pantalla de categorías compartidas
   showAddCategoryModal: boolean;
   setShowAddCategoryModal: (show: boolean) => void;
 
   loadSharedCategories: (accountId: string) => Promise<void>;
-  addSharedCategory: (accountId: string, category: Omit<Category, 'id' | 'createdAt'>) => Promise<void>;
+  // Devuelve el id de la nueva, para poder guardarle el color
+  addSharedCategory: (accountId: string, category: Omit<Category, 'id' | 'createdAt'>) => Promise<string | undefined>;
   updateSharedCategory: (accountId: string, id: string, updates: { name: string; icon: string }) => Promise<void>;
   deleteSharedCategory: (accountId: string, id: string) => Promise<void>;
   hideSharedBaseCategory: (accountId: string, id: string, type: MovementType) => Promise<void>;
+  // null vuelve al color automático de la paleta
+  setSharedCategoryColor: (accountId: string, id: string, type: MovementType, colorIndex: CategoryColorChoice | null) => Promise<void>;
   getSharedCategoriesForType: (type: MovementType) => { id: string; name: string; icon: string; isCustom: boolean }[];
   getSharedCategoryName: (id: string, type: MovementType, t: (key: string) => string) => string;
   getSharedCategoryIcon: (id: string, type: MovementType) => string;
@@ -35,6 +42,7 @@ interface SharedCategoryStore {
 export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => ({
   sharedCustomCategories: [],
   sharedHiddenCategories: [],
+  sharedCategoryColors: {},
   isLoading: false,
   showAddCategoryModal: false,
 
@@ -43,7 +51,7 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
   resetSharedCategories: () => {
     if (categoriesUnsubscribe) { categoriesUnsubscribe(); categoriesUnsubscribe = null; }
     if (hiddenUnsubscribe) { hiddenUnsubscribe(); hiddenUnsubscribe = null; }
-    set({ sharedCustomCategories: [], sharedHiddenCategories: [] });
+    set({ sharedCustomCategories: [], sharedHiddenCategories: [], sharedCategoryColors: {} });
   },
 
   loadSharedCategories: async (accountId) => {
@@ -57,6 +65,9 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       const hiddenRaw = await AsyncStorage.getItem(`${SHARED_HIDDEN_KEY}_${accountId}`);
       const localHidden: string[] = hiddenRaw ? JSON.parse(hiddenRaw) : [];
       if (localHidden.length) set({ sharedHiddenCategories: localHidden });
+
+      const colorsRaw = await AsyncStorage.getItem(`${SHARED_COLORS_KEY}_${accountId}`);
+      set({ sharedCategoryColors: colorsRaw ? JSON.parse(colorsRaw) : {} });
 
       // ── CUSTOM: download ────────────────────────────────────────────
       // No se resuben las categorías locales que faltan en Firestore: podían haberse
@@ -91,6 +102,10 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
         `${SHARED_HIDDEN_KEY}_${accountId}`,
         JSON.stringify(mergedHidden)
       );
+
+      const remoteColors: CategoryColorChoices = accountDoc.data()?.categoryColors ?? {};
+      set({ sharedCategoryColors: remoteColors });
+      await AsyncStorage.setItem(`${SHARED_COLORS_KEY}_${accountId}`, JSON.stringify(remoteColors));
     } catch (e) {
       console.error('Error loading shared categories:', e);
     } finally {
@@ -118,6 +133,7 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
       .collection('categories').doc(newCategory.id)
       .set(newCategory)
       .catch((e) => console.error('Error saving shared category:', e));
+    return newCategory.id;
   },
 
   updateSharedCategory: async (accountId, id, updates) => {
@@ -178,6 +194,22 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
         .collection('sharedAccounts').doc(accountId)
         .set({ hiddenCategories: firestore.FieldValue.arrayUnion(key) }, { merge: true });
     }
+  },
+
+  setSharedCategoryColor: async (accountId, id, type, colorIndex) => {
+    const key = categoryColorKey(id, type);
+    const updated = { ...get().sharedCategoryColors };
+    if (colorIndex === null) delete updated[key];
+    else updated[key] = colorIndex;
+    set({ sharedCategoryColors: updated });
+    await AsyncStorage.setItem(`${SHARED_COLORS_KEY}_${accountId}`, JSON.stringify(updated));
+
+    // Solo el campo de esta categoría: dos miembros cambiando colores a la vez
+    // no se pisan. Sin await: con mala conexión no bloquea la ventana
+    const ref = firestore().collection('sharedAccounts').doc(accountId);
+    const value = colorIndex === null ? firestore.FieldValue.delete() : colorIndex;
+    ref.update({ [`categoryColors.${key}`]: value })
+      .catch((e) => console.error('Error saving shared category color:', e));
   },
 
   getSharedCategoriesForType: (type) => {
@@ -253,6 +285,9 @@ export const useSharedCategoryStore = create<SharedCategoryStore>((set, get) => 
             `@moflo_shared_hidden_categories_${accountId}`,
             JSON.stringify(hidden)
           );
+          const colors: CategoryColorChoices = doc.data()?.categoryColors ?? {};
+          set({ sharedCategoryColors: colors });
+          AsyncStorage.setItem(`${SHARED_COLORS_KEY}_${accountId}`, JSON.stringify(colors)).catch(() => {});
         }
       }, (e) => {
         console.error('Error listening to shared hidden categories:', e);

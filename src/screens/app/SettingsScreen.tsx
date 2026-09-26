@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Linking, Share,
-  Switch, Modal, FlatList, Platform, Clipboard,
+  View, StyleSheet, TouchableOpacity, Alert, Linking, Share,
+  Switch, Platform, Clipboard,
 } from 'react-native';
-import { Text, TextInput } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,7 +15,7 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore, CURRENCIES, LANGUAGES, ThemeMode, DateFormat } from '../../store/settingsStore';
-import { COLOR_PALETTES, ColorPaletteId, colors } from '../../theme';
+import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
@@ -25,9 +24,13 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
-import AppHeader from '../../components/common/AppHeader';
 import PremiumModal from '../../components/common/PremiumModal';
 import ColorPaletteModal from '../../components/common/ColorPaletteModal';
+import BottomSheet, { SheetButton, FilledInput } from '../../components/common/BottomSheet';
+import { HeroScrollScreen } from '../../components/layout/HeroScreen';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { SettingsSection, SettingsRow } from '../../components/settings/SettingsRows';
+import { OptionSheet, AppearanceSheet, FontSheet } from '../../components/settings/SettingsSheets';
 import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
 import { clearPushTokens } from '../../services/firebase/pushTokens.service';
@@ -40,166 +43,27 @@ import { reauthenticate, needsPasswordToReauthenticate } from '../../services/fi
 import ExportDataModal from '../../components/common/ExportDataModal';
 import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
 import Constants from 'expo-constants';
-import * as Font from 'expo-font';
 import { reloadAppAsync } from 'expo';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
-import {
-  FONT_OPTIONS, AppFontId, getSavedFont, saveFont,
-  getActiveFont, getPreviewFontFamily, getPreviewFontMap,
-} from '../../theme/fonts';
+import { withAlpha } from '../../utils/color';
+import { FONT_OPTIONS, AppFontId, getSavedFont, saveFont, getActiveFont } from '../../theme/fonts';
 
 const NOTIF_KEY = '@moflo_daily_notif';
 
-const OptionRow = ({
-  icon, iconColor, label, subtitle, onPress,
-  dangerous, value, showArrow = true, right,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string; label: string;
-  subtitle?: string; onPress?: () => void;
-  dangerous?: boolean; value?: string;
-  showArrow?: boolean; right?: React.ReactNode;
-}) => {
-  const { colors: dc } = useTheme();
-  return (
-    <TouchableOpacity
-      style={styles.optionRow}
-      onPress={onPress}
-      disabled={!onPress && !right}
-      activeOpacity={right ? 1 : 0.7}
-    >
-      <View style={[styles.optionIcon, { backgroundColor: iconColor + '20' }]}>
-        <Ionicons name={icon} size={20} color={iconColor} />
-      </View>
-      <View style={styles.optionContent}>
-        <Text style={[styles.optionLabel, { color: dangerous ? colors.expense : dc.textPrimary }]}>
-          {label}
-        </Text>
-        {subtitle && (
-          <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]}>{subtitle}</Text>
-        )}
-      </View>
-      {right ?? (
-        <>
-          {value && <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{value}</Text>}
-          {showArrow && onPress && (
-            <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-          )}
-        </>
-      )}
-    </TouchableOpacity>
-  );
-};
+// Nombre de la moneda en el idioma de la app, sin el símbolo entre paréntesis
+const currencyName = (label: string) => label.replace(/\s*\([^)]*\)\s*$/, '');
 
-const SelectModal = ({
-  visible, title, options, selectedValue, onSelect, onDismiss,
-}: {
-  visible: boolean; title: string;
-  options: { code: string; label: string }[];
-  selectedValue: string;
-  onSelect: (code: string) => void;
-  onDismiss: () => void;
-}) => {
-  const { colors: dc } = useTheme();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
-          <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
-          <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{title}</Text>
-          <FlatList
-            data={options}
-            keyExtractor={(item) => item.code}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.modalOption, { borderBottomColor: dc.border }]}
-                onPress={() => { onSelect(item.code); onDismiss(); }}
-              >
-                <Text style={[
-                  styles.modalOptionText, { color: dc.textPrimary },
-                  item.code === selectedValue && { color: dc.primary, fontFamily: 'Poppins_600SemiBold' },
-                ]}>
-                  {item.label}
-                </Text>
-                {item.code === selectedValue && (
-                  <Ionicons name="checkmark" size={20} color={dc.primary} />
-                )}
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// Selector de fuente: cada opción se muestra con su propia fuente
-const FontSelectModal = ({
-  visible, selectedFont, onSelect, onDismiss,
-}: {
-  visible: boolean;
-  selectedFont: AppFontId;
-  onSelect: (id: AppFontId) => void;
-  onDismiss: () => void;
-}) => {
-  const { t } = useTranslation();
-  const { colors: dc } = useTheme();
-  const [previewReady, setPreviewReady] = useState(false);
-
-  useEffect(() => {
-    if (!visible || previewReady) return;
-    // Si no se pueden cargar, las opciones se ven con la fuente actual
-    Font.loadAsync(getPreviewFontMap())
-      .then(() => setPreviewReady(true))
-      .catch((e) => console.error('Error loading font previews:', e));
-  }, [visible, previewReady]);
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={styles.modalOverlay}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onDismiss} />
-        <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
-          <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
-          <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>{t('settings.selectFont')}</Text>
-          {/* Con scroll: con muchas fuentes la lista puede no caber en móviles pequeños */}
-          <ScrollView showsVerticalScrollIndicator={false}>
-          {FONT_OPTIONS.map((option) => {
-            const isSelected = option.id === selectedFont;
-            const canPreview = previewReady || option.id === getActiveFont();
-            const previewFont = canPreview ? { fontFamily: getPreviewFontFamily(option.id) } : undefined;
-            return (
-              <TouchableOpacity
-                key={option.id}
-                style={[styles.modalOption, { borderBottomColor: dc.border }]}
-                onPress={() => { onDismiss(); if (!isSelected) onSelect(option.id); }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[
-                    styles.modalOptionText,
-                    { color: isSelected ? dc.primary : dc.textPrimary },
-                    previewFont,
-                  ]}>
-                    {option.label}
-                  </Text>
-                  <Text style={[{ fontSize: 13, marginTop: 2, color: dc.textSecondary }, previewFont]}>
-                    Aa · 1234,56
-                  </Text>
-                </View>
-                {isSelected && <Ionicons name="checkmark" size={20} color={dc.primary} />}
-              </TouchableOpacity>
-            );
-          })}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
+// Una fecha de ejemplo (hoy) con cada formato
+const sampleDate = (format: DateFormat) => {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return format === 'MM/DD/YYYY' ? `${month}/${day}/${d.getFullYear()}` : `${day}/${month}/${d.getFullYear()}`;
 };
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
@@ -712,16 +576,28 @@ const SettingsScreen = () => {
     { code: 'MM/DD/YYYY', label: t('settings.dateFormatMDY') },
   ];
 
-  const selectedCurrencyLabel = CURRENCIES.find(c => c.code === currencyCode)?.label ?? 'Euro (€)';
+  const currencyLabel = (code: string) =>
+    (CURRENCIES.some(c => c.code === code) ? t(`settings.currencies.${code}`) : t('settings.currencies.EUR'));
+  const CURRENCY_OPTIONS = CURRENCIES.map(c => ({
+    code: c.code, badge: c.symbol, label: currencyName(t(`settings.currencies.${c.code}`)), detail: c.code,
+  }));
+  const LANGUAGE_OPTIONS = LANGUAGES.map(l => ({ code: l.code, label: l.label, badge: l.code.toUpperCase() }));
+  const DATE_OPTIONS = DATE_FORMAT_OPTIONS.map(o => ({ ...o, detail: sampleDate(o.code) }));
+
+  const selectedCurrencyLabel = currencyLabel(currencyCode);
   const selectedLanguageLabel = LANGUAGES.find(l => l.code === language)?.label ?? 'English';
   const selectedThemeLabel = THEME_OPTIONS.find(o => o.code === themeMode)?.label ?? t('settings.themeAuto');
   const selectedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === dateFormat)?.label ?? 'DD/MM/YYYY';
   const selectedPaletteId: ColorPaletteId = colorPalette && colorPalette in COLOR_PALETTES ? colorPalette : 'green';
   const selectedPaletteLabel = t(`settings.palette${selectedPaletteId.charAt(0).toUpperCase() + selectedPaletteId.slice(1)}`);
 
-  const selectedSharedCurrencyLabel = CURRENCIES.find(c => c.code === sharedCurrencyCode)?.label ?? 'Euro (€)';
+  const selectedSharedCurrencyLabel = currencyLabel(sharedCurrencyCode);
   const selectedSharedPaletteId: ColorPaletteId = sharedColorPalette && sharedColorPalette in COLOR_PALETTES ? sharedColorPalette : 'navy';
+  const selectedSharedPaletteLabel = t(`settings.palette${selectedSharedPaletteId.charAt(0).toUpperCase() + selectedSharedPaletteId.slice(1)}`);
   const selectedSharedDateFormatLabel = DATE_FORMAT_OPTIONS.find(o => o.code === sharedDateFormat)?.label ?? 'DD/MM/YYYY';
+
+  const individualSymbol = CURRENCIES.find(c => c.code === currencyCode)?.symbol ?? '€';
+  const sharedSymbol = CURRENCIES.find(c => c.code === sharedCurrencyCode)?.symbol ?? '€';
 
   const initials = displayName
     ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -732,575 +608,502 @@ const SettingsScreen = () => {
     ? sharedAccount.members.filter(m => m !== sharedAccount.createdBy)
     : [];
 
-  return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('header.settings_screen')} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+  const switchProps = (value: boolean) => ({
+    trackColor: { false: dc.border, true: dc.primary },
+    thumbColor: '#FFFFFF',
+    ios_backgroundColor: dc.border,
+    value,
+  });
 
-        {/* ── SECCIÓN 1: CABECERA ─────────────────────────────── */}
+  // ── CABECERA ──────────────────────────────────────────────────
+
+  const hero = (
+    <>
+      <HeroTitleBar title={t('header.settings_screen')} onBack={() => navigation.navigate('HomeTab')} />
+      {!isSharedMode ? (
+        <View style={styles.profile}>
+          <View style={styles.avatar}>
+            <Text style={[styles.avatarText, { color: ui.hero }]}>{initials}</Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <TouchableOpacity
+              style={styles.nameRow}
+              onPress={() => setEditingName(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.profileName, { color: ui.onHero }]} numberOfLines={1}>
+                {displayName || t('settings.displayName')}
+              </Text>
+              <Ionicons name="pencil-outline" size={15} color={ui.onHeroSoft} />
+            </TouchableOpacity>
+            <Text style={[styles.profileMeta, { color: ui.onHeroSoft }]} numberOfLines={1}>
+              {user?.email ?? '—'}
+            </Text>
+            {isPremium && (
+              <View style={[styles.heroChip, { backgroundColor: ui.heroFill }]}>
+                <Ionicons name="star" size={12} color={ui.onHero} />
+                <Text style={[styles.heroChipText, { color: ui.onHero }]}>{t('premium.title')}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.profile}>
+          <View style={styles.avatar}>
+            <Ionicons name="people" size={28} color={ui.hero} />
+          </View>
+          <View style={styles.profileInfo}>
+            <TouchableOpacity
+              style={styles.nameRow}
+              onPress={() => isCreator && setEditingSharedName(true)}
+              activeOpacity={isCreator ? 0.7 : 1}
+              disabled={!isCreator}
+            >
+              <Text style={[styles.profileName, { color: ui.onHero }]} numberOfLines={1}>
+                {sharedAccount?.name ?? ''}
+              </Text>
+              {isCreator && <Ionicons name="pencil-outline" size={15} color={ui.onHeroSoft} />}
+            </TouchableOpacity>
+            <Text style={[styles.profileMeta, { color: ui.onHeroSoft }]} numberOfLines={1}>
+              {t('sharedAccount.code')}: {sharedAccount?.inviteCode ?? ''}
+            </Text>
+            <View style={[styles.heroChip, { backgroundColor: ui.heroFill }]}>
+              <Ionicons name="people-outline" size={12} color={ui.onHero} />
+              <Text style={[styles.heroChipText, { color: ui.onHero }]}>
+                {sharedAccount?.members.length ?? 0} {t('sharedAccount.members').toLowerCase()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </>
+  );
+
+  // Sección Aplicación: igual en ambos modos
+  const appSection = (
+    <SettingsSection title={t('settings.appSection')}>
+      <SettingsRow
+        icon="compass-outline"
+        label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
+        onPress={() => {
+          navigation.navigate('HomeTab' as never);
+          setTimeout(() => useWalkthroughStore.getState().start(), 250);
+        }}
+      />
+      <SettingsRow
+        icon="star-outline"
+        label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}
+        onPress={handleRateApp}
+      />
+      <SettingsRow
+        icon="share-social-outline"
+        label={t('settings.shareApp')} subtitle={t('settings.shareAppSubtitle')}
+        onPress={handleShare}
+      />
+      <SettingsRow
+        icon="download-outline"
+        label={t('export.title')}
+        subtitle={!isSharedMode && !isPremium
+          ? `⭐ ${t('premium.badge')}`
+          : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
+        onPress={handleExportData}
+      />
+      {/* Apariencia: afecta a toda la app, no a la cuenta activa */}
+      <SettingsRow
+        icon="moon-outline"
+        label={t('settings.theme')} value={selectedThemeLabel}
+        onPress={() => setShowThemeModal(true)}
+      />
+      {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
+      <SettingsRow
+        icon="text-outline"
+        label={t('settings.font')}
+        value={FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
+        onPress={() => setShowFontModal(true)}
+      />
+      {/* Vibración: ajuste de la app, independiente de la cuenta activa */}
+      <SettingsRow
+        icon="phone-portrait-outline"
+        label={t('settings.haptics')}
+        subtitle={t('settings.hapticsSubtitle')}
+        right={
+          <Switch
+            {...switchProps(hapticsEnabled)}
+            onValueChange={(value) => {
+              saveSettings({ hapticsEnabled: value });
+              // Al activarlo se confirma con la propia vibración
+              if (value) lightHaptic();
+            }}
+          />
+        }
+      />
+      <SettingsRow
+        icon="chatbubble-outline"
+        label={t('settings.support')} subtitle={t('settings.supportSubtitle')}
+        onPress={() => navigation.navigate('Support')}
+      />
+    </SettingsSection>
+  );
+
+  const infoSection = (
+    <SettingsSection title="Info">
+      <SettingsRow
+        icon="information-circle-outline"
+        label={t('settings.version')} value={`v${appVersion}`}
+      />
+      <SettingsRow
+        icon="document-text-outline"
+        label={t('settings.privacyPolicy')}
+        onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
+      />
+      <SettingsRow
+        icon="shield-checkmark-outline"
+        label={t('settings.termsOfService')}
+        onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
+      />
+    </SettingsSection>
+  );
+
+  return (
+    <>
+      <HeroScrollScreen hero={hero} keyboardShouldPersistTaps="handled">
         {!isSharedMode ? (
           <>
-            {/* Perfil individual */}
-            <View style={[styles.profileCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              <View style={[styles.avatar, { backgroundColor: dc.primary }]}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              </View>
-              <View style={styles.profileInfo}>
-                {editingName ? (
-                  <View style={styles.nameEditRow}>
-                    <TextInput
-                      value={nameInput}
-                      onChangeText={setNameInput}
-                      mode="flat"
-                      style={[styles.nameEditInput, { backgroundColor: 'transparent' }]}
-                      textColor={dc.textPrimary}
-                      underlineColor={dc.primary}
-                      activeUnderlineColor={dc.primary}
-                      autoFocus
-                      onSubmitEditing={handleSaveName}
-                    />
-                    <TouchableOpacity onPress={handleSaveName} style={styles.saveNameButton}>
-                      <Ionicons name="checkmark-circle" size={24} color={dc.primary} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.nameRow} onPress={() => setEditingName(true)}>
-                    <Text style={[styles.profileName, { color: dc.textPrimary }]}>
-                      {displayName || t('settings.displayName')}
-                    </Text>
-                    <Ionicons name="pencil-outline" size={16} color={dc.textSecondary} />
-                  </TouchableOpacity>
-                )}
-                <Text style={[styles.profileEmail, { color: dc.textSecondary }]}>
-                  {user?.email ?? '—'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Upgrade o cuenta compartida */}
+            {/* Premium o cuenta compartida */}
             {!isPremium ? (
               <TouchableOpacity
-                style={[styles.upgradeCard, { borderColor: colors.savings }]}
+                style={[styles.upgrade, { backgroundColor: withAlpha(dc.savings, 0.12) }]}
                 onPress={() => setShowModal(true)}
                 activeOpacity={0.8}
               >
-                <View style={styles.upgradeLeft}>
-                  <Text style={styles.upgradeEmoji}>⭐</Text>
-                  <View>
-                    <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
-                    <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
-                  </View>
+                <View style={[styles.upgradeIcon, { backgroundColor: ui.savingsText }]}>
+                  <Ionicons name="star" size={18} color="#FFFFFF" />
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.savings} />
+                <View style={styles.upgradeText}>
+                  <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
+                  <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={ui.savingsText} />
               </TouchableOpacity>
             ) : (
-              <>
-                <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                  {t('sharedAccount.title')}
-                </Text>
-                <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                  <OptionRow
-                    icon="people-outline"
-                    iconColor={dc.primary}
-                    label={sharedAccount?.name ?? t('sharedAccount.title')}
-                    subtitle={sharedAccount
-                      ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
-                      : t('sharedAccount.noAccount')}
-                    onPress={async () => {
-                      if (sharedAccount) {
-                        await setSharedMode(true);
-                        navigation.navigate('HomeTab');
-                      } else {
-                        navigation.navigate('SharedAccount');
-                      }
-                    }}
-                  />
-                </View>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Cuenta compartida — card principal */}
-            <View style={[styles.accountCard, { backgroundColor: dc.primary }]}>
-              <Text style={styles.accountEmoji}>👥</Text>
-              {editingSharedName && isCreator ? (
-                <View style={styles.renameRow}>
-                  <TextInput
-                    value={newSharedName}
-                    onChangeText={setNewSharedName}
-                    mode="flat"
-                    style={[styles.renameInput, { backgroundColor: 'transparent' }]}
-                    textColor="#FFFFFF"
-                    underlineColor="rgba(255,255,255,0.5)"
-                    activeUnderlineColor="#FFFFFF"
-                    autoFocus
-                    onSubmitEditing={handleRenameAccount}
-                  />
-                  <TouchableOpacity onPress={handleRenameAccount} style={styles.renameConfirm}>
-                    <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    setEditingSharedName(false);
-                    setNewSharedName(sharedAccount?.name ?? '');
-                  }}>
-                    <Ionicons name="close-circle" size={28} color="rgba(255,255,255,0.6)" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.sharedNameRow}
-                  onPress={() => isCreator && setEditingSharedName(true)}
-                  activeOpacity={isCreator ? 0.7 : 1}
-                >
-                  <Text style={styles.accountName}>{sharedAccount?.name ?? ''}</Text>
-                  {isCreator && (
-                    <Ionicons name="pencil-outline" size={16} color="rgba(255,255,255,0.7)" />
-                  )}
-                </TouchableOpacity>
-              )}
-              <Text style={styles.accountCode}>
-                {t('sharedAccount.code')}: {sharedAccount?.inviteCode ?? ''}
-              </Text>
-            </View>
-
-            {/* Enlace de invitación */}
-            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.inviteLink')}
-            </Text>
-            <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border, padding: 16 }]}>
-              <Text style={[styles.inviteInfo, { color: dc.textSecondary }]}>
-                {t('sharedAccount.inviteInfo')}
-              </Text>
-              <Text style={[styles.linkText, { color: dc.textPrimary }]} numberOfLines={2}>
-                {getInviteLink()}
-              </Text>
-              <View style={styles.linkButtons}>
-                <TouchableOpacity
-                  style={[styles.linkBtn, { backgroundColor: linkCopied ? colors.income + '20' : dc.background }]}
-                  onPress={handleCopyLink}
-                >
-                  <Ionicons
-                    name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
-                    size={16}
-                    color={linkCopied ? colors.income : dc.primary}
-                  />
-                  <Text style={[styles.linkBtnText, { color: linkCopied ? colors.income : dc.primary }]}>
-                    {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.linkBtn, { backgroundColor: dc.background }]}
-                  onPress={handleShareLink}
-                >
-                  <Ionicons name="share-social-outline" size={16} color={dc.primary} />
-                  <Text style={[styles.linkBtnText, { color: dc.primary }]}>
-                    {t('sharedAccount.shareLink')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Solicitudes pendientes (solo creador) */}
-            {isCreator && visibleRequests.length > 0 && (
-              <>
-                <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-                  {t('sharedAccount.pendingRequests')} ({visibleRequests.length})
-                </Text>
-                <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-                  {visibleRequests.map((req, idx) => (
-                    <View key={req.uid}>
-                      <View style={styles.requestRow}>
-                        <View style={[styles.memberAvatar, { backgroundColor: dc.savings + '20' }]}>
-                          <Text style={[styles.memberInitial, { color: dc.savings }]}>
-                            {req.displayName[0]?.toUpperCase() ?? '?'}
-                          </Text>
-                        </View>
-                        <View style={styles.memberInfo}>
-                          <Text style={[styles.memberName, { color: dc.textPrimary }]}>
-                            {req.displayName}
-                          </Text>
-                          <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
-                            {t('sharedAccount.wantsToJoin')}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.requestActions}>
-                        <TouchableOpacity
-                          style={[styles.requestBtn, { backgroundColor: colors.expense + '15' }]}
-                          onPress={() => handleRejectRequest(req.uid, req.displayName)}
-                        >
-                          <Ionicons name="close" size={16} color={colors.expense} />
-                          <Text style={[styles.requestBtnText, { color: colors.expense }]}>
-                            {t('sharedAccount.reject')}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.requestBtn, { backgroundColor: colors.income + '15' }]}
-                          onPress={() => handleApproveRequest(req.uid, req.displayName)}
-                        >
-                          <Ionicons name="checkmark" size={16} color={colors.income} />
-                          <Text style={[styles.requestBtnText, { color: colors.income }]}>
-                            {t('sharedAccount.approve')}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      {idx < visibleRequests.length - 1 && (
-                        <View style={[styles.divider, { backgroundColor: dc.border, marginLeft: 0 }]} />
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </>
+              <SettingsSection title={t('sharedAccount.title')}>
+                <SettingsRow
+                  icon="people-outline"
+                  label={sharedAccount?.name ?? t('sharedAccount.title')}
+                  subtitle={sharedAccount
+                    ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
+                    : t('sharedAccount.noAccount')}
+                  onPress={async () => {
+                    if (sharedAccount) {
+                      await setSharedMode(true);
+                      navigation.navigate('HomeTab');
+                    } else {
+                      navigation.navigate('SharedAccount');
+                    }
+                  }}
+                />
+              </SettingsSection>
             )}
 
-            {/* Miembros */}
-            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.members')} ({sharedAccount?.members.length ?? 0})
-            </Text>
-            <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-              {sharedAccount?.members.map((memberId, index) => {
-                const name = sharedAccount.memberNames[memberId] ?? t('common.user');
-                const isMe = memberId === uid;
-                const isMemberCreator = memberId === sharedAccount.createdBy;
-                return (
-                  <View key={memberId}>
-                    <View style={styles.memberRow}>
-                      <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
-                        <Text style={[styles.memberInitial, { color: dc.primary }]}>
-                          {name[0].toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.memberInfo}>
-                        <Text style={[styles.memberName, { color: dc.textPrimary }]}>
-                          {name}{isMe ? ` ${t('sharedAccount.you')}` : ''}
-                        </Text>
-                        {isMemberCreator && (
-                          <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
-                            {t('sharedAccount.creator')}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    {index < sharedAccount.members.length - 1 && (
-                      <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        )}
-
-        {/* ── SECCIÓN 2: PREFERENCIAS ─────────────────────────── */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('settings.preferences')}
-        </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          {!isSharedMode ? (
-            <>
-              <OptionRow
-                icon="cash-outline" iconColor={dc.primary}
+            <SettingsSection title={t('settings.preferences')}>
+              <SettingsRow
+                icon="cash-outline"
                 label={t('settings.currency')} value={selectedCurrencyLabel}
                 onPress={() => setShowCurrencyModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="language-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="language-outline"
                 label={t('settings.language')} value={selectedLanguageLabel}
                 onPress={() => setShowLanguageModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="calendar-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="calendar-outline"
                 label={t('settings.dateFormat')} value={selectedDateFormatLabel}
                 onPress={() => setShowDateFormatModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="color-palette-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="color-palette-outline"
                 label={t('settings.colorPalette')}
                 subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
+                value={isPremium ? selectedPaletteLabel : undefined}
+                swatch={isPremium ? COLOR_PALETTES[selectedPaletteId].primary : undefined}
                 onPress={() => requirePremium(() => setShowColorPaletteModal(true))}
-                right={isPremium ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedPaletteId].primary }} />
-                    <Text style={[styles.optionValue, { color: dc.textSecondary }]}>{selectedPaletteLabel}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-                  </View>
-                ) : undefined}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="pricetag-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="pricetag-outline"
                 label={t('categories.title')}
                 subtitle={!isPremium
                   ? `⭐ ${t('premium.badge')}`
                   : t('settings.individualCategoriesSubtitle')}
                 onPress={() => requirePremium(() => navigation.navigate('Categories'))}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="notifications-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="notifications-outline"
                 label={t('settings.notifMovements')}
                 subtitle={t('settings.notifMovementsSubtitle')}
-                showArrow={false}
-                right={
-                  <Switch
-                    value={dailyNotifEnabled}
-                    onValueChange={handleDailyNotif}
-                    trackColor={{ false: dc.border, true: dc.primary + '80' }}
-                    thumbColor={dailyNotifEnabled ? dc.primary : dc.textSecondary}
-                  />
-                }
+                right={<Switch {...switchProps(dailyNotifEnabled)} onValueChange={handleDailyNotif} />}
               />
-            </>
-          ) : (
-            <>
-              <OptionRow
-                icon="cash-outline" iconColor={dc.primary}
+            </SettingsSection>
+
+            {appSection}
+
+            <SettingsSection title={t('settings.accountSection')}>
+              <SettingsRow
+                icon="trash-outline" danger
+                label={t('settings.deleteData')} subtitle={t('settings.deleteDataSubtitle')}
+                onPress={handleDeleteData}
+              />
+              <SettingsRow
+                icon="person-remove-outline" danger
+                label={t('settings.deleteAccount')} subtitle={t('settings.deleteAccountSubtitle')}
+                onPress={isDeleting ? undefined : handleDeleteAccount}
+              />
+              <SettingsRow
+                icon="log-out-outline" danger
+                label={t('settings.logout')}
+                onPress={handleLogout}
+              />
+            </SettingsSection>
+          </>
+        ) : (
+          <>
+            {/* Enlace de invitación */}
+            <SettingsSection title={t('sharedAccount.inviteLink')}>
+              <View style={[styles.invite, { backgroundColor: ui.field }]}>
+                <Text style={[styles.inviteInfo, { color: dc.textSecondary }]}>
+                  {t('sharedAccount.inviteInfo')}
+                </Text>
+                <Text style={[styles.linkText, { color: dc.textPrimary }]} numberOfLines={2}>
+                  {getInviteLink()}
+                </Text>
+                <View style={styles.linkButtons}>
+                  <TouchableOpacity
+                    style={[styles.linkBtn, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.sheet }]}
+                    onPress={handleCopyLink}
+                  >
+                    <Ionicons
+                      name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+                      size={16}
+                      color={linkCopied ? ui.incomeText : ui.accent}
+                    />
+                    <Text style={[styles.linkBtnText, { color: linkCopied ? ui.incomeText : ui.accent }]}>
+                      {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.linkBtn, { backgroundColor: ui.sheet }]}
+                    onPress={handleShareLink}
+                  >
+                    <Ionicons name="share-social-outline" size={16} color={ui.accent} />
+                    <Text style={[styles.linkBtnText, { color: ui.accent }]}>
+                      {t('sharedAccount.shareLink')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </SettingsSection>
+
+            {/* Solicitudes pendientes (solo creador) */}
+            {isCreator && visibleRequests.length > 0 && (
+              <SettingsSection title={`${t('sharedAccount.pendingRequests')} (${visibleRequests.length})`}>
+                {visibleRequests.map((req) => (
+                  <View key={req.uid}>
+                    <View style={styles.memberRow}>
+                      <View style={[styles.memberAvatar, { backgroundColor: withAlpha(ui.savingsText, 0.15) }]}>
+                        <Text style={[styles.memberInitial, { color: ui.savingsText }]}>
+                          {req.displayName[0]?.toUpperCase() ?? '?'}
+                        </Text>
+                      </View>
+                      <View style={styles.memberInfo}>
+                        <Text style={[styles.memberName, { color: dc.textPrimary }]}>{req.displayName}</Text>
+                        <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                          {t('sharedAccount.wantsToJoin')}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity
+                        style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
+                        onPress={() => handleRejectRequest(req.uid, req.displayName)}
+                      >
+                        <Ionicons name="close" size={16} color={ui.expenseText} />
+                        <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
+                          {t('sharedAccount.reject')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
+                        onPress={() => handleApproveRequest(req.uid, req.displayName)}
+                      >
+                        <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                        <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
+                          {t('sharedAccount.approve')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </SettingsSection>
+            )}
+
+            {/* Miembros */}
+            <SettingsSection title={`${t('sharedAccount.members')} (${sharedAccount?.members.length ?? 0})`}>
+              {sharedAccount?.members.map((memberId) => {
+                const name = sharedAccount.memberNames[memberId] ?? t('common.user');
+                const isMe = memberId === uid;
+                const isMemberCreator = memberId === sharedAccount.createdBy;
+                return (
+                  <View key={memberId} style={styles.memberRow}>
+                    <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+                      <Text style={[styles.memberInitial, { color: ui.accent }]}>
+                        {name[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={[styles.memberName, { color: dc.textPrimary }]}>
+                        {name}{isMe ? ` ${t('sharedAccount.you')}` : ''}
+                      </Text>
+                      {isMemberCreator && (
+                        <Text style={[styles.memberRole, { color: dc.textSecondary }]}>
+                          {t('sharedAccount.creator')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </SettingsSection>
+
+            <SettingsSection title={t('settings.preferences')}>
+              <SettingsRow
+                icon="cash-outline"
                 label={t('settings.currency')} value={selectedSharedCurrencyLabel}
                 onPress={() => setShowSharedCurrencyModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="calendar-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="calendar-outline"
                 label={t('settings.dateFormat')} value={selectedSharedDateFormatLabel}
                 onPress={() => setShowSharedDateFormatModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="color-palette-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="color-palette-outline"
                 label={t('settings.colorPalette')}
-                right={
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: COLOR_PALETTES[selectedSharedPaletteId].primary }} />
-                    <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
-                  </View>
-                }
+                value={selectedSharedPaletteLabel}
+                swatch={COLOR_PALETTES[selectedSharedPaletteId].primary}
                 onPress={() => setShowSharedColorPaletteModal(true)}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="pricetag-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="pricetag-outline"
                 label={t('categories.title')}
                 subtitle={t('sharedAccount.sharedCategoriesSubtitle')}
                 onPress={() => sharedAccount && navigation.navigate('SharedCategories', { accountId: sharedAccount.id })}
               />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="notifications-outline" iconColor={dc.primary}
+              <SettingsRow
+                icon="notifications-outline"
                 label={t('sharedAccount.notifTitle')}
                 subtitle={t('sharedAccount.notifSubtitle')}
-                showArrow={false}
-                right={
-                  <Switch
-                    value={notificationsEnabled}
-                    onValueChange={setNotificationsEnabled}
-                    trackColor={{ false: dc.border, true: dc.primary + '80' }}
-                    thumbColor={notificationsEnabled ? dc.primary : dc.textSecondary}
-                  />
-                }
+                right={<Switch {...switchProps(notificationsEnabled)} onValueChange={setNotificationsEnabled} />}
               />
-            </>
-          )}
-        </View>
+            </SettingsSection>
 
-        {/* ── SECCIÓN 3: APLICACIÓN (igual en ambos modos) ──────── */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('settings.appSection')}
-        </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="compass-outline" iconColor={dc.primary}
-            label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
-            onPress={() => {
-              navigation.navigate('HomeTab' as never);
-              setTimeout(() => useWalkthroughStore.getState().start(), 250);
-            }}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="star-outline" iconColor={dc.primary}
-            label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}
-            onPress={handleRateApp}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="share-social-outline" iconColor={dc.primary}
-            label={t('settings.shareApp')} subtitle={t('settings.shareAppSubtitle')}
-            onPress={handleShare}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="download-outline" iconColor={dc.primary}
-            label={t('export.title')}
-            subtitle={!isSharedMode && !isPremium
-              ? `⭐ ${t('premium.badge')}`
-              : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
-            onPress={handleExportData}
-          />
-          {/* Apariencia: afecta a toda la app, no a la cuenta activa */}
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="moon-outline" iconColor={dc.primary}
-            label={t('settings.theme')} value={selectedThemeLabel}
-            onPress={() => setShowThemeModal(true)}
-          />
-          {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="text-outline" iconColor={dc.primary}
-            label={t('settings.font')}
-            value={FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
-            onPress={() => setShowFontModal(true)}
-          />
-          {/* Vibración: ajuste de la app, independiente de la cuenta activa */}
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="phone-portrait-outline" iconColor={dc.primary}
-            label={t('settings.haptics')}
-            subtitle={t('settings.hapticsSubtitle')}
-            showArrow={false}
-            right={
-              <Switch
-                value={hapticsEnabled}
-                onValueChange={(value) => {
-                  saveSettings({ hapticsEnabled: value });
-                  // Al activarlo se confirma con la propia vibración
-                  if (value) lightHaptic();
-                }}
-                trackColor={{ false: dc.border, true: dc.primary + '80' }}
-                thumbColor={hapticsEnabled ? dc.primary : dc.textSecondary}
-              />
-            }
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="chatbubble-outline" iconColor={dc.primary}
-            label={t('settings.support')} subtitle={t('settings.supportSubtitle')}
-            onPress={() => navigation.navigate('Support')}
-          />
-        </View>
+            {appSection}
 
-        {/* ── SECCIÓN 4: CUENTA ────────────────────────────────── */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-          {t('settings.accountSection')}
-        </Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          {!isSharedMode ? (
-            <>
-              <OptionRow
-                icon="trash-outline" iconColor={colors.expense}
-                label={t('settings.deleteData')} subtitle={t('settings.deleteDataSubtitle')}
-                onPress={handleDeleteData} dangerous
-              />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="person-remove-outline" iconColor={colors.expense}
-                label={t('settings.deleteAccount')} subtitle={t('settings.deleteAccountSubtitle')}
-                onPress={isDeleting ? undefined : handleDeleteAccount} dangerous
-              />
-              <View style={[styles.divider, { backgroundColor: dc.border }]} />
-              <OptionRow
-                icon="log-out-outline" iconColor={colors.expense}
-                label={t('settings.logout')}
-                onPress={handleLogout} dangerous
-              />
-            </>
-          ) : (
-            <>
+            <SettingsSection title={t('settings.accountSection')}>
               {isCreator && (
-                <>
-                  <OptionRow
-                    icon="pencil-outline" iconColor={dc.primary}
-                    label={t('sharedAccount.renameAccount')}
-                    onPress={() => setEditingSharedName(true)}
-                  />
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                </>
+                <SettingsRow
+                  icon="pencil-outline"
+                  label={t('sharedAccount.renameAccount')}
+                  onPress={() => setEditingSharedName(true)}
+                />
               )}
               {isCreator && kickableMembers.length > 0 && (
-                <>
-                  <OptionRow
-                    icon="person-remove-outline" iconColor={colors.expense}
-                    label={t('sharedAccount.kickMember')}
-                    onPress={handleKickMember} dangerous
-                  />
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                </>
+                <SettingsRow
+                  icon="person-remove-outline" danger
+                  label={t('sharedAccount.kickMember')}
+                  onPress={handleKickMember}
+                />
               )}
               {!isCreator && (
-                <>
-                  <OptionRow
-                    icon="exit-outline" iconColor={colors.expense}
-                    label={t('sharedAccount.leaveAccount')}
-                    onPress={handleLeave} dangerous
-                  />
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                </>
+                <SettingsRow
+                  icon="exit-outline" danger
+                  label={t('sharedAccount.leaveAccount')}
+                  onPress={handleLeave}
+                />
               )}
               {isCreator && (
-                <>
-                  <OptionRow
-                    icon="trash-outline" iconColor={colors.expense}
-                    label={t('sharedAccount.deleteAccount')}
-                    subtitle={t('sharedAccount.deleteAccountSubtitle')}
-                    onPress={handleDeleteShared} dangerous
-                  />
-                  <View style={[styles.divider, { backgroundColor: dc.border }]} />
-                </>
+                <SettingsRow
+                  icon="trash-outline" danger
+                  label={t('sharedAccount.deleteAccount')}
+                  subtitle={t('sharedAccount.deleteAccountSubtitle')}
+                  onPress={handleDeleteShared}
+                />
               )}
-              <OptionRow
-                icon="log-out-outline" iconColor={colors.expense}
+              <SettingsRow
+                icon="log-out-outline" danger
                 label={t('settings.logout')}
-                onPress={handleLogout} dangerous
+                onPress={handleLogout}
               />
-            </>
-          )}
-        </View>
+            </SettingsSection>
+          </>
+        )}
 
-        {/* ── SECCIÓN 5: INFO (igual en ambos modos) ───────────── */}
-        <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>Info</Text>
-        <View style={[styles.card, { backgroundColor: dc.surface, borderColor: dc.border }]}>
-          <OptionRow
-            icon="information-circle-outline" iconColor={dc.primary}
-            label={t('settings.version')} value={`v${appVersion}`} showArrow={false}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="document-text-outline" iconColor={dc.primary}
-            label={t('settings.privacyPolicy')}
-            onPress={() => Linking.openURL('https://oskartech.github.io/privacy.html')}
-          />
-          <View style={[styles.divider, { backgroundColor: dc.border }]} />
-          <OptionRow
-            icon="shield-checkmark-outline" iconColor={dc.primary}
-            label={t('settings.termsOfService')}
-            onPress={() => Linking.openURL('https://oskartech.github.io/terms.html')}
-          />
-        </View>
+        {infoSection}
 
         <Text style={[styles.footer, { color: dc.textSecondary }]}>
           {t('settings.madeWith')}
         </Text>
-      </ScrollView>
+      </HeroScrollScreen>
+
+      {/* ── NOMBRES ──────────────────────────────────────────── */}
+      <BottomSheet
+        visible={editingName}
+        onClose={() => { setEditingName(false); setNameInput(displayName ?? ''); }}
+        title={t('settings.displayName')}
+        footer={<SheetButton label={t('settings.save')} onPress={handleSaveName} disabled={!nameInput.trim()} />}
+      >
+        <FilledInput
+          icon="person-outline"
+          value={nameInput}
+          onChangeText={setNameInput}
+          autoFocus
+          maxLength={40}
+          onSubmitEditing={handleSaveName}
+          returnKeyType="done"
+        />
+      </BottomSheet>
+      <BottomSheet
+        visible={editingSharedName && isCreator}
+        onClose={() => { setEditingSharedName(false); setNewSharedName(sharedAccount?.name ?? ''); }}
+        title={t('sharedAccount.renameAccount')}
+        footer={<SheetButton label={t('settings.save')} onPress={handleRenameAccount} disabled={!newSharedName.trim()} />}
+      >
+        <FilledInput
+          icon="people-outline"
+          value={newSharedName}
+          onChangeText={setNewSharedName}
+          autoFocus
+          maxLength={40}
+          onSubmitEditing={handleRenameAccount}
+          returnKeyType="done"
+        />
+      </BottomSheet>
 
       {/* ── MODALES INDIVIDUALES ─────────────────────────────── */}
-      <SelectModal
-        visible={showCurrencyModal} title={t('settings.selectCurrency')}
-        options={CURRENCIES.map(c => ({ code: c.code, label: c.label }))}
-        selectedValue={currencyCode}
+      <OptionSheet
+        visible={showCurrencyModal}
+        title={t('settings.currency')}
+        subtitle={t('settings.currencyHint')}
+        options={CURRENCY_OPTIONS}
+        selected={currencyCode}
         onSelect={code => saveSettings({ currencyCode: code })}
         onDismiss={() => setShowCurrencyModal(false)}
       />
-      <SelectModal
-        visible={showLanguageModal} title={t('settings.selectLanguage')}
-        options={LANGUAGES} selectedValue={language}
+      <OptionSheet
+        visible={showLanguageModal}
+        title={t('settings.language')}
+        options={LANGUAGE_OPTIONS}
+        selected={language}
         onSelect={async (code) => {
           await saveSettings({ language: code });
           if (dailyNotifEnabled) {
@@ -1310,15 +1113,18 @@ const SettingsScreen = () => {
         }}
         onDismiss={() => setShowLanguageModal(false)}
       />
-      <SelectModal
-        visible={showThemeModal} title={t('settings.selectTheme')}
-        options={THEME_OPTIONS} selectedValue={themeMode}
-        onSelect={code => saveSettings({ themeMode: code as ThemeMode })}
+      <AppearanceSheet
+        visible={showThemeModal}
+        paletteId={isSharedMode ? selectedSharedPaletteId : selectedPaletteId}
+        selected={themeMode}
+        onSelect={code => saveSettings({ themeMode: code })}
         onDismiss={() => setShowThemeModal(false)}
       />
-      <SelectModal
-        visible={showDateFormatModal} title={t('settings.selectDateFormat')}
-        options={DATE_FORMAT_OPTIONS} selectedValue={dateFormat}
+      <OptionSheet
+        visible={showDateFormatModal}
+        title={t('settings.dateFormat')}
+        options={DATE_OPTIONS}
+        selected={dateFormat}
         onSelect={code => saveSettings({ dateFormat: code as DateFormat })}
         onDismiss={() => setShowDateFormatModal(false)}
       />
@@ -1330,13 +1136,15 @@ const SettingsScreen = () => {
       <ColorPaletteModal
         visible={showColorPaletteModal}
         selectedPalette={selectedPaletteId}
+        currencySymbol={individualSymbol}
         onSelect={(id) => saveSettings({ colorPalette: id })}
         onDismiss={() => setShowColorPaletteModal(false)}
       />
-      <FontSelectModal
+      <FontSheet
         visible={showFontModal}
-        selectedFont={selectedFont}
-        onSelect={async (id) => {
+        selected={selectedFont}
+        currencySymbol={isSharedMode ? sharedSymbol : individualSymbol}
+        onSelect={async (id: AppFontId) => {
           setSelectedFont(id);
           await saveFont(id).catch((e) => console.error('Error saving font:', e));
           // La fuente se carga al arrancar: hay que reiniciar para verla.
@@ -1361,279 +1169,191 @@ const SettingsScreen = () => {
       />
 
       {/* ── MODALES COMPARTIDOS ──────────────────────────────── */}
-      <SelectModal
-        visible={showSharedCurrencyModal} title={t('settings.selectCurrency')}
-        options={CURRENCIES.map(c => ({ code: c.code, label: c.label }))}
-        selectedValue={sharedCurrencyCode}
+      <OptionSheet
+        visible={showSharedCurrencyModal}
+        title={t('settings.currency')}
+        subtitle={t('settings.currencyHintShared')}
+        options={CURRENCY_OPTIONS}
+        selected={sharedCurrencyCode}
         onSelect={code => sharedAccount && saveSharedSettings(sharedAccount.id, { currencyCode: code })}
         onDismiss={() => setShowSharedCurrencyModal(false)}
       />
-      <SelectModal
-        visible={showSharedDateFormatModal} title={t('settings.selectDateFormat')}
-        options={DATE_FORMAT_OPTIONS} selectedValue={sharedDateFormat}
+      <OptionSheet
+        visible={showSharedDateFormatModal}
+        title={t('settings.dateFormat')}
+        options={DATE_OPTIONS}
+        selected={sharedDateFormat}
         onSelect={code => sharedAccount && saveSharedSettings(sharedAccount.id, { dateFormat: code })}
         onDismiss={() => setShowSharedDateFormatModal(false)}
       />
       <ColorPaletteModal
         visible={showSharedColorPaletteModal}
         selectedPalette={selectedSharedPaletteId}
+        currencySymbol={sharedSymbol}
         onSelect={(id) => sharedAccount && saveSharedSettings(sharedAccount.id, { colorPalette: id })}
         onDismiss={() => setShowSharedColorPaletteModal(false)}
       />
 
-      {/* ── MODAL EXPULSAR MIEMBRO ───────────────────────────── */}
-      <Modal
+      {/* ── EXPULSAR MIEMBRO ─────────────────────────────────── */}
+      <BottomSheet
         visible={showKickMemberModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowKickMemberModal(false)}
+        onClose={() => setShowKickMemberModal(false)}
+        title={t('sharedAccount.kickMember')}
+        bodyStyle={styles.sheetList}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowKickMemberModal(false)}
-          />
-          <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
-            <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
-            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-              {t('sharedAccount.kickMember')}
-            </Text>
-            <FlatList
-              data={kickableMembers}
-              keyExtractor={(item) => item}
-              renderItem={({ item: memberId }) => {
-                const name = sharedAccount?.memberNames?.[memberId] ?? t('common.user');
-                return (
-                  <TouchableOpacity
-                    style={[styles.modalOption, { borderBottomColor: dc.border }]}
-                    onPress={() => {
-                      setShowKickMemberModal(false);
-                      warningHaptic();
-                      Alert.alert(
-                        t('sharedAccount.kickMember'),
-                        `${t('sharedAccount.kickConfirm')} ${name}?\n\n${t('sharedAccount.kickWarning')}`,
-                        [
-                          { text: t('settings.cancel'), style: 'cancel' },
-                          {
-                            text: t('sharedAccount.kick'),
-                            style: 'destructive',
-                            onPress: async () => {
-                              if (!sharedAccount) return;
-                              try {
-                                // Solo se quita a ese miembro, sin reescribir la
-                                // lista entera con la copia local. Su nombre se
-                                // queda: lo que añadió sigue firmado, tachado.
-                                await firestore()
-                                  .collection('sharedAccounts')
-                                  .doc(sharedAccount.id)
-                                  .update({
-                                    members: firestore.FieldValue.arrayRemove(memberId),
-                                  });
-                                Alert.alert('✅', t('sharedAccount.kickSuccess'));
-                              } catch (e) {
-                                // Antes un fallo no enseñaba nada: solo faltaba el ✅
-                                reportError(e, 'kickMember');
-                                Alert.alert(t('common.error'), t('auth.errorGeneral'));
-                              }
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                  >
-                    <View style={[styles.memberAvatar, { backgroundColor: dc.primary + '20' }]}>
-                      <Text style={[styles.memberInitial, { color: dc.primary }]}>
-                        {name[0].toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text style={[styles.modalOptionText, { color: dc.textPrimary, flex: 1, marginLeft: 12 }]}>
-                      {name}
-                    </Text>
-                    <Ionicons name="person-remove-outline" size={18} color={colors.expense} />
-                  </TouchableOpacity>
+        {kickableMembers.map((memberId) => {
+          const name = sharedAccount?.memberNames?.[memberId] ?? t('common.user');
+          return (
+            <TouchableOpacity
+              key={memberId}
+              style={styles.kickRow}
+              onPress={() => {
+                setShowKickMemberModal(false);
+                warningHaptic();
+                Alert.alert(
+                  t('sharedAccount.kickMember'),
+                  `${t('sharedAccount.kickConfirm')} ${name}?\n\n${t('sharedAccount.kickWarning')}`,
+                  [
+                    { text: t('settings.cancel'), style: 'cancel' },
+                    {
+                      text: t('sharedAccount.kick'),
+                      style: 'destructive',
+                      onPress: async () => {
+                        if (!sharedAccount) return;
+                        try {
+                          // Solo se quita a ese miembro, sin reescribir la
+                          // lista entera con la copia local. Su nombre se
+                          // queda: lo que añadió sigue firmado, tachado.
+                          await firestore()
+                            .collection('sharedAccounts')
+                            .doc(sharedAccount.id)
+                            .update({
+                              members: firestore.FieldValue.arrayRemove(memberId),
+                            });
+                          Alert.alert('✅', t('sharedAccount.kickSuccess'));
+                        } catch (e) {
+                          // Antes un fallo no enseñaba nada: solo faltaba el ✅
+                          reportError(e, 'kickMember');
+                          Alert.alert(t('common.error'), t('auth.errorGeneral'));
+                        }
+                      },
+                    },
+                  ]
                 );
               }}
-            />
-          </View>
-        </View>
-      </Modal>
+            >
+              <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+                <Text style={[styles.memberInitial, { color: ui.accent }]}>
+                  {name[0].toUpperCase()}
+                </Text>
+              </View>
+              <Text style={[styles.memberName, styles.memberInfo, { color: dc.textPrimary }]}>{name}</Text>
+              <Ionicons name="person-remove-outline" size={18} color={ui.expenseText} />
+            </TouchableOpacity>
+          );
+        })}
+      </BottomSheet>
 
       {/* Confirmación de identidad antes de borrar la cuenta. Solo aparece en
           cuentas de correo y contraseña: Apple y Google abren su propia hoja. */}
-      <Modal
+      <BottomSheet
         visible={showReauthModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowReauthModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => { if (!isReauthenticating) setShowReauthModal(false); }}
+        onClose={() => { if (!isReauthenticating) setShowReauthModal(false); }}
+        title={t('settings.reauthTitle')}
+        subtitle={t('settings.reauthMessage')}
+        footer={(
+          <SheetButton
+            label={isReauthenticating ? t('settings.reauthChecking') : t('settings.deleteAccount')}
+            onPress={handleConfirmReauthPassword}
+            loading={isReauthenticating}
+            variant="danger"
           />
-          <View style={[styles.modalSheet, { backgroundColor: dc.surface }]}>
-            <View style={[styles.modalHandle, { backgroundColor: dc.border }]} />
-            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-              {t('settings.reauthTitle')}
-            </Text>
-            <Text style={[styles.reauthMessage, { color: dc.textSecondary }]}>
-              {t('settings.reauthMessage')}
-            </Text>
-            <TextInput
-              value={reauthPassword}
-              onChangeText={(v) => { setReauthPassword(v); setReauthError(''); }}
-              label={t('settings.reauthPassword')}
-              mode="outlined"
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="current-password"
-              textContentType="password"
-              style={{ backgroundColor: isDark ? dc.background : '#FFFFFF' }}
-              outlineColor={dc.border}
-              activeOutlineColor={dc.primary}
-              onSubmitEditing={handleConfirmReauthPassword}
-            />
-            {!!reauthError && (
-              <Text style={[styles.reauthError, { color: colors.expense }]}>{reauthError}</Text>
-            )}
-            <View style={styles.reauthButtons}>
-              <TouchableOpacity
-                style={[styles.reauthButton, { borderColor: dc.border, borderWidth: 1 }]}
-                onPress={() => { if (!isReauthenticating) setShowReauthModal(false); }}
-              >
-                <Text style={[styles.reauthButtonText, { color: dc.textSecondary }]}>
-                  {t('settings.cancel')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.reauthButton,
-                  { backgroundColor: colors.expense },
-                  isReauthenticating && { opacity: 0.6 },
-                ]}
-                disabled={isReauthenticating}
-                onPress={handleConfirmReauthPassword}
-              >
-                <Text style={[styles.reauthButtonText, { color: '#FFFFFF' }]}>
-                  {isReauthenticating ? t('settings.reauthChecking') : t('settings.deleteAccount')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        )}
+      >
+        <FilledInput
+          icon="lock-closed-outline"
+          value={reauthPassword}
+          onChangeText={(v) => { setReauthPassword(v); setReauthError(''); }}
+          placeholder={t('settings.reauthPassword')}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="current-password"
+          textContentType="password"
+          onSubmitEditing={handleConfirmReauthPassword}
+        />
+        {!!reauthError && (
+          <Text style={[styles.reauthError, { color: ui.expenseText }]}>{reauthError}</Text>
+        )}
+      </BottomSheet>
 
       <PremiumModal
         visible={showModal}
         onDismiss={() => setShowModal(false)}
         onPurchase={() => setShowModal(false)}
       />
-    </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-
-  // Individual profile
-  profileCard: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 0.5, gap: 16,
+  // Cabecera
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 14 },
+  avatar: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFFFFF',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  avatarInitials: { fontSize: 22, fontFamily: 'Poppins_700Bold', color: '#FFFFFF' },
-  profileInfo: { flex: 1 },
-  nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nameEditInput: { flex: 1, fontSize: 16, fontFamily: 'Poppins_600SemiBold', height: 40 },
-  saveNameButton: { padding: 4 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  profileName: { fontSize: 16, fontFamily: 'Poppins_600SemiBold' },
-  profileEmail: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-
-  // Upgrade
-  upgradeCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1.5,
-    backgroundColor: colors.savings + '10',
+  avatarText: { fontSize: 23, fontFamily: 'Poppins_700Bold' },
+  profileInfo: { flex: 1, minWidth: 0 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', maxWidth: '100%' },
+  profileName: { fontSize: 21, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3, flexShrink: 1 },
+  profileMeta: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 1 },
+  heroChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8,
   },
-  upgradeLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  upgradeEmoji: { fontSize: 28 },
+  heroChipText: { fontSize: 11.5, fontFamily: 'Poppins_600SemiBold' },
+
+  // Premium
+  upgrade: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 20, marginBottom: 22, borderRadius: 18, padding: 14,
+  },
+  upgradeIcon: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  upgradeText: { flex: 1 },
   upgradeTitle: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
-  upgradeSubtitle: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 2 },
+  upgradeSubtitle: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 1 },
 
-  // Shared account card
-  accountCard: {
-    borderRadius: 20, padding: 24,
-    alignItems: 'center', marginBottom: 24, elevation: 4,
-  },
-  accountEmoji: { fontSize: 36, marginBottom: 8 },
-  sharedNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  accountName: { fontSize: 20, fontFamily: 'Poppins_700Bold', color: '#FFFFFF', textAlign: 'center' },
-  accountCode: { fontSize: 12, fontFamily: 'Poppins_500Medium', color: 'rgba(255,255,255,0.7)' },
-  renameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', marginBottom: 4 },
-  renameInput: { flex: 1, fontSize: 18 },
-  renameConfirm: { padding: 4 },
-
-  // Invite link
-  inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 8 },
+  // Enlace de invitación
+  invite: { borderRadius: 18, padding: 14, marginTop: 8 },
+  inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 6 },
   linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
   linkButtons: { flexDirection: 'row', gap: 8 },
   linkBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 12,
   },
-  linkBtnText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
+  linkBtnText: { fontSize: 12.5, fontFamily: 'Poppins_600SemiBold' },
 
-  // Members
-  memberRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  memberAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  memberInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
+  // Miembros y solicitudes
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  memberAvatar: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  memberInitial: { fontSize: 15, fontFamily: 'Poppins_700Bold' },
   memberInfo: { flex: 1 },
   memberName: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-
-  // Common
-  sectionLabel: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginLeft: 4,
-  },
-  card: { borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 0.5 },
-  divider: { height: 0.5, marginLeft: 68 },
-  optionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  optionIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  optionContent: { flex: 1 },
-  optionLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  optionSubtitle: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  optionValue: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginRight: 4 },
-  footer: { textAlign: 'center', fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8, marginBottom: 16 },
-
-  // Modals
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, maxHeight: '60%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', marginBottom: 16 },
-  modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 0.5 },
-
-  // Confirmación de identidad antes de borrar la cuenta
-  reauthMessage: { fontSize: 14, fontFamily: 'Poppins_400Regular', lineHeight: 20, marginBottom: 16 },
-  reauthError: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8 },
-  reauthButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  reauthButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  reauthButtonText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
-  modalOptionText: { fontSize: 15, fontFamily: 'Poppins_400Regular' },
-
-  // Pending requests
-  requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  requestActions: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 14 },
+  memberRole: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 1 },
+  requestActions: { flexDirection: 'row', gap: 8, paddingBottom: 10, paddingLeft: 46 },
   requestBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
+    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 12,
   },
   requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+
+  footer: { textAlign: 'center', fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 4, marginBottom: 8 },
+
+  // Ventanas
+  sheetList: { paddingBottom: 8 },
+  kickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  reauthError: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 8 },
 });
 
 export default SettingsScreen;

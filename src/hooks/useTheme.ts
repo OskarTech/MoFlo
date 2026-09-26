@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { getDynamicColors, colors, COLOR_PALETTES, ColorPaletteId } from '../theme';
 import { CATEGORY_COLORS } from '../theme/categoryColors';
+import { getUiColors } from '../theme/ui';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 
@@ -30,15 +31,20 @@ export const useTheme = () => {
   // El objeto se reutiliza mientras no cambien tema ni paleta: sin esto cada
   // fila de cada lista construía uno nuevo en cada render
   return useMemo(
-    () => ({
-      isDark,
-      colors: {
-        ...colors,
-        ...getDynamicColors(isDark, effectivePalette),
-      },
-      // Los de las categorías, de la paleta y el modo activos (ver useCategoryColors)
-      categoryColors: CATEGORY_COLORS[effectivePalette][isDark ? 'dark' : 'light'],
-    }),
+    () => {
+      const dynamic = getDynamicColors(isDark, effectivePalette);
+      return {
+        isDark,
+        colors: {
+          ...colors,
+          ...dynamic,
+        },
+        // Tonos del diseño con cabecera de color (ver theme/ui)
+        ui: getUiColors(dynamic, isDark),
+        // Los de las categorías, de la paleta y el modo activos (ver useCategoryColors)
+        categoryColors: CATEGORY_COLORS[effectivePalette][isDark ? 'dark' : 'light'],
+      };
+    },
     [isDark, effectivePalette],
   );
 };

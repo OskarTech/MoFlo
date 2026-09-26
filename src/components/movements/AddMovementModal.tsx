@@ -1,12 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View, StyleSheet, Modal, ScrollView,
-  TouchableOpacity, Keyboard, Animated, Platform,
-} from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
@@ -15,13 +8,13 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../common/PremiumModal';
-import StrikeText from '../common/StrikeText';
+import BottomSheet, { SheetButton, SegmentedControl, FilledInput, SheetLabel } from '../common/BottomSheet';
+import AmountInput from '../common/AmountInput';
+import { CategoryPicker, CategoryChip } from './SheetPickers';
 import { navigationRef } from '../../navigation/navigationRef';
 import { MovementType, Movement } from '../../types';
 import { lightHaptic } from '../../utils/haptics';
 import { parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
-
-type CategoryChip = { id: string; name: string; icon: string; isCustom: boolean; deleted?: boolean };
 
 interface Props {
   visible: boolean;
@@ -32,7 +25,7 @@ interface Props {
 
 const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: Props) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { ui } = useTheme();
   const { addMovement, updateMovement, movements } = useMovementStore();
   const { getCurrencySymbol } = useSettingsStore();
   const {
@@ -45,48 +38,21 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     getSharedCategoriesForType, getSharedCategoryName, getSharedCategoryIcon, isSharedCategoryDeleted,
   } = useSharedCategoryStore();
   const { showModal: showPremiumModal, setShowModal: setShowPremiumModal, requirePremium } = usePremium();
-  const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<MovementType>(initialType ?? 'expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [categoryId, setCategoryId] = useState('housing');
+  // Cambia al abrir o al cambiar de tipo: la fila de categorías vuelve al principio
+  const [pickerKey, setPickerKey] = useState(0);
 
-  const sheetOffset = useRef(new Animated.Value(0)).current;
-  const categoryScrollRef = useRef<ScrollView>(null);
-  const categoryPositions = useRef<{ [key: string]: number }>({});
   const isSavingRef = useRef(false);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const show = Keyboard.addListener(showEvent, (e) => {
-      const offset = Platform.OS === 'ios'
-        ? -(e.endCoordinates.height - insets.bottom)
-        : -e.endCoordinates.height;
-      Animated.timing(sheetOffset, {
-        toValue: offset,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
-        useNativeDriver: true,
-      }).start();
-    });
-
-    const hide = Keyboard.addListener(hideEvent, () => {
-      Animated.timing(sheetOffset, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    });
-
-    return () => { show.remove(); hide.remove(); };
-  }, [sheetOffset, insets.bottom]);
 
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
 
+  // Las categorías más usadas, primero
   const getSortedCategoriesForType = (tp: MovementType) => {
     const list = isSharedMode
       ? getSharedCategoriesForType(tp)
@@ -115,19 +81,18 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     // Con mala conexión el guardado anterior puede seguir esperando a Firestore
     // (el movimiento ya está guardado en local): no bloquear el siguiente
     isSavingRef.current = false;
+    setPickerKey((k) => k + 1);
     if (editingMovement) {
       setType(editingMovement.type);
       setAmount(formatAmountForInput(editingMovement.amount));
       setNote(editingMovement.note ?? '');
       setCategoryId(editingMovement.category);
-      categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
       return;
     }
     const newType = initialType ?? type;
     if (initialType && initialType !== type) setType(initialType);
     const sorted = getSortedCategoriesForType(newType);
     setCategoryId(sorted[0]?.id ?? 'other');
-    categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialType, editingMovement]);
 
@@ -159,12 +124,6 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       ]
     : categoryList;
 
-  const typeColor = type === 'income' ? dc.income : dc.expense;
-  const sheetBg = dc.surface;
-  const inputBg = isDark ? dc.background : '#FFFFFF';
-  const chipBg = isDark ? dc.border : '#F8F8F8';
-  const chipBorder = isDark ? dc.border : '#E0E0E0';
-
   const handleDismiss = () => {
     setType('expense');
     setAmount('');
@@ -174,16 +133,11 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
   };
 
   const handleTypeChange = (newType: MovementType) => {
+    lightHaptic();
     setType(newType);
     const sorted = getSortedCategoriesForType(newType);
     setCategoryId(sorted[0]?.id ?? 'other');
-    categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
-  };
-
-  const handleCategoryPress = (id: string) => {
-    setCategoryId(id);
-    const x = categoryPositions.current[id] ?? 0;
-    categoryScrollRef.current?.scrollTo({ x: x - 16, animated: true });
+    setPickerKey((k) => k + 1);
   };
 
   const handleAddCategoryPress = () => {
@@ -246,194 +200,54 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
   };
 
   const isValid = !!amount && parseAmountInput(amount) > 0;
+  const saveLabel = editingMovement
+    ? t('movements.save')
+    : t(type === 'income' ? 'movements.saveIncome' : 'movements.saveExpense');
 
   return (
     <>
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
+      <BottomSheet
+        visible={visible}
+        onClose={handleDismiss}
+        title={editingMovement ? t('movements.edit') : t('movements.add')}
+        footer={<SheetButton label={saveLabel} onPress={handleSave} disabled={!isValid} />}
+      >
+        <SegmentedControl
+          options={[
+            { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
+            { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
+          ]}
+          value={type}
+          onChange={handleTypeChange}
+        />
 
-        <View style={[styles.sheet, {
-          backgroundColor: sheetBg,
-          paddingBottom: insets.bottom + 24,
-        }]}>
-          <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
+        <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Text style={[styles.title, { color: dc.textPrimary }]}>
-              {editingMovement ? t('movements.edit') : t('movements.add')}
-            </Text>
+        <FilledInput
+          icon="create-outline"
+          value={note}
+          onChangeText={setNote}
+          placeholder={t('movements.descriptionPlaceholder')}
+          maxLength={80}
+        />
 
-            {/* TIPO */}
-            <View style={styles.typeSelector}>
-              {(['expense', 'income'] as MovementType[]).map((t_) => (
-                <TouchableOpacity
-                  key={t_}
-                  style={[
-                    styles.typeButton,
-                    { backgroundColor: isDark ? dc.border : '#F0F0F0' },
-                    type === t_ && {
-                      backgroundColor: t_ === 'income' ? dc.income : dc.expense,
-                    },
-                  ]}
-                  onPress={() => handleTypeChange(t_)}
-                >
-                  <Text style={[
-                    styles.typeButtonText,
-                    { color: dc.textSecondary },
-                    type === t_ && { color: '#FFFFFF' },
-                  ]}>
-                    {t(`movements.${t_}`)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* IMPORTE */}
-            <TextInput
-              label={t('movements.amount')}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={typeColor}
-              activeOutlineColor={typeColor}
-              left={<TextInput.Affix text={currencySymbol} />}
-            />
-
-            {/* DESCRIPCIÓN */}
-            <TextInput
-              label={t('movements.description')}
-              value={note}
-              onChangeText={setNote}
-              mode="outlined"
-              placeholder={t('movements.descriptionPlaceholder')}
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={typeColor}
-              maxLength={80}
-            />
-
-            {/* CATEGORÍAS */}
-            <Text style={[styles.sectionLabel, { color: dc.textSecondary }]}>
-              {t('movements.category')}
-            </Text>
-            <ScrollView
-              ref={categoryScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              style={styles.categoryScroll}
-            >
-              {chipCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryChip,
-                    { backgroundColor: chipBg, borderColor: chipBorder },
-                    categoryId === cat.id && {
-                      backgroundColor: typeColor, borderColor: typeColor,
-                    },
-                  ]}
-                  onLayout={(e) => {
-                    categoryPositions.current[cat.id] = e.nativeEvent.layout.x;
-                  }}
-                  onPress={() => handleCategoryPress(cat.id)}
-                >
-                  <Ionicons
-                    name={cat.icon as any}
-                    size={16}
-                    color={categoryId === cat.id ? '#FFF' : dc.textSecondary}
-                  />
-                  <Text style={[
-                    styles.categoryChipText,
-                    { color: dc.textSecondary },
-                    categoryId === cat.id && {
-                      color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold',
-                    },
-                  ]}>
-                    <StrikeText struck={!!cat.deleted}>
-                      {cat.isCustom ? cat.name : t(`movements.categories.${cat.id}`)}
-                    </StrikeText>
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={[
-                  styles.addCategoryChip,
-                  { backgroundColor: typeColor + '15', borderColor: typeColor },
-                ]}
-                onPress={handleAddCategoryPress}
-              >
-                <Ionicons name="add" size={20} color={typeColor} />
-              </TouchableOpacity>
-            </ScrollView>
-
-            {/* BOTONES */}
-            <View style={styles.buttons}>
-              <Button
-                mode="outlined"
-                onPress={handleDismiss}
-                style={[styles.cancelButton, { borderColor: dc.border }]}
-                textColor={dc.textSecondary}
-              >
-                {t('movements.cancel')}
-              </Button>
-              <Button
-                mode="contained"
-                onPress={handleSave}
-                disabled={!isValid}
-                style={styles.saveButton}
-                buttonColor={typeColor}
-                textColor="#FFFFFF"
-              >
-                {t('movements.save')}
-              </Button>
-            </View>
-          </ScrollView>
-        </View>
-      </Animated.View>
-    </Modal>
-    <PremiumModal
-      visible={showPremiumModal}
-      onDismiss={() => setShowPremiumModal(false)}
-      onPurchase={() => setShowPremiumModal(false)}
-    />
+        <SheetLabel>{t('movements.category')}</SheetLabel>
+        <CategoryPicker
+          categories={chipCategories}
+          type={type}
+          selectedId={categoryId}
+          onSelect={setCategoryId}
+          onAdd={handleAddCategoryPress}
+          resetKey={pickerKey}
+        />
+      </BottomSheet>
+      <PremiumModal
+        visible={showPremiumModal}
+        onDismiss={() => setShowPremiumModal(false)}
+        onPurchase={() => setShowPremiumModal(false)}
+      />
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
-  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
-  typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  typeButton: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
-  typeButtonText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  input: { marginBottom: 16 },
-  sectionLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 10 },
-  categoryScroll: { marginBottom: 20 },
-  categoryChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, marginRight: 8,
-  },
-  categoryChipText: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  addCategoryChip: {
-    width: 40, height: 40,
-    alignItems: 'center', justifyContent: 'center',
-    borderRadius: 20, borderWidth: 1, borderStyle: 'dashed',
-    marginRight: 8,
-  },
-  buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelButton: { flex: 1 },
-  saveButton: { flex: 2 },
-});
 
 export default AddMovementModal;

@@ -25,7 +25,10 @@
     "sendResetEmail": "Wyślij e-mail resetujący",
     "resetEmailSent": "E-mail wysłany!",
     "resetEmailSentSubtitle": "Sprawdź swoją skrzynkę i postępuj zgodnie z instrukcjami, aby zresetować hasło.",
-    "backToLogin": "Powrót do logowania"
+    "backToLogin": "Powrót do logowania",
+    "or": "lub",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło"
   },
   "home": {
     "balance": "Aktualny Bilans",
@@ -63,7 +66,9 @@
     "movementCount_one": "{{count}} transakcja",
     "movementCount_few": "{{count}} transakcje",
     "movementCount_many": "{{count}} transakcji",
-    "movementCount_other": "{{count}} transakcji"
+    "movementCount_other": "{{count}} transakcji",
+    "showAmounts": "Pokaż kwoty",
+    "hideAmounts": "Ukryj kwoty"
   },
   "resumen": {
     "balance": "Saldo",
@@ -99,7 +104,12 @@
     "avgPerMonth": "Średnia/Mies.",
     "total": "Razem",
     "categAbbr": "Kateg.",
-    "viewAllMovements": "Zobacz wszystkie ruchy"
+    "viewAllMovements": "Zobacz wszystkie ruchy",
+    "month": "Miesiąc",
+    "year": "Rok",
+    "rhythmTitle": "Tempo miesiąca",
+    "lessThanPrev": "{{amount}} mniej niż w zeszłym miesiącu do dnia {{day}}",
+    "moreThanPrev": "{{amount}} więcej niż w zeszłym miesiącu do dnia {{day}}"
   },
   "movements": {
   "add": "Dodaj Transakcję",
@@ -137,7 +147,9 @@
       "emergency": "Fundusz awaryjny",
       "retirement": "Emerytura",
       "travel": "Podróże"
-    }
+    },
+    "saveExpense": "Zapisz wydatek",
+    "saveIncome": "Zapisz przychód"
   },
   "recurring": {
   "title": "Cykliczne",
@@ -160,7 +172,8 @@
   "income": "Przychody",
   "expense": "Wydatki",
   "net": "Netto",
-  "perMonth": "/ mies."
+  "perMonth": "/ mies.",
+  "dayPickerLabel": "Dzień każdego miesiąca"
   },
   "movementsList": {
   "title": "Transakcje",
@@ -317,7 +330,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "Dla kwot na Twoim koncie indywidualnym",
+    "currencyHintShared": "Dla kwot na koncie współdzielonym",
+    "themeHint": "Automatyczny działa jak tryb telefonu",
+    "paletteHint": "Zmienia nagłówek, przyciski i kolory kategorii",
+    "fontHint": "Tylko na tym telefonie, jak wygląd"
   },
   "hucha": {
   "title": "Skarbonka",
@@ -395,7 +413,13 @@
   "editQuickAmounts": "Edytuj",
   "saveQuickAmounts": "Zapisz",
   "viewAllHistory": "Zobacz wszystko",
-  "hideHistory": "Ukryj"
+  "hideHistory": "Ukryj",
+  "options": "Opcje skarbonki",
+  "goalBy": "Cel na {{date}}",
+  "willReach": "Osiągniesz {{amount}}",
+  "willRemain": "Zostanie {{amount}}",
+  "depositCta": "Dodaj {{amount}}",
+  "withdrawCta": "Wypłać {{amount}}"
   },
   "tabs": {
   "home": "Główna",
@@ -440,7 +464,11 @@
   "permissionDeniedMessage": "Włącz powiadomienia w ustawieniach urządzenia, aby korzystać z przypomnień.",
   "scheduled": "Przypomnienie zaplanowane!",
   "pastDateError": "Wybierz przyszłą datę i godzinę",
-  "scheduledMessage": "Otrzymasz powiadomienie {{date}} o {{time}}"
+  "scheduledMessage": "Otrzymasz powiadomienie {{date}} o {{time}}",
+  "upcoming": "Nadchodzące",
+  "notes": "Notatki",
+  "past": "Minione",
+  "nextLabel": "Następne przypomnienie"
   },
   "premium": {
   "title": "MoFlo Premium",
@@ -482,7 +510,11 @@
   "usedByRecurring_few": "Używają jej {{count}} transakcje cykliczne i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
   "usedByRecurring_many": "Używa jej {{count}} transakcji cyklicznych i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
   "usedByRecurring_other": "Używa jej {{count}} transakcji cyklicznych i nadal będą jej używać (będzie przekreślona). Aby to zmienić, edytuj te transakcje.",
-  "delete": "Usuń"
+  "delete": "Usuń",
+  "new": "Nowa",
+  "swipeHint": "Przesuń kategorię w lewo, aby ją edytować lub usunąć",
+  "color": "Kolor",
+  "colorAuto": "Automatyczny"
   },
   "export": {
   "title": "Eksport danych",
@@ -698,6 +730,17 @@
   },
   "common": {
     "user": "Użytkownik",
-    "error": "Błąd"
+    "error": "Błąd",
+    "back": "Wstecz",
+    "close": "Zamknij",
+    "add": "Dodaj",
+    "previousMonth": "Poprzedni miesiąc",
+    "nextMonth": "Następny miesiąc",
+    "previous": "Poprzedni",
+    "next": "Następny",
+    "colorPickerTitle": "Własny kolor",
+    "colorPickerHint": "Dotknij lub przesuń palcem, aby wybrać odcień",
+    "colorPickerUse": "Użyj tego koloru",
+    "customColor": "Własny kolor"
   }
 }

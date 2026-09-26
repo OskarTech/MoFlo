@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import {
-  View, StyleSheet, ScrollView, Alert, Platform,
-} from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { View, StyleSheet, Alert, Platform } from 'react-native';
+import { Text } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Constants from 'expo-constants';
 import { useTheme } from '../../hooks/useTheme';
-import AppHeader from '../../components/common/AppHeader';
+import { HeroScrollScreen } from '../../components/layout/HeroScreen';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { SheetButton, FilledInput, SheetLabel } from '../../components/common/BottomSheet';
 import { useSettingsStore } from '../../store/settingsStore';
 import auth from '@react-native-firebase/auth';
 
@@ -28,7 +30,8 @@ const getAppInfo = () => {
 
 const SupportScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
+  const navigation = useNavigation();
   const { displayName } = useSettingsStore();
   const user = auth().currentUser;
 
@@ -87,100 +90,56 @@ const SupportScreen = () => {
     }
   };
 
+  const hero = (
+    <>
+      <HeroTitleBar title={t('settings.supportTitle')} onBack={() => navigation.goBack()} />
+      <Text style={[styles.heroText, { color: ui.onHeroSoft }]}>{t('settings.supportInfo')}</Text>
+    </>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <AppHeader title={t('settings.supportTitle')} showBack showBell={false} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        style={{ backgroundColor: dc.background }}
-      >
-        <View style={[styles.infoCard, {
-          backgroundColor: dc.primary + '15',
-          borderColor: dc.primary + '30',
-        }]}>
-          <Text style={[styles.infoText, { color: dc.primary }]}>
-            💬 {t('settings.supportInfo')}
-          </Text>
+    <HeroScrollScreen hero={hero} keyboardShouldPersistTaps="handled" sheetStyle={styles.sheet}>
+      {/* Email del usuario: solo informativo */}
+      <View style={[styles.emailInfo, { backgroundColor: ui.field }]}>
+        <Ionicons name="mail-outline" size={18} color={dc.textSecondary} />
+        <View style={styles.emailText}>
+          <Text style={[styles.emailInfoLabel, { color: dc.textSecondary }]}>{t('auth.email')}</Text>
+          <Text style={[styles.emailInfoValue, { color: dc.textPrimary }]} numberOfLines={1}>{userEmail}</Text>
         </View>
+      </View>
 
-        {/* Email del usuario — solo informativo */}
-        <View style={[styles.emailInfo, {
-          backgroundColor: dc.surface,
-          borderColor: dc.border,
-        }]}>
-          <Text style={[styles.emailInfoLabel, { color: dc.textSecondary }]}>
-            {t('auth.email')}
-          </Text>
-          <Text style={[styles.emailInfoValue, { color: dc.textPrimary }]}>
-            {userEmail}
-          </Text>
-        </View>
+      <SheetLabel>{t('auth.name')}</SheetLabel>
+      <FilledInput icon="person-outline" value={name} onChangeText={setName} />
 
-        <TextInput
-          label={t('auth.name')}
-          value={name}
-          onChangeText={setName}
-          mode="outlined"
-          style={[styles.input, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={dc.primary}
-        />
+      <SheetLabel>{t('settings.supportMessagePlaceholder')}</SheetLabel>
+      <FilledInput
+        value={message}
+        onChangeText={setMessage}
+        multiline
+        style={styles.messageInput}
+      />
 
-        <TextInput
-          label={t('settings.supportMessagePlaceholder')}
-          value={message}
-          onChangeText={setMessage}
-          mode="outlined"
-          multiline
-          numberOfLines={6}
-          style={[styles.input, styles.messageInput, { backgroundColor: dc.surface }]}
-          outlineColor={dc.border}
-          activeOutlineColor={dc.primary}
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleSend}
-          loading={sending}
-          disabled={!isValid || sending}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          buttonColor={dc.primary}
-          textColor="#FFFFFF"
-        >
-          {t('settings.supportSend')}
-        </Button>
-      </ScrollView>
-    </View>
+      <SheetButton
+        label={t('settings.supportSend')}
+        onPress={handleSend}
+        loading={sending}
+        disabled={!isValid}
+        icon="send-outline"
+        style={styles.button}
+      />
+    </HeroScrollScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  infoCard: {
-    borderRadius: 16, padding: 16,
-    marginBottom: 16, borderWidth: 0.5,
-  },
-  infoText: {
-    fontSize: 14, fontFamily: 'Poppins_400Regular', lineHeight: 22,
-  },
-  emailInfo: {
-    borderRadius: 12, padding: 14,
-    marginBottom: 12, borderWidth: 0.5,
-  },
-  emailInfoLabel: {
-    fontSize: 11, fontFamily: 'Poppins_400Regular', marginBottom: 2,
-  },
-  emailInfoValue: {
-    fontSize: 14, fontFamily: 'Poppins_500Medium',
-  },
-  input: { marginBottom: 12 },
-  messageInput: { minHeight: 120 },
-  button: { borderRadius: 12, marginTop: 8 },
-  buttonContent: { height: 52 },
+  heroText: { fontSize: 13.5, fontFamily: 'Poppins_400Regular', lineHeight: 20, paddingHorizontal: 20, paddingTop: 10 },
+  sheet: { paddingHorizontal: 20 },
+  emailInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  emailText: { flex: 1, minWidth: 0 },
+  emailInfoLabel: { fontSize: 11.5, fontFamily: 'Poppins_400Regular' },
+  emailInfoValue: { fontSize: 14, fontFamily: 'Poppins_500Medium' },
+  messageInput: { minHeight: 140, textAlignVertical: 'top' },
+  button: { marginTop: 20 },
 });
 
 export default SupportScreen;

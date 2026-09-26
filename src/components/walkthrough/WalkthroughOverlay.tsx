@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, Dimensions, Platform, StatusBar,
+  View, StyleSheet, TouchableOpacity, Dimensions,
   Modal, Animated, Easing,
 } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -15,54 +15,6 @@ const SPOTLIGHT_PADDING = 4;
 const SPOTLIGHT_RADIUS_DEFAULT = 14;
 const TOOLTIP_MARGIN = 16;
 const TOOLTIP_GAP = 16;
-
-const computeTabRect = (
-  index: number,
-  insets: { bottom: number },
-  overlayH: number,
-): TargetRect => {
-  const { width: screenW } = Dimensions.get('window');
-  // Constantes que deben coincidir con AppNavigator.tsx tabBarStyle:
-  //   height: 58 + insets.bottom
-  //   paddingBottom: insets.bottom + 4
-  // Usamos overlayH (medido con onLayout del Modal) en vez de Dimensions.get('window').height
-  // porque en Android físico con gesture nav el Modal es edge-to-edge y la window
-  // reporta una altura menor que el área real del overlay.
-  const TAB_INNER_H = 54; // 58 + insets.bottom - (insets.bottom + 4)
-  const PAD_BOTTOM = insets.bottom + 4;
-  const tabTop = overlayH - PAD_BOTTOM - TAB_INNER_H;
-  const tabW = screenW / 5;
-  if (index === 2) {
-    // FAB elevado: AddTabButton tiene top:-16, button 56x56.
-    const size = 64;
-    const itemCenterY = tabTop + TAB_INNER_H / 2 - 16;
-    return {
-      x: screenW / 2 - size / 2,
-      y: itemCenterY - size / 2,
-      width: size,
-      height: size,
-    };
-  }
-  return {
-    x: index * tabW + tabW * 0.18,
-    y: tabTop,
-    width: tabW * 0.64,
-    height: TAB_INNER_H,
-  };
-};
-
-const computeHeaderRect = (insets: { top: number }): TargetRect => {
-  const { width: screenW } = Dimensions.get('window');
-  const top = Platform.OS === 'android'
-    ? (StatusBar.currentHeight ?? 0) + 12
-    : insets.top + 12;
-  return {
-    x: screenW / 2 - 110,
-    y: top,
-    width: 220,
-    height: 38,
-  };
-};
 
 const WalkthroughOverlay = () => {
   const { t } = useTranslation();
@@ -107,16 +59,12 @@ const WalkthroughOverlay = () => {
     }
   }, [isActive, currentStep, fadeAnim]);
 
-  const targetRect: TargetRect | null = useMemo(() => {
-    if (!step) return null;
-    if (step.isTab && step.tabIndex !== undefined) {
-      return computeTabRect(step.tabIndex, insets, overlaySize.h);
-    }
-    if (step.customTarget === 'header') {
-      return computeHeaderRect(insets);
-    }
-    return targets[step.id] ?? null;
-  }, [step, targets, insets, overlaySize.h]);
+  // Todos los pasos señalan una vista medida en pantalla (useWalkthroughTarget):
+  // las pestañas y el + los registra la barra de abajo, y la cuenta, su pastilla
+  const targetRect: TargetRect | null = useMemo(
+    () => (step ? targets[step.id] ?? null : null),
+    [step, targets],
+  );
 
   if (!isActive || !step) return null;
 

@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
+import { StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import AppleSignInButton from '../../components/auth/AppleSignInButton';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
@@ -18,7 +9,10 @@ import { loginWithEmail, loginWithGoogle, signInWithApple } from '../../services
 import auth from '@react-native-firebase/auth';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
+import { FilledInput, SheetButton } from '../../components/common/BottomSheet';
+import {
+  AuthScreen, AuthBrand, PasswordInput, AuthSecondaryButton, AuthDivider, AuthSwitchLink, authStyles,
+} from '../../components/auth/AuthScreen';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -26,16 +20,13 @@ type Props = {
 
 const LoginScreen = ({ navigation }: Props) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const inputBg = isDark ? colors.surfaceDark : '#FFFFFF';
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -89,157 +80,65 @@ const LoginScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <KeyboardAvoidingView
-        behavior="height"
-        enabled={Platform.OS === 'android'}
-        style={{ flex: 1 }}
+    <AuthScreen hero={<AuthBrand subtitle={t('auth.subtitle')} />}>
+      <Text style={[styles.title, { color: dc.textPrimary }]}>{t('auth.login')}</Text>
+
+      <FilledInput
+        icon="mail-outline"
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t('auth.email')}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        containerStyle={authStyles.field}
+      />
+      <PasswordInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder={t('auth.password')}
+        autoComplete="current-password"
+        textContentType="password"
+        onSubmitEditing={handleLogin}
+      />
+
+      {error ? <Text style={[authStyles.error, styles.error, { color: ui.expenseText }]}>{error}</Text> : null}
+
+      <TouchableOpacity
+        style={styles.forgot}
+        onPress={() => navigation.navigate('ForgotPassword')}
+        hitSlop={8}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        >
-          {/* LOGO */}
-          <View style={styles.header}>
-            <Image
-              source={require('../../../assets/icon.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
-            <Text style={[styles.subtitle, { color: dc.textSecondary }]}>
-              {t('auth.subtitle')}
-            </Text>
-          </View>
+        <Text style={[styles.forgotText, { color: ui.accent }]}>{t('auth.forgotPassword')}</Text>
+      </TouchableOpacity>
 
-          {/* FORMULARIO */}
-          <View style={styles.form}>
-            <TextInput
-              label={t('auth.email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-            />
+      <SheetButton label={t('auth.login')} onPress={handleLogin} loading={loading} />
 
-            <TextInput
-              label={t('auth.password')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword(!showPassword)}
-                  color={dc.textSecondary}
-                />
-              }
-            />
+      <AuthDivider />
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <AuthSecondaryButton
+        label={t('auth.googleLogin')}
+        icon="logo-google"
+        onPress={handleGoogleLogin}
+        loading={googleLoading}
+      />
+      <AppleSignInButton onPress={handleAppleSignIn} />
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => navigation.navigate('ForgotPassword')}
-            >
-              <Text style={[styles.forgotText, { color: colors.primary }]}>
-                {t('auth.forgotPassword')}
-              </Text>
-            </TouchableOpacity>
-
-            <Button
-              mode="contained"
-              onPress={handleLogin}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.login')}
-            </Button>
-
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
-              <Text style={[styles.dividerText, { color: dc.textSecondary }]}>o</Text>
-              <View style={[styles.dividerLine, { backgroundColor: dc.border }]} />
-            </View>
-
-            <Button
-              mode="outlined"
-              onPress={handleGoogleLogin}
-              loading={googleLoading}
-              disabled={googleLoading}
-              style={[styles.googleButton, { borderColor: dc.border }]}
-              contentStyle={styles.buttonContent}
-              icon="google"
-              textColor={dc.textPrimary}
-            >
-              {t('auth.googleLogin')}
-            </Button>
-
-            <AppleSignInButton onPress={handleAppleSignIn} />
-
-            <View style={styles.registerLink}>
-              <Text style={[styles.linkText, { color: dc.textSecondary }]}>
-                {t('auth.noAccount')}{' '}
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={[styles.linkAction, { color: colors.primary }]}>
-                  {t('auth.register')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      <AuthSwitchLink
+        text={t('auth.noAccount')}
+        action={t('auth.register')}
+        onPress={() => navigation.navigate('Register')}
+      />
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    padding: 24,
-    paddingBottom: 40 // Espacio extra inferior para que el último elemento no pegue al teclado
-  },
-  header: { alignItems: 'center', marginBottom: 40 },
-  logoImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 28,
-    marginBottom: 16,
-  },
-  appName: { fontSize: 32, fontFamily: 'Poppins_700Bold', letterSpacing: 1, marginBottom: 4 },
-  subtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
-  form: { gap: 8 },
-  input: { marginBottom: 4 },
-  errorText: { fontSize: 13, fontFamily: 'Poppins_400Regular', color: colors.expense, marginBottom: 4 },
-  forgotPassword: { alignSelf: 'flex-end', marginBottom: 8 },
-  forgotText: { fontSize: 13, fontFamily: 'Poppins_500Medium' },
-  button: { borderRadius: 12, marginTop: 4 },
-  buttonContent: { height: 52 },
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
-  dividerLine: { flex: 1, height: 0.5 },
-  dividerText: { marginHorizontal: 12, fontSize: 13, fontFamily: 'Poppins_400Regular' },
-  googleButton: { borderRadius: 12 },
-  registerLink: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  linkText: { fontSize: 14, fontFamily: 'Poppins_400Regular' },
-  linkAction: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  title: { fontSize: 22, fontFamily: 'Poppins_700Bold', letterSpacing: -0.4, marginBottom: 16 },
+  error: { marginTop: 10, marginBottom: 0 },
+  forgot: { alignSelf: 'flex-end', paddingVertical: 12 },
+  forgotText: { fontSize: 13.5, fontFamily: 'Poppins_600SemiBold' },
 });
 
 export default LoginScreen;

@@ -34,7 +34,7 @@ export interface ExportInput {
   huchas: Hucha[];
   huchaMovements: HuchaMovement[];
   category: (id: string, type: MovementType) => ExportCategory;
-  incomeColor: (rank: number) => string;
+  incomeColor: (rank: number, id?: string) => string;
   /** Solo en cuenta compartida: quién añadió cada cosa */
   member: (uid: string | undefined) => ExportMember | undefined;
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -103,7 +103,7 @@ function byCategory(input: ExportInput, type: MovementType, total: number): Cate
       ...row,
       share: total > 0 ? row.amount / total : 0,
       // Los ingresos se colorean por puesto, igual que en la app
-      color: type === 'income' ? input.incomeColor(rank) : row.color,
+      color: type === 'income' ? input.incomeColor(rank, row.id) : row.color,
     }));
 }
 

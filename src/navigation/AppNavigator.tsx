@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ import CategoriesScreen from '../screens/app/CategoriesScreen';
 import SharedAccountScreen from '../screens/app/SharedAccountScreen';
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
 import AddMovementModal from '../components/movements/AddMovementModal';
-import AddTabButton from '../components/common/AddTabButton';
+import GlassTabBar from '../components/navigation/GlassTabBar';
 import PremiumModal from '../components/common/PremiumModal';
 import WalkthroughOverlay from '../components/walkthrough/WalkthroughOverlay';
 import { useWalkthroughStore } from '../store/walkthroughStore';
@@ -29,26 +29,23 @@ import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../hooks/useTheme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { closeOpenSwipeable } from '../components/common/SwipeableRow';
 
 const Tab = createBottomTabNavigator();
 const HuchaStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 
+// Cada pantalla lleva su propia cabecera de color, así que entra deslizándose
+// entera desde la derecha, igual en iOS y Android. Con 'fade', en Android la
+// pantalla nueva se quedaba invisible (se veía solo el fondo gris).
+const STACK_OPTIONS = {
+  headerShown: false,
+  animation: 'slide_from_right',
+  animationDuration: 250,
+} as const;
+
 const HuchaNavigator = () => (
-  // 'fade' en lugar del deslizamiento por defecto: es la única transición que no
-  // desplaza la pantalla, así la barra superior no se mueve de su sitio al
-  // entrar ni al salir de una hucha.
-  <HuchaStack.Navigator
-    screenOptions={{
-      headerShown: false,
-      animation: 'fade',
-      animationDuration: 220,
-    }}
-  >
+  <HuchaStack.Navigator screenOptions={STACK_OPTIONS}>
     <HuchaStack.Screen name="HuchaMain" component={HuchaScreen} />
     <HuchaStack.Screen name="HuchaDetail" component={HuchaDetailScreen} />
     <HuchaStack.Screen name="CreateHucha" component={CreateHuchaScreen} />
@@ -56,7 +53,7 @@ const HuchaNavigator = () => (
 );
 
 const SettingsNavigator = () => (
-  <SettingsStack.Navigator screenOptions={{ headerShown: false }}>
+  <SettingsStack.Navigator screenOptions={STACK_OPTIONS}>
     <SettingsStack.Screen name="SettingsMain" component={SettingsScreen} />
     <SettingsStack.Screen name="Support" component={SupportScreen} />
     <SettingsStack.Screen name="Categories" component={CategoriesScreen} />
@@ -67,8 +64,6 @@ const SettingsNavigator = () => (
 
 const AppNavigator = () => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const [movementModalVisible, setMovementModalVisible] = useState(false);
   // Lo activan los estados vacíos para abrir el mismo modal que el botón +
@@ -95,12 +90,6 @@ const AppNavigator = () => {
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
-
-  const tabBarBg = dc.surface;
-  const tabBarBorder = dc.border;
-  const activeColor = isDark ? dc.primaryLight : dc.primary;
-  // Modo claro: inactivos en el color de la paleta más apagado (73 = ~45% de opacidad)
-  const inactiveColor = isDark ? '#FFFFFF' : dc.primary + '73';
 
   const handleFabPress = () => {
     closeOpenSwipeable();
@@ -140,41 +129,12 @@ const AppNavigator = () => {
 
   return (
     <>
+      {/* Todas las pantallas llevan cabecera de color: hora y batería en blanco */}
+      <StatusBar style="light" />
       <Tab.Navigator
-        // Cambiar de pestaña cierra la fila que hubiera deslizada: las pantallas
-        // de pestañas no se desmontan, así que se quedaría abierta al volver
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: activeColor,
-          tabBarInactiveTintColor: inactiveColor,
-          tabBarStyle: {
-            backgroundColor: tabBarBg,
-            borderTopWidth: 0.5,
-            borderTopColor: tabBarBorder,
-            elevation: 0,
-            height: 58 + insets.bottom,
-            paddingBottom: insets.bottom + 4,
-          },
-          tabBarLabelStyle: {
-            fontFamily: 'Poppins_500Medium',
-            fontSize: 11,
-          },
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
-            if (route.name === 'HomeTab') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'HistorialTab') {
-              iconName = focused ? 'time' : 'time-outline';
-            } else if (route.name === 'AnnualTab') {
-              iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-            } else if (route.name === 'HuchaTab') {
-              iconName = focused ? 'cash' : 'cash-outline';
-            } else {
-              iconName = 'add';
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-        })}
+        // Barra propia: cápsula de cristal con las pestañas y el + aparte
+        tabBar={(props) => <GlassTabBar {...props} onFabPress={handleFabPress} />}
+        screenOptions={{ headerShown: false }}
         screenListeners={{
           // Cambiar de pestaña cierra la fila que hubiera deslizada: las pantallas
           // de pestañas no se desmontan, así que se quedaría abierta al volver
@@ -211,14 +171,6 @@ const AppNavigator = () => {
           name="HistorialTab"
           component={MovementsScreen}
           options={{ tabBarLabel: t('tabs.historial') }}
-        />
-        <Tab.Screen
-          name="AddMovement"
-          component={View as any}
-          options={{
-            tabBarLabel: '',
-            tabBarButton: () => <AddTabButton onPress={handleFabPress} />,
-          }}
         />
         <Tab.Screen
           name="AnnualTab"

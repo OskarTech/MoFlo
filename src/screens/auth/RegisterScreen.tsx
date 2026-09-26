@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform,
-} from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { StyleSheet } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation.types';
@@ -11,7 +8,9 @@ import { registerWithEmail } from '../../services/firebase/auth.service';
 import { initializeNewUser } from '../../services/firebase/firestore.service';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
+import { FilledInput, SheetButton } from '../../components/common/BottomSheet';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { AuthScreen, AuthBrand, PasswordInput, AuthSwitchLink, authStyles } from '../../components/auth/AuthScreen';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -19,16 +18,13 @@ type Props = {
 
 const RegisterScreen = ({ navigation }: Props) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
+  const { ui } = useTheme();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const inputBg = isDark ? colors.surfaceDark : '#FFFFFF';
 
   const handleRegister = async () => {
     if (!name || !email || !password) return;
@@ -62,164 +58,60 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: dc.background }]}>
-      <KeyboardAvoidingView
-        behavior="height"
-        enabled={Platform.OS === 'android'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        >
-          {/* HEADER */}
-          <View style={styles.header}>
-            <Image
-              source={require('../../../assets/icon.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.appName, { color: dc.textPrimary }]}>MoFlo</Text>
-          </View>
+    <AuthScreen
+      hero={(
+        <>
+          <HeroTitleBar title={t('auth.register')} onBack={() => navigation.goBack()} />
+          <AuthBrand subtitle={t('auth.subtitle')} compact />
+        </>
+      )}
+    >
+      <FilledInput
+        icon="person-outline"
+        value={name}
+        onChangeText={setName}
+        placeholder={t('auth.name')}
+        autoCapitalize="words"
+        autoComplete="name"
+        textContentType="name"
+        containerStyle={authStyles.field}
+      />
+      <FilledInput
+        icon="mail-outline"
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t('auth.email')}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        containerStyle={authStyles.field}
+      />
+      <PasswordInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder={t('auth.password')}
+        autoComplete="new-password"
+        textContentType="newPassword"
+        onSubmitEditing={handleRegister}
+      />
 
-          {/* FORMULARIO */}
-          <View style={styles.form}>
-            <Text style={[styles.formTitle, { color: dc.textPrimary }]}>
-              {t('auth.register')}
-            </Text>
+      {error ? <Text style={[authStyles.error, styles.error, { color: ui.expenseText }]}>{error}</Text> : null}
 
-            <TextInput
-              label={t('auth.name')}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-            />
+      <SheetButton label={t('auth.register')} onPress={handleRegister} loading={loading} style={styles.button} />
 
-            <TextInput
-              label={t('auth.email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-            />
-
-            <TextInput
-              label={t('auth.password')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              mode="outlined"
-              style={[styles.input, { backgroundColor: inputBg }]}
-              outlineColor={dc.border}
-              activeOutlineColor={colors.primary}
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword(!showPassword)}
-                  color={dc.textSecondary}
-                />
-              }
-            />
-
-            {error ? (
-              <Text style={styles.errorText}>{error}</Text>
-            ) : null}
-
-            <Button
-              mode="contained"
-              onPress={handleRegister}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              buttonColor={colors.primary}
-              textColor="#FFFFFF"
-            >
-              {t('auth.register')}
-            </Button>
-
-            <View style={styles.loginLink}>
-              <Text style={[styles.linkText, { color: dc.textSecondary }]}>
-                {t('auth.hasAccount')}{' '}
-              </Text>
-              <TouchableOpacity onPress={() => navigation.goBack()}>
-                <Text style={[styles.linkAction, { color: colors.primary }]}>
-                  {t('auth.login')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      <AuthSwitchLink
+        text={t('auth.hasAccount')}
+        action={t('auth.login')}
+        onPress={() => navigation.goBack()}
+      />
+    </AuthScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 28,
-    marginBottom: 16,
-  },
-  appName: {
-    fontSize: 32,
-    fontFamily: 'Poppins_700Bold',
-    letterSpacing: 1,
-  },
-  form: { gap: 8 },
-  formTitle: {
-    fontSize: 22,
-    fontFamily: 'Poppins_700Bold',
-    marginBottom: 8,
-  },
-  input: { marginBottom: 4 },
-  errorText: {
-    fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
-    color: colors.expense,
-    marginBottom: 4,
-  },
-  button: {
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  buttonContent: { height: 52 },
-  loginLink: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  linkText: {
-    fontSize: 14,
-    fontFamily: 'Poppins_400Regular',
-  },
-  linkAction: {
-    fontSize: 14,
-    fontFamily: 'Poppins_600SemiBold',
-  },
+  error: { marginTop: 10, marginBottom: 0 },
+  button: { marginTop: 20 },
 });
 
 export default RegisterScreen;

@@ -1,18 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
-  View, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Modal, Platform,
-  Keyboard, Animated, Switch,
+  View, StyleSheet, TouchableOpacity, Alert, Platform, Keyboard, Switch,
 } from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../theme';
-import AppHeader from '../../components/common/AppHeader';
 import { Reminder } from '../../types';
 import i18n from '../../i18n';
 import auth from '@react-native-firebase/auth';
@@ -20,7 +16,12 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useReminderStore } from '../../store/reminderStore';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import MemberName from '../../components/common/MemberName';
+import BottomSheet, { SheetButton, FilledInput } from '../../components/common/BottomSheet';
+import { HeroScrollScreen } from '../../components/layout/HeroScreen';
+import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { GroupHeader } from '../../components/layout/SheetSection';
 import { getMemberLabel } from '../../utils/memberLabel';
+import { withAlpha } from '../../utils/color';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import { formatDate as formatAppDate } from '../../utils/dateFormat';
 
@@ -56,8 +57,7 @@ const ReminderCardBase = ({
   creatorIsFormer?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
-  // Sin fecha = nota: nunca se marca como pasada
+  const { colors: dc, ui } = useTheme();
   const handleDelete = () => {
     warningHaptic();
     Alert.alert(
@@ -70,61 +70,60 @@ const ReminderCardBase = ({
     );
   };
 
+  // Sin fecha = nota: nunca se marca como pasada
   const isNote = !reminder.date;
   const date = reminder.date ? new Date(reminder.date) : null;
   const isPast = !!date && date < new Date();
+  const isUpcoming = !!date && !isPast;
 
   return (
     <SwipeableRow
-      containerStyle={styles.swipeContainer}
+      borderRadius={14}
       actions={[
         { icon: 'pencil', background: dc.primary, onPress: () => onEdit(reminder) },
-        { icon: 'trash', background: dc.expense, onPress: handleDelete },
+        { icon: 'trash', background: ui.expenseText, onPress: handleDelete },
       ]}
     >
-    <View style={[styles.card, {
-      backgroundColor: dc.surface,
-      borderColor: isPast ? dc.border : dc.primary + '40',
-      borderLeftColor: isPast ? dc.border : dc.primary,
-    }]}>
-      <View style={styles.cardContent}>
-        <View style={[styles.cardIcon, {
-          backgroundColor: isPast ? dc.border + '40' : dc.primary + '20',
-        }]}>
+      {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
+      <View style={[styles.row, { backgroundColor: ui.sheet }]}>
+        <View style={[styles.rowIcon, { backgroundColor: isUpcoming ? ui.accentSoft : ui.fill }]}>
           <Ionicons
             name={isNote ? 'document-text-outline' : isPast ? 'notifications-off-outline' : 'notifications-outline'}
-            size={22}
-            color={isPast ? dc.textSecondary : dc.primary}
+            size={20}
+            color={isUpcoming ? ui.accent : dc.textSecondary}
           />
         </View>
-        <View style={styles.cardInfo}>
-          <Text style={[styles.cardTitle, { color: isPast ? dc.textSecondary : dc.textPrimary }]}>
+        <View style={styles.rowInfo}>
+          <Text
+            style={[styles.rowTitle, { color: isPast ? dc.textSecondary : dc.textPrimary }]}
+            numberOfLines={3}
+          >
             {reminder.title}
           </Text>
           {!!creatorName && (
-            <Text style={[styles.cardCreator, { color: dc.textSecondary }]} numberOfLines={1}>
-              👤 <MemberName member={{ name: creatorName, isFormer: creatorIsFormer }} />
-            </Text>
+            <View style={styles.rowCreator}>
+              <Ionicons name="person-outline" size={12} color={dc.textSecondary} />
+              <Text style={[styles.rowSub, { color: dc.textSecondary }]} numberOfLines={1}>
+                <MemberName member={{ name: creatorName, isFormer: creatorIsFormer }} />
+              </Text>
+            </View>
           )}
         </View>
         {/* Las notas no llevan fecha: ahí la columna derecha no se dibuja */}
         {!!date && (
-          <View style={styles.cardWhen}>
-            <Text style={[styles.cardWhenDate, { color: isPast ? dc.textSecondary : dc.primary }]}>
-              📅 {formatDate(date)}
+          <View style={styles.rowWhen}>
+            <Text style={[styles.rowDate, { color: isUpcoming ? ui.accent : dc.textSecondary }]}>
+              {formatDate(date)}
             </Text>
-            <Text style={[styles.cardWhenTime, { color: dc.textSecondary }]}>
-              ⏰ {formatTime(date)}
-            </Text>
+            <Text style={[styles.rowSub, { color: dc.textSecondary }]}>{formatTime(date)}</Text>
           </View>
         )}
       </View>
-    </View>
     </SwipeableRow>
   );
 };
 
-// Memoizada: cada tarjeta monta un Swipeable con dos gestos nativos
+// Memoizada: cada fila monta un Swipeable con dos gestos nativos
 const ReminderCard = memo(ReminderCardBase);
 
 const AddReminderModal = ({
@@ -136,8 +135,7 @@ const AddReminderModal = ({
   editingReminder?: Reminder | null;
 }) => {
   const { t } = useTranslation();
-  const { isDark, colors: dc } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { isDark, colors: dc, ui } = useTheme();
 
   const getDefaultDate = () => {
     const d = new Date();
@@ -175,49 +173,17 @@ const AddReminderModal = ({
       .catch(() => {});
   };
 
-  const sheetOffset = useRef(new Animated.Value(0)).current;
-
+  // Al abrir el teclado se cierran los selectores de fecha y hora. La ventana
+  // ya sube sola con el teclado.
   useEffect(() => {
-    // ANDROID — no tocar
-    if (Platform.OS === 'android') {
-      const show = Keyboard.addListener('keyboardDidShow', (e) => {
-        setShowDatePicker(false);
-        setShowTimePicker(false);
-        Animated.timing(sheetOffset, {
-          toValue: -e.endCoordinates.height,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      });
-      const hide = Keyboard.addListener('keyboardDidHide', () => {
-        Animated.timing(sheetOffset, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      });
-      return () => { show.remove(); hide.remove(); };
-    }
-
-    // iOS — fix margen con insets
-    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+    if (!visible) return;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(showEvent, () => {
       setShowDatePicker(false);
       setShowTimePicker(false);
-      Animated.timing(sheetOffset, {
-        toValue: -(e.endCoordinates.height - insets.bottom),
-        duration: e.duration ?? 250,
-        useNativeDriver: true,
-      }).start();
     });
-    const hide = Keyboard.addListener('keyboardWillHide', () => {
-      Animated.timing(sheetOffset, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, [sheetOffset, insets.bottom]);
+    return () => sub.remove();
+  }, [visible]);
 
   // Al abrir en modo edición se precargan los valores; una nota sin fecha
   // abre con el interruptor desactivado.
@@ -262,153 +228,121 @@ const AddReminderModal = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
-      <Animated.View style={[styles.overlay, { transform: [{ translateY: sheetOffset }] }]}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleDismiss} />
-        <View style={[styles.modalSheet, {
-          backgroundColor: dc.surface,
-          paddingBottom: insets.bottom + 24,
-        }]}>
-          <View style={[styles.handleBar, { backgroundColor: dc.border }]} />
+    <BottomSheet
+      visible={visible}
+      onClose={handleDismiss}
+      title={editingReminder ? t('reminders.edit') : t('reminders.add')}
+      footer={(
+        <SheetButton
+          label={t('reminders.save')}
+          onPress={handleSave}
+          loading={saving}
+          disabled={!description.trim()}
+        />
+      )}
+    >
+      <FilledInput
+        value={description}
+        onChangeText={setDescription}
+        placeholder={t('reminders.reminderDescription')}
+        multiline
+        style={styles.descriptionInput}
+      />
 
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.modalTitle, { color: dc.textPrimary }]}>
-              {editingReminder ? t('reminders.edit') : t('reminders.add')}
-            </Text>
+      <View style={[styles.group, { backgroundColor: ui.field }]}>
+        <TouchableOpacity
+          style={styles.groupRow}
+          onPress={() => toggleWithDate(!withDate)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.groupIcon, { backgroundColor: withDate ? ui.accentSoft : ui.fill }]}>
+            <Ionicons name="notifications-outline" size={18} color={withDate ? ui.accent : dc.textSecondary} />
+          </View>
+          <View style={styles.groupInfo}>
+            <Text style={[styles.groupLabel, { color: dc.textPrimary }]}>{t('reminders.addDateTime')}</Text>
+            <Text style={[styles.groupHint, { color: dc.textSecondary }]}>{t('reminders.addDateTimeHint')}</Text>
+          </View>
+          <Switch
+            value={withDate}
+            onValueChange={toggleWithDate}
+            trackColor={{ false: dc.border, true: dc.primary }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={dc.border}
+          />
+        </TouchableOpacity>
 
-            <TextInput
-              label={t('reminders.reminderDescription')}
-              value={description}
-              onChangeText={setDescription}
-              mode="outlined"
-              multiline
-              style={[styles.input, { backgroundColor: isDark ? dc.surface : '#FFFFFF' }]}
-              outlineColor={dc.border}
-              activeOutlineColor={dc.primary}
-            />
-
+        {withDate && (
+          <>
+            <View style={[styles.groupDivider, { backgroundColor: ui.hair }]} />
             <TouchableOpacity
-              style={[styles.dateToggleRow, {
-                backgroundColor: dc.surface,
-                borderColor: withDate ? dc.primary + '60' : dc.border,
-              }]}
-              onPress={() => toggleWithDate(!withDate)}
+              style={styles.groupRow}
+              onPress={() => { setShowDatePicker(prev => !prev); setShowTimePicker(false); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="notifications-outline" size={20} color={withDate ? dc.primary : dc.textSecondary} />
-              <View style={styles.dateToggleInfo}>
-                <Text style={[styles.dateToggleLabel, { color: dc.textPrimary }]}>
-                  {t('reminders.addDateTime')}
-                </Text>
-                <Text style={[styles.dateToggleHint, { color: dc.textSecondary }]}>
-                  {t('reminders.addDateTimeHint')}
-                </Text>
+              <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
+                <Ionicons name="calendar-outline" size={18} color={dc.textSecondary} />
               </View>
-              <Switch
-                value={withDate}
-                onValueChange={toggleWithDate}
-                trackColor={{ false: dc.border, true: dc.primary }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={dc.border}
-              />
-            </TouchableOpacity>
-
-            {withDate && (
-            <>
-            <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
-              {t('reminders.reminderDate')}
-            </Text>
-            <TouchableOpacity
-              style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
-              onPress={() => { setShowDatePicker(prev => !prev); setShowTimePicker(false); }}
-            >
-              <Ionicons name="calendar-outline" size={20} color={dc.primary} />
-              <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
-                {formatDate(selectedDate)}
+              <Text style={[styles.groupLabel, styles.groupInfo, { color: dc.textPrimary }]}>
+                {t('reminders.reminderDate')}
               </Text>
-              <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              <Text style={[styles.groupValue, { color: ui.accent }]}>{formatDate(selectedDate)}</Text>
             </TouchableOpacity>
-
-            <Text style={[styles.pickerLabel, { color: dc.textSecondary }]}>
-              {t('reminders.reminderTime')}
-            </Text>
+            <View style={[styles.groupDivider, { backgroundColor: ui.hair }]} />
             <TouchableOpacity
-              style={[styles.pickerButton, { backgroundColor: dc.surface, borderColor: dc.border }]}
+              style={styles.groupRow}
               onPress={() => { setShowTimePicker(prev => !prev); setShowDatePicker(false); }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="time-outline" size={20} color={dc.primary} />
-              <Text style={[styles.pickerText, { color: dc.textPrimary }]}>
-                {formatTime(selectedDate)}
+              <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
+                <Ionicons name="time-outline" size={18} color={dc.textSecondary} />
+              </View>
+              <Text style={[styles.groupLabel, styles.groupInfo, { color: dc.textPrimary }]}>
+                {t('reminders.reminderTime')}
               </Text>
-              <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+              <Text style={[styles.groupValue, { color: ui.accent }]}>{formatTime(selectedDate)}</Text>
             </TouchableOpacity>
+          </>
+        )}
+      </View>
 
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                minimumDate={new Date()}
-                textColor={dc.textPrimary}
-                themeVariant={isDark ? 'dark' : 'light'}
-                onChange={(_, date) => {
-                  if (Platform.OS === 'android') setShowDatePicker(false);
-                  if (date) {
-                    const updated = new Date(selectedDate);
-                    updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                    setSelectedDate(updated);
-                  }
-                }}
-              />
-            )}
+      {withDate && showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          textColor={dc.textPrimary}
+          themeVariant={isDark ? 'dark' : 'light'}
+          onChange={(_, date) => {
+            if (Platform.OS === 'android') setShowDatePicker(false);
+            if (date) {
+              const updated = new Date(selectedDate);
+              updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+              setSelectedDate(updated);
+            }
+          }}
+        />
+      )}
 
-            {showTimePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                is24Hour={i18n.language !== 'en'}
-                textColor={dc.textPrimary}
-                themeVariant={isDark ? 'dark' : 'light'}
-                onChange={(_, time) => {
-                  if (Platform.OS === 'android') setShowTimePicker(false);
-                  if (time) {
-                    const updated = new Date(selectedDate);
-                    updated.setHours(time.getHours(), time.getMinutes());
-                    setSelectedDate(updated);
-                  }
-                }}
-              />
-            )}
-
-            </>
-            )}
-
-            <View style={styles.modalButtons}>
-              <Button
-                mode="outlined"
-                onPress={handleDismiss}
-                style={styles.cancelButton}
-                textColor={dc.textSecondary}
-              >
-                {t('reminders.cancel')}
-              </Button>
-              <Button
-                mode="contained"
-                onPress={handleSave}
-                loading={saving}
-                disabled={!description.trim() || saving}
-                style={styles.saveButton}
-                buttonColor={dc.primary}
-                textColor="#FFFFFF"
-              >
-                {t('reminders.save')}
-              </Button>
-            </View>
-          </ScrollView>
-        </View>
-      </Animated.View>
-    </Modal>
+      {withDate && showTimePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          is24Hour={i18n.language !== 'en'}
+          textColor={dc.textPrimary}
+          themeVariant={isDark ? 'dark' : 'light'}
+          onChange={(_, time) => {
+            if (Platform.OS === 'android') setShowTimePicker(false);
+            if (time) {
+              const updated = new Date(selectedDate);
+              updated.setHours(time.getHours(), time.getMinutes());
+              setSelectedDate(updated);
+            }
+          }}
+        />
+      )}
+    </BottomSheet>
   );
 };
 
@@ -419,7 +353,8 @@ interface RemindersScreenProps {
 
 const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScreenProps) => {
   const { t } = useTranslation();
-  const { colors: dc } = useTheme();
+  const { colors: dc, ui } = useTheme();
+  const navigation = useNavigation<any>();
   const {
     reminders: individualReminders, sharedReminders,
     loadIndividualReminders, addReminder, updateReminder, deleteReminder, subscribeToSharedReminders,
@@ -532,40 +467,58 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
     deleteReminder(id).catch((e) => console.error('Error deleting reminder:', e));
   }, [deleteReminder]);
 
-  // Orden: recordatorios próximos → notas (más recientes primero) → recordatorios pasados
+  // Grupos: recordatorios próximos (el más cercano primero) → notas (más
+  // recientes primero) → recordatorios pasados
   const nowTs = Date.now();
-  const rank = (r: Reminder) => (!r.date ? 1 : new Date(r.date).getTime() > nowTs ? 0 : 2);
-  const sortedReminders = [...reminders].sort((a, b) => {
-    const diff = rank(a) - rank(b);
-    if (diff !== 0) return diff;
-    if (!a.date || !b.date) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  });
+  const byDate = (a: Reminder, b: Reminder) => new Date(a.date!).getTime() - new Date(b.date!).getTime();
+  const upcoming = reminders.filter(r => !!r.date && new Date(r.date).getTime() > nowTs).sort(byDate);
+  const notes = reminders.filter(r => !r.date)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const past = reminders.filter(r => !!r.date && new Date(r.date).getTime() <= nowTs).sort(byDate);
+  const groups = [
+    { key: 'upcoming', label: t('reminders.upcoming'), items: upcoming },
+    { key: 'notes', label: t('reminders.notes'), items: notes },
+    { key: 'past', label: t('reminders.past'), items: past },
+  ].filter(g => g.items.length > 0);
+
+  const next = upcoming[0];
+  const nextDate = next?.date ? new Date(next.date) : null;
+
+  const hero = (
+    <>
+      <HeroTitleBar title={t('header.reminders')} onBack={() => navigation.navigate('HomeTab')} />
+      {next && nextDate && (
+        <View style={styles.heroBody}>
+          <Text style={[styles.heroLabel, { color: ui.onHeroSoft }]}>{t('reminders.nextLabel')}</Text>
+          <Text style={[styles.heroTitle, { color: ui.onHero }]} numberOfLines={2}>{next.title}</Text>
+          <View style={styles.heroPill}>
+            <Ionicons name="notifications-outline" size={14} color={ui.onHero} />
+            <Text style={[styles.heroPillText, { color: ui.onHero }]}>
+              {formatDate(nextDate)} · {formatTime(nextDate)}
+            </Text>
+          </View>
+        </View>
+      )}
+    </>
+  );
 
   return (
     <View
-      style={[styles.container, { backgroundColor: dc.background }]}
+      style={styles.container}
       // Cualquier toque de la pantalla cierra la fila deslizada. Devuelve false,
       // así que no se queda con el gesto y el toque llega igual a su destino.
       onStartShouldSetResponderCapture={closeOpenSwipeable}
     >
-      <AppHeader title={t('header.reminders')} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        onScrollBeginDrag={closeOpenSwipeable}
-      >
+      <HeroScrollScreen hero={hero} onScrollBeginDrag={closeOpenSwipeable}>
         {visibleRequests.length > 0 && (
-          <>
-            <Text style={[styles.requestsLabel, { color: dc.textSecondary }]}>
-              {t('sharedAccount.pendingRequests')} ({visibleRequests.length})
-            </Text>
-            <View style={[styles.requestsCard, { backgroundColor: dc.surface, borderColor: dc.border }]}>
+          <View style={styles.requestsWrap}>
+            <GroupHeader label={`${t('sharedAccount.pendingRequests')} (${visibleRequests.length})`} first />
+            <View style={[styles.requestsCard, { backgroundColor: ui.field }]}>
               {visibleRequests.map((req, idx) => (
                 <View key={req.uid}>
                   <View style={styles.requestRow}>
-                    <View style={[styles.requestAvatar, { backgroundColor: dc.savings + '20' }]}>
-                      <Text style={[styles.requestInitial, { color: dc.savings }]}>
+                    <View style={[styles.requestAvatar, { backgroundColor: withAlpha(ui.savingsText, 0.15) }]}>
+                      <Text style={[styles.requestInitial, { color: ui.savingsText }]}>
                         {req.displayName[0]?.toUpperCase() ?? '?'}
                       </Text>
                     </View>
@@ -581,36 +534,38 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
                   </View>
                   <View style={styles.requestActions}>
                     <TouchableOpacity
-                      style={[styles.requestBtn, { backgroundColor: colors.expense + '15' }]}
+                      style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
                       onPress={() => handleRejectRequest(req.uid, req.displayName)}
                     >
-                      <Ionicons name="close" size={16} color={colors.expense} />
-                      <Text style={[styles.requestBtnText, { color: colors.expense }]}>
+                      <Ionicons name="close" size={16} color={ui.expenseText} />
+                      <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
                         {t('sharedAccount.reject')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.requestBtn, { backgroundColor: colors.income + '15' }]}
+                      style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
                       onPress={() => handleApproveRequest(req.uid, req.displayName)}
                     >
-                      <Ionicons name="checkmark" size={16} color={colors.income} />
-                      <Text style={[styles.requestBtnText, { color: colors.income }]}>
+                      <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                      <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
                         {t('sharedAccount.approve')}
                       </Text>
                     </TouchableOpacity>
                   </View>
                   {idx < visibleRequests.length - 1 && (
-                    <View style={[styles.requestDivider, { backgroundColor: dc.border }]} />
+                    <View style={[styles.requestDivider, { backgroundColor: ui.hair }]} />
                   )}
                 </View>
               ))}
             </View>
-          </>
+          </View>
         )}
 
-        {sortedReminders.length === 0 ? (
+        {groups.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔔</Text>
+            <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
+              <Ionicons name="notifications-outline" size={30} color={ui.accent} />
+            </View>
             <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
               {t('reminders.noReminders')}
             </Text>
@@ -619,24 +574,31 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
             </Text>
           </View>
         ) : (
-          sortedReminders.map((reminder) => {
-            // Tachado si quien lo creó ya no está en la cuenta
-            const creator = inSharedAccount
-              ? getMemberLabel(sharedAccount, reminder.createdBy, t('sharedAccount.formerMember'))
-              : undefined;
-            return (
-              <ReminderCard
-                key={reminder.id}
-                reminder={reminder}
-                onDelete={handleDeleteReminder}
-                onEdit={handleEditReminder}
-                creatorName={creator?.name}
-                creatorIsFormer={creator?.isFormer}
-              />
-            );
-          })
+          <View style={styles.list}>
+            {groups.map((group, gi) => (
+              <View key={group.key}>
+                <GroupHeader label={group.label} first={gi === 0 && visibleRequests.length === 0} />
+                {group.items.map((reminder) => {
+                  // Tachado si quien lo creó ya no está en la cuenta
+                  const creator = inSharedAccount
+                    ? getMemberLabel(sharedAccount, reminder.createdBy, t('sharedAccount.formerMember'))
+                    : undefined;
+                  return (
+                    <ReminderCard
+                      key={reminder.id}
+                      reminder={reminder}
+                      onDelete={handleDeleteReminder}
+                      onEdit={handleEditReminder}
+                      creatorName={creator?.name}
+                      creatorIsFormer={creator?.isFormer}
+                    />
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         )}
-      </ScrollView>
+      </HeroScrollScreen>
 
       <AddReminderModal
         visible={modalVisible || !!editingReminder}
@@ -653,61 +615,44 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 0.5, borderLeftWidth: 4, overflow: 'hidden',
-  },
-  swipeContainer: { marginBottom: 10, borderRadius: 16 },
-  cardContent: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  cardIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  cardInfo: { flex: 1 },
-  cardTitle: { fontSize: 15, fontFamily: 'Poppins_600SemiBold', marginBottom: 4 },
-  cardDate: { fontSize: 12, fontFamily: 'Poppins_500Medium' },
-  cardCreator: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  cardWhen: { alignItems: 'flex-end', flexShrink: 0 },
-  cardWhenDate: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  cardWhenTime: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  deleteButton: { padding: 4 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
-  actionButton: { padding: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 80 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontFamily: 'Poppins_600SemiBold', marginBottom: 8 },
-  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center', paddingHorizontal: 32 },
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: '90%' },
-  handleBar: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 22, fontFamily: 'Poppins_700Bold', marginBottom: 20 },
-  input: { marginBottom: 16 },
-  pickerLabel: { fontSize: 13, fontFamily: 'Poppins_500Medium', marginBottom: 8 },
-  pickerButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16,
-  },
-  pickerText: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  dateToggleRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 12, borderWidth: 0.5, padding: 14, marginBottom: 16,
-  },
-  dateToggleInfo: { flex: 1 },
-  dateToggleLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
-  dateToggleHint: { fontSize: 11, fontFamily: 'Poppins_400Regular', marginTop: 2 },
-  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelButton: { flex: 1 },
-  saveButton: { flex: 2 },
 
-  // Pending join requests
-  requestsLabel: {
-    fontSize: 12, fontFamily: 'Poppins_600SemiBold',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    marginBottom: 8, marginLeft: 4,
+  heroBody: { paddingHorizontal: 20, paddingTop: 12 },
+  heroLabel: { fontSize: 13, fontFamily: 'Poppins_400Regular' },
+  heroTitle: { fontSize: 24, fontFamily: 'Poppins_700Bold', letterSpacing: -0.5, marginTop: 2 },
+  heroPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5,
   },
-  requestsCard: {
-    borderRadius: 16, marginBottom: 20,
-    overflow: 'hidden', borderWidth: 0.5,
-  },
+  heroPillText: { fontSize: 12.5, fontFamily: 'Poppins_500Medium' },
+
+  list: { paddingHorizontal: 20 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderRadius: 14 },
+  rowIcon: { width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  rowInfo: { flex: 1, minWidth: 0 },
+  rowTitle: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  rowCreator: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  rowSub: { fontSize: 12.5, fontFamily: 'Poppins_400Regular' },
+  rowWhen: { alignItems: 'flex-end', flexShrink: 0 },
+  rowDate: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
+
+  emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  emptyText: { fontSize: 17, fontFamily: 'Poppins_600SemiBold', marginBottom: 6, textAlign: 'center' },
+  emptySubtext: { fontSize: 13, fontFamily: 'Poppins_400Regular', textAlign: 'center' },
+
+  descriptionInput: { fontSize: 17, minHeight: 56, textAlignVertical: 'top' },
+  group: { borderRadius: 16, marginTop: 14, overflow: 'hidden' },
+  groupRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  groupIcon: { width: 34, height: 34, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  groupInfo: { flex: 1, minWidth: 0 },
+  groupLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
+  groupHint: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', marginTop: 1 },
+  groupValue: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  groupDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
+
+  // Solicitudes pendientes para unirse a la cuenta compartida
+  requestsWrap: { paddingHorizontal: 20, marginBottom: 6 },
+  requestsCard: { borderRadius: 18, overflow: 'hidden', marginTop: 6 },
   requestRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   requestAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   requestInitial: { fontSize: 18, fontFamily: 'Poppins_700Bold' },
@@ -720,7 +665,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', gap: 6, padding: 10, borderRadius: 10,
   },
   requestBtnText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  requestDivider: { height: 0.5 },
+  requestDivider: { height: StyleSheet.hairlineWidth },
 });
 
 export default RemindersScreen;

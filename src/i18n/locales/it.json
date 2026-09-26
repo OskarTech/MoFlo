@@ -25,7 +25,10 @@
     "sendResetEmail": "Invia e-mail di recupero",
     "resetEmailSent": "E-mail inviata!",
     "resetEmailSentSubtitle": "Controlla la tua casella di posta e segui le istruzioni per reimpostare la password.",
-    "backToLogin": "Torna all'accesso"
+    "backToLogin": "Torna all'accesso",
+    "or": "o",
+    "showPassword": "Mostra password",
+    "hidePassword": "Nascondi password"
   },
   "home": {
     "balance": "Saldo Attuale",
@@ -61,7 +64,9 @@
     "dayBalance": "Saldo del giorno",
     "noMovementsDay": "Nessun movimento in questo giorno",
     "movementCount_one": "{{count}} movimento",
-    "movementCount_other": "{{count}} movimenti"
+    "movementCount_other": "{{count}} movimenti",
+    "showAmounts": "Mostra importi",
+    "hideAmounts": "Nascondi importi"
   },
   "resumen": {
     "balance": "Saldo",
@@ -95,7 +100,12 @@
     "avgPerMonth": "Media/Mese",
     "total": "Totale",
     "categAbbr": "Categ.",
-    "viewAllMovements": "Vedi tutti i movimenti"
+    "viewAllMovements": "Vedi tutti i movimenti",
+    "month": "Mese",
+    "year": "Anno",
+    "rhythmTitle": "Andamento del mese",
+    "lessThanPrev": "{{amount}} in meno del mese scorso al giorno {{day}}",
+    "moreThanPrev": "{{amount}} in più del mese scorso al giorno {{day}}"
   },
   "movements": {
     "add": "Aggiungi Movimento",
@@ -133,7 +143,9 @@
       "emergency": "Fondo di emergenza",
       "retirement": "Pensione",
       "travel": "Viaggi"
-    }
+    },
+    "saveExpense": "Salva spesa",
+    "saveIncome": "Salva entrata"
   },
   "recurring": {
     "title": "Ricorrenti",
@@ -156,7 +168,8 @@
     "income": "Entrate",
     "expense": "Spese",
     "net": "Netto",
-    "perMonth": "/ mese"
+    "perMonth": "/ mese",
+    "dayPickerLabel": "Giorno di ogni mese"
   },
   "movementsList": {
     "title": "Movimenti",
@@ -313,7 +326,12 @@
       "pt": "Português",
       "it": "Italiano",
       "de": "Deutsch"
-    }
+    },
+    "currencyHint": "Per gli importi del tuo account individuale",
+    "currencyHintShared": "Per gli importi dell'account condiviso",
+    "themeHint": "Automatico segue la modalità del telefono",
+    "paletteHint": "Cambia l'intestazione, i pulsanti e i colori delle categorie",
+    "fontHint": "Solo su questo telefono, come l'aspetto"
   },
   "hucha": {
     "title": "Risparmi",
@@ -391,7 +409,13 @@
     "editQuickAmounts": "Modifica",
     "saveQuickAmounts": "Salva",
     "viewAllHistory": "Vedi tutto",
-    "hideHistory": "Nascondi"
+    "hideHistory": "Nascondi",
+    "options": "Opzioni dell'obiettivo",
+    "goalBy": "Obiettivo per {{date}}",
+    "willReach": "Arriverai a {{amount}}",
+    "willRemain": "Resteranno {{amount}}",
+    "depositCta": "Aggiungi {{amount}}",
+    "withdrawCta": "Preleva {{amount}}"
   },
   "tabs": {
     "home": "Home",
@@ -435,7 +459,11 @@
     "permissionDeniedMessage": "Attiva le notifiche nelle impostazioni del dispositivo per usare i promemoria.",
     "scheduled": "Promemoria programmato!",
     "pastDateError": "Scegli una data e un'ora future",
-    "scheduledMessage": "Riceverai una notifica il {{date}} alle {{time}}"
+    "scheduledMessage": "Riceverai una notifica il {{date}} alle {{time}}",
+    "upcoming": "In arrivo",
+    "notes": "Note",
+    "past": "Passati",
+    "nextLabel": "Prossimo promemoria"
   },
   "premium": {
     "title": "MoFlo Premium",
@@ -475,7 +503,11 @@
     "deleteConfirm": "Eliminare questa categoria?",
     "usedByRecurring_one": "La usa 1 movimento ricorrente, che continuerà a usarla (apparirà barrata). Per cambiarla, modifica quel movimento ricorrente.",
     "usedByRecurring_other": "La usano {{count}} movimenti ricorrenti, che continueranno a usarla (apparirà barrata). Per cambiarla, modifica quei movimenti ricorrenti.",
-    "delete": "Elimina"
+    "delete": "Elimina",
+    "new": "Nuova",
+    "swipeHint": "Scorri una categoria verso sinistra per modificarla o rimuoverla",
+    "color": "Colore",
+    "colorAuto": "Automatico"
   },
   "export": {
     "title": "Esporta dati",
@@ -689,6 +721,17 @@
   },
   "common": {
     "user": "Utente",
-    "error": "Errore"
+    "error": "Errore",
+    "back": "Indietro",
+    "close": "Chiudi",
+    "add": "Aggiungi",
+    "previousMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "previous": "Precedente",
+    "next": "Successivo",
+    "colorPickerTitle": "Colore personalizzato",
+    "colorPickerHint": "Tocca o trascina il dito per scegliere la tonalità",
+    "colorPickerUse": "Usa questo colore",
+    "customColor": "Colore personalizzato"
   }
 }
