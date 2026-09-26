@@ -41,7 +41,7 @@ export const getUiColors = (c: BaseColors, isDark: boolean) => {
     expenseText: isDark ? mixHex(c.expense, '#FFFFFF', 0.2) : mixHex(c.expense, '#000000', 0.3),
     savingsText: isDark ? c.savings : mixHex(c.savings, '#000000', 0.3),
     expenseSoft: withAlpha(c.expense, 0.14),
-    glass: withAlpha(c.surface, 0.72),
+    glass: withAlpha(c.surface, 0.82),
     glassEdge: withAlpha(c.textPrimary, 0.1),
     // Sobre la cabecera de color
     onHero: '#FFFFFF',

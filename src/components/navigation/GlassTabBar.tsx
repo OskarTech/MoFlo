@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Keyboard, Platform } from 'react-na
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { requireOptionalNativeModule } from 'expo';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
@@ -11,6 +12,11 @@ import { useTheme } from '../../hooks/useTheme';
 import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 
 export const TAB_BAR_HEIGHT = 62;
+
+// El difuminado es nativo (expo-blur): una build anterior a él no lo trae y,
+// en su lugar, dibujaba un recuadro rojo de error. Sin él, la cápsula se queda
+// con el cristal sin difuminar
+const HAS_BLUR = requireOptionalNativeModule('ExpoBlurView') != null;
 
 // Separación de la cápsula con el borde de abajo: por encima de la barra de
 // gestos del sistema, pero sin dejar un hueco grande
@@ -94,12 +100,14 @@ const GlassTabBar = ({
     <View pointerEvents="box-none" style={[styles.root, { bottom }]}>
       <View style={styles.capsuleShadow}>
         <View style={[styles.capsule, { borderColor: ui.glassEdge }]}>
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 60 : 40}
-            tint={isDark ? 'dark' : 'light'}
-            experimentalBlurMethod="dimezisBlurView"
-            style={StyleSheet.absoluteFill}
-          />
+          {HAS_BLUR && (
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 60 : 40}
+              tint={isDark ? 'dark' : 'light'}
+              experimentalBlurMethod="dimezisBlurView"
+              style={StyleSheet.absoluteFill}
+            />
+          )}
           <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />
           {state.routes.filter((r) => TABS[r.name]).map((route) => (
             <TabButton

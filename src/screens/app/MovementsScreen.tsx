@@ -232,6 +232,7 @@ const MovementsScreen = () => {
   const route = useRoute<any>();
   const tabSpace = useTabBarSpace();
   const { scrollY, onScroll } = useHeroScroll();
+  const [heroHeight, setHeroHeight] = useState(0);
   // Los modales solo se montan en la pantalla que tiene el foco: AddRecurringModal
   // se abre con una bandera del store, y si otra pantalla montara uno igual se
   // dibujaría duplicado. El foco no cambia mientras hay un modal abierto, así que
@@ -541,14 +542,14 @@ const MovementsScreen = () => {
         contentContainerStyle={{ paddingBottom: tabSpace }}
         ListHeaderComponent={
           <>
-            <HeroTop>{hero}</HeroTop>
+            <HeroTop onHeight={setHeroHeight}>{hero}</HeroTop>
             <HeroSheetCap />
             {sheetTop ? <View style={styles.sheetTop}>{sheetTop}</View> : null}
           </>
         }
         ListEmptyComponent={emptyState}
       />
-      <HeroStatusBar scrollY={scrollY} />
+      <HeroStatusBar scrollY={scrollY} heroHeight={heroHeight} />
 
       {isFocused && (
         <>
