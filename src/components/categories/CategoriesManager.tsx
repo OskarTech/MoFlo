@@ -18,6 +18,7 @@ import { ColorPickerPanel, RainbowSwatch } from '../common/ColorPicker';
 import { HeroScrollScreen } from '../layout/HeroScreen';
 import { HeroTitleBar } from '../layout/HeroBar';
 import { GroupHeader } from '../layout/SheetSection';
+import AddHint from '../navigation/AddHint';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 const outline = (icon: string) => `${icon}-outline` as IconName;
@@ -465,19 +466,10 @@ const CategoriesManager = ({
             <Text style={[styles.empty, { color: dc.textSecondary }]}>{t('categories.noCustom')}</Text>
           )}
           {customCats.map((cat) => renderRow(cat, false))}
-
-          <TouchableOpacity
-            style={styles.newRow}
-            onPress={() => openSheet({ kind: 'create', type: activeType })}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-          >
-            <View style={[styles.newIcon, { borderColor: ui.hair2 }]}>
-              <Ionicons name="add" size={20} color={ui.accent} />
-            </View>
-            <Text style={[styles.newText, { color: ui.accent }]}>{t('categories.addCategory')}</Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Se crean con el + de la barra: la flecha lo señala */}
+        <AddHint label={t('categories.addHint')} style={styles.addHint} />
       </HeroScrollScreen>
 
       <CategorySheet
@@ -507,12 +499,8 @@ const styles = StyleSheet.create({
   rowIcon: { width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   rowName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   empty: { fontSize: 13, fontFamily: 'Poppins_400Regular', paddingVertical: 8 },
-  newRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
-  newIcon: {
-    width: 42, height: 42, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  newText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  // Abajo del todo aunque la lista sea corta, para que la flecha acabe sobre el +
+  addHint: { marginTop: 'auto', paddingTop: 16 },
 
   preview: { alignItems: 'center', gap: 8, paddingBottom: 14 },
   previewIcon: { width: 66, height: 66, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },

@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, LayoutChangeEvent } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View, StyleSheet, Modal, TouchableOpacity, LayoutChangeEvent, ScrollView, useWindowDimensions,
+} from 'react-native';
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { HeroGlow } from '../layout/HeroScreen';
+
+// Hueco entre la ventana y los bordes de la pantalla
+const GAP = 22;
 
 interface Props {
   visible: boolean;
@@ -31,6 +37,9 @@ const HeroDialog = ({
 }: Props) => {
   const { t } = useTranslation();
   const { ui } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height: screenH } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -38,13 +47,17 @@ const HeroDialog = ({
     if (width !== size.width || height !== size.height) setSize({ width, height });
   };
 
+  // En móviles pequeños la ventana no cabe entera: no pasa de la zona segura,
+  // la cabecera se queda fija (con la X a la vista) y lo de debajo se desplaza
+  const maxHeight = screenH - insets.top - insets.bottom - GAP * 2;
+
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onRequestClose}>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { paddingTop: insets.top + GAP, paddingBottom: insets.bottom + GAP }]}>
         {onClose ? (
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} accessible={false} />
         ) : null}
-        <View style={[styles.card, { backgroundColor: ui.sheet }]}>
+        <View style={[styles.card, { backgroundColor: ui.sheet, maxHeight }]}>
           <View style={styles.hero} onLayout={onLayout}>
             <HeroGlow width={size.width} height={size.height} />
             {onClose ? (
@@ -65,7 +78,17 @@ const HeroDialog = ({
             <Text style={[styles.title, { color: ui.onHero }]}>{title}</Text>
             {heroExtra}
           </View>
-          <View style={styles.body}>{children}</View>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.bodyScroll}
+            contentContainerStyle={styles.body}
+            alwaysBounceVertical={false}
+            persistentScrollbar
+            // Si no cabe, la barra de desplazamiento se ve un momento para avisar
+            onContentSizeChange={() => scrollRef.current?.flashScrollIndicators()}
+          >
+            {children}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -74,7 +97,7 @@ const HeroDialog = ({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', padding: 22,
+    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: GAP,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   card: {
@@ -92,6 +115,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
   title: { fontSize: 22, fontFamily: 'Poppins_700Bold', letterSpacing: -0.4, textAlign: 'center' },
+  // Crece con su contenido y encoge si la ventana llega al alto máximo
+  bodyScroll: { flexGrow: 0, flexShrink: 1 },
   body: { padding: 22 },
 });
 

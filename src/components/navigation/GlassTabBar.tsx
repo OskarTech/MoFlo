@@ -13,16 +13,25 @@ import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 
 export const TAB_BAR_HEIGHT = 62;
 
+// Margen de la barra con los lados de la pantalla
+const SIDE = 14;
+
+// Distancia del centro del botón + al borde derecho (para señalarlo, ver AddHint)
+export const FAB_CENTER_FROM_RIGHT = SIDE + TAB_BAR_HEIGHT / 2;
+
+const IS_IOS = Platform.OS === 'ios';
+
 // El difuminado es nativo (expo-blur): una build anterior a él no lo trae y,
 // en su lugar, dibujaba un recuadro rojo de error. Sin él, la cápsula se queda
 // con el cristal sin difuminar
 const HAS_BLUR = requireOptionalNativeModule('ExpoBlurView') != null;
 
-// Separación de la cápsula con el borde de abajo: por encima de la barra de
-// gestos del sistema, pero sin dejar un hueco grande
+// Separación de la cápsula con el borde de abajo. En iOS se apoya justo encima
+// de la barra de inicio. En Android va entera por encima de la zona de gestos (o
+// de los botones del sistema): pegada a ella, la barra de gestos la cortaba.
 export const useTabBarOffset = () => {
   const insets = useSafeAreaInsets();
-  return Math.max(12, insets.bottom - 6);
+  return IS_IOS ? Math.max(12, insets.bottom - 6) : Math.max(12, insets.bottom + 10);
 };
 
 // Lo que debe dejar libre abajo una pantalla para que la barra no tape su final
@@ -99,16 +108,19 @@ const GlassTabBar = ({
   return (
     <View pointerEvents="box-none" style={[styles.root, { bottom }]}>
       <View style={styles.capsuleShadow}>
-        <View style={[styles.capsule, { borderColor: ui.glassEdge }]}>
-          {HAS_BLUR && (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 60 : 40}
-              tint={isDark ? 'dark' : 'light'}
-              experimentalBlurMethod="dimezisBlurView"
-              style={StyleSheet.absoluteFill}
-            />
+        <View
+          style={[
+            styles.capsule,
+            { borderColor: ui.glassEdge },
+            // En Android el cristal no se difumina bien (se veía el contenido de
+            // detrás y los colores quedaban sucios): allí la cápsula es sólida
+            !IS_IOS && [styles.capsuleSolid, { backgroundColor: ui.sheetRaised }],
+          ]}
+        >
+          {IS_IOS && HAS_BLUR && (
+            <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           )}
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />
+          {IS_IOS && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
           {state.routes.filter((r) => TABS[r.name]).map((route) => (
             <TabButton
               key={route.key}
@@ -136,7 +148,7 @@ const GlassTabBar = ({
 
 const styles = StyleSheet.create({
   root: {
-    position: 'absolute', left: 14, right: 14,
+    position: 'absolute', left: SIDE, right: SIDE,
     flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   capsuleShadow: {
@@ -148,6 +160,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 5,
   },
+  capsuleSolid: { elevation: 6 },
   tabWrap: { flex: 1 },
   tab: {
     height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', gap: 1,

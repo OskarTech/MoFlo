@@ -51,7 +51,8 @@ const UpdateAvailableModal = ({
       {releaseNotes ? (
         <View style={[styles.notes, { backgroundColor: ui.field }]}>
           <Text style={[styles.notesTitle, { color: dc.textSecondary }]}>{t('update.whatsNew')}</Text>
-          <ScrollView style={styles.notesScroll}>
+          {/* Va dentro del desplazamiento de la ventana: en Android hace falta nestedScrollEnabled */}
+          <ScrollView style={styles.notesScroll} nestedScrollEnabled>
             <Text style={[styles.notesText, { color: dc.textPrimary }]}>{releaseNotes}</Text>
           </ScrollView>
         </View>

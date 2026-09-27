@@ -27,6 +27,8 @@ interface Props {
 }
 
 const ACTION_WIDTH = 64;
+// Aire entre la fila (su importe) y los botones que aparecen al deslizar
+const ACTIONS_GAP = 14;
 
 /**
  * Solo puede haber una fila abierta en toda la app. Se guarda aquí fuera del
@@ -100,45 +102,49 @@ const SwipeableRow = ({
     progress: Animated.AnimatedInterpolation<number>,
   ) => {
     // Los marcadores ocupan exactamente lo mismo que los botones reales: el
-    // Swipeable mide aquí cuánto tiene que abrirse la fila, así que el ancho no
-    // puede cambiar al sustituirlos
+    // Swipeable mide aquí cuánto tiene que abrirse la fila (hueco incluido), así
+    // que el ancho no puede cambiar al sustituirlos
     if (!armed) {
       return (
-        <View style={[styles.actions, { borderRadius }]}>
-          {actions.map((action) => (
-            <View
-              key={action.icon}
-              style={[styles.action, { backgroundColor: action.background }]}
-            />
-          ))}
+        <View style={styles.actionsWrap}>
+          <View style={[styles.actions, { borderRadius }]}>
+            {actions.map((action) => (
+              <View
+                key={action.icon}
+                style={[styles.action, { backgroundColor: action.background }]}
+              />
+            ))}
+          </View>
         </View>
       );
     }
 
     return (
-      <View style={[styles.actions, { borderRadius }]}>
-        {actions.map((action, index) => {
-          // Cada botón entra desplazándose desde la derecha
-          const translateX = progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [ACTION_WIDTH * (actions.length - index), 0],
-            extrapolate: 'clamp',
-          });
-          return (
-            <Animated.View key={action.icon} style={{ transform: [{ translateX }] }}>
-              <TouchableOpacity
-                style={[styles.action, { backgroundColor: action.background }]}
-                onPress={() => {
-                  close();
-                  action.onPress();
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
+      <View style={styles.actionsWrap}>
+        <View style={[styles.actions, { borderRadius }]}>
+          {actions.map((action, index) => {
+            // Cada botón entra desplazándose desde la derecha
+            const translateX = progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [ACTION_WIDTH * (actions.length - index), 0],
+              extrapolate: 'clamp',
+            });
+            return (
+              <Animated.View key={action.icon} style={{ transform: [{ translateX }] }}>
+                <TouchableOpacity
+                  style={[styles.action, { backgroundColor: action.background }]}
+                  onPress={() => {
+                    close();
+                    action.onPress();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
       </View>
     );
   };
@@ -165,6 +171,7 @@ const SwipeableRow = ({
 };
 
 const styles = StyleSheet.create({
+  actionsWrap: { flexDirection: 'row', paddingLeft: ACTIONS_GAP },
   actions: { flexDirection: 'row', overflow: 'hidden' },
   action: {
     width: ACTION_WIDTH,

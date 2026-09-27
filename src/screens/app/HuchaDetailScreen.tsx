@@ -14,7 +14,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { usePremium } from '../../hooks/usePremium';
 import PremiumModal from '../../components/common/PremiumModal';
 import { useTheme } from '../../hooks/useTheme';
-import { HuchaMovementType } from '../../types';
+import { HuchaMovement, HuchaMovementType } from '../../types';
 import { formatDate } from '../../utils/dateFormat';
 import { formatAmount, parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
@@ -26,6 +26,10 @@ import BottomSheet, {
   SheetButton, SegmentedControl, FilledInput, SheetLabel,
 } from '../../components/common/BottomSheet';
 import AmountInput from '../../components/common/AmountInput';
+import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
+
+// Lo que un apunte suma a la hucha (o resta, si es una retirada)
+const movementDelta = (m: HuchaMovement) => (m.type === 'deposit' ? m.amount : -m.amount);
 
 type RouteParams = { HuchaDetail: { huchaId: string } };
 
@@ -37,17 +41,20 @@ const useShortMonth = () => {
 
 const AddMoneyModal = ({
   visible, huchaName, huchaColor, huchaCurrentAmount, huchaTargetAmount, quickAmounts,
-  currencySymbol, onConfirm, onDismiss,
+  currencySymbol, onConfirm, onDismiss, editing,
 }: {
   visible: boolean;
   huchaName: string;
   huchaColor: string;
+  /** Lo que hay en la hucha; al corregir un apunte, lo que habría sin él */
   huchaCurrentAmount: number;
   huchaTargetAmount: number;
   quickAmounts: number[];
   currencySymbol: string;
   onConfirm: (amount: number, type: HuchaMovementType) => void;
   onDismiss: () => void;
+  /** Apunte que se corrige: la ventana se abre con su tipo y su importe */
+  editing?: HuchaMovement | null;
 }) => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
@@ -55,16 +62,34 @@ const AddMoneyModal = ({
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState<HuchaMovementType>('deposit');
 
+  // Al abrirse para corregir un apunte, sale con lo que tenía
+  useEffect(() => {
+    if (!visible || !editing) return;
+    setMode(editing.type);
+    setAmount(formatAmountForInput(editing.amount));
+  }, [visible, editing]);
+
   const reset = () => {
     setAmount('');
     setMode('deposit');
   };
 
+  const parsed = parseAmountInput(amount);
+  const hasAmount = !isNaN(parsed) && parsed > 0;
+  // Cómo quedaría la hucha: no puede bajar de cero (margen para los decimales)
+  const rawProjected = hasAmount
+    ? mode === 'deposit' ? huchaCurrentAmount + parsed : huchaCurrentAmount - parsed
+    : huchaCurrentAmount;
+  const tooMuch = hasAmount && rawProjected < -0.005;
+  const changed = !editing || mode !== editing.type || Math.abs(parsed - editing.amount) > 0.001;
+  const isValid = hasAmount && !tooMuch && changed;
+  const hasTarget = huchaTargetAmount > 0;
+  const projected = Math.max(0, rawProjected);
+  const pctOf = (v: number) => (hasTarget ? Math.max(0, Math.min(100, (v / huchaTargetAmount) * 100)) : 0);
+  const amountText = `${formatAmount(hasAmount ? parsed : 0)} ${currencySymbol}`;
+
   const handleConfirm = () => {
-    if (isSavingRef.current) return;
-    const parsed = parseAmountInput(amount);
-    if (!parsed || parsed <= 0) return;
-    if (mode === 'withdrawal' && parsed > huchaCurrentAmount) return;
+    if (isSavingRef.current || !isValid) return;
     isSavingRef.current = true;
     onConfirm(parsed, mode);
     reset();
@@ -76,26 +101,19 @@ const AddMoneyModal = ({
     onDismiss();
   };
 
-  const parsed = parseAmountInput(amount);
-  const hasAmount = !isNaN(parsed) && parsed > 0;
-  const tooMuch = mode === 'withdrawal' && hasAmount && parsed > huchaCurrentAmount;
-  const isValid = hasAmount && !tooMuch;
-  const hasTarget = huchaTargetAmount > 0;
-  const projected = hasAmount
-    ? mode === 'deposit' ? huchaCurrentAmount + parsed : Math.max(0, huchaCurrentAmount - parsed)
-    : huchaCurrentAmount;
-  const pctOf = (v: number) => (hasTarget ? Math.min(100, (v / huchaTargetAmount) * 100) : 0);
-  const amountText = `${formatAmount(hasAmount ? parsed : 0)} ${currencySymbol}`;
-
   return (
     <BottomSheet
       visible={visible}
       onClose={handleDismiss}
-      title={huchaName}
-      subtitle={hasTarget
-        ? `${formatAmount(huchaCurrentAmount)} ${t('hucha.of')} ${formatAmount(huchaTargetAmount)} ${currencySymbol}`
-        : `${formatAmount(huchaCurrentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
-      footer={(
+      title={editing ? t('movements.edit') : huchaName}
+      subtitle={editing
+        ? `${huchaName} · ${formatDate(editing.date)}`
+        : hasTarget
+          ? `${formatAmount(huchaCurrentAmount)} ${t('hucha.of')} ${formatAmount(huchaTargetAmount)} ${currencySymbol}`
+          : `${formatAmount(huchaCurrentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
+      footer={editing ? (
+        <SheetButton label={t('movements.save')} onPress={handleConfirm} disabled={!isValid} />
+      ) : (
         <SheetButton
           label={t(mode === 'deposit' ? 'hucha.depositCta' : 'hucha.withdrawCta', { amount: amountText })}
           onPress={handleConfirm}
@@ -166,7 +184,9 @@ const AddMoneyModal = ({
       )}
 
       {tooMuch && (
-        <Text style={[styles.errorText, { color: ui.expenseText }]}>{t('hucha.insufficientFunds')}</Text>
+        <Text style={[styles.errorText, { color: ui.expenseText }]}>
+          {t(editing ? 'hucha.wouldBeNegative' : 'hucha.insufficientFunds')}
+        </Text>
       )}
     </BottomSheet>
   );
@@ -182,6 +202,7 @@ const HuchaDetailScreen = () => {
   const {
     huchas, huchaMovements,
     addToHucha, deleteHucha, updateHucha,
+    updateHuchaMovement, deleteHuchaMovement,
     closeHucha, reopenHucha,
     showAddMoneyModal, setShowAddMoneyModal,
   } = useSavingsStore();
@@ -208,6 +229,9 @@ const HuchaDetailScreen = () => {
   const [isEditingAmounts, setIsEditingAmounts] = useState(false);
   const [editingAmountStrings, setEditingAmountStrings] = useState(['10', '25', '50', '100']);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  // Apunte del historial que se corrige (se queda puesto mientras la ventana se cierra)
+  const [editingMov, setEditingMov] = useState<HuchaMovement | null>(null);
+  const [editMovVisible, setEditMovVisible] = useState(false);
 
   const hasTarget = !!hucha && hucha.targetAmount > 0;
   const pct = hasTarget
@@ -388,6 +412,35 @@ const HuchaDetailScreen = () => {
     addToHucha(hucha.id, amount, type);
   };
 
+  // Deslizar un apunte del historial: corregirlo o borrarlo
+  const handleEditMovement = (m: HuchaMovement) => {
+    setEditingMov(m);
+    setEditMovVisible(true);
+  };
+
+  const handleSaveMovement = (amount: number, type: HuchaMovementType) => {
+    setEditMovVisible(false);
+    if (editingMov) updateHuchaMovement(editingMov.id, { amount, type });
+  };
+
+  const handleDeleteMovement = (m: HuchaMovement) => {
+    warningHaptic();
+    // Quitar un depósito que ya se ha sacado dejaría la hucha por debajo de cero
+    if (hucha.currentAmount - movementDelta(m) < -0.005) {
+      Alert.alert(t('hucha.wouldBeNegative'));
+      return;
+    }
+    const label = m.type === 'deposit' ? t('hucha.depositLabel') : t('hucha.withdrawalLabel');
+    Alert.alert(
+      t('movementsList.deleteConfirm'),
+      `${label} · ${formatAmount(m.amount)} ${currencySymbol}`,
+      [
+        { text: t('movements.cancel'), style: 'cancel' },
+        { text: t('movementsList.delete'), style: 'destructive', onPress: () => { deleteHuchaMovement(m.id); } },
+      ],
+    );
+  };
+
   const handleToggleAutomatic = async (value: boolean) => {
     if (value) {
       showAutoInputRef.current = true;
@@ -473,192 +526,210 @@ const HuchaDetailScreen = () => {
 
   return (
     <>
-      <HeroScrollScreen
-        hero={hero}
-        scrollRef={scrollRef}
-        onScrollEndDrag={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
-        onMomentumScrollEnd={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
-        keyboardShouldPersistTaps="handled"
+      <View
+        style={styles.container}
+        // Cualquier toque de la pantalla cierra el apunte deslizado. Devuelve false,
+        // así que no se queda con el gesto y el toque llega igual a su destino.
+        onStartShouldSetResponderCapture={closeOpenSwipeable}
       >
-        {isClosed && (
-          <View style={[styles.closedBanner, { backgroundColor: withAlpha(dc.income, 0.14) }]}>
-            <Ionicons name="checkmark-circle" size={18} color={ui.incomeText} />
-            <Text style={[styles.closedBannerText, { color: ui.incomeText }]}>
-              {t('hucha.closedBanner', { date: formatDate(hucha.closedAt!) })}
-            </Text>
-          </View>
-        )}
-
-        {/* Añadir rápido */}
-        {!isClosed && (
-          <>
-            <SectionHeader title={t('hucha.quickAdd')} />
-            <View style={styles.quickRow}>
-              {isEditingAmounts ? (
-                <>
-                  {editingAmountStrings.map((val, i) => (
-                    <RNTextInput
-                      key={i}
-                      style={[styles.quickInput, {
-                        backgroundColor: ui.field, borderColor: ui.accent, color: dc.textPrimary,
-                      }]}
-                      value={val}
-                      onChangeText={v => {
-                        const next = [...editingAmountStrings];
-                        next[i] = v.replace(/[^0-9.,]/g, '');
-                        setEditingAmountStrings(next);
-                      }}
-                      keyboardType="decimal-pad"
-                      maxLength={6}
-                      selectTextOnFocus
-                    />
-                  ))}
-                  <TouchableOpacity
-                    style={[styles.quickEditBtn, { backgroundColor: dc.primary }]}
-                    onPress={handleSaveQuickAmounts}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.quickEditBtnText, { color: '#fff' }]}>{t('hucha.saveQuickAmounts')}</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  {quickAmounts.map(a => (
-                    <TouchableOpacity
-                      key={a}
-                      style={[styles.quickBtn, { backgroundColor: ui.field }]}
-                      onPress={() => handleQuickAdd(a)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.quickBtnText, { color: ui.savingsText }]}>+{a}{currencySymbol}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity
-                    style={[styles.quickEditBtn, { backgroundColor: ui.field }]}
-                    onPress={() => {
-                      setEditingAmountStrings(quickAmounts.map(formatAmountForInput));
-                      setIsEditingAmounts(true);
-                    }}
-                    activeOpacity={0.8}
-                    accessibilityLabel={t('hucha.editQuickAmounts')}
-                  >
-                    <Ionicons name="pencil" size={16} color={dc.textSecondary} />
-                  </TouchableOpacity>
-                </>
-              )}
+        <HeroScrollScreen
+          hero={hero}
+          scrollRef={scrollRef}
+          onScrollBeginDrag={closeOpenSwipeable}
+          onScrollEndDrag={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+          onMomentumScrollEnd={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {isClosed && (
+            <View style={[styles.closedBanner, { backgroundColor: withAlpha(dc.income, 0.14) }]}>
+              <Ionicons name="checkmark-circle" size={18} color={ui.incomeText} />
+              <Text style={[styles.closedBannerText, { color: ui.incomeText }]}>
+                {t('hucha.closedBanner', { date: formatDate(hucha.closedAt!) })}
+              </Text>
             </View>
-          </>
-        )}
+          )}
 
-        {/* Aportación automática */}
-        {!isClosed && (
-          <View style={[styles.autoCard, { backgroundColor: ui.field }]}>
-            <View style={styles.autoRow}>
-              <View style={[styles.autoIcon, { backgroundColor: ui.accentSoft }]}>
-                <Ionicons name="repeat" size={19} color={ui.accent} />
-              </View>
-              <View style={styles.autoInfo}>
-                <Text style={[styles.autoLabel, { color: dc.textPrimary }]}>{t('hucha.automatic')}</Text>
-                {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
-                  <Text style={[styles.autoMeta, { color: dc.textSecondary }]}>
-                    {t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })}
-                    {hucha.recurringDay ? ` · ${t('hucha.dayN', { day: hucha.recurringDay })}` : ''}
-                    {nextDateLabel ? ` · ${t('hucha.nextContribution', { date: nextDateLabel })}` : ''}
-                  </Text>
+          {/* Añadir rápido */}
+          {!isClosed && (
+            <>
+              <SectionHeader title={t('hucha.quickAdd')} />
+              <View style={styles.quickRow}>
+                {isEditingAmounts ? (
+                  <>
+                    {editingAmountStrings.map((val, i) => (
+                      <RNTextInput
+                        key={i}
+                        style={[styles.quickInput, {
+                          backgroundColor: ui.field, borderColor: ui.accent, color: dc.textPrimary,
+                        }]}
+                        value={val}
+                        onChangeText={v => {
+                          const next = [...editingAmountStrings];
+                          next[i] = v.replace(/[^0-9.,]/g, '');
+                          setEditingAmountStrings(next);
+                        }}
+                        keyboardType="decimal-pad"
+                        maxLength={6}
+                        selectTextOnFocus
+                      />
+                    ))}
+                    <TouchableOpacity
+                      style={[styles.quickEditBtn, { backgroundColor: dc.primary }]}
+                      onPress={handleSaveQuickAmounts}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.quickEditBtnText, { color: '#fff' }]}>{t('hucha.saveQuickAmounts')}</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    {quickAmounts.map(a => (
+                      <TouchableOpacity
+                        key={a}
+                        style={[styles.quickBtn, { backgroundColor: ui.field }]}
+                        onPress={() => handleQuickAdd(a)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.quickBtnText, { color: ui.savingsText }]}>+{a}{currencySymbol}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      style={[styles.quickEditBtn, { backgroundColor: ui.field }]}
+                      onPress={() => {
+                        setEditingAmountStrings(quickAmounts.map(formatAmountForInput));
+                        setIsEditingAmounts(true);
+                      }}
+                      activeOpacity={0.8}
+                      accessibilityLabel={t('hucha.editQuickAmounts')}
+                    >
+                      <Ionicons name="pencil" size={16} color={dc.textSecondary} />
+                    </TouchableOpacity>
+                  </>
                 )}
               </View>
-              <Switch
-                value={hucha.isAutomatic || showAutoInput}
-                onValueChange={handleToggleAutomatic}
-                trackColor={{ false: ui.hair2, true: dc.primary }}
-                thumbColor="#fff"
-                ios_backgroundColor={ui.hair2}
-              />
-            </View>
+            </>
+          )}
 
-            {showAutoInput && (() => {
-              const amountValid = !!autoAmount && parseAmountInput(autoAmount) > 0;
-              const dayParsed = parseInt(autoDay, 10);
-              const dayValid = !!autoDay && dayParsed >= 1 && dayParsed <= 31;
-              const canSave = amountValid && dayValid;
-              return (
-                <View ref={autoInputRowRef} style={[styles.autoBlock, { borderTopColor: ui.hair }]}>
-                  <View style={styles.autoDayRow}>
-                    <Text style={[styles.autoDayLabel, { color: dc.textSecondary }]}>{t('hucha.chooseDayOfMonth')}</Text>
-                    <RNTextInput
-                      style={[styles.autoDayInput, { backgroundColor: ui.sheet, color: dc.textPrimary }]}
-                      placeholder={t('hucha.dayOfMonth')}
-                      placeholderTextColor={dc.textSecondary}
-                      keyboardType="number-pad"
-                      value={autoDay}
-                      onChangeText={(v) => setAutoDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
-                      maxLength={2}
-                    />
-                  </View>
-                  <View style={styles.autoAmountRow}>
-                    <RNTextInput
-                      style={[styles.autoInput, { backgroundColor: ui.sheet, color: dc.textPrimary }]}
-                      placeholder={t('hucha.automaticAmount')}
-                      placeholderTextColor={dc.textSecondary}
-                      keyboardType="decimal-pad"
-                      value={autoAmount}
-                      onChangeText={setAutoAmount}
-                    />
-                    <TouchableOpacity
-                      style={[styles.autoSaveBtn, { backgroundColor: dc.primary }, !canSave && styles.disabled]}
-                      onPress={handleSaveAutomatic}
-                      activeOpacity={0.8}
-                      disabled={!canSave}
-                    >
-                      <Text style={styles.autoSaveBtnText}>{t('hucha.save')}</Text>
-                    </TouchableOpacity>
-                  </View>
+          {/* Aportación automática */}
+          {!isClosed && (
+            <View style={[styles.autoCard, { backgroundColor: ui.field }]}>
+              <View style={styles.autoRow}>
+                <View style={[styles.autoIcon, { backgroundColor: ui.accentSoft }]}>
+                  <Ionicons name="repeat" size={19} color={ui.accent} />
                 </View>
-              );
-            })()}
-          </View>
-        )}
-
-        {/* Historial */}
-        {allHuchaMovs.length > 0 && (
-          <>
-            <SectionHeader title={t('hucha.history')} style={styles.historyHeader} />
-            <View style={styles.pad}>
-              {visibleHuchaMovs.map((m) => {
-                const isDeposit = m.type === 'deposit';
-                return (
-                  <View key={m.id} style={styles.historyRow}>
-                    <View style={[styles.historyIcon, { backgroundColor: withAlpha(isDeposit ? hucha.color : dc.expense, 0.15) }]}>
-                      <Ionicons name={isDeposit ? 'arrow-down' : 'arrow-up'} size={17} color={isDeposit ? hucha.color : ui.expenseText} />
-                    </View>
-                    <View style={styles.historyInfo}>
-                      <Text style={[styles.historyLabel, { color: dc.textPrimary }]}>
-                        {isDeposit ? t('hucha.depositLabel') : t('hucha.withdrawalLabel')}
-                      </Text>
-                      <Text style={[styles.historyDate, { color: dc.textSecondary }]}>{formatDate(m.date)}</Text>
-                    </View>
-                    <Text style={[styles.historyAmount, { color: isDeposit ? ui.savingsText : dc.textPrimary }]}>
-                      {isDeposit ? '+' : '-'}{formatAmount(m.amount)} {currencySymbol}
+                <View style={styles.autoInfo}>
+                  <Text style={[styles.autoLabel, { color: dc.textPrimary }]}>{t('hucha.automatic')}</Text>
+                  {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
+                    <Text style={[styles.autoMeta, { color: dc.textSecondary }]}>
+                      {t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })}
+                      {hucha.recurringDay ? ` · ${t('hucha.dayN', { day: hucha.recurringDay })}` : ''}
+                      {nextDateLabel ? ` · ${t('hucha.nextContribution', { date: nextDateLabel })}` : ''}
                     </Text>
+                  )}
+                </View>
+                <Switch
+                  value={hucha.isAutomatic || showAutoInput}
+                  onValueChange={handleToggleAutomatic}
+                  trackColor={{ false: ui.hair2, true: dc.primary }}
+                  thumbColor="#fff"
+                  ios_backgroundColor={ui.hair2}
+                />
+              </View>
+
+              {showAutoInput && (() => {
+                const amountValid = !!autoAmount && parseAmountInput(autoAmount) > 0;
+                const dayParsed = parseInt(autoDay, 10);
+                const dayValid = !!autoDay && dayParsed >= 1 && dayParsed <= 31;
+                const canSave = amountValid && dayValid;
+                return (
+                  <View ref={autoInputRowRef} style={[styles.autoBlock, { borderTopColor: ui.hair }]}>
+                    <View style={styles.autoDayRow}>
+                      <Text style={[styles.autoDayLabel, { color: dc.textSecondary }]}>{t('hucha.chooseDayOfMonth')}</Text>
+                      <RNTextInput
+                        style={[styles.autoDayInput, { backgroundColor: ui.sheet, color: dc.textPrimary }]}
+                        placeholder={t('hucha.dayOfMonth')}
+                        placeholderTextColor={dc.textSecondary}
+                        keyboardType="number-pad"
+                        value={autoDay}
+                        onChangeText={(v) => setAutoDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
+                        maxLength={2}
+                      />
+                    </View>
+                    <View style={styles.autoAmountRow}>
+                      <RNTextInput
+                        style={[styles.autoInput, { backgroundColor: ui.sheet, color: dc.textPrimary }]}
+                        placeholder={t('hucha.automaticAmount')}
+                        placeholderTextColor={dc.textSecondary}
+                        keyboardType="decimal-pad"
+                        value={autoAmount}
+                        onChangeText={setAutoAmount}
+                      />
+                      <TouchableOpacity
+                        style={[styles.autoSaveBtn, { backgroundColor: dc.primary }, !canSave && styles.disabled]}
+                        onPress={handleSaveAutomatic}
+                        activeOpacity={0.8}
+                        disabled={!canSave}
+                      >
+                        <Text style={styles.autoSaveBtnText}>{t('hucha.save')}</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
-              })}
-              {allHuchaMovs.length > 4 && (
-                <TouchableOpacity
-                  style={styles.historyToggle}
-                  onPress={() => setShowAllHistory(prev => !prev)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.historyToggleText, { color: ui.accent }]}>
-                    {showAllHistory ? t('hucha.hideHistory') : t('hucha.viewAllHistory')}
-                  </Text>
-                  <Ionicons name={showAllHistory ? 'chevron-up' : 'chevron-down'} size={15} color={ui.accent} />
-                </TouchableOpacity>
-              )}
+              })()}
             </View>
-          </>
-        )}
-      </HeroScrollScreen>
+          )}
+
+          {/* Historial */}
+          {allHuchaMovs.length > 0 && (
+            <>
+              <SectionHeader title={t('hucha.history')} style={styles.historyHeader} />
+              <View style={styles.pad}>
+                {visibleHuchaMovs.map((m) => {
+                  const isDeposit = m.type === 'deposit';
+                  return (
+                    <SwipeableRow
+                      key={m.id}
+                      borderRadius={14}
+                      actions={[
+                        { icon: 'pencil', background: dc.primary, onPress: () => handleEditMovement(m) },
+                        { icon: 'trash', background: ui.expenseText, onPress: () => handleDeleteMovement(m) },
+                      ]}
+                    >
+                      {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
+                      <View style={[styles.historyRow, { backgroundColor: ui.sheet }]}>
+                        <View style={[styles.historyIcon, { backgroundColor: withAlpha(isDeposit ? hucha.color : dc.expense, 0.15) }]}>
+                          <Ionicons name={isDeposit ? 'arrow-down' : 'arrow-up'} size={17} color={isDeposit ? hucha.color : ui.expenseText} />
+                        </View>
+                        <View style={styles.historyInfo}>
+                          <Text style={[styles.historyLabel, { color: dc.textPrimary }]}>
+                            {isDeposit ? t('hucha.depositLabel') : t('hucha.withdrawalLabel')}
+                          </Text>
+                          <Text style={[styles.historyDate, { color: dc.textSecondary }]}>{formatDate(m.date)}</Text>
+                        </View>
+                        <Text style={[styles.historyAmount, { color: isDeposit ? ui.savingsText : dc.textPrimary }]}>
+                          {isDeposit ? '+' : '-'}{formatAmount(m.amount)} {currencySymbol}
+                        </Text>
+                      </View>
+                    </SwipeableRow>
+                  );
+                })}
+                {allHuchaMovs.length > 4 && (
+                  <TouchableOpacity
+                    style={styles.historyToggle}
+                    onPress={() => setShowAllHistory(prev => !prev)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.historyToggleText, { color: ui.accent }]}>
+                      {showAllHistory ? t('hucha.hideHistory') : t('hucha.viewAllHistory')}
+                    </Text>
+                    <Ionicons name={showAllHistory ? 'chevron-up' : 'chevron-down'} size={15} color={ui.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+        </HeroScrollScreen>
+      </View>
 
       <AddMoneyModal
         visible={showAddMoneyModal && !isClosed}
@@ -670,6 +741,20 @@ const HuchaDetailScreen = () => {
         currencySymbol={currencySymbol}
         onConfirm={handleAddMoney}
         onDismiss={() => setShowAddMoneyModal(false)}
+      />
+
+      {/* Corregir un apunte: parte de lo que habría en la hucha sin él */}
+      <AddMoneyModal
+        visible={editMovVisible}
+        editing={editingMov}
+        huchaName={hucha.name}
+        huchaColor={hucha.color}
+        huchaCurrentAmount={editingMov ? hucha.currentAmount - movementDelta(editingMov) : hucha.currentAmount}
+        huchaTargetAmount={hucha.targetAmount}
+        quickAmounts={quickAmounts}
+        currencySymbol={currencySymbol}
+        onConfirm={handleSaveMovement}
+        onDismiss={() => setEditMovVisible(false)}
       />
 
       {/* Opciones: editar, cerrar o reabrir, y borrar */}
@@ -817,7 +902,7 @@ const styles = StyleSheet.create({
 
   // Historial
   historyHeader: { marginTop: 24 },
-  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, borderRadius: 14 },
   historyIcon: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   historyInfo: { flex: 1 },
   historyLabel: { fontSize: 14.5, fontFamily: 'Poppins_500Medium' },

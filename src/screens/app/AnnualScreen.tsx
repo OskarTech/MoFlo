@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -151,6 +152,16 @@ const AnnualScreen = () => {
     setSelectedYearLocal(year);
   };
 
+  // Al irse a otra pantalla se vuelve al mes actual: al regresar se ve el mes en curso
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (isFocused) return;
+    const now = new Date();
+    setYearMode(false);
+    setSelectedMonthLocal(now.getMonth() + 1);
+    setSelectedYearLocal(now.getFullYear());
+  }, [isFocused]);
+
   const currencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
 
   const getCatName = (id: string, type: MovementType) =>
@@ -231,7 +242,8 @@ const AnnualScreen = () => {
     ? Math.round((balance / totalIncome) * 100)
     : 0;
 
-  // ── RITMO DEL MES: gasto acumulado día a día, frente al mes anterior ─────
+  // ── RITMO DEL MES: lo acumulado día a día de la pestaña elegida (gastos,
+  // ingresos o lo aportado a huchas), frente al mes anterior ─────
   const rhythm = useMemo(() => {
     if (yearMode) return null;
     const y = selectedYear;
@@ -242,26 +254,36 @@ const AnnualScreen = () => {
     const prevY = m === 0 ? y - 1 : y;
     const prevM = m === 0 ? 11 : m - 1;
     const prevDays = new Date(prevY, prevM + 1, 0).getDate();
+    // Cada apunte con su fecha y lo que suma: en huchas, lo metido menos lo sacado
+    const entries = activeTab === 'hucha'
+      ? huchaMovements.map((mv) => ({ date: mv.date, value: mv.type === 'deposit' ? mv.amount : -mv.amount }))
+      : movements.filter((mv) => mv.type === activeTab).map((mv) => ({ date: mv.date, value: mv.amount }));
     const cumulative = (yy: number, mm: number, upto: number) => {
       const daily = new Array(upto).fill(0);
-      movements.forEach((mv) => {
-        if (mv.type !== 'expense') return;
-        const d = new Date(mv.date);
-        if (d.getFullYear() === yy && d.getMonth() === mm && d.getDate() <= upto) daily[d.getDate() - 1] += mv.amount;
+      entries.forEach((e) => {
+        const d = new Date(e.date);
+        if (d.getFullYear() === yy && d.getMonth() === mm && d.getDate() <= upto) daily[d.getDate() - 1] += e.value;
       });
       let acc = 0;
       return daily.map((v) => (acc += v));
     };
     const current = cumulative(y, m, lastDay);
     const previousRaw = cumulative(prevY, prevM, prevDays);
-    const previous = previousRaw[previousRaw.length - 1] > 0 ? previousRaw : null;
-    if (!previous && current[current.length - 1] === 0) return null;
+    // En huchas puede subir y bajar: se mira si hubo algo, no solo cómo acabó
+    const previous = previousRaw.some((v) => v !== 0) ? previousRaw : null;
+    if (!previous && current.every((v) => v === 0)) return null;
     // Se compara el mismo día de los dos meses (o el último del anterior, si es más corto)
     const compareDay = Math.min(lastDay, prevDays);
     const diff = previous ? current[compareDay - 1] - previous[compareDay - 1] : null;
     return { current, previous, daysInMonth, compareDay, diff, prevMonth: prevM };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render
-  }, [movements, selectedMonth, selectedYear, yearMode]);
+  }, [movements, huchaMovements, activeTab, selectedMonth, selectedYear, yearMode]);
+
+  // Color del ritmo, el de la pestaña. En gastos, ir por debajo del mes pasado
+  // es lo bueno; en ingresos y huchas, ir por encima.
+  const rhythmColor = activeTab === 'income' ? ui.incomeText : activeTab === 'hucha' ? ui.savingsText : ui.accent;
+  const rhythmGood = !!rhythm && rhythm.diff !== null
+    && (activeTab === 'expense' ? rhythm.diff < 0 : rhythm.diff > 0);
 
   // ── EXPENSE BREAKDOWN ─────────────────────────────────────────────────────
   const expenseBreakdown = useMemo(() => {
@@ -877,6 +899,15 @@ const AnnualScreen = () => {
 
   return (
     <HeroScrollScreen hero={hero}>
+      {/* PESTAÑAS: arriba, porque todo lo de debajo (también el ritmo) es de la elegida */}
+      <View style={styles.pad}>
+        <SegmentedControl
+          options={(['expense', 'income', 'hucha'] as SummaryTab[]).map((tab) => ({ key: tab, label: subTabLabel(tab) }))}
+          value={activeTab}
+          onChange={(tab) => { lightHaptic(); setActiveTab(tab); }}
+        />
+      </View>
+
       {/* RITMO DEL MES */}
       {rhythm && (
         <View style={styles.rhythm}>
@@ -885,14 +916,14 @@ const AnnualScreen = () => {
             <View style={styles.pad}>
               <View style={[
                 styles.badge,
-                { backgroundColor: withAlpha(rhythm.diff < 0 ? dc.income : dc.expense, 0.15) },
+                { backgroundColor: withAlpha(rhythmGood ? dc.income : dc.expense, 0.15) },
               ]}>
                 <Ionicons
                   name={rhythm.diff < 0 ? 'arrow-down' : 'arrow-up'}
                   size={12}
-                  color={rhythm.diff < 0 ? ui.incomeText : ui.expenseText}
+                  color={rhythmGood ? ui.incomeText : ui.expenseText}
                 />
-                <Text style={[styles.badgeText, { color: rhythm.diff < 0 ? ui.incomeText : ui.expenseText }]}>
+                <Text style={[styles.badgeText, { color: rhythmGood ? ui.incomeText : ui.expenseText }]}>
                   {t(rhythm.diff < 0 ? 'resumen.lessThanPrev' : 'resumen.moreThanPrev', {
                     amount: `${formatAmount(Math.abs(rhythm.diff))} ${currencySymbol}`,
                     day: rhythm.compareDay,
@@ -902,10 +933,15 @@ const AnnualScreen = () => {
             </View>
           )}
           <View style={[styles.pad, styles.rhythmChart]}>
-            <RhythmChart current={rhythm.current} previous={rhythm.previous} daysInMonth={rhythm.daysInMonth} />
+            <RhythmChart
+              current={rhythm.current}
+              previous={rhythm.previous}
+              daysInMonth={rhythm.daysInMonth}
+              color={rhythmColor}
+            />
             <View style={styles.rhythmLegend}>
               <View style={styles.flowLegendItem}>
-                <View style={[styles.lineSolid, { backgroundColor: ui.accent }]} />
+                <View style={[styles.lineSolid, { backgroundColor: rhythmColor }]} />
                 <Text style={[styles.legendText, { color: dc.textSecondary }]}>{fullMonth(selectedMonth)}</Text>
               </View>
               {rhythm.previous && (
@@ -918,15 +954,6 @@ const AnnualScreen = () => {
           </View>
         </View>
       )}
-
-      {/* PESTAÑAS */}
-      <View style={styles.pad}>
-        <SegmentedControl
-          options={(['expense', 'income', 'hucha'] as SummaryTab[]).map((tab) => ({ key: tab, label: subTabLabel(tab) }))}
-          value={activeTab}
-          onChange={(tab) => { lightHaptic(); setActiveTab(tab); }}
-        />
-      </View>
 
       {activeTab === 'expense' && renderBreakdown('expense')}
       {activeTab === 'income' && renderBreakdown('income')}
@@ -967,7 +994,7 @@ const styles = StyleSheet.create({
   flowLegendText: { fontSize: 11.5, fontFamily: 'Poppins_400Regular' },
 
   // Ritmo del mes
-  rhythm: { marginBottom: 22 },
+  rhythm: { marginTop: 22, marginBottom: 4 },
   rhythmHeader: { marginBottom: 6 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',

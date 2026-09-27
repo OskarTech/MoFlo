@@ -28,6 +28,7 @@ import { HeroTop, HeroSheetCap, HeroStatusBar, useHeroScroll } from '../../compo
 import { HeroTitleBar, MonthSelector } from '../../components/layout/HeroBar';
 import { GroupHeader } from '../../components/layout/SheetSection';
 import { useTabBarSpace } from '../../components/navigation/GlassTabBar';
+import AddHint from '../../components/navigation/AddHint';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
@@ -244,6 +245,11 @@ const MovementsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   // Mes elegido; null = el mes actual (así, al cambiar de mes el calendario, sigue siendo el actual)
   const [pickedMonth, setPickedMonth] = useState<number | null>(null);
+
+  // Al irse a otra pantalla se vuelve al mes actual: al regresar se ve el mes en curso
+  useEffect(() => {
+    if (!isFocused) setPickedMonth(null);
+  }, [isFocused]);
 
   const handleEditRecurring = useCallback((item: RecurringMovement) => {
     setEditingRecurring(item);
@@ -489,14 +495,6 @@ const MovementsScreen = () => {
       </View>
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('recurring.noRecurring')}</Text>
       <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>{t('recurring.noRecurringSubtitle')}</Text>
-      <TouchableOpacity
-        style={[styles.emptyAction, { backgroundColor: dc.primary }]}
-        onPress={() => { lightHaptic(); setShowRecurringModal(true); }}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={16} color="#FFFFFF" />
-        <Text style={styles.emptyActionText}>{t('recurring.addFirst')}</Text>
-      </TouchableOpacity>
     </View>
   ) : (
     <View style={styles.emptyState}>
@@ -539,7 +537,8 @@ const MovementsScreen = () => {
         initialNumToRender={10}
         maxToRenderPerBatch={8}
         windowSize={7}
-        contentContainerStyle={{ paddingBottom: tabSpace }}
+        // flexGrow: aunque la lista sea corta, el aviso de los fijos queda abajo del todo
+        contentContainerStyle={{ paddingBottom: tabSpace, flexGrow: 1 }}
         ListHeaderComponent={
           <>
             <HeroTop onHeight={setHeroHeight}>{hero}</HeroTop>
@@ -548,6 +547,9 @@ const MovementsScreen = () => {
           </>
         }
         ListEmptyComponent={emptyState}
+        // En los fijos, el + de la barra añade uno: la flecha lo señala
+        ListFooterComponent={filter === 'recurring' ? <AddHint label={t('recurring.addHint')} /> : null}
+        ListFooterComponentStyle={filter === 'recurring' ? styles.footerFill : undefined}
       />
       <HeroStatusBar scrollY={scrollY} heroHeight={heroHeight} />
 
@@ -605,6 +607,8 @@ const styles = StyleSheet.create({
   hSub: { fontSize: 12.5, fontFamily: 'Poppins_400Regular', marginTop: 1 },
   hAmount: { fontSize: 15, fontFamily: 'Poppins_600SemiBold', flexShrink: 0 },
 
+  // Ocupa lo que queda de pantalla y deja el aviso abajo, sobre el +
+  footerFill: { flexGrow: 1, justifyContent: 'flex-end' },
   emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
   emptyIcon: {
     width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 14,

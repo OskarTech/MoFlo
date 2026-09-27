@@ -154,7 +154,6 @@
     "edit": "Editar movimento recorrente",
     "noRecurring": "Sem movimentos recorrentes",
     "noRecurringSubtitle": "Adicione despesas ou receitas fixas que se repetem todos os meses",
-    "addFirst": "Adicionar movimento recorrente",
     "active": "Ativo",
     "inactive": "Inativo",
     "dayShort": "dia",
@@ -169,7 +168,8 @@
     "expense": "Despesas",
     "net": "Líquido",
     "perMonth": "/ mês",
-    "dayPickerLabel": "Dia de cada mês"
+    "dayPickerLabel": "Dia de cada mês",
+    "addHint": "Toque em + para adicionar um movimento recorrente"
   },
   "movementsList": {
     "title": "Movimentos",
@@ -415,7 +415,8 @@
     "willReach": "Vai chegar a {{amount}}",
     "willRemain": "Ficam {{amount}}",
     "depositCta": "Adicionar {{amount}}",
-    "withdrawCta": "Retirar {{amount}}"
+    "withdrawCta": "Retirar {{amount}}",
+    "wouldBeNegative": "O objetivo de poupança ficaria negativo"
   },
   "tabs": {
     "home": "Início",
@@ -472,7 +473,6 @@
     "includes": "O que inclui",
     "featureSharedAccount": "Conta partilhada",
     "featureCustomCategories": "Categorias personalizadas",
-    "featureExportCSV": "Exportar dados para CSV",
     "featureUnlimitedRecurring": "Movimentos recorrentes ilimitados",
     "featureUnlimitedHuchas": "Objetivos de poupança ilimitados",
     "featureCustomColor": "Cores e temas personalizados",
@@ -507,7 +507,8 @@
     "new": "Nova",
     "swipeHint": "Deslize uma categoria para a esquerda para a editar ou remover",
     "color": "Cor",
-    "colorAuto": "Automático"
+    "colorAuto": "Automático",
+    "addHint": "Toque em + para criar uma categoria"
   },
   "export": {
     "title": "Exportar dados",

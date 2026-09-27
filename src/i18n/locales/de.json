@@ -154,7 +154,6 @@
     "edit": "Wiederkehrende Bewegung bearbeiten",
     "noRecurring": "Keine wiederkehrenden Bewegungen",
     "noRecurringSubtitle": "Füge feste Ausgaben oder Einnahmen hinzu, die sich monatlich wiederholen",
-    "addFirst": "Wiederkehrende Bewegung hinzufügen",
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "dayShort": "Tag",
@@ -169,7 +168,8 @@
     "expense": "Ausgaben",
     "net": "Netto",
     "perMonth": "/ Monat",
-    "dayPickerLabel": "Tag jedes Monats"
+    "dayPickerLabel": "Tag jedes Monats",
+    "addHint": "Tippe auf +, um eine wiederkehrende Bewegung hinzuzufügen"
   },
   "movementsList": {
     "title": "Bewegungen",
@@ -415,7 +415,8 @@
     "willReach": "Du erreichst {{amount}}",
     "willRemain": "Es bleiben {{amount}}",
     "depositCta": "{{amount}} hinzufügen",
-    "withdrawCta": "{{amount}} abheben"
+    "withdrawCta": "{{amount}} abheben",
+    "wouldBeNegative": "Das Sparziel würde ins Minus fallen"
   },
   "tabs": {
     "home": "Start",
@@ -472,7 +473,6 @@
     "includes": "Was enthalten ist",
     "featureSharedAccount": "Geteiltes Konto",
     "featureCustomCategories": "Benutzerdefinierte Kategorien",
-    "featureExportCSV": "Daten als CSV exportieren",
     "featureUnlimitedRecurring": "Unbegrenzte wiederkehrende Bewegungen",
     "featureUnlimitedHuchas": "Unbegrenzte Sparziele",
     "featureCustomColor": "Benutzerdefinierte Farben und Themen",
@@ -507,7 +507,8 @@
     "new": "Neu",
     "swipeHint": "Wische eine Kategorie nach links, um sie zu bearbeiten oder zu entfernen",
     "color": "Farbe",
-    "colorAuto": "Automatisch"
+    "colorAuto": "Automatisch",
+    "addHint": "Tippe auf +, um eine Kategorie zu erstellen"
   },
   "export": {
     "title": "Daten exportieren",

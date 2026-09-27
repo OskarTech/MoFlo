@@ -154,7 +154,6 @@
     "edit": "Modifier le mouvement récurrent",
     "noRecurring": "Aucun mouvement récurrent",
     "noRecurringSubtitle": "Ajoutez des dépenses ou revenus fixes qui se répètent chaque mois",
-    "addFirst": "Ajouter un mouvement récurrent",
     "active": "Actif",
     "inactive": "Inactif",
     "dayShort": "jour",
@@ -169,7 +168,8 @@
     "expense": "Dépenses",
     "net": "Net",
     "perMonth": "/ mois",
-    "dayPickerLabel": "Jour de chaque mois"
+    "dayPickerLabel": "Jour de chaque mois",
+    "addHint": "Appuyez sur + pour ajouter un mouvement récurrent"
   },
   "movementsList": {
     "title": "Mouvements",
@@ -415,7 +415,8 @@
     "willReach": "Vous atteindrez {{amount}}",
     "willRemain": "Il restera {{amount}}",
     "depositCta": "Ajouter {{amount}}",
-    "withdrawCta": "Retirer {{amount}}"
+    "withdrawCta": "Retirer {{amount}}",
+    "wouldBeNegative": "L'objectif d'épargne passerait en négatif"
   },
   "tabs": {
     "home": "Accueil",
@@ -472,7 +473,6 @@
     "includes": "Ce qui est inclus",
     "featureSharedAccount": "Compte partagé",
     "featureCustomCategories": "Catégories personnalisées",
-    "featureExportCSV": "Exporter les données en CSV",
     "featureUnlimitedRecurring": "Mouvements récurrents illimités",
     "featureUnlimitedHuchas": "Objectifs d'épargne illimités",
     "featureCustomColor": "Couleurs et thèmes personnalisés",
@@ -507,7 +507,8 @@
     "new": "Nouvelle",
     "swipeHint": "Faites glisser une catégorie vers la gauche pour la modifier ou la supprimer",
     "color": "Couleur",
-    "colorAuto": "Automatique"
+    "colorAuto": "Automatique",
+    "addHint": "Appuyez sur + pour créer une catégorie"
   },
   "export": {
     "title": "Exporter les données",

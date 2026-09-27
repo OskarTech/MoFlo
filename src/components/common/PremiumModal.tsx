@@ -20,7 +20,6 @@ interface Props {
 const FEATURES: { key: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'premium.featureSharedAccount', icon: 'people-outline' },
   { key: 'premium.featureCustomCategories', icon: 'pricetags-outline' },
-  { key: 'premium.featureExportCSV', icon: 'download-outline' },
   { key: 'premium.featureUnlimitedRecurring', icon: 'repeat-outline' },
   { key: 'premium.featureUnlimitedHuchas', icon: 'cash-outline' },
   { key: 'premium.featureCustomColor', icon: 'color-palette-outline' },

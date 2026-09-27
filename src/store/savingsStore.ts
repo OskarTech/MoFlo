@@ -68,6 +68,8 @@ interface SavingsStore {
   createHucha: (data: Omit<Hucha, 'id' | 'createdAt'> & { currentAmount?: number }) => Promise<void>;
   updateHucha: (id: string, data: Partial<Hucha>) => Promise<void>;
   addToHucha: (huchaId: string, amount: number, type?: HuchaMovementType) => Promise<void>;
+  updateHuchaMovement: (id: string, changes: { amount: number; type: HuchaMovementType }) => Promise<void>;
+  deleteHuchaMovement: (id: string) => Promise<void>;
   deleteHucha: (id: string) => Promise<void>;
   closeHucha: (id: string) => Promise<void>;
   reopenHucha: (id: string) => Promise<void>;
@@ -328,6 +330,81 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
     if (justCompleted && !sharedAccountId) {
       setTimeout(() => maybePromptForRating('goal_complete'), 600);
+    }
+  },
+
+  // Corrige un apunte (importe o tipo) y ajusta la hucha con la diferencia
+  updateHuchaMovement: async (id, { amount, type }) => {
+    const { sharedAccountId, huchas, huchaMovements } = get();
+    const movement = huchaMovements.find(m => m.id === id);
+    if (!movement) return;
+
+    const oldDelta = movement.type === 'deposit' ? movement.amount : -movement.amount;
+    const newDelta = type === 'deposit' ? amount : -amount;
+    const diff = newDelta - oldDelta;
+
+    const updatedHuchas = huchas.map(h =>
+      h.id === movement.huchaId ? { ...h, currentAmount: Math.max(0, h.currentAmount + diff) } : h
+    );
+    const updatedMovements = huchaMovements.map(m => (m.id === id ? { ...m, amount, type } : m));
+    set({ huchas: updatedHuchas, huchaMovements: updatedMovements });
+    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
+    await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
+
+    try {
+      const huchasCol = sharedAccountId ? getSharedHuchasCol(sharedAccountId) : getUserHuchasCol();
+      const movementsCol = sharedAccountId ? getSharedMovementsCol(sharedAccountId) : getUserMovementsCol();
+      // En un solo lote, como al añadir: el importe de la hucha (con increment,
+      // por si otro miembro aporta a la vez) y el apunte, juntos o ninguno.
+      // update y no set: si otro miembro ya lo ha borrado, no se recrea a medias.
+      const batch = firestore().batch();
+      if (diff !== 0) {
+        batch.set(
+          huchasCol.doc(movement.huchaId),
+          { currentAmount: firestore.FieldValue.increment(diff) },
+          { merge: true }
+        );
+      }
+      batch.update(movementsCol.doc(id), { amount, type });
+      await batch.commit();
+    } catch (e) {
+      console.error('Error updating hucha movement:', e);
+    }
+  },
+
+  // Borra un apunte y quita de la hucha lo que sumaba (o devuelve lo que restaba)
+  deleteHuchaMovement: async (id) => {
+    const { sharedAccountId, huchas, huchaMovements } = get();
+    const movement = huchaMovements.find(m => m.id === id);
+    if (!movement) return;
+
+    const delta = movement.type === 'deposit' ? movement.amount : -movement.amount;
+
+    const updatedHuchas = huchas.map(h =>
+      h.id === movement.huchaId ? { ...h, currentAmount: Math.max(0, h.currentAmount - delta) } : h
+    );
+    const updatedMovements = huchaMovements.filter(m => m.id !== id);
+    set({ huchas: updatedHuchas, huchaMovements: updatedMovements });
+    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
+    await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
+
+    try {
+      const huchasCol = sharedAccountId ? getSharedHuchasCol(sharedAccountId) : getUserHuchasCol();
+      const movementsCol = sharedAccountId ? getSharedMovementsCol(sharedAccountId) : getUserMovementsCol();
+      const batch = firestore().batch();
+      batch.set(
+        huchasCol.doc(movement.huchaId),
+        { currentAmount: firestore.FieldValue.increment(-delta) },
+        { merge: true }
+      );
+      batch.delete(movementsCol.doc(id));
+      await batch.commit();
+    } catch (e) {
+      console.error('Error deleting hucha movement:', e);
     }
   },
 

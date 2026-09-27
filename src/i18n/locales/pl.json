@@ -158,7 +158,6 @@
   "edit": "Edytuj cykliczną transakcje",
   "noRecurring": "Brak cyklicznych transakcji",
   "noRecurringSubtitle": "Dodaj stałe wydatki lub przychody powtarzające się co miesiąc",
-  "addFirst": "Dodaj cykliczną transakcję",
   "dayShort": "dzień",
   "active": "Aktywne",
   "inactive": "Nieaktywne",
@@ -173,7 +172,8 @@
   "expense": "Wydatki",
   "net": "Netto",
   "perMonth": "/ mies.",
-  "dayPickerLabel": "Dzień każdego miesiąca"
+  "dayPickerLabel": "Dzień każdego miesiąca",
+  "addHint": "Dotknij +, aby dodać cykliczną transakcję"
   },
   "movementsList": {
   "title": "Transakcje",
@@ -419,7 +419,8 @@
   "willReach": "Osiągniesz {{amount}}",
   "willRemain": "Zostanie {{amount}}",
   "depositCta": "Dodaj {{amount}}",
-  "withdrawCta": "Wypłać {{amount}}"
+  "withdrawCta": "Wypłać {{amount}}",
+  "wouldBeNegative": "Skarbonka miałaby ujemne saldo"
   },
   "tabs": {
   "home": "Główna",
@@ -476,7 +477,6 @@
   "includes": "Co zawiera",
   "featureSharedAccount": "Wspólne konto",
   "featureCustomCategories": "Niestandardowe kategorie",
-  "featureExportCSV": "Eksport danych do CSV",
   "featureUnlimitedRecurring": "Nieograniczone ruchy cykliczne",
   "featureUnlimitedHuchas": "Nieograniczone cele oszczędnościowe",
   "featureCustomColor": "Niestandardowe kolory i motywy",
@@ -514,7 +514,8 @@
   "new": "Nowa",
   "swipeHint": "Przesuń kategorię w lewo, aby ją edytować lub usunąć",
   "color": "Kolor",
-  "colorAuto": "Automatyczny"
+  "colorAuto": "Automatyczny",
+  "addHint": "Dotknij +, aby utworzyć kategorię"
   },
   "export": {
   "title": "Eksport danych",

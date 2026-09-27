@@ -154,7 +154,6 @@
   "edit": "Edit recurring movement",
   "noRecurring": "No recurring movements",
   "noRecurringSubtitle": "Add fixed expenses or income that repeat every month",
-  "addFirst": "Add recurring movement",
   "active": "Active",
   "inactive": "Inactive",
   "dayShort": "day",
@@ -169,7 +168,8 @@
   "expense": "Expenses",
   "net": "Net",
   "perMonth": "/ month",
-  "dayPickerLabel": "Day of each month"
+  "dayPickerLabel": "Day of each month",
+  "addHint": "Tap + to add a recurring movement"
   },
   "movementsList": {
   "title": "Movements",
@@ -415,7 +415,8 @@
   "willReach": "You will reach {{amount}}",
   "willRemain": "{{amount}} will remain",
   "depositCta": "Add {{amount}}",
-  "withdrawCta": "Withdraw {{amount}}"
+  "withdrawCta": "Withdraw {{amount}}",
+  "wouldBeNegative": "The savings goal would go below zero"
   },
   "tabs": {
   "home": "Home",
@@ -473,7 +474,6 @@
   "includes": "What's included",
   "featureSharedAccount": "Shared account",
   "featureCustomCategories": "Custom categories",
-  "featureExportCSV": "Export data to CSV",
   "featureUnlimitedRecurring": "Unlimited recurring movements",
   "featureUnlimitedHuchas": "Unlimited savings goals",
   "featureCustomColor": "Custom colors & themes",
@@ -508,7 +508,8 @@
   "new": "New",
   "swipeHint": "Swipe a category to the left to edit or remove it",
   "color": "Color",
-  "colorAuto": "Automatic"
+  "colorAuto": "Automatic",
+  "addHint": "Tap + to create a category"
   },
   "export": {
   "title": "Export data",
