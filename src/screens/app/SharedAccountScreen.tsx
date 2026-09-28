@@ -8,7 +8,7 @@ import {
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import auth from '@react-native-firebase/auth';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -210,7 +210,7 @@ const SharedAccountScreen = () => {
   const heroIntro = (
     <View style={styles.heroBody}>
       <View style={styles.heroAvatar}>
-        <Ionicons name="people" size={28} color={ui.hero} />
+        <Icon name="people" size={28} color={ui.hero} />
       </View>
       <Text style={[styles.heroText, { color: ui.onHeroSoft }]}>{t('sharedAccount.intro')}</Text>
     </View>
@@ -230,7 +230,7 @@ const SharedAccountScreen = () => {
         >
           <View style={styles.status}>
             <View style={[styles.statusIcon, { backgroundColor: withAlpha(dc.savings, 0.14) }]}>
-              <Ionicons name="star" size={28} color={ui.savingsText} />
+              <Icon name="star" size={28} color={ui.savingsText} />
             </View>
             <Text style={[styles.statusTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
             <Text style={[styles.statusText, { color: dc.textSecondary }]}>{t('sharedAccount.intro')}</Text>
@@ -252,7 +252,7 @@ const SharedAccountScreen = () => {
       {sharedAccount && !isLoading ? (
         <View style={styles.heroBody}>
           <View style={styles.heroAvatar}>
-            <Ionicons name="people" size={28} color={ui.hero} />
+            <Icon name="people" size={28} color={ui.hero} />
           </View>
           <View style={styles.heroInfo}>
             <Text style={[styles.heroName, { color: ui.onHero }]} numberOfLines={1}>{sharedAccount.name}</Text>
@@ -296,7 +296,7 @@ const SharedAccountScreen = () => {
                   style={[styles.linkButton, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.sheet }]}
                   onPress={handleCopyLink}
                 >
-                  <Ionicons
+                  <Icon
                     name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
                     size={18}
                     color={linkCopied ? ui.incomeText : ui.accent}
@@ -309,7 +309,7 @@ const SharedAccountScreen = () => {
                   style={[styles.linkButton, { backgroundColor: ui.sheet }]}
                   onPress={handleShareLink}
                 >
-                  <Ionicons name="share-social-outline" size={18} color={ui.accent} />
+                  <Icon name="share-social-outline" size={18} color={ui.accent} />
                   <Text style={[styles.linkButtonText, { color: ui.accent }]}>
                     {t('sharedAccount.shareLink')}
                   </Text>
@@ -343,7 +343,7 @@ const SharedAccountScreen = () => {
                         style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
                         onPress={() => handleReject(req.uid, req.displayName)}
                       >
-                        <Ionicons name="close" size={16} color={ui.expenseText} />
+                        <Icon name="close" size={16} color={ui.expenseText} />
                         <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
                           {t('sharedAccount.reject')}
                         </Text>
@@ -352,7 +352,7 @@ const SharedAccountScreen = () => {
                         style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
                         onPress={() => handleApprove(req.uid, req.displayName)}
                       >
-                        <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                        <Icon name="checkmark" size={16} color={ui.incomeText} />
                         <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
                           {t('sharedAccount.approve')}
                         </Text>
@@ -414,7 +414,7 @@ const SharedAccountScreen = () => {
                   { backgroundColor: pendingJoinRequest.status === 'rejected' ? ui.expenseSoft : ui.accentSoft },
                 ]}
               >
-                <Ionicons
+                <Icon
                   name={pendingJoinRequest.status === 'rejected' ? 'close' : 'hourglass-outline'}
                   size={28}
                   color={pendingJoinRequest.status === 'rejected' ? ui.expenseText : ui.accent}
@@ -455,10 +455,10 @@ const SharedAccountScreen = () => {
                   activeOpacity={0.8}
                 >
                   <View style={[styles.optionIcon, { backgroundColor: ui.accentSoft }]}>
-                    <Ionicons name="add" size={22} color={ui.accent} />
+                    <Icon name="add" size={22} color={ui.accent} />
                   </View>
                   <Text style={[styles.optionTitle, { color: dc.textPrimary }]}>{t('sharedAccount.createTitle')}</Text>
-                  <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                  <Icon name="chevron-forward" size={18} color={dc.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.option, { backgroundColor: ui.field }]}
@@ -466,10 +466,10 @@ const SharedAccountScreen = () => {
                   activeOpacity={0.8}
                 >
                   <View style={[styles.optionIcon, { backgroundColor: ui.accentSoft }]}>
-                    <Ionicons name="key-outline" size={20} color={ui.accent} />
+                    <Icon name="key-outline" size={20} color={ui.accent} />
                   </View>
                   <Text style={[styles.optionTitle, { color: dc.textPrimary }]}>{t('sharedAccount.joinTitle')}</Text>
-                  <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />
+                  <Icon name="chevron-forward" size={18} color={dc.textSecondary} />
                 </TouchableOpacity>
               </>
             )}

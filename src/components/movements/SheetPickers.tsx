@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryInfo } from '../../hooks/useCategoryInfo';
@@ -69,7 +69,7 @@ export const CategoryPicker = ({
             accessibilityState={{ selected: on }}
           >
             <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.16) }]}>
-              <Ionicons name={`${c.icon}-outline` as any} size={20} color={color} />
+              <Icon name={`${c.icon}-outline` as any} size={20} color={color} />
             </View>
             <Text
               style={[styles.name, { color: dc.textPrimary }, on && styles.nameOn]}
@@ -84,7 +84,7 @@ export const CategoryPicker = ({
       })}
       <TouchableOpacity style={styles.tile} onPress={onAdd} activeOpacity={0.75} accessibilityRole="button">
         <View style={[styles.icon, styles.addIcon, { borderColor: ui.hair2 }]}>
-          <Ionicons name="add" size={22} color={dc.textSecondary} />
+          <Icon name="add" size={22} color={dc.textSecondary} />
         </View>
         <Text style={[styles.name, { color: dc.textSecondary }]} numberOfLines={1}>{t('categories.new')}</Text>
       </TouchableOpacity>

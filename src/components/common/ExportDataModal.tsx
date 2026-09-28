@@ -2,14 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import { useTheme } from '../../hooks/useTheme';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { ExportFormat, prepareExport, shareExport } from '../../services/export.service';
 import { reportError } from '../../services/crashReporting';
 import BottomSheet from './BottomSheet';
 
-const OPTIONS: { format: ExportFormat; icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
+const OPTIONS: { format: ExportFormat; icon: IconName; title: string; desc: string }[] = [
   { format: 'csv', icon: 'document-text-outline', title: 'export.csv', desc: 'export.csvDesc' },
   { format: 'xlsx', icon: 'grid-outline', title: 'export.excel', desc: 'export.excelDesc' },
   { format: 'pdf', icon: 'reader-outline', title: 'export.pdf', desc: 'export.pdfDesc' },
@@ -89,7 +89,7 @@ const ExportDataModal = ({ visible, onClose, onExported }: Props) => {
           accessibilityRole="button"
         >
           <View style={[styles.optionIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name={o.icon} size={22} color={ui.accent} />
+            <Icon name={o.icon} size={22} color={ui.accent} />
           </View>
           <View style={styles.optionText}>
             <Text style={[styles.optionTitle, { color: dc.textPrimary }]}>{t(o.title)}</Text>
@@ -97,7 +97,7 @@ const ExportDataModal = ({ visible, onClose, onExported }: Props) => {
           </View>
           {busy === o.format
             ? <ActivityIndicator color={ui.accent} />
-            : <Ionicons name="chevron-forward" size={18} color={dc.textSecondary} />}
+            : <Icon name="chevron-forward" size={18} color={dc.textSecondary} />}
         </TouchableOpacity>
       ))}
     </BottomSheet>

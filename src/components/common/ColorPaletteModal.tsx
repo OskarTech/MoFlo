@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { useTheme } from '../../hooks/useTheme';
 import { getDynamicColors, ColorPaletteId } from '../../theme';
 import { CATEGORY_COLORS } from '../../theme/categoryColors';
@@ -68,7 +68,7 @@ const ColorPaletteModal = ({ visible, selectedPalette, onSelect, onDismiss, curr
               </View>
               {on && (
                 <View style={styles.check}>
-                  <Ionicons name="checkmark" size={14} color="#111111" />
+                  <Icon name="checkmark" size={14} color="#111111" />
                 </View>
               )}
             </TouchableOpacity>

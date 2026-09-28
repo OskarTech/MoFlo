@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
@@ -10,7 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 export const HeroIconButton = ({
   icon, onPress, accessibilityLabel, size = 38,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   onPress?: () => void;
   accessibilityLabel?: string;
   size?: number;
@@ -25,7 +25,7 @@ export const HeroIconButton = ({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons name={icon} size={size * 0.5} color={ui.onHero} />
+      <Icon name={icon} size={size * 0.5} color={ui.onHero} />
     </TouchableOpacity>
   );
 };
@@ -115,7 +115,7 @@ export const MonthSelector = ({
         accessibilityRole="button"
         accessibilityLabel={t('common.previousMonth')}
       >
-        <Ionicons name="chevron-back" size={16} color={ui.onHero} />
+        <Icon name="chevron-back" size={16} color={ui.onHero} />
       </TouchableOpacity>
       <Text style={[styles.monthText, { color: ui.onHero }]} numberOfLines={1}>{label}</Text>
       <TouchableOpacity
@@ -126,7 +126,7 @@ export const MonthSelector = ({
         accessibilityRole="button"
         accessibilityLabel={t('common.nextMonth')}
       >
-        <Ionicons name="chevron-forward" size={16} color={ui.onHero} />
+        <Icon name="chevron-forward" size={16} color={ui.onHero} />
       </TouchableOpacity>
     </View>
   );

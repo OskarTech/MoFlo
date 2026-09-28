@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import * as Font from 'expo-font';
 import { useTheme } from '../../hooks/useTheme';
@@ -19,7 +19,7 @@ const Check = ({ on }: { on: boolean }) => {
   const { ui } = useTheme();
   return (
     <View style={[styles.check, on ? { backgroundColor: ui.accent } : { borderColor: ui.hair2, borderWidth: 1.5 }]}>
-      {on && <Ionicons name="checkmark" size={15} color={ui.onAccent} />}
+      {on && <Icon name="checkmark" size={15} color={ui.onAccent} />}
     </View>
   );
 };

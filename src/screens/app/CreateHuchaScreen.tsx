@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IoniconName } from '../../components/common/Icon';
+import { HUCHA_ICONS } from '../../constants/huchaIcons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSavingsStore } from '../../store/savingsStore';
@@ -18,33 +19,6 @@ import { HeroTitleBar, HeroChip } from '../../components/layout/HeroBar';
 import { SheetButton, FilledInput, SheetLabel } from '../../components/common/BottomSheet';
 import AmountInput from '../../components/common/AmountInput';
 import { ColorPickerSheet, RainbowSwatch } from '../../components/common/ColorPicker';
-
-const PRESET_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
-  'home-outline', 'business-outline', 'bed-outline', 'construct-outline',
-  'car-outline', 'bicycle-outline', 'bus-outline', 'boat-outline',
-  'airplane-outline', 'rocket-outline', 'train-outline', 'map-outline',
-  'gift-outline', 'heart-outline', 'star-outline', 'sparkles-outline',
-  'trophy-outline', 'medal-outline', 'ribbon-outline', 'diamond-outline',
-  'school-outline', 'library-outline', 'book-outline', 'briefcase-outline',
-  'restaurant-outline', 'pizza-outline', 'fast-food-outline', 'cafe-outline',
-  'wine-outline', 'beer-outline', 'ice-cream-outline', 'nutrition-outline',
-  'cart-outline', 'bag-outline', 'basket-outline', 'pricetag-outline',
-  'shirt-outline', 'glasses-outline', 'cut-outline', 'brush-outline',
-  'color-palette-outline', 'color-wand-outline', 'flower-outline', 'leaf-outline',
-  'paw-outline', 'fish-outline',
-  'man-outline', 'woman-outline', 'people-outline', 'person-outline',
-  'fitness-outline', 'barbell-outline', 'football-outline', 'basketball-outline',
-  'tennisball-outline', 'american-football-outline',
-  'medical-outline', 'pulse-outline', 'bandage-outline',
-  'laptop-outline', 'desktop-outline', 'tablet-portrait-outline', 'phone-portrait-outline',
-  'watch-outline', 'headset-outline', 'game-controller-outline', 'tv-outline',
-  'camera-outline', 'videocam-outline', 'image-outline', 'film-outline',
-  'musical-notes-outline', 'mic-outline',
-  'umbrella-outline', 'sunny-outline', 'snow-outline', 'partly-sunny-outline',
-  'cash-outline', 'card-outline', 'wallet-outline',
-  'planet-outline', 'earth-outline', 'globe-outline',
-  'balloon-outline',
-];
 
 const PRESET_COLORS = [
   '#E8735A', '#4A90D9', '#7BC67E', '#F5A623',
@@ -64,7 +38,7 @@ const CreateHuchaScreen = () => {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState<keyof typeof Ionicons.glyphMap>('trophy-outline');
+  const [selectedIcon, setSelectedIcon] = useState<IoniconName>('trophy-outline');
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [showPicker, setShowPicker] = useState(false);
   const customColor = !PRESET_COLORS.includes(selectedColor);
@@ -188,7 +162,7 @@ const CreateHuchaScreen = () => {
               <View style={[styles.toggleCard, { backgroundColor: ui.field }]}>
                 <View style={styles.toggleRow}>
                   <View style={[styles.toggleIcon, { backgroundColor: withAlpha(selectedColor, 0.18) }]}>
-                    <Ionicons name="infinite" size={18} color={selectedColor} />
+                    <Icon name="infinite" size={18} color={selectedColor} />
                   </View>
                   <View style={styles.toggleInfo}>
                     <Text style={[styles.toggleLabel, { color: dc.textPrimary }]}>{t('hucha.noTarget')}</Text>
@@ -225,7 +199,7 @@ const CreateHuchaScreen = () => {
                       accessibilityRole="radio"
                       accessibilityState={{ selected: on }}
                     >
-                      {on && <Ionicons name="checkmark" size={16} color="#fff" />}
+                      {on && <Icon name="checkmark" size={16} color="#fff" />}
                     </TouchableOpacity>
                   );
                 })}
@@ -240,12 +214,12 @@ const CreateHuchaScreen = () => {
                   accessibilityLabel={t('common.customColor')}
                 >
                   {customColor ? (
-                    <Ionicons name="checkmark" size={16} color="#fff" />
+                    <Icon name="checkmark" size={16} color="#fff" />
                   ) : (
                     <>
                       <RainbowSwatch size={34} />
                       <View style={styles.rainbowIcon}>
-                        <Ionicons name="add" size={18} color="#fff" />
+                        <Icon name="add" size={18} color="#fff" />
                       </View>
                     </>
                   )}
@@ -259,7 +233,7 @@ const CreateHuchaScreen = () => {
               {/* Así se verá */}
               <View style={styles.preview}>
                 <View style={[styles.previewIcon, { backgroundColor: withAlpha(selectedColor, 0.18) }]}>
-                  <Ionicons name={selectedIcon} size={30} color={selectedColor} />
+                  <Icon name={selectedIcon} size={30} color={selectedColor} />
                 </View>
               </View>
               <FilledInput
@@ -279,7 +253,7 @@ const CreateHuchaScreen = () => {
                 keyboardShouldPersistTaps="handled"
               >
                 <View style={styles.iconGrid}>
-                  {PRESET_ICONS.map(icon => {
+                  {HUCHA_ICONS.map(icon => {
                     const on = selectedIcon === icon;
                     return (
                       <TouchableOpacity
@@ -289,7 +263,7 @@ const CreateHuchaScreen = () => {
                         accessibilityRole="radio"
                         accessibilityState={{ selected: on }}
                       >
-                        <Ionicons name={icon} size={22} color={on ? '#FFFFFF' : dc.textSecondary} />
+                        <Icon name={icon} size={22} color={on ? '#FFFFFF' : dc.textSecondary} />
                       </TouchableOpacity>
                     );
                   })}
@@ -303,7 +277,7 @@ const CreateHuchaScreen = () => {
               <View style={[styles.toggleCard, { backgroundColor: ui.field }]}>
                 <View style={styles.toggleRow}>
                   <View style={[styles.toggleIcon, { backgroundColor: withAlpha(selectedColor, 0.18) }]}>
-                    <Ionicons name="repeat" size={18} color={selectedColor} />
+                    <Icon name="repeat" size={18} color={selectedColor} />
                   </View>
                   <Text style={[styles.toggleLabel, styles.toggleInfo, { color: dc.textPrimary }]}>
                     {t('hucha.automatic')}

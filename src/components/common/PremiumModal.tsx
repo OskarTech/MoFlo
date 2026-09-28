@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import Purchases, { PurchasesOffering, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
@@ -17,11 +17,11 @@ interface Props {
   onPurchase: () => void;
 }
 
-const FEATURES: { key: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+const FEATURES: { key: string; icon: IconName }[] = [
   { key: 'premium.featureSharedAccount', icon: 'people-outline' },
   { key: 'premium.featureCustomCategories', icon: 'pricetags-outline' },
   { key: 'premium.featureUnlimitedRecurring', icon: 'repeat-outline' },
-  { key: 'premium.featureUnlimitedHuchas', icon: 'cash-outline' },
+  { key: 'premium.featureUnlimitedHuchas', icon: 'piggy-bank-duotone' },
   { key: 'premium.featureCustomColor', icon: 'color-palette-outline' },
 ];
 
@@ -131,7 +131,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       {FEATURES.map(({ key, icon }) => (
         <View key={key} style={styles.featureRow}>
           <View style={[styles.featureIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name={icon} size={18} color={ui.accent} />
+            <Icon name={icon} size={18} color={ui.accent} />
           </View>
           <Text style={[styles.featureText, { color: dc.textPrimary }]}>{t(key)}</Text>
         </View>

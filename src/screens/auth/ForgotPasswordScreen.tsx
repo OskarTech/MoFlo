@@ -9,7 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { FilledInput, SheetButton } from '../../components/common/BottomSheet';
 import { HeroTitleBar } from '../../components/layout/HeroBar';
 import { AuthScreen } from '../../components/auth/AuthScreen';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
@@ -73,7 +73,7 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
       ) : (
         <View style={styles.sent}>
           <View style={[styles.sentIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name="mail-open-outline" size={32} color={ui.accent} />
+            <Icon name="mail-open-outline" size={32} color={ui.accent} />
           </View>
           <Text style={[styles.sentTitle, { color: dc.textPrimary }]}>{t('auth.resetEmailSent')}</Text>
           <Text style={[styles.sentText, { color: dc.textSecondary }]}>{t('auth.resetEmailSentSubtitle')}</Text>

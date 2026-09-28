@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSavingsStore } from '../../store/savingsStore';
@@ -48,8 +48,8 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
     >
       <View style={styles.cardHeader}>
         <View style={[styles.cardIcon, { backgroundColor: withAlpha(hucha.color, 0.16) }]}>
-          <Ionicons
-            name={isClosed ? 'checkmark-circle' : (hucha.icon as keyof typeof Ionicons.glyphMap)}
+          <Icon
+            name={isClosed ? 'checkmark-circle' : (hucha.icon as IconName)}
             size={22}
             color={hucha.color}
           />
@@ -66,7 +66,7 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
         {hasTarget ? (
           <Text style={[styles.cardPct, { color: hucha.color }]}>{pct}%</Text>
         ) : (
-          <Ionicons name="infinite" size={20} color={hucha.color} style={styles.noShrink} />
+          <Icon name="infinite" size={20} color={hucha.color} style={styles.noShrink} />
         )}
       </View>
 
@@ -78,12 +78,12 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
 
       {isClosed ? (
         <View style={styles.cardMetaRow}>
-          <Ionicons name="lock-closed" size={12} color={dc.textSecondary} />
+          <Icon name="lock-closed" size={12} color={dc.textSecondary} />
           <Text style={[styles.cardMeta, { color: dc.textSecondary }]}>{t('hucha.closedBadge')}</Text>
         </View>
       ) : (hucha.targetDate || (hucha.isAutomatic && hucha.monthlyAmount)) ? (
         <View style={styles.cardMetaRow}>
-          <Ionicons
+          <Icon
             name={hucha.isAutomatic && hucha.monthlyAmount ? 'repeat' : 'calendar-outline'}
             size={13}
             color={dc.textSecondary}
@@ -153,7 +153,7 @@ const HuchaScreen = () => {
         )}
         {thisMonthNet !== 0 && (
           <View style={styles.heroPill}>
-            <Ionicons name={thisMonthNet > 0 ? 'arrow-up' : 'arrow-down'} size={13} color={ui.onHero} />
+            <Icon name={thisMonthNet > 0 ? 'arrow-up' : 'arrow-down'} size={13} color={ui.onHero} />
             <Text style={[styles.heroPillText, { color: ui.onHero }]}>
               {t(thisMonthNet > 0 ? 'hucha.thisMonthAdded' : 'hucha.thisMonthWithdrawn', {
                 amount: formatAmount(Math.abs(thisMonthNet)), symbol: currencySymbol,
@@ -170,7 +170,7 @@ const HuchaScreen = () => {
       {activeHuchas.length === 0 && closedHuchas.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name="cash-outline" size={30} color={ui.accent} />
+            <Icon name="piggy-bank-duotone" size={30} color={ui.accent} />
           </View>
           <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('hucha.noGoals')}</Text>
           <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>{t('hucha.noGoalsSubtitle')}</Text>

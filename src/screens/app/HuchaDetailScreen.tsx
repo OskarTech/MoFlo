@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -542,7 +542,7 @@ const HuchaDetailScreen = () => {
         >
           {isClosed && (
             <View style={[styles.closedBanner, { backgroundColor: withAlpha(dc.income, 0.14) }]}>
-              <Ionicons name="checkmark-circle" size={18} color={ui.incomeText} />
+              <Icon name="checkmark-circle" size={18} color={ui.incomeText} />
               <Text style={[styles.closedBannerText, { color: ui.incomeText }]}>
                 {t('hucha.closedBanner', { date: formatDate(hucha.closedAt!) })}
               </Text>
@@ -602,7 +602,7 @@ const HuchaDetailScreen = () => {
                       activeOpacity={0.8}
                       accessibilityLabel={t('hucha.editQuickAmounts')}
                     >
-                      <Ionicons name="pencil" size={16} color={dc.textSecondary} />
+                      <Icon name="pencil" size={16} color={dc.textSecondary} />
                     </TouchableOpacity>
                   </>
                 )}
@@ -615,7 +615,7 @@ const HuchaDetailScreen = () => {
             <View style={[styles.autoCard, { backgroundColor: ui.field }]}>
               <View style={styles.autoRow}>
                 <View style={[styles.autoIcon, { backgroundColor: ui.accentSoft }]}>
-                  <Ionicons name="repeat" size={19} color={ui.accent} />
+                  <Icon name="repeat" size={19} color={ui.accent} />
                 </View>
                 <View style={styles.autoInfo}>
                   <Text style={[styles.autoLabel, { color: dc.textPrimary }]}>{t('hucha.automatic')}</Text>
@@ -698,7 +698,7 @@ const HuchaDetailScreen = () => {
                       {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
                       <View style={[styles.historyRow, { backgroundColor: ui.sheet }]}>
                         <View style={[styles.historyIcon, { backgroundColor: withAlpha(isDeposit ? hucha.color : dc.expense, 0.15) }]}>
-                          <Ionicons name={isDeposit ? 'arrow-down' : 'arrow-up'} size={17} color={isDeposit ? hucha.color : ui.expenseText} />
+                          <Icon name={isDeposit ? 'arrow-down' : 'arrow-up'} size={17} color={isDeposit ? hucha.color : ui.expenseText} />
                         </View>
                         <View style={styles.historyInfo}>
                           <Text style={[styles.historyLabel, { color: dc.textPrimary }]}>
@@ -722,7 +722,7 @@ const HuchaDetailScreen = () => {
                     <Text style={[styles.historyToggleText, { color: ui.accent }]}>
                       {showAllHistory ? t('hucha.hideHistory') : t('hucha.viewAllHistory')}
                     </Text>
-                    <Ionicons name={showAllHistory ? 'chevron-up' : 'chevron-down'} size={15} color={ui.accent} />
+                    <Icon name={showAllHistory ? 'chevron-up' : 'chevron-down'} size={15} color={ui.accent} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -809,12 +809,12 @@ const HuchaDetailScreen = () => {
           activeOpacity={0.6}
         >
           <View style={[styles.actionIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name={isClosed ? 'lock-open-outline' : 'lock-closed-outline'} size={19} color={ui.accent} />
+            <Icon name={isClosed ? 'lock-open-outline' : 'lock-closed-outline'} size={19} color={ui.accent} />
           </View>
           <Text style={[styles.actionText, { color: dc.textPrimary }]}>
             {isClosed ? t('hucha.reopen') : t('hucha.close')}
           </Text>
-          <Ionicons name="chevron-forward" size={17} color={dc.textSecondary} />
+          <Icon name="chevron-forward" size={17} color={dc.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -823,10 +823,10 @@ const HuchaDetailScreen = () => {
           activeOpacity={0.6}
         >
           <View style={[styles.actionIcon, { backgroundColor: ui.expenseSoft }]}>
-            <Ionicons name="trash-outline" size={19} color={ui.expenseText} />
+            <Icon name="trash-outline" size={19} color={ui.expenseText} />
           </View>
           <Text style={[styles.actionText, { color: ui.expenseText }]}>{t('hucha.delete')}</Text>
-          <Ionicons name="chevron-forward" size={17} color={dc.textSecondary} />
+          <Icon name="chevron-forward" size={17} color={dc.textSecondary} />
         </TouchableOpacity>
       </BottomSheet>
 

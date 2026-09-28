@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,7 +39,7 @@ const PhotoViewer = ({ visible, uri, title, onClose }: Props) => {
         accessibilityLabel={t('common.close')}
       >
         <View style={[styles.close, { top: insets.top + 12 }]}>
-          <Ionicons name="close" size={24} color="#FFFFFF" />
+          <Icon name="close" size={24} color="#FFFFFF" />
         </View>
         <Image
           source={{ uri }}

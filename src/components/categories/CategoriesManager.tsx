@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IoniconName } from '../common/Icon';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryColors } from '../../hooks/useCategoryColors';
@@ -20,8 +20,7 @@ import { HeroTitleBar } from '../layout/HeroBar';
 import { GroupHeader } from '../layout/SheetSection';
 import AddHint from '../navigation/AddHint';
 
-type IconName = keyof typeof Ionicons.glyphMap;
-const outline = (icon: string) => `${icon}-outline` as IconName;
+const outline = (icon: string) => `${icon}-outline` as IoniconName;
 
 // Una categoría tal como la dan los stores para elegirla
 export type CategoryItem = { id: string; name: string; icon: string; isCustom: boolean };
@@ -73,7 +72,7 @@ const CategorySheet = ({
 
   // La fila de iconos va en columnas de tres: se desplaza hasta la del elegido
   const scrollToIcon = (name: string) => {
-    const index = CATEGORY_ICONS.indexOf(name as IconName);
+    const index = CATEGORY_ICONS.indexOf(name as IoniconName);
     if (index < 0) return;
     setTimeout(() => {
       iconsRef.current?.scrollTo({ x: Math.max(0, Math.floor(index / 3) * (ICON_SIZE + ICON_GAP) - 40), animated: false });
@@ -199,7 +198,7 @@ const CategorySheet = ({
       {/* Así se verá */}
       <View style={styles.preview}>
         <View style={[styles.previewIcon, { backgroundColor: withAlpha(color, 0.16) }]}>
-          <Ionicons name={outline(icon)} size={32} color={color} />
+          <Icon name={outline(icon)} size={32} color={color} />
         </View>
         <Text style={[styles.previewName, { color: name.trim() ? dc.textPrimary : dc.textSecondary }]} numberOfLines={1}>
           {name.trim() || t('categories.namePlaceholder')}
@@ -250,7 +249,7 @@ const CategorySheet = ({
                     accessibilityRole="radio"
                     accessibilityState={{ selected: on }}
                   >
-                    <Ionicons name={outline(ic)} size={22} color={on ? '#FFFFFF' : dc.textSecondary} />
+                    <Icon name={outline(ic)} size={22} color={on ? '#FFFFFF' : dc.textSecondary} />
                   </TouchableOpacity>
                 );
               })}
@@ -286,7 +285,7 @@ const CategorySheet = ({
               accessibilityState={{ selected: on }}
             >
               <View style={[styles.colorDot, { backgroundColor: c }]}>
-                {on && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                {on && <Icon name="checkmark" size={16} color="#FFFFFF" />}
               </View>
             </TouchableOpacity>
           );
@@ -301,13 +300,13 @@ const CategorySheet = ({
         >
           {isCustom ? (
             <View style={[styles.colorDot, { backgroundColor: choice as string }]}>
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              <Icon name="checkmark" size={16} color="#FFFFFF" />
             </View>
           ) : (
             <View style={styles.colorDot}>
               <RainbowSwatch size={30} />
               <View style={styles.rainbowIcon}>
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <Icon name="add" size={18} color="#FFFFFF" />
               </View>
             </View>
           )}
@@ -406,7 +405,7 @@ const CategoriesManager = ({
         {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
         <View style={[styles.row, { backgroundColor: ui.sheet }]}>
           <View style={[styles.rowIcon, { backgroundColor: withAlpha(color, 0.16) }]}>
-            <Ionicons name={outline(cat.icon)} size={20} color={color} />
+            <Icon name={outline(cat.icon)} size={20} color={color} />
           </View>
           <Text style={[styles.rowName, { color: dc.textPrimary }]} numberOfLines={1}>{name}</Text>
         </View>
@@ -449,7 +448,7 @@ const CategoriesManager = ({
     >
       <HeroScrollScreen hero={hero} onScrollBeginDrag={closeOpenSwipeable}>
         <View style={[styles.hint, { backgroundColor: ui.field }]}>
-          <Ionicons name="hand-left-outline" size={16} color={dc.textSecondary} />
+          <Icon name="hand-left-outline" size={16} color={dc.textSecondary} />
           <Text style={[styles.hintText, { color: dc.textSecondary }]}>{t('categories.swipeHint')}</Text>
         </View>
 

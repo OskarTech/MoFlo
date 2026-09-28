@@ -4,7 +4,7 @@ import {
   Platform, StatusBar,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -131,7 +131,7 @@ const FloatingSummaryCard = ({ visible, origin, onDismiss, title, hero, children
                   accessibilityRole="button"
                   accessibilityLabel={t('common.close')}
                 >
-                  <Ionicons name="close" size={18} color={ui.onHero} />
+                  <Icon name="close" size={18} color={ui.onHero} />
                 </TouchableOpacity>
               </View>
               {hero(close)}
@@ -169,7 +169,7 @@ export const SummaryNav = ({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={18} color={ui.onHero} />
+      <Icon name={icon} size={18} color={ui.onHero} />
     </TouchableOpacity>
   );
   return (

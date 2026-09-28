@@ -4,7 +4,7 @@ import {
   ActivityIndicator, TextInputProps,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -75,7 +75,7 @@ export const PasswordInput = (props: TextInputProps) => {
           accessibilityRole="button"
           accessibilityLabel={visible ? t('auth.hidePassword') : t('auth.showPassword')}
         >
-          <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={dc.textSecondary} />
+          <Icon name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={dc.textSecondary} />
         </TouchableOpacity>
       )}
     />
@@ -87,7 +87,7 @@ export const AuthSecondaryButton = ({
   label, icon, onPress, loading, disabled,
 }: {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -105,7 +105,7 @@ export const AuthSecondaryButton = ({
         <ActivityIndicator color={dc.textPrimary} />
       ) : (
         <>
-          <Ionicons name={icon} size={19} color={dc.textPrimary} />
+          <Icon name={icon} size={19} color={dc.textPrimary} />
           <Text style={[styles.secondaryText, { color: dc.textPrimary }]}>{label}</Text>
         </>
       )}

@@ -3,7 +3,7 @@ import {
   View, StyleSheet, Modal, TouchableOpacity, LayoutChangeEvent, ScrollView, useWindowDimensions,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -20,7 +20,7 @@ interface Props {
   onClose?: () => void;
   /** La X, desactivada (p. ej. mientras se compra) */
   closeDisabled?: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   title: string;
   /** Debajo del título, en la cabecera (p. ej. el precio o la versión) */
   heroExtra?: React.ReactNode;
@@ -69,11 +69,11 @@ const HeroDialog = ({
                 accessibilityRole="button"
                 accessibilityLabel={t('common.close')}
               >
-                <Ionicons name="close" size={18} color={ui.onHero} />
+                <Icon name="close" size={18} color={ui.onHero} />
               </TouchableOpacity>
             ) : null}
             <View style={styles.iconCircle}>
-              <Ionicons name={icon} size={30} color={ui.hero} />
+              <Icon name={icon} size={30} color={ui.hero} />
             </View>
             <Text style={[styles.title, { color: ui.onHero }]}>{title}</Text>
             {heroExtra}

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import type { IoniconName } from '../components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useCategoryStore } from '../store/categoryStore';
@@ -7,7 +7,7 @@ import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useCategoryColors } from './useCategoryColors';
 import { MovementType } from '../types';
 
-export type IoniconName = keyof typeof Ionicons.glyphMap;
+export type { IoniconName };
 
 /**
  * Nombre, icono, color y si está borrada, de una categoría de la cuenta activa

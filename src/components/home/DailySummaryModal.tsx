@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, AppState } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -123,7 +123,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
     <View style={alignEnd && styles.statEnd}>
       <View style={styles.statLabelRow}>
         <View style={styles.statIcon}>
-          <Ionicons name={icon} size={13} color={ui.onHero} />
+          <Icon name={icon} size={13} color={ui.onHero} />
         </View>
         <Text style={[styles.statLabel, { color: ui.onHeroSoft }]}>{label}</Text>
       </View>
@@ -163,7 +163,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
           {dayMovements.length === 0 ? (
             <View style={styles.empty}>
               <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-                <Ionicons name="calendar-clear-outline" size={28} color={ui.accent} />
+                <Icon name="calendar-clear-outline" size={28} color={ui.accent} />
               </View>
               <Text style={[styles.emptyText, { color: dc.textSecondary }]}>{t('home.noMovementsDay')}</Text>
             </View>

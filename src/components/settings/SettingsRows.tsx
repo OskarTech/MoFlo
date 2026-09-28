@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../common/Icon';
 import { useTheme } from '../../hooks/useTheme';
 
 /**
@@ -35,7 +35,7 @@ export const SettingsSection = ({
 export const SettingsRow = ({
   icon, label, subtitle, value, swatch, onPress, danger, right, showArrow = true,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   label: string;
   subtitle?: string;
   value?: string;
@@ -58,7 +58,7 @@ export const SettingsRow = ({
       accessibilityRole={onPress ? 'button' : undefined}
     >
       <View style={[styles.icon, { backgroundColor: danger ? ui.expenseSoft : ui.accentSoft }]}>
-        <Ionicons name={icon} size={18} color={tint} />
+        <Icon name={icon} size={18} color={tint} />
       </View>
       <View style={styles.content}>
         <Text style={[styles.label, { color: danger ? ui.expenseText : dc.textPrimary }]}>{label}</Text>
@@ -73,7 +73,7 @@ export const SettingsRow = ({
           ) : null}
           {swatch ? <View style={[styles.swatch, { backgroundColor: swatch }]} /> : null}
           {showArrow && onPress ? (
-            <Ionicons name="chevron-forward" size={17} color={dc.textSecondary} style={styles.chevron} />
+            <Icon name="chevron-forward" size={17} color={dc.textSecondary} style={styles.chevron} />
           ) : null}
         </>
       )}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Text as RNText, StyleProp, ViewStyle } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { useTranslation } from 'react-i18next';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
@@ -68,7 +68,7 @@ const MovementItem = ({ movement, currencySymbol, detail, background, style }: P
   return (
     <View style={[styles.row, style]}>
       <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.15) }]}>
-        <Ionicons name={cat.icon(movement.category, type)} size={20} color={color} />
+        <Icon name={cat.icon(movement.category, type)} size={20} color={color} />
         {member && (
           <Avatar
             uri={getMemberPhoto(sharedAccount, movement.addedBy)}

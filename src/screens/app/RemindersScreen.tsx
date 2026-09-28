@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -87,7 +87,7 @@ const ReminderCardBase = ({
       {/* Con fondo propio: si no, los botones de detrás se verían sin deslizar */}
       <View style={[styles.row, { backgroundColor: ui.sheet }]}>
         <View style={[styles.rowIcon, { backgroundColor: isUpcoming ? ui.accentSoft : ui.fill }]}>
-          <Ionicons
+          <Icon
             name={isNote ? 'document-text-outline' : isPast ? 'notifications-off-outline' : 'notifications-outline'}
             size={20}
             color={isUpcoming ? ui.accent : dc.textSecondary}
@@ -102,7 +102,7 @@ const ReminderCardBase = ({
           </Text>
           {!!creatorName && (
             <View style={styles.rowCreator}>
-              <Ionicons name="person-outline" size={12} color={dc.textSecondary} />
+              <Icon name="person-outline" size={12} color={dc.textSecondary} />
               <Text style={[styles.rowSub, { color: dc.textSecondary }]} numberOfLines={1}>
                 <MemberName member={{ name: creatorName, isFormer: creatorIsFormer }} />
               </Text>
@@ -256,7 +256,7 @@ const AddReminderModal = ({
           activeOpacity={0.8}
         >
           <View style={[styles.groupIcon, { backgroundColor: withDate ? ui.accentSoft : ui.fill }]}>
-            <Ionicons name="notifications-outline" size={18} color={withDate ? ui.accent : dc.textSecondary} />
+            <Icon name="notifications-outline" size={18} color={withDate ? ui.accent : dc.textSecondary} />
           </View>
           <View style={styles.groupInfo}>
             <Text style={[styles.groupLabel, { color: dc.textPrimary }]}>{t('reminders.addDateTime')}</Text>
@@ -280,7 +280,7 @@ const AddReminderModal = ({
               activeOpacity={0.8}
             >
               <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
-                <Ionicons name="calendar-outline" size={18} color={dc.textSecondary} />
+                <Icon name="calendar-outline" size={18} color={dc.textSecondary} />
               </View>
               <Text style={[styles.groupLabel, styles.groupInfo, { color: dc.textPrimary }]}>
                 {t('reminders.reminderDate')}
@@ -294,7 +294,7 @@ const AddReminderModal = ({
               activeOpacity={0.8}
             >
               <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
-                <Ionicons name="time-outline" size={18} color={dc.textSecondary} />
+                <Icon name="time-outline" size={18} color={dc.textSecondary} />
               </View>
               <Text style={[styles.groupLabel, styles.groupInfo, { color: dc.textPrimary }]}>
                 {t('reminders.reminderTime')}
@@ -492,7 +492,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
           <Text style={[styles.heroLabel, { color: ui.onHeroSoft }]}>{t('reminders.nextLabel')}</Text>
           <Text style={[styles.heroTitle, { color: ui.onHero }]} numberOfLines={2}>{next.title}</Text>
           <View style={styles.heroPill}>
-            <Ionicons name="notifications-outline" size={14} color={ui.onHero} />
+            <Icon name="notifications-outline" size={14} color={ui.onHero} />
             <Text style={[styles.heroPillText, { color: ui.onHero }]}>
               {formatDate(nextDate)} · {formatTime(nextDate)}
             </Text>
@@ -537,7 +537,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
                       style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
                       onPress={() => handleRejectRequest(req.uid, req.displayName)}
                     >
-                      <Ionicons name="close" size={16} color={ui.expenseText} />
+                      <Icon name="close" size={16} color={ui.expenseText} />
                       <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
                         {t('sharedAccount.reject')}
                       </Text>
@@ -546,7 +546,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
                       style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
                       onPress={() => handleApproveRequest(req.uid, req.displayName)}
                     >
-                      <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                      <Icon name="checkmark" size={16} color={ui.incomeText} />
                       <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
                         {t('sharedAccount.approve')}
                       </Text>
@@ -564,7 +564,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
         {groups.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-              <Ionicons name="notifications-outline" size={30} color={ui.accent} />
+              <Icon name="notifications-outline" size={30} color={ui.accent} />
             </View>
             <Text style={[styles.emptyText, { color: dc.textPrimary }]}>
               {t('reminders.noReminders')}

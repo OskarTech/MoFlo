@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useRoute, useIsFocused } from '@react-navigation/native';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -113,7 +113,7 @@ const HuchaMovementRowBase = ({ movement }: { movement: HuchaMovement }) => {
   return (
     <View style={styles.hRow}>
       <View style={[styles.hIcon, { backgroundColor: withAlpha(huchaColor, 0.16) }]}>
-        <Ionicons name={isDeposit ? 'arrow-down' : 'arrow-up'} size={20} color={huchaColor} />
+        <Icon name={isDeposit ? 'arrow-down' : 'arrow-up'} size={20} color={huchaColor} />
       </View>
       <View style={styles.hInfo}>
         <Text style={[styles.hTitle, { color: dc.textPrimary }]} numberOfLines={1}>{movement.huchaName}</Text>
@@ -174,7 +174,7 @@ const RecurringRowBase = ({
     >
       <View style={[styles.rowWrap, styles.hRow, { backgroundColor: ui.sheet }]}>
         <View style={[styles.hIcon, { backgroundColor: withAlpha(color, 0.15) }]}>
-          <Ionicons name={cat.icon(item.category, type)} size={20} color={color} />
+          <Icon name={cat.icon(item.category, type)} size={20} color={color} />
         </View>
         <View style={styles.hInfo}>
           <Text style={[styles.hTitle, { color: dc.textPrimary }]} numberOfLines={1}>
@@ -454,7 +454,7 @@ const MovementsScreen = () => {
   // Arriba de la lista, en la hoja: el buscador o el resumen de los fijos
   const sheetTop = (filter === 'income' || filter === 'expense') ? (
     <View style={[styles.search, { backgroundColor: ui.field }]}>
-      <Ionicons name="search-outline" size={17} color={dc.textSecondary} />
+      <Icon name="search-outline" size={17} color={dc.textSecondary} />
       <RNTextInput
         style={[styles.searchInput, { color: dc.textPrimary }]}
         placeholder={t('movementsList.searchPlaceholder')}
@@ -467,7 +467,7 @@ const MovementsScreen = () => {
       />
       {searchQuery.length > 0 && (
         <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
-          <Ionicons name="close-circle" size={17} color={dc.textSecondary} />
+          <Icon name="close-circle" size={17} color={dc.textSecondary} />
         </TouchableOpacity>
       )}
     </View>
@@ -493,7 +493,7 @@ const MovementsScreen = () => {
   const emptyState = filter === 'recurring' ? (
     <View style={styles.emptyState}>
       <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-        <Ionicons name="repeat" size={28} color={ui.accent} />
+        <Icon name="repeat" size={28} color={ui.accent} />
       </View>
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('recurring.noRecurring')}</Text>
       <Text style={[styles.emptySubtext, { color: dc.textSecondary }]}>{t('recurring.noRecurringSubtitle')}</Text>
@@ -501,7 +501,7 @@ const MovementsScreen = () => {
   ) : (
     <View style={styles.emptyState}>
       <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-        <Ionicons name={filter === 'hucha' ? 'cash-outline' : 'search-outline'} size={28} color={ui.accent} />
+        <Icon name={filter === 'hucha' ? 'piggy-bank-duotone' : 'search-outline'} size={28} color={ui.accent} />
       </View>
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('movementsList.noMovements')}</Text>
       {/* En el filtro de huchas, y en meses pasados, la acción no es añadir un movimiento suelto */}
@@ -511,7 +511,7 @@ const MovementsScreen = () => {
           onPress={() => { lightHaptic(); setShowMovementModal(true); }}
           activeOpacity={0.85}
         >
-          <Ionicons name="add" size={16} color="#FFFFFF" />
+          <Icon name="add" size={16} color="#FFFFFF" />
           <Text style={styles.emptyActionText}>{t('movements.add')}</Text>
         </TouchableOpacity>
       )}

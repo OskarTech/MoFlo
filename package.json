@@ -10,7 +10,8 @@
     "test": "jest",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run lint"
+    "check": "npm run typecheck && npm test && npm run lint",
+    "icons": "node scripts/icons/generate.js"
   },
   "jest": {
     "preset": "jest-expo",
@@ -75,6 +76,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
     "eslint": "^9.39.5",

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
@@ -92,7 +92,7 @@ const AccountSwitcher = () => {
     : t('header.individualAccount');
 
   const option = (
-    selected: boolean, onPress: () => void, icon: keyof typeof Ionicons.glyphMap,
+    selected: boolean, onPress: () => void, icon: IconName,
     title: string, subtitle: string, badge?: boolean, photo?: string | null,
   ) => (
     <TouchableOpacity
@@ -103,7 +103,7 @@ const AccountSwitcher = () => {
       accessibilityState={{ selected }}
     >
       <Avatar uri={photo} style={[styles.optionIcon, { backgroundColor: selected ? ui.sheet : ui.field }]}>
-        <Ionicons name={icon} size={20} color={ui.accent} />
+        <Icon name={icon} size={20} color={ui.accent} />
       </Avatar>
       <View style={styles.optionInfo}>
         <View style={styles.optionTitleRow}>
@@ -117,7 +117,7 @@ const AccountSwitcher = () => {
         <Text style={[styles.optionSubtitle, { color: dc.textSecondary }]} numberOfLines={1}>{subtitle}</Text>
       </View>
       <View style={[styles.check, selected ? { backgroundColor: ui.accent } : { borderColor: ui.hair2, borderWidth: 1.5 }]}>
-        {selected && <Ionicons name="checkmark" size={15} color={ui.onAccent} />}
+        {selected && <Icon name="checkmark" size={15} color={ui.onAccent} />}
       </View>
     </TouchableOpacity>
   );
@@ -148,7 +148,7 @@ const AccountSwitcher = () => {
             ))}
           </View>
           <Text style={[styles.pillText, { color: ui.onHero }]} numberOfLines={1}>{label}</Text>
-          <Ionicons name="chevron-down" size={15} color={ui.onHero} />
+          <Icon name="chevron-down" size={15} color={ui.onHero} />
         </TouchableOpacity>
       </View>
 

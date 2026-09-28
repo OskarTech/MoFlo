@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Pressable, Keyboard, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../common/Icon';
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import { requireOptionalNativeModule } from 'expo';
@@ -40,12 +40,11 @@ export const useTabBarOffset = () => {
 // Lo que debe dejar libre abajo una pantalla para que la barra no tape su final
 export const useTabBarSpace = () => TAB_BAR_HEIGHT + useTabBarOffset() + 24;
 
-type TabIcon = keyof typeof Ionicons.glyphMap;
-const TABS: Record<string, { label: string; icon: TabIcon; iconOn: TabIcon; target?: string }> = {
+const TABS: Record<string, { label: string; icon: IconName; iconOn: IconName; target?: string }> = {
   HomeTab: { label: 'tabs.home', icon: 'home-outline', iconOn: 'home' },
-  HistorialTab: { label: 'tabs.historial', icon: 'time-outline', iconOn: 'time', target: 'recurring' },
+  HistorialTab: { label: 'tabs.historial', icon: 'clock-counter-clockwise-duotone', iconOn: 'clock-counter-clockwise-fill', target: 'recurring' },
   AnnualTab: { label: 'tabs.annual', icon: 'bar-chart-outline', iconOn: 'bar-chart', target: 'annual_tab' },
-  HuchaTab: { label: 'tabs.hucha', icon: 'cash-outline', iconOn: 'cash', target: 'hucha_tab' },
+  HuchaTab: { label: 'tabs.hucha', icon: 'piggy-bank-duotone', iconOn: 'piggy-bank-fill', target: 'hucha_tab' },
 };
 
 const TabButton = ({
@@ -66,7 +65,7 @@ const TabButton = ({
         accessibilityState={{ selected: focused }}
         accessibilityLabel={t(tab.label)}
       >
-        <Ionicons name={focused ? tab.iconOn : tab.icon} size={22} color={color} />
+        <Icon name={focused ? tab.iconOn : tab.icon} size={22} color={color} />
         <Text style={[styles.label, { color }]} numberOfLines={1}>{t(tab.label)}</Text>
       </TouchableOpacity>
     </View>
@@ -160,7 +159,7 @@ const GlassTabBar = ({
           // cristal reacciona al tocarlo
           <Pressable onPress={onFabPress} accessibilityRole="button" accessibilityLabel={t('common.add')}>
             <GlassView isInteractive tintColor={dc.primary} colorScheme={glassScheme} style={styles.fabGlass}>
-              <Ionicons name="add" size={28} color="#FFFFFF" />
+              <Icon name="add" size={28} color="#FFFFFF" />
             </GlassView>
           </Pressable>
         ) : (
@@ -171,7 +170,7 @@ const GlassTabBar = ({
             accessibilityRole="button"
             accessibilityLabel={t('common.add')}
           >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Icon name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         )}
       </View>

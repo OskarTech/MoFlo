@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Constants from 'expo-constants';
@@ -101,7 +101,7 @@ const SupportScreen = () => {
     <HeroScrollScreen hero={hero} keyboardShouldPersistTaps="handled" sheetStyle={styles.sheet}>
       {/* Email del usuario: solo informativo */}
       <View style={[styles.emailInfo, { backgroundColor: ui.field }]}>
-        <Ionicons name="mail-outline" size={18} color={dc.textSecondary} />
+        <Icon name="mail-outline" size={18} color={dc.textSecondary} />
         <View style={styles.emailText}>
           <Text style={[styles.emailInfoLabel, { color: dc.textSecondary }]}>{t('auth.email')}</Text>
           <Text style={[styles.emailInfoValue, { color: dc.textPrimary }]} numberOfLines={1}>{userEmail}</Text>

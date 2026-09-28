@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMovementStore } from '../../store/movementStore';
@@ -91,7 +91,7 @@ const BalanceHero = ({
       <TouchableOpacity onPress={() => pressWithOrigin(ref, onPress)} activeOpacity={0.7} hitSlop={6}>
         <View style={[styles.statLabelRow, alignEnd && styles.statLabelRowEnd]}>
           <View style={[styles.statIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-            <Ionicons name={icon} size={13} color={ui.onHero} />
+            <Icon name={icon} size={13} color={ui.onHero} />
           </View>
           <Text style={[styles.statLabel, { color: ui.onHeroSoft }]}>{label}</Text>
         </View>
@@ -116,7 +116,7 @@ const BalanceHero = ({
             accessibilityRole="button"
             accessibilityLabel={t(hidden ? 'home.showAmounts' : 'home.hideAmounts')}
           >
-            <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={17} color={ui.onHeroSoft} />
+            <Icon name={hidden ? 'eye-off-outline' : 'eye-outline'} size={17} color={ui.onHeroSoft} />
           </TouchableOpacity>
         </View>
         <View ref={dailyBtnRef} collapsable={false}>
@@ -333,7 +333,7 @@ const HomeScreen = () => {
               return (
                 <View key={category} style={[styles.catCard, { backgroundColor: ui.field }]}>
                   <View style={[styles.catIcon, { backgroundColor: withAlpha(color, 0.16) }]}>
-                    <Ionicons name={cat.icon(category, 'expense')} size={18} color={color} />
+                    <Icon name={cat.icon(category, 'expense')} size={18} color={color} />
                   </View>
                   <Text style={[styles.catName, { color: dc.textPrimary }]} numberOfLines={1}>
                     <StrikeText struck={cat.deleted(category, 'expense')}>{cat.name(category, 'expense')}</StrikeText>
@@ -369,7 +369,7 @@ const HomeScreen = () => {
                 onPress={() => { lightHaptic(); setShowMovementModal(true); }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="add" size={16} color="#FFFFFF" />
+                <Icon name="add" size={16} color="#FFFFFF" />
                 <Text style={styles.emptyActionText}>{t('home.addFirstMovement')}</Text>
               </TouchableOpacity>
             </View>

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/common/Icon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as StoreReview from 'expo-store-review';
@@ -718,7 +718,7 @@ const SettingsScreen = () => {
           </View>
         ) : (
           <View style={[styles.avatarEdit, { borderColor: ui.hero }]}>
-            <Ionicons name="camera" size={12} color={ui.hero} />
+            <Icon name="camera" size={12} color={ui.hero} />
           </View>
         )}
       </TouchableOpacity>
@@ -743,14 +743,14 @@ const SettingsScreen = () => {
               <Text style={[styles.profileName, { color: ui.onHero }]} numberOfLines={1}>
                 {displayName || t('settings.displayName')}
               </Text>
-              <Ionicons name="pencil-outline" size={15} color={ui.onHeroSoft} />
+              <Icon name="pencil-outline" size={15} color={ui.onHeroSoft} />
             </TouchableOpacity>
             <Text style={[styles.profileMeta, { color: ui.onHeroSoft }]} numberOfLines={1}>
               {user?.email ?? '—'}
             </Text>
             {isPremium && (
               <View style={[styles.heroChip, { backgroundColor: ui.heroFill }]}>
-                <Ionicons name="star" size={12} color={ui.onHero} />
+                <Icon name="star" size={12} color={ui.onHero} />
                 <Text style={[styles.heroChipText, { color: ui.onHero }]}>{t('premium.title')}</Text>
               </View>
             )}
@@ -759,7 +759,7 @@ const SettingsScreen = () => {
       ) : (
         <View style={styles.profile}>
           {heroAvatar('shared', sharedAccount?.photoURL, (
-            <Ionicons name="people" size={28} color={ui.hero} />
+            <Icon name="people" size={28} color={ui.hero} />
           ))}
           <View style={styles.profileInfo}>
             <TouchableOpacity
@@ -771,13 +771,13 @@ const SettingsScreen = () => {
               <Text style={[styles.profileName, { color: ui.onHero }]} numberOfLines={1}>
                 {sharedAccount?.name ?? ''}
               </Text>
-              {isCreator && <Ionicons name="pencil-outline" size={15} color={ui.onHeroSoft} />}
+              {isCreator && <Icon name="pencil-outline" size={15} color={ui.onHeroSoft} />}
             </TouchableOpacity>
             <Text style={[styles.profileMeta, { color: ui.onHeroSoft }]} numberOfLines={1}>
               {t('sharedAccount.code')}: {sharedAccount?.inviteCode ?? ''}
             </Text>
             <View style={[styles.heroChip, { backgroundColor: ui.heroFill }]}>
-              <Ionicons name="people-outline" size={12} color={ui.onHero} />
+              <Icon name="people-outline" size={12} color={ui.onHero} />
               <Text style={[styles.heroChipText, { color: ui.onHero }]}>
                 {sharedAccount?.members.length ?? 0} {t('sharedAccount.members').toLowerCase()}
               </Text>
@@ -901,13 +901,13 @@ const SettingsScreen = () => {
                 activeOpacity={0.8}
               >
                 <View style={[styles.upgradeIcon, { backgroundColor: ui.savingsText }]}>
-                  <Ionicons name="star" size={18} color="#FFFFFF" />
+                  <Icon name="star" size={18} color="#FFFFFF" />
                 </View>
                 <View style={styles.upgradeText}>
                   <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
                   <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={ui.savingsText} />
+                <Icon name="chevron-forward" size={18} color={ui.savingsText} />
               </TouchableOpacity>
             ) : (
               <SettingsSection title={t('sharedAccount.title')}>
@@ -931,7 +931,7 @@ const SettingsScreen = () => {
 
             <SettingsSection title={t('settings.preferences')}>
               <SettingsRow
-                icon="cash-outline"
+                icon="coins-duotone"
                 label={t('settings.currency')} value={selectedCurrencyLabel}
                 onPress={() => setShowCurrencyModal(true)}
               />
@@ -1005,7 +1005,7 @@ const SettingsScreen = () => {
                     style={[styles.linkBtn, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.sheet }]}
                     onPress={handleCopyLink}
                   >
-                    <Ionicons
+                    <Icon
                       name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
                       size={16}
                       color={linkCopied ? ui.incomeText : ui.accent}
@@ -1018,7 +1018,7 @@ const SettingsScreen = () => {
                     style={[styles.linkBtn, { backgroundColor: ui.sheet }]}
                     onPress={handleShareLink}
                   >
-                    <Ionicons name="share-social-outline" size={16} color={ui.accent} />
+                    <Icon name="share-social-outline" size={16} color={ui.accent} />
                     <Text style={[styles.linkBtnText, { color: ui.accent }]}>
                       {t('sharedAccount.shareLink')}
                     </Text>
@@ -1050,7 +1050,7 @@ const SettingsScreen = () => {
                         style={[styles.requestBtn, { backgroundColor: ui.expenseSoft }]}
                         onPress={() => handleRejectRequest(req.uid, req.displayName)}
                       >
-                        <Ionicons name="close" size={16} color={ui.expenseText} />
+                        <Icon name="close" size={16} color={ui.expenseText} />
                         <Text style={[styles.requestBtnText, { color: ui.expenseText }]}>
                           {t('sharedAccount.reject')}
                         </Text>
@@ -1059,7 +1059,7 @@ const SettingsScreen = () => {
                         style={[styles.requestBtn, { backgroundColor: withAlpha(ui.incomeText, 0.14) }]}
                         onPress={() => handleApproveRequest(req.uid, req.displayName)}
                       >
-                        <Ionicons name="checkmark" size={16} color={ui.incomeText} />
+                        <Icon name="checkmark" size={16} color={ui.incomeText} />
                         <Text style={[styles.requestBtnText, { color: ui.incomeText }]}>
                           {t('sharedAccount.approve')}
                         </Text>
@@ -1104,7 +1104,7 @@ const SettingsScreen = () => {
 
             <SettingsSection title={t('settings.preferences')}>
               <SettingsRow
-                icon="cash-outline"
+                icon="coins-duotone"
                 label={t('settings.currency')} value={selectedSharedCurrencyLabel}
                 onPress={() => setShowSharedCurrencyModal(true)}
               />
@@ -1380,7 +1380,7 @@ const SettingsScreen = () => {
                 </Text>
               </Avatar>
               <Text style={[styles.memberName, styles.memberInfo, { color: dc.textPrimary }]}>{name}</Text>
-              <Ionicons name="person-remove-outline" size={18} color={ui.expenseText} />
+              <Icon name="person-remove-outline" size={18} color={ui.expenseText} />
             </TouchableOpacity>
           );
         })}

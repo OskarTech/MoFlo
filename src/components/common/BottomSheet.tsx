@@ -5,7 +5,7 @@ import {
   ActivityIndicator, StyleProp, ViewStyle, TextInput, TextInputProps,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -179,7 +179,7 @@ const BottomSheet = ({
                   accessibilityRole="button"
                   accessibilityLabel={t('common.back')}
                 >
-                  <Ionicons name="arrow-back" size={18} color={dc.textSecondary} />
+                  <Icon name="arrow-back" size={18} color={dc.textSecondary} />
                 </TouchableOpacity>
               ) : null}
               <View style={styles.headerText}>
@@ -200,7 +200,7 @@ const BottomSheet = ({
                 accessibilityRole="button"
                 accessibilityLabel={t('common.close')}
               >
-                <Ionicons name="close" size={18} color={dc.textSecondary} />
+                <Icon name="close" size={18} color={dc.textSecondary} />
               </TouchableOpacity>
             </View>
           ) : null}
@@ -223,7 +223,7 @@ export const SheetButton = ({
   disabled?: boolean;
   loading?: boolean;
   variant?: 'primary' | 'danger';
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   style?: StyleProp<ViewStyle>;
 }) => {
   const { colors: dc, ui } = useTheme();
@@ -241,7 +241,7 @@ export const SheetButton = ({
         <ActivityIndicator color="#FFFFFF" />
       ) : (
         <>
-          {icon && <Ionicons name={icon} size={19} color="#FFFFFF" />}
+          {icon && <Icon name={icon} size={19} color="#FFFFFF" />}
           <Text style={styles.buttonText}>{label}</Text>
         </>
       )}
@@ -252,7 +252,7 @@ export const SheetButton = ({
 export interface SegmentOption<T extends string> {
   key: T;
   label: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   /** Color del texto cuando está elegido (p. ej. verde para ingreso) */
   activeColor?: string;
 }
@@ -281,7 +281,7 @@ export const SegmentedControl = <T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
           >
-            {o.icon && <Ionicons name={o.icon} size={15} color={color} />}
+            {o.icon && <Icon name={o.icon} size={15} color={color} />}
             <Text style={[styles.segmentText, { color }]} numberOfLines={1}>{o.label}</Text>
           </TouchableOpacity>
         );
@@ -292,7 +292,7 @@ export const SegmentedControl = <T extends string>({
 
 /** Campo con relleno suave y sin borde; el activo se marca con el color de la paleta */
 export const FilledInput = React.forwardRef<TextInput, TextInputProps & {
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: IconName;
   containerStyle?: StyleProp<ViewStyle>;
   /** A la derecha del campo, p. ej. el ojo para ver la contraseña */
   right?: React.ReactNode;
@@ -307,7 +307,7 @@ export const FilledInput = React.forwardRef<TextInput, TextInputProps & {
         containerStyle,
       ]}
     >
-      {icon && <Ionicons name={icon} size={18} color={dc.textSecondary} />}
+      {icon && <Icon name={icon} size={18} color={dc.textSecondary} />}
       <TextInput
         ref={ref}
         placeholderTextColor={dc.textSecondary}

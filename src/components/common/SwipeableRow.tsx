@@ -4,11 +4,11 @@ import {
   StyleProp, ViewStyle,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from './Icon';
 import { selectionHaptic } from '../../utils/haptics';
 
 export interface SwipeAction {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   /** Fondo del botón */
   background: string;
   /** Color del icono */
@@ -139,7 +139,7 @@ const SwipeableRow = ({
                   }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
+                  <Icon name={action.icon} size={22} color={action.tint ?? '#FFFFFF'} />
                 </TouchableOpacity>
               </Animated.View>
             );

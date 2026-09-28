@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, AppState } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -170,7 +170,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
             </Text>
             {diff !== null && diff !== 0 && (
               <View style={styles.trendPill}>
-                <Ionicons name={diff > 0 ? 'trending-up' : 'trending-down'} size={12} color={ui.onHero} />
+                <Icon name={diff > 0 ? 'trending-up' : 'trending-down'} size={12} color={ui.onHero} />
                 <Text style={[styles.trendText, { color: ui.onHero }]} numberOfLines={1}>
                   {diff > 0 ? '+' : '-'}{formatAmount(Math.abs(diff))} {currencySymbol} vs {shortMonth(prevMonthIdx)}
                 </Text>
@@ -185,7 +185,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
           {groups.length === 0 ? (
             <View style={styles.empty}>
               <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-                <Ionicons name={isIncome ? 'trending-up-outline' : 'receipt-outline'} size={28} color={ui.accent} />
+                <Icon name={isIncome ? 'trending-up-outline' : 'receipt-outline'} size={28} color={ui.accent} />
               </View>
               <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
                 {t(isIncome ? 'resumen.noIncome' : 'resumen.noExpenses')}
@@ -201,7 +201,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                   activeOpacity={0.7}
                 >
                   <View style={[styles.catIcon, { backgroundColor: withAlpha(g.color, 0.15) }]}>
-                    <Ionicons name={cat.icon(g.category, type)} size={19} color={g.color} />
+                    <Icon name={cat.icon(g.category, type)} size={19} color={g.color} />
                   </View>
                   <View style={styles.catContent}>
                     <View style={styles.catTitleRow}>
@@ -225,7 +225,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                       />
                     </View>
                   </View>
-                  <Ionicons
+                  <Icon
                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
                     size={16}
                     color={isExpanded ? g.color : dc.textSecondary}
@@ -278,7 +278,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
               hitSlop={6}
             >
               <Text style={[styles.seeAllText, { color: ui.accent }]}>{t('home.seeAll')}</Text>
-              <Ionicons name="chevron-forward" size={15} color={ui.accent} />
+              <Icon name="chevron-forward" size={15} color={ui.accent} />
             </TouchableOpacity>
           )}
         </ScrollView>

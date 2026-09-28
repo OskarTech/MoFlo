@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon, { IconName } from '../../components/common/Icon';
 import { useIsFocused } from '@react-navigation/native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useMovementStore } from '../../store/movementStore';
@@ -174,9 +174,9 @@ const AnnualScreen = () => {
     </StrikeText>
   );
 
-  const getCatIcon = (id: string, type: MovementType): keyof typeof Ionicons.glyphMap => {
+  const getCatIcon = (id: string, type: MovementType): IconName => {
     const icon = isSharedMode ? getSharedCategoryIcon(id, type) : getCategoryIcon(id, type);
-    return (icon + '-outline') as keyof typeof Ionicons.glyphMap;
+    return (icon + '-outline') as IconName;
   };
 
   const shortMonth = (m: number) => t(`home.month_${m - 1}`).slice(0, 3);
@@ -565,7 +565,7 @@ const AnnualScreen = () => {
         <View style={[styles.detailDivider, { backgroundColor: ui.hair }]} />
         <TouchableOpacity style={styles.detailToggle} onPress={toggleMovs} activeOpacity={0.7}>
           <Text style={[styles.detailToggleText, { color: ui.accent }]}>{t('resumen.viewAllMovements')}</Text>
-          <Ionicons name={showMovs ? 'chevron-up' : 'chevron-down'} size={16} color={ui.accent} />
+          <Icon name={showMovs ? 'chevron-up' : 'chevron-down'} size={16} color={ui.accent} />
         </TouchableOpacity>
 
         {showMovs && (catMonthMovs.length === 0 ? (
@@ -605,7 +605,7 @@ const AnnualScreen = () => {
       return (
         <View style={styles.empty}>
           <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name={isIncome ? 'trending-up-outline' : 'receipt-outline'} size={28} color={ui.accent} />
+            <Icon name={isIncome ? 'trending-up-outline' : 'receipt-outline'} size={28} color={ui.accent} />
           </View>
           <Text style={[styles.emptyText, { color: dc.textSecondary }]}>
             {t(isIncome ? 'resumen.noIncome' : 'resumen.noExpenses')}
@@ -653,7 +653,7 @@ const AnnualScreen = () => {
                   activeOpacity={0.7}
                 >
                   <View style={[styles.catIcon, { backgroundColor: withAlpha(item.color, 0.15) }]}>
-                    <Ionicons name={getCatIcon(item.category, type)} size={19} color={item.color} />
+                    <Icon name={getCatIcon(item.category, type)} size={19} color={item.color} />
                   </View>
                   <View style={styles.catContent}>
                     <View style={styles.catTitleRow}>
@@ -671,7 +671,7 @@ const AnnualScreen = () => {
                       <View style={[styles.catBarFill, { width: `${item.percentage}%`, backgroundColor: item.color }]} />
                     </View>
                   </View>
-                  <Ionicons
+                  <Icon
                     name={isSelected ? 'chevron-up' : 'chevron-down'}
                     size={16}
                     color={isSelected ? item.color : dc.textSecondary}
@@ -739,7 +739,7 @@ const AnnualScreen = () => {
       {huchas.length === 0 ? (
         <View style={styles.empty}>
           <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
-            <Ionicons name="wallet-outline" size={28} color={ui.accent} />
+            <Icon name="wallet-outline" size={28} color={ui.accent} />
           </View>
           <Text style={[styles.emptyText, { color: dc.textSecondary }]}>{t('resumen.noHuchaMovements')}</Text>
         </View>
@@ -751,13 +751,13 @@ const AnnualScreen = () => {
           <View key={h.id} style={[styles.huchaCard, { backgroundColor: ui.field }]}>
             <View style={styles.huchaCardHeader}>
               <View style={[styles.huchaCardIcon, { backgroundColor: withAlpha(h.color, 0.16) }]}>
-                <Ionicons name={h.icon as keyof typeof Ionicons.glyphMap} size={21} color={h.color} />
+                <Icon name={h.icon as IconName} size={21} color={h.color} />
               </View>
               <View style={styles.huchaCardMeta}>
                 <Text style={[styles.huchaCardName, { color: dc.textPrimary }]}>{h.name}</Text>
                 {streak > 0 && (
                   <View style={styles.streakRow}>
-                    <Ionicons name="flame" size={13} color={ui.savingsText} />
+                    <Icon name="flame" size={13} color={ui.savingsText} />
                     <Text style={[styles.streakText, { color: dc.textSecondary }]}>
                       {t('resumen.streak', { count: streak })}
                     </Text>
@@ -846,7 +846,7 @@ const AnnualScreen = () => {
           )}
           {balanceDiff !== null && (
             <View style={styles.heroPill}>
-              <Ionicons
+              <Icon
                 name={balanceDiff >= 0 ? 'trending-up-outline' : 'trending-down-outline'}
                 size={12}
                 color={ui.onHero}
@@ -919,7 +919,7 @@ const AnnualScreen = () => {
                 styles.badge,
                 { backgroundColor: withAlpha(rhythmGood ? dc.income : dc.expense, 0.15) },
               ]}>
-                <Ionicons
+                <Icon
                   name={rhythm.diff < 0 ? 'arrow-down' : 'arrow-up'}
                   size={12}
                   color={rhythmGood ? ui.incomeText : ui.expenseText}

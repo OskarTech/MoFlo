@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../common/Icon';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useCategoryStore } from '../../store/categoryStore';
@@ -241,7 +241,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
         <SheetLabel>{t('recurring.dayPickerLabel')}</SheetLabel>
         <DayPicker value={recurringDay} onChange={setRecurringDay} resetKey={pickerKey} />
         <View style={[styles.info, { backgroundColor: ui.fill }]}>
-          <Ionicons name="repeat" size={16} color={dc.textSecondary} />
+          <Icon name="repeat" size={16} color={dc.textSecondary} />
           <Text style={[styles.infoText, { color: dc.textSecondary }]}>{t('recurring.infoMessage')}</Text>
         </View>
 

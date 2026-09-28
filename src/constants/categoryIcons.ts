@@ -1,8 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
+import type { IoniconName } from '../components/common/Icon';
 
 // Iconos para elegir al crear o editar una categoría propia (se muestran con
-// su versión de contorno, como el resto de iconos de categoría)
-export const CATEGORY_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
+// su versión de contorno, como el resto de iconos de categoría). Se guardan con
+// su nombre de Ionicons, que es lo que entienden las versiones anteriores de la
+// app; al pintarlos se traducen a Phosphor
+export const CATEGORY_ICONS: IoniconName[] = [
   'home',
   'business',
   'bed',
