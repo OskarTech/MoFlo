@@ -1,7 +1,7 @@
 # 💰 MoFlo — Personal Finance Tracker
 
 <p align="center">
-  <img src="assets/icon.png" width="120" alt="MoFlo Logo" />
+  <img src="assets/icon/ios-light.png" width="120" alt="MoFlo Logo" />
 </p>
 
 <p align="center">

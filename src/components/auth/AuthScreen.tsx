@@ -47,7 +47,7 @@ export const AuthBrand = ({ subtitle, compact }: { subtitle?: string; compact?: 
   return (
     <View style={[styles.brand, compact && styles.brandCompact]}>
       <Image
-        source={require('../../../assets/icon.png')}
+        source={require('../../../assets/icon/ios-light.png')}
         style={[styles.logo, { width: size, height: size, borderRadius: size * 0.26 }]}
         resizeMode="contain"
       />
@@ -149,7 +149,8 @@ const styles = StyleSheet.create({
   sheet: { paddingHorizontal: 24, paddingTop: 28 },
   brand: { alignItems: 'center', paddingTop: 22, paddingHorizontal: 24 },
   brandCompact: { paddingTop: 8 },
-  logo: { marginBottom: 12 },
+  // El icono es del mismo verde que la cabecera: el borde lo separa de ella
+  logo: { marginBottom: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.28)' },
   appName: { fontSize: 30, fontFamily: 'Poppins_700Bold', letterSpacing: 0.5 },
   appNameCompact: { fontSize: 24 },
   brandSubtitle: { fontSize: 14, fontFamily: 'Poppins_400Regular', marginTop: 2, textAlign: 'center' },

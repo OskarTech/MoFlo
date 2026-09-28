@@ -5,7 +5,7 @@
     "version": "1.5.1",
     "scheme": "moflo",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon/ios-light.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -20,6 +20,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
       "buildNumber": "51",
+      "icon": {
+        "light": "./assets/icon/ios-light.png",
+        "dark": "./assets/icon/ios-dark.png",
+        "tinted": "./assets/icon/ios-tinted.png"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": ["remote-notification"]
@@ -27,8 +32,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/icon/android-foreground.png",
+        "backgroundImage": "./assets/icon/android-background.png",
+        "monochromeImage": "./assets/icon/android-monochrome.png",
+        "backgroundColor": "#166534"
       },
       "package": "com.oskartech.moflo",
       "versionCode": 51,
@@ -57,7 +64,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png"
+          "icon": "./assets/icon/notification.png"
         }
       ],
       [
