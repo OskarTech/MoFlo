@@ -26,8 +26,12 @@ import MonthTypeSummaryModal from '../../components/home/MonthTypeSummaryModal';
 import { useWalkthroughTarget } from '../../components/walkthrough/useWalkthroughTarget';
 import { useWalkthroughStore, WALKTHROUGH_STEPS } from '../../store/walkthroughStore';
 
-const BALANCE_INT_MAX_SIZE = 48;
+// El balance es lo que más debe destacar de Inicio: parte entera, decimales
+// con la moneda, y el signo si es negativo
+const BALANCE_INT_MAX_SIZE = 54;
 const BALANCE_INT_MIN_SIZE = 22;
+const BALANCE_DEC_SIZE = 28;
+const BALANCE_SIGN_SIZE = 43;
 const HIDE_KEY = '@moflo_hide_balance';
 const HIDDEN = '••••';
 
@@ -70,8 +74,8 @@ const BalanceHero = ({
   const [amountRowWidth, setAmountRowWidth] = useState(0);
   const intFontSize = useMemo(() => {
     if (!amountRowWidth) return BALANCE_INT_MAX_SIZE;
-    const decWidth = (decPart.length + 2 + currencySymbol.length) * 25 * 0.65; // ",00 €"
-    const signWidth = balance < 0 ? 40 * 0.6 + 2 : 0;
+    const decWidth = (decPart.length + 2 + currencySymbol.length) * BALANCE_DEC_SIZE * 0.65; // ",00 €"
+    const signWidth = balance < 0 ? BALANCE_SIGN_SIZE * 0.6 + 2 : 0;
     const available = amountRowWidth - decWidth - signWidth - 4;
     // Ancho aproximado por dígito en Poppins Bold: 0.7em - 1.5px de letterSpacing
     const size = (available / intPart.length + 1.5) / 0.7;
@@ -411,13 +415,13 @@ const styles = StyleSheet.create({
   todayBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
   todayText: { fontSize: 12, fontFamily: 'Poppins_600SemiBold' },
   amountRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 4 },
-  amountSign: { fontSize: 38, fontFamily: 'Poppins_700Bold', lineHeight: 50, marginRight: 2 },
+  amountSign: { fontSize: BALANCE_SIGN_SIZE, fontFamily: 'Poppins_700Bold', lineHeight: 56, marginRight: 2 },
   // fontSize y lineHeight se calculan según el ancho disponible.
   // Sin flexShrink: en iOS comprimía la parte entera hasta dejarla invisible.
   amountInt: { fontFamily: 'Poppins_700Bold', letterSpacing: -1.5 },
   amountDec: {
-    color: 'rgba(255,255,255,0.8)', fontSize: 25,
-    fontFamily: 'Poppins_600SemiBold', marginBottom: 5, marginLeft: 1,
+    color: 'rgba(255,255,255,0.8)', fontSize: BALANCE_DEC_SIZE,
+    fontFamily: 'Poppins_600SemiBold', marginBottom: 6, marginLeft: 1,
   },
   track: {
     height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)',
