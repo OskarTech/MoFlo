@@ -22,8 +22,9 @@ export const FAB_CENTER_FROM_RIGHT = SIDE + TAB_BAR_HEIGHT / 2;
 const IS_IOS = Platform.OS === 'ios';
 
 // El difuminado es nativo (expo-blur): una build anterior a él no lo trae y,
-// en su lugar, dibujaba un recuadro rojo de error. Sin él, la cápsula se queda
-// con el cristal sin difuminar
+// en su lugar, dibujaba un recuadro rojo de error. Sin él, la cápsula es
+// sólida: translúcida sin difuminar se veía el contenido de detrás y los
+// colores quedaban sucios (lo que pasó en Android con una build de antes)
 const HAS_BLUR = requireOptionalNativeModule('ExpoBlurView') != null;
 
 // Separación de la cápsula con el borde de abajo. En iOS se apoya justo encima
@@ -111,16 +112,23 @@ const GlassTabBar = ({
           style={[
             styles.capsule,
             { borderColor: ui.glassEdge },
-            // En Android el cristal no se difumina bien (se veía el contenido de
-            // detrás y los colores quedaban sucios): allí la cápsula es sólida
-            !IS_IOS && [styles.capsuleSolid, { backgroundColor: ui.sheetRaised }],
+            !HAS_BLUR && [styles.capsuleSolid, { backgroundColor: ui.sheetRaised }],
           ]}
         >
-          {/* iOS: cristal translúcido difuminado, en todas las versiones (sin Liquid Glass) */}
-          {IS_IOS && HAS_BLUR && (
-            <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          {/* Cristal translúcido difuminado, en iOS y en Android. En Android el
+              difuminado de expo-blur es experimental (dimezisBlurView) y ya
+              pone encima su propio velo, blanco o gris según el tinte: con la
+              capa de color además quedaba casi opaca. Sin sombra (elevation):
+              en Android se ve a través del cristal y lo ensucia */}
+          {HAS_BLUR && (
+            <BlurView
+              intensity={60}
+              tint={isDark ? 'dark' : 'light'}
+              experimentalBlurMethod="dimezisBlurView"
+              style={StyleSheet.absoluteFill}
+            />
           )}
-          {IS_IOS && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
+          {HAS_BLUR && IS_IOS && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
           {state.routes.filter((r) => TABS[r.name]).map((route) => (
             <TabButton
               key={route.key}

@@ -697,30 +697,43 @@ const SettingsScreen = () => {
 
   // ── CABECERA ──────────────────────────────────────────────────
 
-  // Avatar de la cabecera: tocándolo se cambia la foto. Con una build sin los
-  // módulos de fotos se enseña sin más
+  // Avatar de la cabecera. Con foto, tocándola se ve en grande, y la cámara de
+  // al lado la cambia o la quita; sin foto, tocar el avatar ya abre el menú.
+  // Con una build sin los módulos de fotos solo se puede ampliar
   const heroAvatar = (target: 'profile' | 'shared', uri: string | null | undefined, fallback: React.ReactNode) => {
-    const avatar = <Avatar uri={uri} style={styles.avatar}>{fallback}</Avatar>;
+    const title = target === 'shared' ? sharedAccount?.name ?? '' : displayName || t('common.user');
+    const avatar = <Avatar uri={uri} style={styles.avatar} zoomTitle={title}>{fallback}</Avatar>;
     if (!PHOTOS_AVAILABLE) return avatar;
+    const openMenu = () => openPhotoMenu(target);
     return (
-      <TouchableOpacity
-        style={styles.avatarWrap}
-        onPress={() => openPhotoMenu(target)}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel={t('settings.photoChange')}
-      >
-        {avatar}
+      <View style={styles.avatarWrap}>
+        {uri ? avatar : (
+          <TouchableOpacity
+            onPress={openMenu}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.photoChange')}
+          >
+            {avatar}
+          </TouchableOpacity>
+        )}
         {photoBusy ? (
           <View style={[styles.avatar, styles.avatarBusy]}>
             <ActivityIndicator color="#FFFFFF" />
           </View>
         ) : (
-          <View style={[styles.avatarEdit, { borderColor: ui.hero }]}>
+          <TouchableOpacity
+            style={[styles.avatarEdit, { borderColor: ui.hero }]}
+            onPress={openMenu}
+            hitSlop={10}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.photoChange')}
+          >
             <Icon name="camera" size={12} color={ui.hero} />
-          </View>
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
