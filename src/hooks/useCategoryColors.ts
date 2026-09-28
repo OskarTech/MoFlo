@@ -5,7 +5,7 @@ import { useCategoryStore } from '../store/categoryStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useMovementStore } from '../store/movementStore';
 import { BASE_CATEGORIES } from '../constants/categories';
-import { makeCategoryColors, CategoryColors, buildExpenseOrder } from '../utils/categoryColors';
+import { makeCategoryColors, CategoryColors, buildExpenseOrder, choicesForPalette } from '../utils/categoryColors';
 import { MovementType } from '../types';
 
 export interface CategoryColorsWithIncome extends CategoryColors {
@@ -19,17 +19,18 @@ export interface CategoryColorsWithIncome extends CategoryColors {
 }
 
 // Colores de las categorías con la paleta y el modo activos. Las propias y los
-// colores elegidos salen de la cuenta activa: en compartida, de la cuenta
+// colores elegidos salen de la cuenta activa: en compartida, de la cuenta. Los
+// elegidos, solo los de la paleta en uso
 export const useCategoryColors = (): CategoryColorsWithIncome => {
-  const { categoryColors } = useTheme();
+  const { categoryColors, paletteId } = useTheme();
   const isSharedMode = useSharedAccountStore((s) => s.isSharedMode);
   const customCategories = useCategoryStore((s) => s.customCategories);
-  const choices = useCategoryStore((s) => s.categoryColors);
+  const choices = useCategoryStore((s) => s.paletteCategoryColors);
   const sharedCustomCategories = useSharedCategoryStore((s) => s.sharedCustomCategories);
-  const sharedChoices = useSharedCategoryStore((s) => s.sharedCategoryColors);
+  const sharedChoices = useSharedCategoryStore((s) => s.sharedPaletteCategoryColors);
   const movements = useMovementStore((s) => s.movements);
   const list = isSharedMode ? sharedCustomCategories : customCategories;
-  const activeChoices = isSharedMode ? sharedChoices : choices;
+  const activeChoices = choicesForPalette(isSharedMode ? sharedChoices : choices, paletteId);
 
   const incomeRank = useMemo(() => {
     const now = new Date();

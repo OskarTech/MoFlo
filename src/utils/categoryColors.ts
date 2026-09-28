@@ -28,6 +28,52 @@ export type CategoryColorChoices = Record<string, CategoryColorChoice>;
 
 export const categoryColorKey = (id: string, type: 'income' | 'expense') => `${id}_${type}`;
 
+// Los colores elegidos van por paleta: cambiar uno en una paleta no toca las
+// demás, que siguen con los suyos
+export type PaletteCategoryColors = Record<string, CategoryColorChoices>;
+
+const EMPTY_CHOICES: CategoryColorChoices = {};
+
+export const choicesForPalette = (all: PaletteCategoryColors, palette: string): CategoryColorChoices =>
+  all[palette] ?? EMPTY_CHOICES;
+
+const isMap = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Los colores guardados en el documento (del usuario o de la cuenta
+ * compartida). Antes había un solo juego para todas las paletas
+ * (`categoryColors`, que las versiones anteriores siguen leyendo): si aún no
+ * los hay por paleta, esos pasan a la paleta en uso. En ella no cambia nada y
+ * las demás vuelven a sus colores. Con `migrated` hay que guardarlo.
+ */
+export const readPaletteCategoryColors = (
+  data: { paletteCategoryColors?: unknown; categoryColors?: unknown } | undefined,
+  palette: string,
+): { colors: PaletteCategoryColors; migrated: boolean } => {
+  if (isMap(data?.paletteCategoryColors)) {
+    return { colors: data.paletteCategoryColors as PaletteCategoryColors, migrated: false };
+  }
+  const legacy = data?.categoryColors;
+  if (isMap(legacy) && Object.keys(legacy).length > 0) {
+    return { colors: { [palette]: legacy as CategoryColorChoices }, migrated: true };
+  }
+  return { colors: {}, migrated: false };
+};
+
+// El mismo cambio sobre lo que hay en memoria: null vuelve al automático
+export const withChoice = (
+  all: PaletteCategoryColors,
+  palette: string,
+  key: string,
+  choice: CategoryColorChoice | null,
+): PaletteCategoryColors => {
+  const forPalette = { ...choicesForPalette(all, palette) };
+  if (choice === null) delete forPalette[key];
+  else forPalette[key] = choice;
+  return { ...all, [palette]: forPalette };
+};
+
 export interface CategoryColors {
   // Color de una categoría de gasto: siempre el mismo, sea cual sea su puesto.
   // A partir de la 13.ª se repiten, siempre con su icono y su nombre al lado

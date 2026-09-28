@@ -1,4 +1,6 @@
-import { makeCategoryColors, BASE_EXPENSE_ORDER } from '../categoryColors';
+import {
+  makeCategoryColors, BASE_EXPENSE_ORDER, readPaletteCategoryColors, choicesForPalette, withChoice,
+} from '../categoryColors';
 import { CATEGORY_COLORS } from '../../theme/categoryColors';
 import { COLOR_PALETTES } from '../../theme';
 import { Category } from '../../types';
@@ -113,5 +115,44 @@ describe('CATEGORY_COLORS', () => {
         [...s.expense, s.expenseOther, ...s.income].forEach((c) => expect(c).toMatch(hex));
       });
     });
+  });
+});
+
+describe('colores elegidos por paleta', () => {
+  it('lo guardado por paletas se lee tal cual', () => {
+    const saved = { green: { food_expense: 2 }, navy: { food_expense: '#123456' } };
+    expect(readPaletteCategoryColors({ paletteCategoryColors: saved, categoryColors: { food_expense: 5 } }, 'green'))
+      .toEqual({ colors: saved, migrated: false });
+  });
+
+  it('los de antes (uno para todas) pasan solo a la paleta en uso, y hay que guardarlo', () => {
+    const { colors, migrated } = readPaletteCategoryColors({ categoryColors: { food_expense: 3 } }, 'rose');
+    expect(migrated).toBe(true);
+    expect(colors).toEqual({ rose: { food_expense: 3 } });
+    expect(choicesForPalette(colors, 'green')).toEqual({});
+  });
+
+  it('sin nada guardado no hay colores ni nada que subir', () => {
+    expect(readPaletteCategoryColors(undefined, 'green')).toEqual({ colors: {}, migrated: false });
+    expect(readPaletteCategoryColors({ categoryColors: {} }, 'green')).toEqual({ colors: {}, migrated: false });
+  });
+
+  it('cambiar el color en una paleta no toca las demás', () => {
+    const before = { green: { food_expense: 1 }, navy: { food_expense: 4 } };
+    const after = withChoice(before, 'green', 'food_expense', '#ABCDEF');
+    expect(after.green).toEqual({ food_expense: '#ABCDEF' });
+    expect(after.navy).toBe(before.navy);
+    expect(before.green).toEqual({ food_expense: 1 });
+    // Automático: se quita de esa paleta y sigue en la otra
+    const auto = withChoice(after, 'navy', 'food_expense', null);
+    expect(auto.navy).toEqual({});
+    expect(auto.green).toEqual({ food_expense: '#ABCDEF' });
+  });
+
+  it('con el color de una paleta, en otra la categoría vuelve a su color', () => {
+    const all = withChoice({}, 'green', 'food_expense', 5);
+    const earth = CATEGORY_COLORS.earth.light;
+    expect(makeCategoryColors(set, [], choicesForPalette(all, 'green')).expense('food')).toBe(set.expense[5]);
+    expect(makeCategoryColors(earth, [], choicesForPalette(all, 'earth')).expense('food')).toBe(earth.expense[1]);
   });
 });

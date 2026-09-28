@@ -10,7 +10,7 @@ import { useCategoryStore } from '../store/categoryStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { COLOR_PALETTES, ColorPaletteId } from '../theme';
 import { CATEGORY_COLORS } from '../theme/categoryColors';
-import { makeCategoryColors } from '../utils/categoryColors';
+import { makeCategoryColors, choicesForPalette } from '../utils/categoryColors';
 import { getMemberLabel } from '../utils/memberLabel';
 import { getSeparators } from '../utils/formatAmount';
 import { ExportDateFormat, ExportInput, fileBaseName, summarize } from './export/data';
@@ -47,7 +47,7 @@ const collectInput = (): ExportInput => {
   const colors = makeCategoryColors(
     CATEGORY_COLORS[palette].light,
     isShared ? sharedCategoryStore.sharedCustomCategories : categoryStore.customCategories,
-    isShared ? sharedCategoryStore.sharedCategoryColors : categoryStore.categoryColors,
+    choicesForPalette(isShared ? sharedCategoryStore.sharedPaletteCategoryColors : categoryStore.paletteCategoryColors, palette),
   );
   const formerLabel = t('sharedAccount.formerMember');
 

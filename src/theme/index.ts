@@ -243,6 +243,11 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
   },
 };
 
+// La paleta en uso: la guardada si existe; si no, la de siempre (verde en la
+// cuenta individual, azul marino en la compartida)
+export const resolvePaletteId = (raw: string | null | undefined, isShared: boolean): ColorPaletteId =>
+  raw && raw in COLOR_PALETTES ? (raw as ColorPaletteId) : isShared ? 'navy' : 'green';
+
 export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'green') => {
   const p = COLOR_PALETTES[paletteId] ?? COLOR_PALETTES['green'];
   return {
