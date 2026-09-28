@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../hooks/useTheme';
+import { withAlpha } from '../../utils/color';
 import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 
 export const TAB_BAR_HEIGHT = 62;
@@ -26,6 +27,13 @@ const IS_IOS = Platform.OS === 'ios';
 // sólida: translúcida sin difuminar se veía el contenido de detrás y los
 // colores quedaban sucios (lo que pasó en Android con una build de antes)
 const HAS_BLUR = requireOptionalNativeModule('ExpoBlurView') != null;
+
+// Android: expo-blur divide la intensidad entre este número para el radio del
+// difuminado (por defecto 4: con 60 quedaban 15 px y se leía lo de detrás, con
+// los colores de las filas colándose en la cápsula). Más bajo, más difuminado
+const ANDROID_BLUR_REDUCTION = 1.25;
+// Android: capa del color de la tarjeta sobre el difuminado, como la de iOS
+const ANDROID_GLASS = { dark: 0.55, light: 0.45 };
 
 // Separación de la cápsula con el borde de abajo. En iOS se apoya justo encima
 // de la barra de inicio. En Android va entera por encima de la zona de gestos (o
@@ -116,19 +124,28 @@ const GlassTabBar = ({
           ]}
         >
           {/* Cristal translúcido difuminado, en iOS y en Android. En Android el
-              difuminado de expo-blur es experimental (dimezisBlurView) y ya
-              pone encima su propio velo, blanco o gris según el tinte: con la
-              capa de color además quedaba casi opaca. Sin sombra (elevation):
-              en Android se ve a través del cristal y lo ensucia */}
+              difuminado de expo-blur es experimental (dimezisBlurView) y pone
+              encima su propio velo, blanco o gris según el tinte; con más
+              difuminado y la capa del color de la tarjeta, como en iOS, lo de
+              detrás ya no ensucia los colores. Sin sombra (elevation): en
+              Android se ve a través del cristal y lo ensucia */}
           {HAS_BLUR && (
             <BlurView
               intensity={60}
               tint={isDark ? 'dark' : 'light'}
               experimentalBlurMethod="dimezisBlurView"
+              {...(!IS_IOS && { blurReductionFactor: ANDROID_BLUR_REDUCTION })}
               style={StyleSheet.absoluteFill}
             />
           )}
           {HAS_BLUR && IS_IOS && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
+          {HAS_BLUR && !IS_IOS && (
+            <View
+              style={[StyleSheet.absoluteFill, {
+                backgroundColor: withAlpha(ui.sheetRaised, isDark ? ANDROID_GLASS.dark : ANDROID_GLASS.light),
+              }]}
+            />
+          )}
           {state.routes.filter((r) => TABS[r.name]).map((route) => (
             <TabButton
               key={route.key}
