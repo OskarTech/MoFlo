@@ -203,6 +203,8 @@
   "preferences": "Preferencias",
   "haptics": "Vibración",
   "hapticsSubtitle": "Respuesta táctil al usar la app",
+  "liquidGlass": "Liquid Glass",
+  "liquidGlassSubtitle": "Barra de abajo de cristal transparente",
   "dateFormat": "Formato de fecha",
   "dateFormatDMY": "DD/MM/AAAA",
   "dateFormatMDY": "MM/DD/AAAA",

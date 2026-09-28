@@ -46,6 +46,7 @@ import { scheduleDailyNotification, cancelDailyNotification } from '../../servic
 import Constants from 'expo-constants';
 import { reloadAppAsync } from 'expo';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
+import { LIQUID_GLASS_AVAILABLE } from '../../utils/liquidGlass';
 import { withAlpha } from '../../utils/color';
 import { FONT_OPTIONS, AppFontId, getSavedFont, saveFont, getActiveFont } from '../../theme/fonts';
 
@@ -83,7 +84,10 @@ const SettingsScreen = () => {
     return () => sub.remove();
   }, [goBack]));
 
-  const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
+  const {
+    displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
+    saveSettings,
+  } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const {
     isSharedMode, sharedAccount, notificationsEnabled,
@@ -732,6 +736,21 @@ const SettingsScreen = () => {
         label={t('settings.theme')} value={selectedThemeLabel}
         onPress={() => setShowThemeModal(true)}
       />
+      {/* Liquid Glass: solo en iOS 26 o posterior. Desactivado, la barra de abajo
+          es sólida, igual que en Android */}
+      {LIQUID_GLASS_AVAILABLE && (
+        <SettingsRow
+          icon="water-outline"
+          label={t('settings.liquidGlass')}
+          subtitle={t('settings.liquidGlassSubtitle')}
+          right={
+            <Switch
+              {...switchProps(liquidGlassEnabled)}
+              onValueChange={(value) => saveSettings({ liquidGlassEnabled: value })}
+            />
+          }
+        />
+      )}
       {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
       <SettingsRow
         icon="text-outline"

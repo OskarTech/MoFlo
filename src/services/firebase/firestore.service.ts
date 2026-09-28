@@ -96,6 +96,7 @@ interface UserSettings {
   dateFormat?: string;
   colorPalette?: string;
   hapticsEnabled?: boolean;
+  liquidGlassEnabled?: boolean;
 }
 
 export const saveSettingsToFirestore = async (

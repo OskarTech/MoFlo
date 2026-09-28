@@ -72,6 +72,8 @@ interface SettingsStore {
   dateFormat: DateFormat;
   colorPalette: ColorPaletteId;
   hapticsEnabled: boolean;
+  // Barra de abajo con Liquid Glass (solo iOS 26 o posterior)
+  liquidGlassEnabled: boolean;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
@@ -83,6 +85,7 @@ interface SettingsStore {
     dateFormat: DateFormat;
     colorPalette: ColorPaletteId;
     hapticsEnabled: boolean;
+    liquidGlassEnabled: boolean;
   }>) => Promise<void>;
   getCurrencySymbol: () => string;
   adoptDisplayNameIfMissing: (name?: string | null, persist?: boolean) => Promise<void>;
@@ -97,6 +100,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   dateFormat: 'DD/MM/YYYY',
   colorPalette: 'green',
   hapticsEnabled: true,
+  liquidGlassEnabled: true,
   isLoading: false,
 
   resetStore: () => set({
@@ -107,6 +111,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     dateFormat: 'DD/MM/YYYY',
     colorPalette: 'green',
     hapticsEnabled: true,
+    liquidGlassEnabled: true,
   }),
 
   loadSettings: async () => {
@@ -140,8 +145,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             themeMode: (firestoreSettings.themeMode as ThemeMode) ?? 'auto',
             dateFormat: (firestoreSettings.dateFormat as DateFormat) ?? 'DD/MM/YYYY',
             colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
-            // Ajuste nuevo: las cuentas antiguas no lo tienen guardado
+            // Ajustes nuevos: las cuentas antiguas no los tienen guardados
             hapticsEnabled: firestoreSettings.hapticsEnabled ?? true,
+            liquidGlassEnabled: firestoreSettings.liquidGlassEnabled ?? true,
           };
           set(typedSettings);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -186,6 +192,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       dateFormat: get().dateFormat,
       colorPalette: get().colorPalette,
       hapticsEnabled: get().hapticsEnabled,
+      liquidGlassEnabled: get().liquidGlassEnabled,
     };
     const updated = { ...current, ...newSettings };
     set(updated);
@@ -230,9 +237,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ displayName: trimmed });
     if (!persist) return;
 
-    const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled } = get();
+    const {
+      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
+    } = get();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
-      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
     })).catch(() => {});
     const uid = auth().currentUser?.uid;
     if (uid) {

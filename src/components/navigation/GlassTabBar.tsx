@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Keyboard, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Pressable, Keyboard, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { GlassView } from 'expo-glass-effect';
 import { requireOptionalNativeModule } from 'expo';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../hooks/useTheme';
+import { useSettingsStore } from '../../store/settingsStore';
+import { LIQUID_GLASS_AVAILABLE } from '../../utils/liquidGlass';
 import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 
 export const TAB_BAR_HEIGHT = 62;
@@ -83,6 +86,7 @@ const GlassTabBar = ({
   const { colors: dc, ui, isDark } = useTheme();
   const bottom = useTabBarOffset();
   const fabRef = useWalkthroughTarget('home_fab');
+  const liquidGlassEnabled = useSettingsStore((s) => s.liquidGlassEnabled);
   const [keyboardShown, setKeyboardShown] = useState(false);
 
   useEffect(() => {
@@ -95,6 +99,13 @@ const GlassTabBar = ({
 
   if (keyboardShown) return null;
 
+  // iOS 26 o posterior: Liquid Glass, salvo que se desactive en Ajustes; entonces
+  // la barra es sólida, igual que en Android. En iOS anteriores, el difuminado
+  const liquidGlass = LIQUID_GLASS_AVAILABLE && liquidGlassEnabled;
+  const solid = !IS_IOS || (LIQUID_GLASS_AVAILABLE && !liquidGlassEnabled);
+  const blurred = IS_IOS && !LIQUID_GLASS_AVAILABLE;
+  // El cristal sigue el modo de la app, no el del móvil
+  const glassScheme = isDark ? 'dark' : 'light';
   const focusedKey = state.routes[state.index]?.key;
 
   const handlePress = (routeKey: string, routeName: string) => {
@@ -112,15 +123,26 @@ const GlassTabBar = ({
           style={[
             styles.capsule,
             { borderColor: ui.glassEdge },
+            // Liquid Glass ya dibuja su propio borde
+            liquidGlass && styles.capsuleLiquid,
             // En Android el cristal no se difumina bien (se veía el contenido de
             // detrás y los colores quedaban sucios): allí la cápsula es sólida
-            !IS_IOS && [styles.capsuleSolid, { backgroundColor: ui.sheetRaised }],
+            solid && [styles.capsuleSolid, { backgroundColor: ui.sheetRaised }],
           ]}
         >
-          {IS_IOS && HAS_BLUR && (
+          {liquidGlass && (
+            // "clear" y no "regular": con el fondo oscuro de la app el regular
+            // salía casi opaco y no se distinguía de la cápsula de antes
+            <GlassView
+              glassEffectStyle="clear"
+              colorScheme={glassScheme}
+              style={[StyleSheet.absoluteFill, styles.capsuleGlass]}
+            />
+          )}
+          {blurred && HAS_BLUR && (
             <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           )}
-          {IS_IOS && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
+          {blurred && <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.glass }]} />}
           {state.routes.filter((r) => TABS[r.name]).map((route) => (
             <TabButton
               key={route.key}
@@ -132,15 +154,26 @@ const GlassTabBar = ({
         </View>
       </View>
       <View ref={fabRef} collapsable={false}>
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: dc.primary, shadowColor: dc.primary }]}
-          onPress={onFabPress}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={t('common.add')}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
+        {liquidGlass ? (
+          // Cristal teñido del color de la app. Sin TouchableOpacity: al
+          // bajar la opacidad del botón el cristal deja de verse; el propio
+          // cristal reacciona al tocarlo
+          <Pressable onPress={onFabPress} accessibilityRole="button" accessibilityLabel={t('common.add')}>
+            <GlassView isInteractive tintColor={dc.primary} colorScheme={glassScheme} style={styles.fabGlass}>
+              <Ionicons name="add" size={28} color="#FFFFFF" />
+            </GlassView>
+          </Pressable>
+        ) : (
+          <TouchableOpacity
+            style={[styles.fab, { backgroundColor: dc.primary, shadowColor: dc.primary }]}
+            onPress={onFabPress}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.add')}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -161,6 +194,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   capsuleSolid: { elevation: 6 },
+  capsuleLiquid: { borderWidth: 0 },
+  capsuleGlass: { borderRadius: TAB_BAR_HEIGHT / 2 },
   tabWrap: { flex: 1 },
   tab: {
     height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', gap: 1,
@@ -170,6 +205,10 @@ const styles = StyleSheet.create({
     width: TAB_BAR_HEIGHT, height: TAB_BAR_HEIGHT, borderRadius: TAB_BAR_HEIGHT / 2,
     justifyContent: 'center', alignItems: 'center',
     elevation: 8, shadowOpacity: 0.38, shadowRadius: 12, shadowOffset: { width: 0, height: 8 },
+  },
+  fabGlass: {
+    width: TAB_BAR_HEIGHT, height: TAB_BAR_HEIGHT, borderRadius: TAB_BAR_HEIGHT / 2,
+    justifyContent: 'center', alignItems: 'center',
   },
 });
 

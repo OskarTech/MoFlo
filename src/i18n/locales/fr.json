@@ -202,6 +202,8 @@
     "preferences": "Préférences",
     "haptics": "Retour haptique",
     "hapticsSubtitle": "Retour tactile lors de l'utilisation de l'app",
+    "liquidGlass": "Liquid Glass",
+    "liquidGlassSubtitle": "Barre du bas en verre transparent",
     "account": "Compte",
     "changePassword": "Changer le mot de passe",
     "deleteAccount": "Supprimer le compte",
