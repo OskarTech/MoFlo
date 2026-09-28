@@ -96,7 +96,6 @@ interface UserSettings {
   dateFormat?: string;
   colorPalette?: string;
   hapticsEnabled?: boolean;
-  liquidGlassEnabled?: boolean;
   photoURL?: string | null;
 }
 

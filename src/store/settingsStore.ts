@@ -96,8 +96,6 @@ interface SettingsStore {
   dateFormat: DateFormat;
   colorPalette: ColorPaletteId;
   hapticsEnabled: boolean;
-  // Barra de abajo con Liquid Glass (solo iOS 26 o posterior)
-  liquidGlassEnabled: boolean;
   // Enlace a la foto de perfil en Storage; null sin foto
   photoURL: string | null;
   isLoading: boolean;
@@ -112,7 +110,6 @@ interface SettingsStore {
     dateFormat: DateFormat;
     colorPalette: ColorPaletteId;
     hapticsEnabled: boolean;
-    liquidGlassEnabled: boolean;
   }>) => Promise<void>;
   setProfilePhoto: (localUri: string | null) => Promise<void>;
   getCurrencySymbol: () => string;
@@ -128,7 +125,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   dateFormat: 'DD/MM/YYYY',
   colorPalette: 'green',
   hapticsEnabled: true,
-  liquidGlassEnabled: true,
   photoURL: null,
   isLoading: false,
 
@@ -141,7 +137,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     dateFormat: 'DD/MM/YYYY',
     colorPalette: 'green',
     hapticsEnabled: true,
-    liquidGlassEnabled: true,
   }),
 
   loadSettings: async () => {
@@ -177,7 +172,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             colorPalette: (firestoreSettings.colorPalette as ColorPaletteId) ?? 'green',
             // Ajustes nuevos: las cuentas antiguas no los tienen guardados
             hapticsEnabled: firestoreSettings.hapticsEnabled ?? true,
-            liquidGlassEnabled: firestoreSettings.liquidGlassEnabled ?? true,
             photoURL: firestoreSettings.photoURL ?? null,
           };
           set(typedSettings);
@@ -225,7 +219,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       dateFormat: get().dateFormat,
       colorPalette: get().colorPalette,
       hapticsEnabled: get().hapticsEnabled,
-      liquidGlassEnabled: get().liquidGlassEnabled,
     };
     const updated = { ...current, ...newSettings };
     set(updated);
@@ -296,11 +289,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     const {
       photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
-      liquidGlassEnabled,
     } = get();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
       photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
-      liquidGlassEnabled,
     })).catch(() => {});
     const uid = auth().currentUser?.uid;
     if (uid) {
