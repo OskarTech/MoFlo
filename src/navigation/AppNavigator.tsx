@@ -24,7 +24,7 @@ import { useWalkthroughStore } from '../store/walkthroughStore';
 import { recordFirstLaunch } from '../utils/firstLaunch';
 import { maybePromptForSharedInvite } from '../utils/inviteSharedPrompt';
 import { deliverPendingInvite } from '../utils/pendingInvite';
-import { navigationRef } from './navigationRef';
+import { navigationRef, rememberTab } from './navigationRef';
 import { useMovementStore } from '../store/movementStore';
 import { usePremiumStore } from '../store/premiumStore';
 import { useCategoryStore } from '../store/categoryStore';
@@ -74,6 +74,8 @@ const AppNavigator = () => {
   const activeTabRef = useRef('HomeTab');
 
   useEffect(() => {
+    // Tras cerrar sesión y volver a entrar se empieza otra vez en Inicio
+    rememberTab('HomeTab');
     // Un enlace de invitación abierto sin sesión o durante el arranque se abre
     // ahora, que ya hay sesión y la navegación de la app existe
     deliverPendingInvite(navigationRef);
@@ -143,6 +145,7 @@ const AppNavigator = () => {
             const state = e.data?.state;
             if (state) {
               const activeRoute = state.routes[state.index];
+              if (activeRoute) rememberTab(activeRoute.name);
               if (activeRoute?.name === 'HuchaTab' && activeRoute.state) {
                 const nested = activeRoute.state as any;
                 const nestedName = nested.routes[nested.index ?? nested.routes.length - 1]?.name;

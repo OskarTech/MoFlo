@@ -486,7 +486,7 @@ const RemindersScreen = ({ modalVisible = false, onModalDismiss }: RemindersScre
 
   const hero = (
     <>
-      <HeroTitleBar title={t('header.reminders')} onBack={() => navigation.navigate('HomeTab')} />
+      <HeroTitleBar title={t('header.reminders')} onBack={() => navigation.navigate('HomeTab')} settings />
       {next && nextDate && (
         <View style={styles.heroBody}>
           <Text style={[styles.heroLabel, { color: ui.onHeroSoft }]}>{t('reminders.nextLabel')}</Text>

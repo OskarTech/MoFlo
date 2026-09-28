@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, StyleProp, ViewStyle } from 'react-
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 
 // Botón redondo translúcido sobre la cabecera de color
@@ -29,16 +30,31 @@ export const HeroIconButton = ({
   );
 };
 
+// Tuerca de Ajustes: siempre la última de la barra, arriba a la derecha
+export const HeroSettingsButton = () => {
+  const { t } = useTranslation();
+  const navigation = useNavigation<any>();
+  return (
+    <HeroIconButton
+      icon="settings-outline"
+      onPress={() => navigation.navigate('Settings', { screen: 'SettingsMain' })}
+      accessibilityLabel={t('header.settings_screen')}
+    />
+  );
+};
+
 /**
  * Barra de arriba de las pantallas: el nombre a la izquierda (con flecha para
- * volver si hace falta) y, a la derecha, el control propio de la pantalla.
+ * volver si hace falta) y, a la derecha, el control propio de la pantalla y,
+ * con `settings`, la tuerca de Ajustes en el mismo sitio que en Inicio.
  */
 export const HeroTitleBar = ({
-  title, onBack, right, style,
+  title, onBack, right, settings, style,
 }: {
   title: string;
   onBack?: () => void;
   right?: React.ReactNode;
+  settings?: boolean;
   style?: StyleProp<ViewStyle>;
 }) => {
   const { t } = useTranslation();
@@ -57,7 +73,12 @@ export const HeroTitleBar = ({
       >
         {title}
       </Text>
-      {right ? <View style={styles.right}>{right}</View> : null}
+      {right || settings ? (
+        <View style={styles.right}>
+          {right}
+          {settings && <HeroSettingsButton />}
+        </View>
+      ) : null}
     </View>
   );
 };

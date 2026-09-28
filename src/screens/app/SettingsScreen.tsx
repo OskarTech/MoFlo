@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Alert, Linking, Share,
-  Switch, Platform, Clipboard,
+  Switch, Platform, Clipboard, BackHandler,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as StoreReview from 'expo-store-review';
 import * as Notifications from 'expo-notifications';
@@ -29,6 +29,7 @@ import ColorPaletteModal from '../../components/common/ColorPaletteModal';
 import BottomSheet, { SheetButton, FilledInput } from '../../components/common/BottomSheet';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroTitleBar } from '../../components/layout/HeroBar';
+import { getTabBeforeSettings } from '../../navigation/navigationRef';
 import { SettingsSection, SettingsRow } from '../../components/settings/SettingsRows';
 import { OptionSheet, AppearanceSheet, FontSheet } from '../../components/settings/SettingsSheets';
 import i18n from '../../i18n';
@@ -65,6 +66,22 @@ const SettingsScreen = () => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+
+  // Ajustes se abre desde la tuerca de cualquier pantalla: volver lleva a la
+  // pantalla de la que se vino, no siempre a Inicio
+  const goBack = useCallback(() => {
+    navigation.navigate(getTabBeforeSettings());
+  }, [navigation]);
+
+  // El botón atrás de Android hace lo mismo que la flecha (sin esto iría a Inicio)
+  useFocusEffect(useCallback(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goBack]));
 
   const { displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, saveSettings } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
@@ -619,7 +636,7 @@ const SettingsScreen = () => {
 
   const hero = (
     <>
-      <HeroTitleBar title={t('header.settings_screen')} onBack={() => navigation.navigate('HomeTab')} />
+      <HeroTitleBar title={t('header.settings_screen')} onBack={goBack} />
       {!isSharedMode ? (
         <View style={styles.profile}>
           <View style={styles.avatar}>

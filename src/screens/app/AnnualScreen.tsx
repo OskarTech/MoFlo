@@ -792,6 +792,7 @@ const AnnualScreen = () => {
     <>
       <HeroTitleBar
         title={t('header.annual')}
+        settings
         right={(
           <MonthSelector
             label={selectorLabel}

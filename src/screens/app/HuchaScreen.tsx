@@ -131,6 +131,7 @@ const HuchaScreen = () => {
     <>
       <HeroTitleBar
         title={t('hucha.title')}
+        settings
         right={activeHuchas.length > 0
           ? <HeroChip label={`${activeHuchas.length} ${t('hucha.activeGoals')}`} />
           : undefined}

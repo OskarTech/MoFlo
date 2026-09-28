@@ -288,7 +288,8 @@ const MovementsScreen = () => {
   const monthLabel = (() => {
     const year = Math.floor(selectedMonth / 12);
     const name = t(`home.month_${selectedMonth % 12}`);
-    return year === Math.floor(currentMonth / 12) ? name : `${name} ${year}`;
+    // Otro año: mes corto, como en Resumen, para que quepa junto a la tuerca
+    return year === Math.floor(currentMonth / 12) ? name : `${name.slice(0, 3)} ${year}`;
   })();
 
   const handleEditMovement = useCallback((movement: Movement) => {
@@ -415,6 +416,7 @@ const MovementsScreen = () => {
     <>
       <HeroTitleBar
         title={t('header.historial')}
+        settings
         right={filter !== 'recurring' ? (
           <MonthSelector
             label={monthLabel}

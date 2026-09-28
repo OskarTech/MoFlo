@@ -21,6 +21,12 @@ const SHEET_OVERLAP = 26;
 // Lo que baja el difuminado de la franja de la barra de estado
 const STATUS_FADE = 24;
 
+// El fondo se dibuja un poco más ancho que su hueco. En Android el Svg redondea
+// su ancho hacia abajo (411,43 dp = 1079,99 px pasa a 1079) y la última
+// columna de píxeles quedaba sin pintar: una línea blanca en el borde derecho.
+// Lo que sobra queda fuera de la pantalla o lo recorta la tarjeta.
+const GLOW_BLEED = 2;
+
 /**
  * Fondo de la cabecera: el color de la tarjeta de balance con un brillo de
  * primaryLight arriba a la derecha y otro blanco muy suave abajo a la
@@ -33,14 +39,15 @@ export const HeroGlow = ({ width, height }: { width: number; height: number }) =
     return <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.hero }]} />;
   }
   return (
-    <Svg style={StyleSheet.absoluteFill} width={width} height={height} pointerEvents="none">
+    <Svg style={styles.glow} width={width + GLOW_BLEED} height={height} pointerEvents="none">
       <HeroGlowLayers id={id} width={width} height={height} />
     </Svg>
   );
 };
 
 // Las capas del fondo, para dibujarlas dentro de un Svg: en la cabecera y, las
-// mismas, en la franja de la barra de estado
+// mismas, en la franja de la barra de estado. El brillo se sitúa con el ancho
+// real y el color de fondo llega hasta lo que sobra por la derecha.
 const HeroGlowLayers = ({ id, width, height }: { id: string; width: number; height: number }) => {
   const { ui } = useTheme();
   return (
@@ -61,9 +68,9 @@ const HeroGlowLayers = ({ id, width, height }: { id: string; width: number; heig
           <Stop offset="0.6" stopColor="#FFFFFF" stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Rect x={0} y={0} width={width} height={height} fill={ui.hero} />
-      <Rect x={0} y={0} width={width} height={height} fill={`url(#${id}a)`} />
-      <Rect x={0} y={0} width={width} height={height} fill={`url(#${id}b)`} />
+      <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={ui.hero} />
+      <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={`url(#${id}a)`} />
+      <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={`url(#${id}b)`} />
     </>
   );
 };
@@ -177,10 +184,10 @@ export const HeroStatusBar = ({ scrollY, heroHeight = 0 }: { scrollY: Animated.V
   return (
     <>
       <Animated.View pointerEvents="none" style={[styles.statusBar, { height: topInset, opacity }]}>
-        <Svg width={width} height={topInset}>
+        <Svg width={width + GLOW_BLEED} height={topInset}>
           {heroHeight > 0
             ? <HeroGlowLayers id={`${id}s`} width={width} height={heroHeight} />
-            : <Rect x={0} y={0} width={width} height={topInset} fill={ui.hero} />}
+            : <Rect x={0} y={0} width={width + GLOW_BLEED} height={topInset} fill={ui.hero} />}
         </Svg>
       </Animated.View>
       {heroHeight > 0 && (
@@ -189,14 +196,21 @@ export const HeroStatusBar = ({ scrollY, heroHeight = 0 }: { scrollY: Animated.V
           style={[styles.statusBar, { top: fadeTop, height: STATUS_FADE, opacity: fadeOpacity }]}
         >
           {/* viewBox: se dibuja con las coordenadas de la cabecera, justo bajo la barra de estado */}
-          <Svg width={width} height={STATUS_FADE} viewBox={`0 ${fadeTop} ${width} ${STATUS_FADE}`}>
+          <Svg
+            width={width + GLOW_BLEED}
+            height={STATUS_FADE}
+            viewBox={`0 ${fadeTop} ${width + GLOW_BLEED} ${STATUS_FADE}`}
+          >
             <Defs>
               <LinearGradient id={`${id}f`} gradientUnits="userSpaceOnUse" x1={0} y1={fadeTop} x2={0} y2={fadeBottom}>
                 <Stop offset={0} stopColor="#FFFFFF" stopOpacity={1} />
                 <Stop offset={1} stopColor="#FFFFFF" stopOpacity={0} />
               </LinearGradient>
-              <Mask id={`${id}m`} maskUnits="userSpaceOnUse" x={0} y={fadeTop} width={width} height={STATUS_FADE}>
-                <Rect x={0} y={fadeTop} width={width} height={STATUS_FADE} fill={`url(#${id}f)`} />
+              <Mask
+                id={`${id}m`} maskUnits="userSpaceOnUse"
+                x={0} y={fadeTop} width={width + GLOW_BLEED} height={STATUS_FADE}
+              >
+                <Rect x={0} y={fadeTop} width={width + GLOW_BLEED} height={STATUS_FADE} fill={`url(#${id}f)`} />
               </Mask>
             </Defs>
             <G mask={`url(#${id}m)`}>
@@ -257,6 +271,7 @@ export const HeroScrollScreen = ({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1 },
+  glow: { position: 'absolute', left: 0, top: 0 },
   overscroll: { position: 'absolute', left: 0, right: 0, top: -800, height: 800 },
   sheet: {
     flexGrow: 1, marginTop: -SHEET_OVERLAP, paddingTop: 22,

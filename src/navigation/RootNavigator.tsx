@@ -10,6 +10,7 @@ import AppNavigator from './AppNavigator';
 import { useMovementStore } from '../store/movementStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useTheme } from '../hooks/useTheme';
+import { useAndroidSystemBars } from '../hooks/useAndroidSystemBars';
 import { usePremiumStore } from '../store/premiumStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
@@ -27,6 +28,7 @@ const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
   const { colors: dc } = useTheme();
+  useAndroidSystemBars();
 
   const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
   const { loadSettings } = useSettingsStore();
