@@ -128,6 +128,11 @@ export interface SharedAccount {
   createdBy: string;
   members: string[];
   memberNames: { [uid: string]: string };
+  // Enlace a la foto de cada miembro, copiada de su perfil (los miembros no
+  // pueden leer el usuario de otro). Sin foto, no hay clave
+  memberPhotos?: { [uid: string]: string };
+  // Foto de la cuenta: la puede cambiar cualquier miembro
+  photoURL?: string;
   inviteCode: string;
   createdAt: string;
   currencyCode?: string;

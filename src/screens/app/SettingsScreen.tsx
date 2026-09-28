@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Alert, Linking, Share,
-  Switch, Platform, Clipboard, BackHandler,
+  Switch, Platform, Clipboard, BackHandler, ActivityIndicator,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +47,11 @@ import Constants from 'expo-constants';
 import { reloadAppAsync } from 'expo';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import { LIQUID_GLASS_AVAILABLE } from '../../utils/liquidGlass';
+import { getMemberPhoto } from '../../utils/memberLabel';
+import Avatar from '../../components/common/Avatar';
+import {
+  PHOTOS_AVAILABLE, pickPhoto, deletePhotos, userPhotoFolder, sharedPhotoFolder,
+} from '../../services/firebase/photo.service';
 import { withAlpha } from '../../utils/color';
 import { FONT_OPTIONS, AppFontId, getSavedFont, saveFont, getActiveFont } from '../../theme/fonts';
 
@@ -86,7 +91,7 @@ const SettingsScreen = () => {
 
   const {
     displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
-    saveSettings,
+    photoURL, saveSettings, setProfilePhoto,
   } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const {
@@ -95,6 +100,7 @@ const SettingsScreen = () => {
     setSharedMode, getInviteLink, sharedCurrencyCode, sharedColorPalette,
     sharedDateFormat, saveSharedSettings,
     incomingRequests, approveJoinRequest, rejectJoinRequest,
+    setSharedAccountPhoto,
   } = useSharedAccountStore();
   const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
 
@@ -122,6 +128,8 @@ const SettingsScreen = () => {
   const [exportMode, setExportMode] = useState<null | 'export' | 'beforeDelete'>(null);
   const [selectedFont, setSelectedFont] = useState<AppFontId>(getActiveFont());
   const [editingName, setEditingName] = useState(false);
+  // Subiendo o quitando una foto
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   // La fuente guardada puede no ser la activa si aún no se ha reiniciado la app
   useEffect(() => {
@@ -150,6 +158,48 @@ const SettingsScreen = () => {
   const loadNotifSettings = async () => {
     const val = await AsyncStorage.getItem(NOTIF_KEY);
     setDailyNotifEnabled(val === 'true');
+  };
+
+  // ── FOTOS (perfil y cuenta compartida) ────────────────────────
+
+  const savePhoto = async (target: 'profile' | 'shared', localUri: string | null) => {
+    setPhotoBusy(true);
+    try {
+      if (target === 'shared') await setSharedAccountPhoto(localUri);
+      else await setProfilePhoto(localUri);
+    } catch (e) {
+      reportError(e, 'savePhoto');
+      Alert.alert(t('common.error'), t('settings.photoError'));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handleChoosePhoto = async (target: 'profile' | 'shared') => {
+    try {
+      const localUri = await pickPhoto();
+      if (localUri) await savePhoto(target, localUri);
+    } catch (e) {
+      reportError(e, 'pickPhoto');
+      Alert.alert(t('common.error'), t('settings.photoError'));
+    }
+  };
+
+  // Elegir otra de la galería o quitar la que hay
+  const openPhotoMenu = (target: 'profile' | 'shared') => {
+    if (photoBusy) return;
+    const current = target === 'shared' ? sharedAccount?.photoURL : photoURL;
+    Alert.alert(
+      t(target === 'shared' ? 'settings.photoShared' : 'settings.photoProfile'),
+      undefined,
+      [
+        { text: t('settings.photoChoose'), onPress: () => { handleChoosePhoto(target); } },
+        ...(current
+          ? [{ text: t('settings.photoRemove'), style: 'destructive' as const, onPress: () => { savePhoto(target, null); } }]
+          : []),
+        { text: t('settings.cancel'), style: 'cancel' as const },
+      ],
+    );
   };
 
   // ── INDIVIDUAL HANDLERS ───────────────────────────────────────
@@ -237,6 +287,11 @@ const SettingsScreen = () => {
             'movements', 'recurring', 'categories', 'savings',
             'huchas', 'huchaMovements', 'reminders', 'joinRequests',
           ]);
+          // La foto de la cuenta, antes que el documento: Storage mira en él
+          // quién es miembro
+          await deletePhotos(sharedPhotoFolder(accountId)).catch((e) =>
+            reportError(e, 'deleteAccount: foto de la cuenta compartida')
+          );
           await accountRef.delete();
         } else {
           // Solo se quita a uno mismo, sin reescribir la lista con la copia local.
@@ -247,6 +302,7 @@ const SettingsScreen = () => {
             .update({
               members: firestore.FieldValue.arrayRemove(uid),
               [`memberNames.${uid}`]: firestore.FieldValue.delete(),
+              [`memberPhotos.${uid}`]: firestore.FieldValue.delete(),
             });
         }
       }
@@ -255,6 +311,10 @@ const SettingsScreen = () => {
       await deleteSubcollections(userRef, [
         'movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements',
       ]);
+      // Su foto de perfil también es un dato suyo: se va con la cuenta
+      await deletePhotos(userPhotoFolder(uid)).catch((e) =>
+        reportError(e, 'deleteAccount: foto de perfil')
+      );
       await userRef.delete();
 
       // Tokens push de este móvil y del resto de dispositivos.
@@ -638,14 +698,41 @@ const SettingsScreen = () => {
 
   // ── CABECERA ──────────────────────────────────────────────────
 
+  // Avatar de la cabecera: tocándolo se cambia la foto. Con una build sin los
+  // módulos de fotos se enseña sin más
+  const heroAvatar = (target: 'profile' | 'shared', uri: string | null | undefined, fallback: React.ReactNode) => {
+    const avatar = <Avatar uri={uri} style={styles.avatar}>{fallback}</Avatar>;
+    if (!PHOTOS_AVAILABLE) return avatar;
+    return (
+      <TouchableOpacity
+        style={styles.avatarWrap}
+        onPress={() => openPhotoMenu(target)}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={t('settings.photoChange')}
+      >
+        {avatar}
+        {photoBusy ? (
+          <View style={[styles.avatar, styles.avatarBusy]}>
+            <ActivityIndicator color="#FFFFFF" />
+          </View>
+        ) : (
+          <View style={[styles.avatarEdit, { borderColor: ui.hero }]}>
+            <Ionicons name="camera" size={12} color={ui.hero} />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   const hero = (
     <>
       <HeroTitleBar title={t('header.settings_screen')} onBack={goBack} />
       {!isSharedMode ? (
         <View style={styles.profile}>
-          <View style={styles.avatar}>
+          {heroAvatar('profile', photoURL, (
             <Text style={[styles.avatarText, { color: ui.hero }]}>{initials}</Text>
-          </View>
+          ))}
           <View style={styles.profileInfo}>
             <TouchableOpacity
               style={styles.nameRow}
@@ -671,9 +758,9 @@ const SettingsScreen = () => {
         </View>
       ) : (
         <View style={styles.profile}>
-          <View style={styles.avatar}>
+          {heroAvatar('shared', sharedAccount?.photoURL, (
             <Ionicons name="people" size={28} color={ui.hero} />
-          </View>
+          ))}
           <View style={styles.profileInfo}>
             <TouchableOpacity
               style={styles.nameRow}
@@ -991,11 +1078,15 @@ const SettingsScreen = () => {
                 const isMemberCreator = memberId === sharedAccount.createdBy;
                 return (
                   <View key={memberId} style={styles.memberRow}>
-                    <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+                    <Avatar
+                      uri={getMemberPhoto(sharedAccount, memberId)}
+                      style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}
+                      zoomTitle={name}
+                    >
                       <Text style={[styles.memberInitial, { color: ui.accent }]}>
                         {name[0].toUpperCase()}
                       </Text>
-                    </View>
+                    </Avatar>
                     <View style={styles.memberInfo}>
                       <Text style={[styles.memberName, { color: dc.textPrimary }]}>
                         {name}{isMe ? ` ${t('sharedAccount.you')}` : ''}
@@ -1259,12 +1350,14 @@ const SettingsScreen = () => {
                         try {
                           // Solo se quita a ese miembro, sin reescribir la
                           // lista entera con la copia local. Su nombre se
-                          // queda: lo que añadió sigue firmado, tachado.
+                          // queda: lo que añadió sigue firmado, tachado. Su
+                          // foto, no: ya no es de la cuenta
                           await firestore()
                             .collection('sharedAccounts')
                             .doc(sharedAccount.id)
                             .update({
                               members: firestore.FieldValue.arrayRemove(memberId),
+                              [`memberPhotos.${memberId}`]: firestore.FieldValue.delete(),
                             });
                           Alert.alert('✅', t('sharedAccount.kickSuccess'));
                         } catch (e) {
@@ -1278,11 +1371,14 @@ const SettingsScreen = () => {
                 );
               }}
             >
-              <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+              <Avatar
+                uri={getMemberPhoto(sharedAccount, memberId)}
+                style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}
+              >
                 <Text style={[styles.memberInitial, { color: ui.accent }]}>
                   {name[0].toUpperCase()}
                 </Text>
-              </View>
+              </Avatar>
               <Text style={[styles.memberName, styles.memberInfo, { color: dc.textPrimary }]}>{name}</Text>
               <Ionicons name="person-remove-outline" size={18} color={ui.expenseText} />
             </TouchableOpacity>
@@ -1339,6 +1435,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   avatarText: { fontSize: 23, fontFamily: 'Poppins_700Bold' },
+  avatarWrap: { flexShrink: 0 },
+  avatarBusy: { position: 'absolute', top: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
+  avatarEdit: {
+    position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12,
+    borderWidth: 2, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center',
+  },
   profileInfo: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', maxWidth: '100%' },
   profileName: { fontSize: 21, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3, flexShrink: 1 },

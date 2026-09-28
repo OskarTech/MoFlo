@@ -1,4 +1,4 @@
-import { getMemberLabel } from '../memberLabel';
+import { getMemberLabel, getMemberPhoto } from '../memberLabel';
 
 const FORMER = 'Antiguo miembro';
 
@@ -34,5 +34,33 @@ describe('getMemberLabel', () => {
     const cacheAntigua = { memberNames: { ana: 'Ana' } } as any;
     expect(getMemberLabel(cacheAntigua, 'ana', FORMER)).toEqual({ name: 'Ana', isFormer: false });
     expect(getMemberLabel(cacheAntigua, 'pedro', FORMER)).toBeUndefined();
+  });
+});
+
+describe('getMemberPhoto', () => {
+  const withPhotos = {
+    members: ['ana', 'luis'],
+    memberPhotos: { ana: 'https://foto/ana.jpg', marta: 'https://foto/marta.jpg' },
+  };
+
+  it('da la foto de quien sigue en la cuenta', () => {
+    expect(getMemberPhoto(withPhotos, 'ana')).toBe('https://foto/ana.jpg');
+  });
+
+  it('un miembro sin foto se queda con la inicial', () => {
+    expect(getMemberPhoto(withPhotos, 'luis')).toBeUndefined();
+  });
+
+  it('no enseña la foto de quien ya no está, aunque quede guardada', () => {
+    expect(getMemberPhoto(withPhotos, 'marta')).toBeUndefined();
+  });
+
+  it('una cuenta sin fotos todavía (anterior a esta función) no falla', () => {
+    expect(getMemberPhoto({ members: ['ana'] }, 'ana')).toBeUndefined();
+  });
+
+  it('sin cuenta o sin autor no hay foto', () => {
+    expect(getMemberPhoto(null, 'ana')).toBeUndefined();
+    expect(getMemberPhoto(withPhotos, undefined)).toBeUndefined();
   });
 });

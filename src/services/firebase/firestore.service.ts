@@ -97,6 +97,7 @@ interface UserSettings {
   colorPalette?: string;
   hapticsEnabled?: boolean;
   liquidGlassEnabled?: boolean;
+  photoURL?: string | null;
 }
 
 export const saveSettingsToFirestore = async (

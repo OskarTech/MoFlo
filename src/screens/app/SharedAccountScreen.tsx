@@ -22,7 +22,9 @@ import { HeroTitleBar } from '../../components/layout/HeroBar';
 import { SheetButton, FilledInput, SheetLabel } from '../../components/common/BottomSheet';
 import { withAlpha } from '../../utils/color';
 import PremiumModal from '../../components/common/PremiumModal';
+import Avatar from '../../components/common/Avatar';
 import { warningHaptic } from '../../utils/haptics';
+import { getMemberPhoto } from '../../utils/memberLabel';
 
 type RouteParams = {
   SharedAccount: { code?: string; name?: string; fromDeepLink?: boolean };
@@ -372,11 +374,15 @@ const SharedAccountScreen = () => {
                 <View key={uid}>
                   {index > 0 && <View style={[styles.divider, { backgroundColor: ui.hair }]} />}
                   <View style={styles.memberRow}>
-                    <View style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}>
+                    <Avatar
+                      uri={getMemberPhoto(sharedAccount, uid)}
+                      style={[styles.memberAvatar, { backgroundColor: ui.accentSoft }]}
+                      zoomTitle={name}
+                    >
                       <Text style={[styles.memberInitial, { color: ui.accent }]}>
                         {name[0].toUpperCase()}
                       </Text>
-                    </View>
+                    </Avatar>
                     <View style={styles.memberInfo}>
                       <Text style={[styles.memberName, { color: dc.textPrimary }]}>
                         {name}{isCurrentUser ? ` ${t('sharedAccount.you')}` : ''}

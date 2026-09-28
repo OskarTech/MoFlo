@@ -9,6 +9,7 @@ import {
 } from '../services/firebase/firestore.service';
 import { ColorPaletteId } from '../theme';
 import { refreshDailyNotificationLanguage } from '../services/notifications.service';
+import { deletePhotos, uploadPhoto, userPhotoFolder } from '../services/firebase/photo.service';
 
 const syncDisplayNameToSharedAccounts = async (uid: string, displayName: string) => {
   const snapshot = await firestore()
@@ -24,6 +25,29 @@ const syncDisplayNameToSharedAccounts = async (uid: string, displayName: string)
     const data = doc.data();
     if (data?.memberNames?.[uid] !== displayName) {
       batch.update(doc.ref, { [`memberNames.${uid}`]: displayName });
+      hasChanges = true;
+    }
+  });
+  if (hasChanges) await batch.commit();
+};
+
+// Los demás miembros no pueden leer tu usuario: tu foto se copia a cada cuenta
+// compartida en la que estés, como el nombre
+const syncPhotoToSharedAccounts = async (uid: string, photoURL: string | null) => {
+  const snapshot = await firestore()
+    .collection('sharedAccounts')
+    .where('members', 'array-contains', uid)
+    .get();
+
+  if (snapshot.empty) return;
+
+  const batch = firestore().batch();
+  let hasChanges = false;
+  snapshot.docs.forEach((doc) => {
+    if ((doc.data()?.memberPhotos?.[uid] ?? null) !== photoURL) {
+      batch.update(doc.ref, {
+        [`memberPhotos.${uid}`]: photoURL ?? firestore.FieldValue.delete(),
+      });
       hasChanges = true;
     }
   });
@@ -74,10 +98,13 @@ interface SettingsStore {
   hapticsEnabled: boolean;
   // Barra de abajo con Liquid Glass (solo iOS 26 o posterior)
   liquidGlassEnabled: boolean;
+  // Enlace a la foto de perfil en Storage; null sin foto
+  photoURL: string | null;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
   saveSettings: (settings: Partial<{
+    photoURL: string | null;
     displayName: string;
     currencyCode: string;
     language: string;
@@ -87,6 +114,7 @@ interface SettingsStore {
     hapticsEnabled: boolean;
     liquidGlassEnabled: boolean;
   }>) => Promise<void>;
+  setProfilePhoto: (localUri: string | null) => Promise<void>;
   getCurrencySymbol: () => string;
   adoptDisplayNameIfMissing: (name?: string | null, persist?: boolean) => Promise<void>;
   resetStore: () => void;
@@ -101,9 +129,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   colorPalette: 'green',
   hapticsEnabled: true,
   liquidGlassEnabled: true,
+  photoURL: null,
   isLoading: false,
 
   resetStore: () => set({
+    photoURL: null,
     displayName: '',
     currencyCode: 'EUR',
     language: i18n.language ?? 'en',
@@ -148,6 +178,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             // Ajustes nuevos: las cuentas antiguas no los tienen guardados
             hapticsEnabled: firestoreSettings.hapticsEnabled ?? true,
             liquidGlassEnabled: firestoreSettings.liquidGlassEnabled ?? true,
+            photoURL: firestoreSettings.photoURL ?? null,
           };
           set(typedSettings);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -184,7 +215,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   saveSettings: async (newSettings) => {
     const previousDisplayName = get().displayName;
+    const previousPhotoURL = get().photoURL;
     const current = {
+      photoURL: get().photoURL,
       displayName: get().displayName,
       currencyCode: get().currencyCode,
       language: get().language,
@@ -216,9 +249,33 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       }
     }
 
+    if (newSettings.photoURL !== undefined && newSettings.photoURL !== previousPhotoURL) {
+      const uid = auth().currentUser?.uid;
+      if (uid) {
+        syncPhotoToSharedAccounts(uid, newSettings.photoURL).catch((e) =>
+          console.error('Error syncing photo to shared accounts:', e)
+        );
+      }
+    }
+
     if (newSettings.language) {
       await i18n.changeLanguage(newSettings.language);
       await refreshDailyNotificationLanguage();
+    }
+  },
+
+  // Sube la foto elegida (o la quita con null) y la guarda con los ajustes.
+  // Los fallos se propagan: quien la llama avisa al usuario
+  setProfilePhoto: async (localUri) => {
+    const uid = auth().currentUser?.uid;
+    if (!uid) return;
+    const folder = userPhotoFolder(uid);
+    if (localUri) {
+      const url = await uploadPhoto(folder, localUri);
+      await get().saveSettings({ photoURL: url });
+    } else {
+      await get().saveSettings({ photoURL: null });
+      deletePhotos(folder).catch(() => {});
     }
   },
 
@@ -238,10 +295,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (!persist) return;
 
     const {
-      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
+      photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+      liquidGlassEnabled,
     } = get();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
-      displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled, liquidGlassEnabled,
+      photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+      liquidGlassEnabled,
     })).catch(() => {});
     const uid = auth().currentUser?.uid;
     if (uid) {

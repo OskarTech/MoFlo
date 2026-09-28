@@ -40,7 +40,10 @@
         "android.permission.POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -58,10 +61,16 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "MoFlo uses your photos only when you choose a profile or shared account picture."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBMessaging", "RNFBCrashlytics"],
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore", "RNFBMessaging", "RNFBCrashlytics", "RNFBStorage"],
             "useFrameworks": "static"
           },
           "android": {

@@ -6,6 +6,7 @@ import { SharedAccount, Movement, RecurringMovement, JoinRequest, PendingJoinReq
 import { CURRENCIES, ColorPaletteId, useSettingsStore } from './settingsStore';
 import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
+import { deletePhotos, sharedPhotoFolder, uploadPhoto } from '../services/firebase/photo.service';
 import i18n from '../i18n';
 
 // Los demás stores se cargan con require() al usarlos, no con import: reminderStore
@@ -121,6 +122,7 @@ interface SharedAccountStore {
   rejectJoinRequest: (uid: string) => Promise<void>;
   leaveSharedAccount: () => Promise<void>;
   deleteSharedAccount: () => Promise<void>;
+  setSharedAccountPhoto: (localUri: string | null) => Promise<void>;
   setSharedMode: (enabled: boolean) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   getInviteLink: () => string;
@@ -280,6 +282,18 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         const account = { id: snap.docs[0].id, ...snap.docs[0].data() } as SharedAccount;
         set({ sharedAccount: account });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+
+        // Si ya tenías foto al entrar en la cuenta, todavía no está en ella.
+        // Solo se añade si falta: con una foto guardada aquí más antigua que la
+        // de la cuenta (cambiada desde otro móvil) se pisaría la nueva. Los
+        // cambios los copia saveSettings. Sin await: no retrasa el arranque
+        const myPhoto = useSettingsStore.getState().photoURL;
+        if (myPhoto && !account.memberPhotos?.[uid]) {
+          firestore()
+            .collection('sharedAccounts').doc(account.id)
+            .update({ [`memberPhotos.${uid}`]: myPhoto })
+            .catch(() => {});
+        }
 
         // Si tenía petición pendiente y ahora es miembro, limpiarla
         if (get().pendingJoinRequest) {
@@ -627,11 +641,13 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     // Solo se quita a uno mismo: reescribiendo la lista entera con la copia
     // local, si alguien había entrado mientras tanto las reglas lo rechazaban.
     // El nombre se queda en memberNames: lo que añadió sigue firmado, tachado.
+    // La foto, no: ya no es de la cuenta
     await firestore()
       .collection('sharedAccounts')
       .doc(sharedAccount.id)
       .update({
         members: firestore.FieldValue.arrayRemove(uid),
+        [`memberPhotos.${uid}`]: firestore.FieldValue.delete(),
       });
 
     get().unsubscribeAll();
@@ -662,6 +678,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       'huchaMovements', 'savings', 'joinRequests', 'reminders',
     ]);
 
+    // La foto de la cuenta, antes que el documento: Storage mira en él quién es
+    // miembro. Si falla, no impide borrar la cuenta
+    await deletePhotos(sharedPhotoFolder(sharedAccount.id)).catch((e) =>
+      reportError(e, 'deleteSharedAccount: foto de la cuenta')
+    );
+
     await ref.delete();
 
     get().unsubscribeAll();
@@ -674,6 +696,26 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     });
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.setItem(ACTIVE_KEY, 'individual');
+  },
+
+  // ── FOTO DE LA CUENTA (cualquier miembro) ──────────────────────
+  // null la quita. Los fallos se propagan: quien la llama avisa al usuario
+  setSharedAccountPhoto: async (localUri) => {
+    const { sharedAccount } = get();
+    if (!sharedAccount) return;
+    const folder = sharedPhotoFolder(sharedAccount.id);
+    const ref = firestore().collection('sharedAccounts').doc(sharedAccount.id);
+
+    if (localUri) {
+      const url = await uploadPhoto(folder, localUri);
+      await ref.update({ photoURL: url });
+      set({ sharedAccount: { ...sharedAccount, photoURL: url } });
+    } else {
+      await ref.update({ photoURL: firestore.FieldValue.delete() });
+      const { photoURL: _removed, ...rest } = sharedAccount;
+      set({ sharedAccount: rest });
+      deletePhotos(folder).catch(() => {});
+    }
   },
 
   // ── MODO COMPARTIDO ────────────────────────────────────────────

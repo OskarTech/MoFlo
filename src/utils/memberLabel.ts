@@ -25,3 +25,16 @@ export const getMemberLabel = (
   const name = account.memberNames?.[uid] || (isFormer ? formerFallback : undefined);
   return name ? { name, isFormer } : undefined;
 };
+
+/**
+ * Foto de un miembro de la cuenta compartida. A quien ya no está no se le
+ * enseña: sale con la inicial, igual que su nombre sale tachado.
+ */
+export const getMemberPhoto = (
+  account: Pick<SharedAccount, 'members' | 'memberPhotos'> | null | undefined,
+  uid: string | undefined,
+): string | undefined => {
+  if (!account || !uid) return undefined;
+  if (Array.isArray(account.members) && !account.members.includes(uid)) return undefined;
+  return account.memberPhotos?.[uid];
+};

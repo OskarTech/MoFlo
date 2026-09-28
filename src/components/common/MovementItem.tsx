@@ -7,12 +7,13 @@ import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { getMemberLabel } from '../../utils/memberLabel';
+import { getMemberLabel, getMemberPhoto } from '../../utils/memberLabel';
 import { formatAmount } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { Movement, MovementType } from '../../types';
 import StrikeText from './StrikeText';
 import MemberName from './MemberName';
+import Avatar from './Avatar';
 
 interface Props {
   movement: Pick<Movement, 'type' | 'amount' | 'category' | 'note' | 'isRecurring' | 'addedBy'>;
@@ -69,9 +70,12 @@ const MovementItem = ({ movement, currencySymbol, detail, background, style }: P
       <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.15) }]}>
         <Ionicons name={cat.icon(movement.category, type)} size={20} color={color} />
         {member && (
-          <View style={[styles.badge, { backgroundColor: badgeColor, borderColor: background ?? ui.sheet }]}>
+          <Avatar
+            uri={getMemberPhoto(sharedAccount, movement.addedBy)}
+            style={[styles.badge, { backgroundColor: badgeColor, borderColor: background ?? ui.sheet }]}
+          >
             <RNText style={styles.badgeText}>{member.name.charAt(0).toUpperCase()}</RNText>
-          </View>
+          </Avatar>
         )}
       </View>
       <View style={styles.info}>

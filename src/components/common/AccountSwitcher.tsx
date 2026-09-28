@@ -14,6 +14,8 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 import BottomSheet from './BottomSheet';
 import PremiumModal from './PremiumModal';
+import Avatar from './Avatar';
+import { getMemberPhoto } from '../../utils/memberLabel';
 
 const initialOf = (name?: string) => (name?.trim()?.charAt(0) || '?').toUpperCase();
 
@@ -28,6 +30,7 @@ const AccountSwitcher = () => {
   const targetRef = useWalkthroughTarget('header_account');
   const { isPremium } = usePremiumStore();
   const displayName = useSettingsStore((s) => s.displayName);
+  const photoURL = useSettingsStore((s) => s.photoURL);
   const {
     sharedAccount, isSharedMode,
     setSharedMode, subscribeToSharedMovements, loadSharedSettings,
@@ -73,10 +76,16 @@ const AccountSwitcher = () => {
     }
   };
 
-  // Iniciales de hasta dos miembros de la compartida, o la propia
-  const memberInitials = isSharedMode && sharedAccount
-    ? sharedAccount.members.slice(0, 2).map((uid) => initialOf(sharedAccount.memberNames?.[uid]))
-    : [initialOf(displayName || t('common.user'))];
+  // En la compartida, su foto; sin ella, hasta dos miembros (foto o inicial).
+  // En la individual, la propia
+  const avatars: { uri?: string | null; initial: string }[] = isSharedMode && sharedAccount
+    ? sharedAccount.photoURL
+      ? [{ uri: sharedAccount.photoURL, initial: initialOf(sharedAccount.name) }]
+      : sharedAccount.members.slice(0, 2).map((uid) => ({
+        uri: getMemberPhoto(sharedAccount, uid),
+        initial: initialOf(sharedAccount.memberNames?.[uid]),
+      }))
+    : [{ uri: photoURL, initial: initialOf(displayName || t('common.user')) }];
 
   const label = isSharedMode
     ? (sharedAccount?.name ?? t('sharedAccount.switchToShared'))
@@ -84,7 +93,7 @@ const AccountSwitcher = () => {
 
   const option = (
     selected: boolean, onPress: () => void, icon: keyof typeof Ionicons.glyphMap,
-    title: string, subtitle: string, badge?: boolean,
+    title: string, subtitle: string, badge?: boolean, photo?: string | null,
   ) => (
     <TouchableOpacity
       style={[styles.option, selected && { backgroundColor: ui.accentSoft }]}
@@ -93,9 +102,9 @@ const AccountSwitcher = () => {
       accessibilityRole="radio"
       accessibilityState={{ selected }}
     >
-      <View style={[styles.optionIcon, { backgroundColor: selected ? ui.sheet : ui.field }]}>
+      <Avatar uri={photo} style={[styles.optionIcon, { backgroundColor: selected ? ui.sheet : ui.field }]}>
         <Ionicons name={icon} size={20} color={ui.accent} />
-      </View>
+      </Avatar>
       <View style={styles.optionInfo}>
         <View style={styles.optionTitleRow}>
           <Text style={[styles.optionTitle, { color: dc.textPrimary }]} numberOfLines={1}>{title}</Text>
@@ -124,17 +133,18 @@ const AccountSwitcher = () => {
           accessibilityLabel={t('header.selectAccount')}
         >
           <View style={styles.avatars}>
-            {memberInitials.map((ini, i) => (
-              <View
+            {avatars.map((avatar, i) => (
+              <Avatar
                 key={i}
+                uri={avatar.uri}
                 style={[
                   styles.avatar,
                   { backgroundColor: i === 0 ? '#FFFFFF' : 'rgba(255,255,255,0.78)', borderColor: ui.hero },
                   i > 0 && styles.avatarOverlap,
                 ]}
               >
-                <Text style={[styles.avatarText, { color: ui.hero }]}>{ini}</Text>
-              </View>
+                <Text style={[styles.avatarText, { color: ui.hero }]}>{avatar.initial}</Text>
+              </Avatar>
             ))}
           </View>
           <Text style={[styles.pillText, { color: ui.onHero }]} numberOfLines={1}>{label}</Text>
@@ -151,6 +161,7 @@ const AccountSwitcher = () => {
         {option(
           !isSharedMode, handleSelectIndividual, 'person',
           t('header.individualAccount'), t('header.individualAccountSubtitle'),
+          false, photoURL,
         )}
         {option(
           isSharedMode, handleSelectShared, 'people',
@@ -158,7 +169,7 @@ const AccountSwitcher = () => {
           sharedAccount
             ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
             : t('header.sharedAccountSubtitle'),
-          !isPremium,
+          !isPremium, sharedAccount?.photoURL,
         )}
       </BottomSheet>
 
