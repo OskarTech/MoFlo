@@ -3,7 +3,7 @@ import {
   View, StyleSheet, Animated, Platform, StatusBar, RefreshControl, useWindowDimensions,
   ScrollViewProps, StyleProp, ViewStyle, LayoutChangeEvent,
 } from 'react-native';
-import Svg, { Defs, G, LinearGradient, Mask, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useTabBarSpace } from '../navigation/GlassTabBar';
@@ -18,8 +18,14 @@ export const useTopInset = () => {
 // Lo que la hoja sube sobre la cabecera
 const SHEET_OVERLAP = 26;
 
-// Lo que baja el difuminado de la franja de la barra de estado
-const STATUS_FADE = 24;
+// Brillo de arriba a la derecha: radios de su elipse (por el ancho y el alto de
+// la cabecera) y hasta dónde llega, en la escala del degradado
+const GLOW_RX = 1.3;
+const GLOW_RY = 0.85;
+const GLOW_END = 0.58;
+
+// Lo que puede asomar por encima de la cabecera al tirar hacia abajo
+const OVERSCROLL = 800;
 
 // El fondo se dibuja un poco más ancho que su hueco. En Android el Svg redondea
 // su ancho hacia abajo (411,43 dp = 1079,99 px pasa a 1079) y la última
@@ -55,10 +61,10 @@ const HeroGlowLayers = ({ id, width, height }: { id: string; width: number; heig
       <Defs>
         <RadialGradient
           id={`${id}a`} gradientUnits="userSpaceOnUse"
-          cx={width} cy={0} rx={width * 1.3} ry={height * 0.85} fx={width} fy={0}
+          cx={width} cy={0} rx={width * GLOW_RX} ry={height * GLOW_RY} fx={width} fy={0}
         >
           <Stop offset="0" stopColor={ui.heroGlow} stopOpacity={ui.heroGlowOpacity} />
-          <Stop offset="0.58" stopColor={ui.heroGlow} stopOpacity={0} />
+          <Stop offset={GLOW_END} stopColor={ui.heroGlow} stopOpacity={0} />
         </RadialGradient>
         <RadialGradient
           id={`${id}b`} gradientUnits="userSpaceOnUse"
@@ -76,9 +82,40 @@ const HeroGlowLayers = ({ id, width, height }: { id: string; width: number; heig
 };
 
 /**
+ * Lo que asoma por encima de la cabecera al tirar hacia abajo (rebote de iOS y,
+ * mientras actualiza, el hueco de la ruedita): su primera fila estirada hacia
+ * arriba. En esa fila el brillo es un degradado de izquierda a derecha, así
+ * que no se nota dónde acaba la cabecera; con el color liso se veía el corte.
+ * Se dibuja un Svg de 1 de alto y se estira: con todo el alto ocuparía
+ * varios MB de memoria para un color que no cambia de arriba abajo.
+ */
+const HeroOverscroll = ({ width }: { width: number }) => {
+  const { ui } = useTheme();
+  const id = useId().replace(/:/g, '');
+  return (
+    <View style={[styles.overscroll, { backgroundColor: ui.hero }]} pointerEvents="none">
+      {width > 0 && (
+        <Svg style={styles.overscrollRow} width={width + GLOW_BLEED} height={1}>
+          <Defs>
+            <LinearGradient
+              id={`${id}o`} gradientUnits="userSpaceOnUse"
+              x1={width * (1 - GLOW_RX * GLOW_END)} y1={0} x2={width} y2={0}
+            >
+              <Stop offset={0} stopColor={ui.heroGlow} stopOpacity={0} />
+              <Stop offset={1} stopColor={ui.heroGlow} stopOpacity={ui.heroGlowOpacity} />
+            </LinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width={width + GLOW_BLEED} height={1} fill={`url(#${id}o)`} />
+        </Svg>
+      )}
+    </View>
+  );
+};
+
+/**
  * Parte de color de arriba. Deja hueco para la barra de estado y, por
- * debajo, lo que tapa la hoja. Encima lleva un bloque del mismo color para
- * que al tirar hacia abajo (rebote de iOS) no se vea un hueco blanco.
+ * debajo, lo que tapa la hoja. Encima lleva la continuación de su fondo para
+ * que al tirar hacia abajo no se vea un hueco blanco.
  */
 export const HeroTop = ({
   children, extraBottom = 0, style, onHeight,
@@ -89,7 +126,6 @@ export const HeroTop = ({
   // Su alto, para que la franja de la barra de estado dibuje el mismo brillo
   onHeight?: (height: number) => void;
 }) => {
-  const { ui } = useTheme();
   const topInset = useTopInset();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const onLayout = (e: LayoutChangeEvent) => {
@@ -104,7 +140,7 @@ export const HeroTop = ({
       onLayout={onLayout}
       style={[{ paddingTop: topInset, paddingBottom: SHEET_OVERLAP + 22 + extraBottom }, style]}
     >
-      <View style={[styles.overscroll, { backgroundColor: ui.hero }]} />
+      <HeroOverscroll width={size.width} />
       <HeroGlow width={size.width} height={size.height} />
       {children}
     </View>
@@ -159,67 +195,41 @@ export const useHeroScroll = (listener?: (y: number) => void) => {
 };
 
 /**
- * La franja lleva el mismo fondo que la cabecera, con su brillo (heroHeight es
- * el alto de la cabecera, para que el brillo coincida), así que al empezar a
- * desplazar no se nota dónde empieza. Mientras por debajo pasa la cabecera, se
- * difumina por abajo: lo que sube se desvanece en vez de cortarse en seco.
- * Cuando llega la hoja, el difuminado se va y la franja queda sólida, con el
- * borde limpio sobre el contenido.
+ * Franja de la barra de estado: al desplazar, tapa lo que pasa por debajo de
+ * la hora y la batería. Lleva el fondo de la cabecera (heroHeight es su alto)
+ * y lo sube a la vez que ella, así que enseña justo el trozo que tiene debajo:
+ * no se ve dónde empieza, el contenido simplemente se esconde bajo la hora.
+ * Antes el brillo se quedaba quieto arriba mientras la cabecera subía, y la
+ * franja salía más clara que lo de debajo. Cuando la hoja llega arriba, el
+ * fondo se para: la franja se queda con el final de la cabecera y la hoja
+ * pasa por debajo.
  */
 export const HeroStatusBar = ({ scrollY, heroHeight = 0 }: { scrollY: Animated.Value; heroHeight?: number }) => {
   const { ui } = useTheme();
   const topInset = useTopInset();
   const { width } = useWindowDimensions();
   const id = useId().replace(/:/g, '');
-  const opacity = scrollY.interpolate({ inputRange: [0, 18], outputRange: [0, 1], extrapolate: 'clamp' });
-  // El difuminado se apaga mientras el borde de arriba de la hoja lo cruza
-  const fadeOutStart = Math.max(19, heroHeight - SHEET_OVERLAP - topInset - STATUS_FADE);
-  const fadeOpacity = scrollY.interpolate({
-    inputRange: [0, 18, fadeOutStart, fadeOutStart + STATUS_FADE],
-    outputRange: [0, 1, 1, 0],
+  // Al tirar hacia abajo no sale: arriba asoma la continuación de la cabecera
+  const opacity = scrollY.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+  // Desplazamiento con el que el borde de arriba de la hoja llega a la franja
+  const sheetAtTop = Math.max(1, heroHeight - SHEET_OVERLAP - topInset);
+  const translateY = scrollY.interpolate({
+    inputRange: [0, sheetAtTop],
+    outputRange: [0, -sheetAtTop],
     extrapolate: 'clamp',
   });
-  const fadeTop = topInset;
-  const fadeBottom = topInset + STATUS_FADE;
   return (
-    <>
-      <Animated.View pointerEvents="none" style={[styles.statusBar, { height: topInset, opacity }]}>
-        <Svg width={width + GLOW_BLEED} height={topInset}>
-          {heroHeight > 0
-            ? <HeroGlowLayers id={`${id}s`} width={width} height={heroHeight} />
-            : <Rect x={0} y={0} width={width + GLOW_BLEED} height={topInset} fill={ui.hero} />}
-        </Svg>
-      </Animated.View>
-      {heroHeight > 0 && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.statusBar, { top: fadeTop, height: STATUS_FADE, opacity: fadeOpacity }]}
-        >
-          {/* viewBox: se dibuja con las coordenadas de la cabecera, justo bajo la barra de estado */}
-          <Svg
-            width={width + GLOW_BLEED}
-            height={STATUS_FADE}
-            viewBox={`0 ${fadeTop} ${width + GLOW_BLEED} ${STATUS_FADE}`}
-          >
-            <Defs>
-              <LinearGradient id={`${id}f`} gradientUnits="userSpaceOnUse" x1={0} y1={fadeTop} x2={0} y2={fadeBottom}>
-                <Stop offset={0} stopColor="#FFFFFF" stopOpacity={1} />
-                <Stop offset={1} stopColor="#FFFFFF" stopOpacity={0} />
-              </LinearGradient>
-              <Mask
-                id={`${id}m`} maskUnits="userSpaceOnUse"
-                x={0} y={fadeTop} width={width + GLOW_BLEED} height={STATUS_FADE}
-              >
-                <Rect x={0} y={fadeTop} width={width + GLOW_BLEED} height={STATUS_FADE} fill={`url(#${id}f)`} />
-              </Mask>
-            </Defs>
-            <G mask={`url(#${id}m)`}>
-              <HeroGlowLayers id={`${id}d`} width={width} height={heroHeight} />
-            </G>
+    <Animated.View pointerEvents="none" style={[styles.statusBar, { height: topInset, opacity }]}>
+      {heroHeight > 0 ? (
+        <Animated.View style={{ transform: [{ translateY }] }}>
+          <Svg width={width + GLOW_BLEED} height={sheetAtTop + topInset}>
+            <HeroGlowLayers id={`${id}s`} width={width} height={heroHeight} />
           </Svg>
         </Animated.View>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.hero }]} />
       )}
-    </>
+    </Animated.View>
   );
 };
 
@@ -272,7 +282,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1 },
   glow: { position: 'absolute', left: 0, top: 0 },
-  overscroll: { position: 'absolute', left: 0, right: 0, top: -800, height: 800 },
+  overscroll: { position: 'absolute', left: 0, right: 0, top: -OVERSCROLL, height: OVERSCROLL },
+  // La fila de 1 de alto, estirada desde su centro hasta llenar el hueco
+  overscrollRow: {
+    position: 'absolute', left: 0, top: (OVERSCROLL - 1) / 2,
+    transform: [{ scaleY: OVERSCROLL }],
+  },
   sheet: {
     flexGrow: 1, marginTop: -SHEET_OVERLAP, paddingTop: 22,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -282,5 +297,5 @@ const styles = StyleSheet.create({
     height: SHEET_OVERLAP, marginTop: -SHEET_OVERLAP,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
   },
-  statusBar: { position: 'absolute', top: 0, left: 0, right: 0 },
+  statusBar: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
 });
