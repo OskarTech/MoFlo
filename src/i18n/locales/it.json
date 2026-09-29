@@ -108,7 +108,7 @@
     "moreThanPrev": "{{amount}} in più del mese scorso al giorno {{day}}"
   },
   "movements": {
-    "add": "Aggiungi Movimento",
+    "add": "Aggiungi movimento",
     "edit": "Modifica movimento",
     "type": "Tipo",
     "income": "Entrata",

@@ -112,7 +112,7 @@
     "moreThanPrev": "{{amount}} więcej niż w zeszłym miesiącu do dnia {{day}}"
   },
   "movements": {
-  "add": "Dodaj Transakcję",
+  "add": "Dodaj transakcję",
   "edit": "Edytuj transakcję",
   "type": "Typ",
   "income": "Przychód",

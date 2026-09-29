@@ -108,7 +108,7 @@
     "moreThanPrev": "{{amount}} more than last month by day {{day}}"
   },
   "movements": {
-  "add": "Add Movement",
+  "add": "Add movement",
   "edit": "Edit movement",
   "type": "Type",
   "income": "Income",

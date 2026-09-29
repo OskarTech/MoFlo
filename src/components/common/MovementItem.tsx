@@ -18,17 +18,22 @@ interface Props {
   currencySymbol: string;
   /** Texto al final de la línea de abajo (p. ej. la hora o la fecha) */
   detail?: string;
+  /** Icono e importe en el verde o el rojo de la paleta según sea ingreso o
+   *  gasto, para distinguirlos de un vistazo. En Home, donde van mezclados;
+   *  Movimientos tiene una pestaña para cada tipo */
+  colorByType?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
  * Fila de un movimiento: icono de la categoría con su color, la nota (o la
  * categoría) y debajo la categoría, el miembro que lo añadió o si es fijo, y
- * el importe. Los ingresos en verde; los gastos, en el color del texto.
+ * el importe. Los ingresos en verde; los gastos, en el color del texto. Con
+ * colorByType, el icono y el importe van en el verde o el rojo de la paleta.
  * En la cuenta compartida, quien lo añadió sale solo por su nombre, sin foto
  * ni inicial sobre el icono.
  */
-const MovementItem = ({ movement, currencySymbol, detail, style }: Props) => {
+const MovementItem = ({ movement, currencySymbol, detail, colorByType, style }: Props) => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
   const cat = useCategoryInfo();
@@ -37,7 +42,13 @@ const MovementItem = ({ movement, currencySymbol, detail, style }: Props) => {
 
   const type = movement.type as MovementType;
   const isIncome = type === 'income';
-  const color = cat.color(movement.category, type);
+  const typeColor = isIncome ? ui.incomeText : ui.expenseText;
+  const amountColor = isIncome || colorByType ? typeColor : dc.textPrimary;
+  // Icono: el color de la categoría o, con colorByType, el del tipo. El dibujo
+  // como el importe y el fondo con el color base, como la insignia de Resumen
+  const color = colorByType ? typeColor : cat.color(movement.category, type);
+  const typeBase = isIncome ? dc.income : dc.expense;
+  const iconBg = withAlpha(colorByType ? typeBase : color, 0.15);
   const catName = (
     <StrikeText struck={cat.deleted(movement.category, type)}>{cat.name(movement.category, type)}</StrikeText>
   );
@@ -62,7 +73,7 @@ const MovementItem = ({ movement, currencySymbol, detail, style }: Props) => {
 
   return (
     <View style={[styles.row, style]}>
-      <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.15) }]}>
+      <View style={[styles.icon, { backgroundColor: iconBg }]}>
         <Icon name={cat.icon(movement.category, type)} size={20} color={color} />
       </View>
       <View style={styles.info}>
@@ -78,7 +89,7 @@ const MovementItem = ({ movement, currencySymbol, detail, style }: Props) => {
         )}
       </View>
       <Text
-        style={[styles.amount, { color: isIncome ? ui.incomeText : dc.textPrimary }]}
+        style={[styles.amount, { color: amountColor }]}
         numberOfLines={1}
       >
         {isIncome ? '+' : '-'}{formatAmount(movement.amount)} {currencySymbol}

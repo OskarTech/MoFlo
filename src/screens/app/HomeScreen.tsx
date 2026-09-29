@@ -379,6 +379,7 @@ const HomeScreen = () => {
               movement={mov}
               currencySymbol={currencySymbol}
               detail={formatMovementTime(mov.date)}
+              colorByType
             />
           ))}
         </View>
