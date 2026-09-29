@@ -30,8 +30,11 @@ const HAS_BLUR = requireOptionalNativeModule('ExpoBlurView') != null;
 
 // Android: expo-blur divide la intensidad entre este número para el radio del
 // difuminado (por defecto 4: con 60 quedaban 15 px y se leía lo de detrás, con
-// los colores de las filas colándose en la cápsula). Más bajo, más difuminado
-const ANDROID_BLUR_REDUCTION = 1.25;
+// los colores de las filas colándose en la cápsula). Más bajo, más difuminado.
+// En Android 11 o anterior difumina RenderScript, que no admite un radio mayor
+// de 25: con 48 la app se cerraba al dibujar la barra (versión 2.0.0). Ahí se
+// queda en 24
+const ANDROID_BLUR_REDUCTION = Platform.OS === 'android' && Platform.Version < 31 ? 2.5 : 1.25;
 // Android: capa del color de la tarjeta sobre el difuminado, como la de iOS
 const ANDROID_GLASS = { dark: 0.55, light: 0.45 };
 
