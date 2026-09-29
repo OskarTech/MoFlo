@@ -450,7 +450,7 @@
   },
   "reminders": {
   "title": "Recordatorios",
-  "add": "Añadir Recordatorio",
+  "add": "Añadir recordatorio",
   "edit": "Editar recordatorio",
   "noReminders": "Sin recordatorios",
   "noRemindersSubtitle": "Pulsa + para añadir tu primer recordatorio",

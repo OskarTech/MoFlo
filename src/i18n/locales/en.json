@@ -450,7 +450,7 @@
   },
   "reminders": {
   "title": "Reminders",
-  "add": "Add Reminder",
+  "add": "Add reminder",
   "edit": "Edit reminder",
   "noReminders": "No reminders yet",
   "noRemindersSubtitle": "Tap + to add your first reminder",
