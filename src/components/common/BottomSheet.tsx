@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Modal, Animated, PanResponder, Keyboard, Platform,
+  View, StyleSheet, Modal, Animated, PanResponder, Keyboard, Platform, LayoutAnimation,
   TouchableOpacity, TouchableWithoutFeedback, ScrollView, Dimensions,
   ActivityIndicator, StyleProp, ViewStyle, TextInput, TextInputProps,
 } from 'react-native';
@@ -36,6 +36,9 @@ interface Props {
 
 const CLOSE_DISTANCE = 90;
 
+// Hueco que queda arriba cuando el teclado hace subir la ventana (iOS)
+const KEYBOARD_TOP_GAP = 12;
+
 /**
  * Ventana que sube desde abajo, igual en toda la app: asa, título a la
  * izquierda y X a la derecha. Se cierra con la X, tocando fuera, deslizando
@@ -52,6 +55,8 @@ const BottomSheet = ({
   const screenH = Dimensions.get('window').height;
 
   const [mounted, setMounted] = useState(visible);
+  // Lo que ha subido la ventana con el teclado (iOS); 0 sin teclado
+  const [keyboardLift, setKeyboardLift] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
   const keyboardOffset = useRef(new Animated.Value(0)).current;
@@ -87,19 +92,42 @@ const BottomSheet = ({
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const show = Keyboard.addListener(showEvent, (e) => {
-      const offset = Platform.OS === 'ios'
-        ? -(e.endCoordinates.height - insets.bottom)
-        : -e.endCoordinates.height;
+      const lift = Platform.OS === 'ios'
+        ? e.endCoordinates.height - insets.bottom
+        : e.endCoordinates.height;
       Animated.timing(keyboardOffset, {
-        toValue: offset,
+        toValue: -lift,
         duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
         useNativeDriver: true,
       }).start();
+      // iOS: la ventana no pasa de lo que queda entre el teclado y la parte de
+      // arriba; el cuerpo se encoge y se desplaza. Antes subía entera y en
+      // pantallas bajas (iPhone SE) el título, la X y hasta el importe se
+      // salían por arriba. Al ritmo del teclado, como KeyboardAvoidingView
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext({
+          duration: Math.max(10, e.duration || 250),
+          update: { type: LayoutAnimation.Types.keyboard },
+        });
+        setKeyboardLift(lift);
+      }
     });
-    const hide = Keyboard.addListener(hideEvent, () => {
+    const hide = Keyboard.addListener(hideEvent, (e) => {
       Animated.timing(keyboardOffset, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext({
+          duration: Math.max(10, e.duration || 200),
+          update: { type: LayoutAnimation.Types.keyboard },
+        });
+        setKeyboardLift(0);
+      }
     });
-    return () => { show.remove(); hide.remove(); keyboardOffset.setValue(0); };
+    return () => {
+      show.remove();
+      hide.remove();
+      keyboardOffset.setValue(0);
+      setKeyboardLift(0);
+    };
   }, [mounted, keyboardOffset, insets.bottom]);
 
   // Deslizar hacia abajo desde el asa o el título
@@ -130,6 +158,12 @@ const BottomSheet = ({
       },
     }),
   ).current;
+
+  // Con el teclado abierto (iOS), el alto que cabe por encima de él. Solo si el
+  // cuerpo se desplaza: uno fijo no encoge y el botón se quedaría debajo
+  const sheetMaxHeight = scrollable && keyboardLift > 0
+    ? Math.min(screenH * maxHeight, screenH - keyboardLift - insets.top - KEYBOARD_TOP_GAP)
+    : screenH * maxHeight;
 
   const slide = progress.interpolate({ inputRange: [0, 1], outputRange: [screenH, 0] });
   const translateY = Animated.add(Animated.add(slide, drag), keyboardOffset);
@@ -162,7 +196,7 @@ const BottomSheet = ({
           styles.sheet,
           {
             backgroundColor: ui.sheet,
-            maxHeight: screenH * maxHeight,
+            maxHeight: sheetMaxHeight,
             transform: [{ translateY }],
           },
         ]}

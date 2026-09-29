@@ -17,6 +17,7 @@ import { ExportDateFormat, ExportInput, fileBaseName, summarize } from './export
 import { buildCsv } from './export/csv';
 import { buildXlsx } from './export/xlsx';
 import { buildReportHtml } from './export/pdf';
+import { utf8 } from './export/zip';
 
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 
@@ -104,7 +105,9 @@ export const prepareExport = async (format: ExportFormat): Promise<PreparedExpor
 
   if (format === 'csv') {
     return {
-      uri: writeCacheFile(`${name}.csv`, buildCsv(input)),
+      // En bytes y no como texto: al pasar el texto a iOS se pierde la marca de
+      // orden de bytes del principio, y sin ella Excel destroza los acentos
+      uri: writeCacheFile(`${name}.csv`, utf8(buildCsv(input))),
       mimeType: 'text/csv',
       UTI: 'public.comma-separated-values-text',
     };

@@ -111,6 +111,10 @@ describe('CSV', () => {
   it('en compartida lleva la columna del miembro', () => {
     expect(buildCsv(input({ isShared: true })).split('\r\n')[1].startsWith('Ana;')).toBe(true);
   });
+
+  it('en bytes empieza por la marca de orden de UTF-8, la que necesita Excel', () => {
+    expect(Array.from(utf8(buildCsv(input())).slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+  });
 });
 
 describe('Excel', () => {

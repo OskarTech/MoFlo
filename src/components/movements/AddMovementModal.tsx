@@ -205,48 +205,50 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     : t(type === 'income' ? 'movements.saveIncome' : 'movements.saveExpense');
 
   return (
-    <>
-      <BottomSheet
-        visible={visible}
-        onClose={handleDismiss}
-        title={editingMovement ? t('movements.edit') : t('movements.add')}
-        footer={<SheetButton label={saveLabel} onPress={handleSave} disabled={!isValid} />}
-      >
-        <SegmentedControl
-          options={[
-            { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
-            { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
-          ]}
-          value={type}
-          onChange={handleTypeChange}
-        />
+    <BottomSheet
+      visible={visible}
+      onClose={handleDismiss}
+      title={editingMovement ? t('movements.edit') : t('movements.add')}
+      footer={<SheetButton label={saveLabel} onPress={handleSave} disabled={!isValid} />}
+    >
+      <SegmentedControl
+        options={[
+          { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
+          { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
+        ]}
+        value={type}
+        onChange={handleTypeChange}
+      />
 
-        <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
+      <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
 
-        <FilledInput
-          icon="create-outline"
-          value={note}
-          onChangeText={setNote}
-          placeholder={t('movements.descriptionPlaceholder')}
-          maxLength={80}
-        />
+      <FilledInput
+        icon="create-outline"
+        value={note}
+        onChangeText={setNote}
+        placeholder={t('movements.descriptionPlaceholder')}
+        maxLength={80}
+      />
 
-        <SheetLabel>{t('movements.category')}</SheetLabel>
-        <CategoryPicker
-          categories={chipCategories}
-          type={type}
-          selectedId={categoryId}
-          onSelect={setCategoryId}
-          onAdd={handleAddCategoryPress}
-          resetKey={pickerKey}
-        />
-      </BottomSheet>
+      <SheetLabel>{t('movements.category')}</SheetLabel>
+      <CategoryPicker
+        categories={chipCategories}
+        type={type}
+        selectedId={categoryId}
+        onSelect={setCategoryId}
+        onAdd={handleAddCategoryPress}
+        resetKey={pickerKey}
+      />
+
+      {/* Dentro de la hoja y no al lado: iOS no abre una ventana mientras hay
+          otra abierta, salvo que vaya dentro de ella. Al lado, "Nueva" no hacía
+          nada sin premium. Al cerrarla se sigue en la hoja, con lo escrito */}
       <PremiumModal
         visible={showPremiumModal}
         onDismiss={() => setShowPremiumModal(false)}
         onPurchase={() => setShowPremiumModal(false)}
       />
-    </>
+    </BottomSheet>
   );
 };
 

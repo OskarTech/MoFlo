@@ -19,6 +19,7 @@ import { COLOR_PALETTES, ColorPaletteId } from '../../theme';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { usePremium } from '../../hooks/usePremium';
+import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
@@ -93,6 +94,7 @@ const SettingsScreen = () => {
     photoURL, saveSettings, setProfilePhoto,
   } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
+  const premiumPrice = usePremiumPrice(!isPremium);
   const {
     isSharedMode, sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
@@ -902,7 +904,7 @@ const SettingsScreen = () => {
                 </View>
                 <View style={styles.upgradeText}>
                   <Text style={[styles.upgradeTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
-                  <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>2,99€</Text>
+                  <Text style={[styles.upgradeSubtitle, { color: dc.textSecondary }]}>{premiumPrice}</Text>
                 </View>
                 <Icon name="chevron-forward" size={18} color={ui.savingsText} />
               </TouchableOpacity>

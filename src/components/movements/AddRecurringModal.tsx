@@ -212,55 +212,56 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     recurringDay <= 31;
 
   return (
-    <>
-      <BottomSheet
-        visible={visible}
-        onClose={handleDismiss}
-        title={editingRecurring ? t('recurring.edit') : t('recurring.add')}
-        footer={<SheetButton label={t('movements.save')} onPress={handleSave} disabled={!isValid} />}
-      >
-        <SegmentedControl
-          options={[
-            { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
-            { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
-          ]}
-          value={type}
-          onChange={handleTypeChange}
-        />
+    <BottomSheet
+      visible={visible}
+      onClose={handleDismiss}
+      title={editingRecurring ? t('recurring.edit') : t('recurring.add')}
+      footer={<SheetButton label={t('movements.save')} onPress={handleSave} disabled={!isValid} />}
+    >
+      <SegmentedControl
+        options={[
+          { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
+          { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
+        ]}
+        value={type}
+        onChange={handleTypeChange}
+      />
 
-        <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
+      <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
 
-        <FilledInput
-          icon="create-outline"
-          value={note}
-          onChangeText={setNote}
-          placeholder={t('movements.descriptionPlaceholder')}
-          maxLength={80}
-        />
+      <FilledInput
+        icon="create-outline"
+        value={note}
+        onChangeText={setNote}
+        placeholder={t('movements.descriptionPlaceholder')}
+        maxLength={80}
+      />
 
-        <SheetLabel>{t('recurring.dayPickerLabel')}</SheetLabel>
-        <DayPicker value={recurringDay} onChange={setRecurringDay} resetKey={pickerKey} />
-        <View style={[styles.info, { backgroundColor: ui.fill }]}>
-          <Icon name="repeat" size={16} color={dc.textSecondary} />
-          <Text style={[styles.infoText, { color: dc.textSecondary }]}>{t('recurring.infoMessage')}</Text>
-        </View>
+      <SheetLabel>{t('recurring.dayPickerLabel')}</SheetLabel>
+      <DayPicker value={recurringDay} onChange={setRecurringDay} resetKey={pickerKey} />
+      <View style={[styles.info, { backgroundColor: ui.fill }]}>
+        <Icon name="repeat" size={16} color={dc.textSecondary} />
+        <Text style={[styles.infoText, { color: dc.textSecondary }]}>{t('recurring.infoMessage')}</Text>
+      </View>
 
-        <SheetLabel>{t('movements.category')}</SheetLabel>
-        <CategoryPicker
-          categories={chipCategories}
-          type={type}
-          selectedId={categoryId}
-          onSelect={setCategoryId}
-          onAdd={handleAddCategoryPress}
-          resetKey={pickerKey}
-        />
-      </BottomSheet>
+      <SheetLabel>{t('movements.category')}</SheetLabel>
+      <CategoryPicker
+        categories={chipCategories}
+        type={type}
+        selectedId={categoryId}
+        onSelect={setCategoryId}
+        onAdd={handleAddCategoryPress}
+        resetKey={pickerKey}
+      />
+
+      {/* Dentro de la hoja y no al lado: iOS no abre una ventana mientras hay
+          otra abierta, salvo que vaya dentro de ella (ver AddMovementModal) */}
       <PremiumModal
         visible={showPremiumModal}
         onDismiss={() => setShowPremiumModal(false)}
         onPurchase={() => setShowPremiumModal(false)}
       />
-    </>
+    </BottomSheet>
   );
 };
 

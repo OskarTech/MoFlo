@@ -215,11 +215,16 @@ tr { break-inside: avoid; page-break-inside: avoid; }
 .muted { color: #6B7280; }
 .small { font-size: 9pt; }
 s { color: #6B7280; }
-.cats { display: flex; gap: 24px; break-inside: avoid; page-break-inside: avoid; }
+.cats { display: flex; gap: 20px; break-inside: avoid; page-break-inside: avoid; }
 .cat-block { flex: 1; min-width: 0; }
-.cat-body { display: flex; gap: 12px; align-items: flex-start; }
+.cat-body { display: flex; gap: 10px; align-items: flex-start; }
+/* Gráfico a 80 px y no a 120: con él, en media página la tabla no cabía a su
+   lado y los porcentajes quedaban debajo del gráfico de la otra columna. Un
+   nombre de una sola palabra muy largo se parte en vez de salirse */
 .donut { flex: 0 0 auto; }
-.cat-table td { padding: 3px 4px; font-size: 9.5pt; border-bottom: 1px solid #F1F3F5; }
+.donut svg { width: 80px; height: 80px; }
+.cat-table td { padding: 3px 3px; font-size: 9.5pt; border-bottom: 1px solid #F1F3F5; }
+.cat-table td:nth-child(2) { overflow-wrap: anywhere; }
 .dot-cell { width: 14px; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .month { margin-bottom: 14px; }

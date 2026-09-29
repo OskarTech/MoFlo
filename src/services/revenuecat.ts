@@ -59,6 +59,28 @@ export const ensurePurchasesUser = (): Promise<string | null> => {
   return next;
 };
 
+let premiumPrice: string | null = null;
+
+/** El precio de premium ya consultado, o null si aún no se sabe */
+export const getCachedPremiumPrice = (): string | null => premiumPrice;
+
+/**
+ * El precio de premium tal y como lo da la tienda, con la moneda y el formato
+ * del país de la cuenta ("2,99 €", "$2.99"...). Se consulta una vez; null si no
+ * se puede (sin conexión, o si la tienda no da el producto).
+ */
+export const getPremiumPrice = async (): Promise<string | null> => {
+  if (premiumPrice) return premiumPrice;
+  try {
+    await ensurePurchasesUser();
+    const offerings = await Purchases.getOfferings();
+    premiumPrice = offerings.current?.lifetime?.product.priceString ?? null;
+  } catch {
+    // Se queda el precio de siempre
+  }
+  return premiumPrice;
+};
+
 /**
  * Suelta el usuario del SDK al cerrar sesión o al borrar la cuenta. Sin esto,
  * el siguiente que entre en el mismo móvil hereda el App User ID del anterior.

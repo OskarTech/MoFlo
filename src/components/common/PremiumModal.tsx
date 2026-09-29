@@ -6,6 +6,7 @@ import Icon, { IconName } from './Icon';
 import Purchases, { PurchasesOffering, PURCHASES_ERROR_CODE } from 'react-native-purchases';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
+import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { ensurePurchasesUser, hasPremiumEntitlement } from '../../services/revenuecat';
 import { reportError } from '../../services/crashReporting';
 import HeroDialog from './HeroDialog';
@@ -31,6 +32,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
   const { setPremium } = usePremiumStore();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const price = usePremiumPrice(visible);
 
   // Restauración sin avisos: la usan tanto el botón como la compra que la
   // tienda rechaza por estar el producto ya comprado.
@@ -122,7 +124,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       title={t('premium.title')}
       heroExtra={(
         <>
-          <Text style={[styles.price, { color: ui.onHero }]}>2,99€</Text>
+          <Text style={[styles.price, { color: ui.onHero }]}>{price}</Text>
           <Text style={[styles.tax, { color: ui.onHeroSoft }]}>{t('premium.taxNote')}</Text>
         </>
       )}
@@ -138,7 +140,7 @@ const PremiumModal = ({ visible, onDismiss, onPurchase }: Props) => {
       ))}
 
       <SheetButton
-        label={t('premium.purchase')}
+        label={t('premium.purchase', { price })}
         onPress={handlePurchase}
         loading={loading}
         disabled={restoring}

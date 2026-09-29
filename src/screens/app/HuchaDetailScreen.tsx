@@ -222,6 +222,10 @@ const HuchaDetailScreen = () => {
   const [autoAmount, setAutoAmount] = useState('');
   const [autoDay, setAutoDay] = useState('');
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  // Lo que queda por hacer cuando el menú de opciones termine de cerrarse. En
+  // iOS no se puede abrir una ventana mientras otra se cierra: "Reabrir" sin
+  // premium pedía la de premium con el menú aún en pantalla y no llegaba a salir
+  const afterMenuClosed = useRef<(() => void) | null>(null);
   const [editName, setEditName] = useState('');
   const [editTarget, setEditTarget] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -327,10 +331,10 @@ const HuchaDetailScreen = () => {
         { text: t('hucha.cancel'), style: 'cancel' },
         {
           text: t('hucha.delete'), style: 'destructive',
-          onPress: async () => {
-            await deleteHucha(hucha.id);
-            navigation.goBack();
-          },
+          // A la lista vuelve el efecto de arriba, en cuanto la hucha deja de
+          // estar. Volver también aquí al terminar de borrar era un segundo
+          // "atrás" que, ya desde la lista, llevaba a Inicio
+          onPress: () => { deleteHucha(hucha.id); },
         },
       ],
     );
@@ -371,6 +375,17 @@ const HuchaDetailScreen = () => {
         },
       ],
     );
+  };
+
+  const closeMenuThen = (action: () => void) => {
+    afterMenuClosed.current = action;
+    setShowActionsMenu(false);
+  };
+
+  const runAfterMenuClosed = () => {
+    const action = afterMenuClosed.current;
+    afterMenuClosed.current = null;
+    action?.();
   };
 
   const handleMoreMenu = () => {
@@ -761,6 +776,7 @@ const HuchaDetailScreen = () => {
       <BottomSheet
         visible={showActionsMenu}
         onClose={() => setShowActionsMenu(false)}
+        onClosed={runAfterMenuClosed}
         title={hucha.name}
         subtitle={hasTarget
           ? `${formatAmount(hucha.currentAmount)} / ${formatAmount(hucha.targetAmount)} ${currencySymbol}`
@@ -802,10 +818,7 @@ const HuchaDetailScreen = () => {
 
         <TouchableOpacity
           style={styles.actionRow}
-          onPress={() => {
-            setShowActionsMenu(false);
-            if (isClosed) handleReopen(); else handleClose();
-          }}
+          onPress={() => closeMenuThen(isClosed ? handleReopen : handleClose)}
           activeOpacity={0.6}
         >
           <View style={[styles.actionIcon, { backgroundColor: ui.accentSoft }]}>

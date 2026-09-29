@@ -16,6 +16,7 @@ import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { usePremium } from '../../hooks/usePremium';
+import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { useTheme } from '../../hooks/useTheme';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroTitleBar } from '../../components/layout/HeroBar';
@@ -36,6 +37,7 @@ const SharedAccountScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'SharedAccount'>>();
   const { isPremium, showModal, setShowModal } = usePremium();
+  const premiumPrice = usePremiumPrice(!isPremium);
 
   const {
     sharedAccount, isLoading,
@@ -235,7 +237,7 @@ const SharedAccountScreen = () => {
             <Text style={[styles.statusTitle, { color: dc.textPrimary }]}>{t('premium.title')}</Text>
             <Text style={[styles.statusText, { color: dc.textSecondary }]}>{t('sharedAccount.intro')}</Text>
           </View>
-          <SheetButton label={t('premium.purchase')} onPress={() => setShowModal(true)} icon="star-outline" />
+          <SheetButton label={t('premium.purchase', { price: premiumPrice })} onPress={() => setShowModal(true)} icon="star-outline" />
         </HeroScrollScreen>
         <PremiumModal
           visible={showModal}
