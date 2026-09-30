@@ -49,7 +49,6 @@ const AccountSwitcher = () => {
       await setSharedMode(false);
       await loadData();
       await useSavingsStore.getState().loadHuchas();
-      navigation.navigate('HomeTab');
     }
   };
 
@@ -70,7 +69,6 @@ const AccountSwitcher = () => {
       await loadSharedCategories(sharedAccount.id);
       useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);
       await loadSharedSettings(sharedAccount.id);
-      navigation.navigate('HomeTab');
     } else {
       setTimeout(() => navigation.navigate('Settings', { screen: 'SharedAccount' }), 300);
     }
