@@ -15,6 +15,7 @@ import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { getDateLocale } from '../../utils/dateFormat';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
+import { byMostRecent } from '../../utils/sortMovements';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroIconButton } from '../../components/layout/HeroBar';
 import { SectionHeader } from '../../components/layout/SheetSection';
@@ -232,12 +233,13 @@ const HomeScreen = () => {
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const recentMovements = useMemo(() =>
-    [...movements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5),
+    [...movements].sort(byMostRecent).slice(0, 5),
   [movements]);
 
   // La fecha de cada movimiento, como antes del rediseño: hoy con la hora,
-  // ayer, y el resto con el día y el mes
-  const formatMovementTime = (dateStr: string): string => {
+  // ayer, y el resto con el día y el mes. Los fijos de hoy, sin hora, como en
+  // Movimientos: la de su fecha (las 12:00) no dice nada y parecía desordenado
+  const formatMovementTime = (dateStr: string, isRecurring: boolean): string => {
     const date = new Date(dateStr);
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -246,6 +248,7 @@ const HomeScreen = () => {
     const movMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
     if (movMidnight.getTime() === todayMidnight.getTime()) {
+      if (isRecurring) return t('home.today');
       const hh = date.getHours().toString().padStart(2, '0');
       const mm = date.getMinutes().toString().padStart(2, '0');
       return `${t('home.today')}, ${hh}:${mm}`;
@@ -378,7 +381,7 @@ const HomeScreen = () => {
               key={mov.id}
               movement={mov}
               currencySymbol={currencySymbol}
-              detail={formatMovementTime(mov.date)}
+              detail={formatMovementTime(mov.date, mov.isRecurring)}
               redExpenses
             />
           ))}

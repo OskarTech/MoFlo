@@ -26,6 +26,7 @@ import { HeroTitleBar, MonthSelector } from '../../components/layout/HeroBar';
 import { SectionHeader } from '../../components/layout/SheetSection';
 import RhythmChart from '../../components/summary/RhythmChart';
 import { lightHaptic } from '../../utils/haptics';
+import { byMostRecent } from '../../utils/sortMovements';
 
 type SummaryTab = 'expense' | 'income' | 'hucha';
 
@@ -513,7 +514,7 @@ const AnnualScreen = () => {
     const isIncome = type === 'income';
     const catMonthMovs = monthMovements
       .filter(mv => mv.type === type && mv.category === item.category)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort(byMostRecent);
     return (
       <View style={[styles.detail, { backgroundColor: ui.field }]}>
         <View style={styles.detailHeader}>

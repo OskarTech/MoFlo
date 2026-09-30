@@ -9,6 +9,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { formatAmount } from '../../utils/formatAmount';
 import { getDateLocale } from '../../utils/dateFormat';
+import { byMostRecent } from '../../utils/sortMovements';
 import MovementItem from '../common/MovementItem';
 import FloatingSummaryCard, { SummaryNav, SummaryOrigin } from './FloatingSummaryCard';
 
@@ -103,7 +104,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
         const ts = new Date(m.date).getTime();
         return ts >= dayStart.getTime() && ts < dayEnd.getTime();
       })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      .sort(byMostRecent),
     [movements, dayStart, dayEnd],
   );
 
@@ -169,7 +170,7 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
             </View>
           ) : dayMovements.map((mov) => {
             const d = new Date(mov.date);
-            // Los fijos se generan a las 00:00: la hora no dice nada, ya llevan su etiqueta
+            // La hora de los fijos (las 12:00 de su día) no dice nada: ya llevan su etiqueta
             const time = mov.isRecurring
               ? undefined
               : `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;

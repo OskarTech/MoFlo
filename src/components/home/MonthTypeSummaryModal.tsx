@@ -15,6 +15,7 @@ import MemberName from '../common/MemberName';
 import { formatAmount } from '../../utils/formatAmount';
 import { getMemberLabel } from '../../utils/memberLabel';
 import { withAlpha } from '../../utils/color';
+import { byMostRecent } from '../../utils/sortMovements';
 import FloatingSummaryCard, { SummaryNav, SummaryOrigin } from './FloatingSummaryCard';
 
 // Índice absoluto del mes (año * 12 + mes): permite navegar entre meses sin líos de fechas
@@ -107,7 +108,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
 
   const monthMovements = useMemo(() =>
     movementsOfMonth(movements, type, selectedIndex)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      .sort(byMostRecent),
     [movements, type, selectedIndex],
   );
   const total = monthMovements.reduce((s, m) => s + m.amount, 0);
@@ -242,7 +243,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                       const member = isSharedMode
                         ? getMemberLabel(sharedAccount, mov.addedBy, t('sharedAccount.formerMember'))
                         : undefined;
-                      // Los recurrentes se generan a las 00:00: etiqueta en vez de hora
+                      // Los recurrentes se guardan a las 12:00 de su día: etiqueta en vez de hora
                       const detail = mov.isRecurring
                         ? t(isIncome ? 'movementsList.recurringIncome' : 'movementsList.recurringExpense')
                         : time;

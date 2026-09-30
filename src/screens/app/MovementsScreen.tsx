@@ -30,6 +30,7 @@ import { GroupHeader } from '../../components/layout/SheetSection';
 import { useTabBarSpace } from '../../components/navigation/GlassTabBar';
 import AddHint from '../../components/navigation/AddHint';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
+import { byMostRecent } from '../../utils/sortMovements';
 
 type FilterType = MovementType | 'hucha' | 'recurring';
 
@@ -54,7 +55,7 @@ const MovementRowBase = ({
   const currencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
 
   const d = new Date(movement.date);
-  // Los fijos se generan a las 00:00: la hora no dice nada, ya llevan su etiqueta
+  // La hora de los fijos (las 12:00 de su día) no dice nada: ya llevan su etiqueta
   const time = movement.isRecurring
     ? undefined
     : `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
@@ -301,7 +302,7 @@ const MovementsScreen = () => {
   const monthMovements = useMemo(
     () => movements
       .filter((m) => m.type === filter && monthIndexOf(new Date(m.date)) === selectedMonth)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      .sort(byMostRecent),
     [movements, filter, selectedMonth],
   );
 
