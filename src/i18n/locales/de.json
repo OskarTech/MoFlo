@@ -741,6 +741,7 @@
     "colorPickerTitle": "Eigene Farbe",
     "colorPickerHint": "Tippe oder ziehe mit dem Finger, um den Farbton zu wählen",
     "colorPickerUse": "Diese Farbe verwenden",
-    "customColor": "Eigene Farbe"
+    "customColor": "Eigene Farbe",
+    "done": "Fertig"
   }
 }

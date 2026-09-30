@@ -742,6 +742,7 @@
     "colorPickerTitle": "Custom color",
     "colorPickerHint": "Tap or drag your finger to pick the shade",
     "colorPickerUse": "Use this color",
-    "customColor": "Custom color"
+    "customColor": "Custom color",
+    "done": "Done"
   }
 }

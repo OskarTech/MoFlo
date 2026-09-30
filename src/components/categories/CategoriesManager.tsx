@@ -187,6 +187,8 @@ const CategorySheet = ({
       visible={visible}
       onClose={onDismiss}
       title={title}
+      // Aquí sí: tocar un hueco oculta el teclado, para ver bien iconos y colores
+      dismissKeyboardOnTap
       footer={(
         <SheetButton
           label={t('movements.save')}

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Modal, Animated, PanResponder, Keyboard, Platform, LayoutAnimation,
+  View, StyleSheet, Modal, Animated, PanResponder, Keyboard, Platform,
   TouchableOpacity, TouchableWithoutFeedback, ScrollView, Dimensions,
   ActivityIndicator, StyleProp, ViewStyle, TextInput, TextInputProps,
+  NativeScrollEvent, NativeSyntheticEvent,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import Icon, { IconName } from './Icon';
@@ -29,6 +30,11 @@ interface Props {
   /** Abajo y siempre a la vista, p. ej. el botón de guardar */
   footer?: React.ReactNode;
   scrollable?: boolean;
+  /**
+   * Tocar un hueco de la ventana oculta el teclado. Por defecto no: solo se
+   * oculta al cerrarla. Para ventanas con mucho que ver debajo del teclado
+   */
+  dismissKeyboardOnTap?: boolean;
   /** Fracción de la pantalla que puede ocupar como mucho */
   maxHeight?: number;
   bodyStyle?: StyleProp<ViewStyle>;
@@ -39,15 +45,30 @@ const CLOSE_DISTANCE = 90;
 // Hueco que queda arriba cuando el teclado hace subir la ventana (iOS)
 const KEYBOARD_TOP_GAP = 12;
 
+// Aire entre el campo en el que se escribe y el botón, al traerlo a la vista
+const REVEAL_GAP = 12;
+
+// Lo que tarda la ventana en seguir al teclado cuando el sistema no da duración
+const KEYBOARD_MS = 220;
+
+// Android: espera antes de bajar la ventana al ocultarse el teclado. Al pasar
+// de un campo de números a uno de texto hay teclados que se ocultan y vuelven
+// a salir: sin la espera, la ventana bajaba y subía en un parpadeo
+const ANDROID_HIDE_WAIT = 120;
+
 /**
  * Ventana que sube desde abajo, igual en toda la app: asa, título a la
  * izquierda y X a la derecha. Se cierra con la X, tocando fuera, deslizando
  * hacia abajo desde arriba o con el botón atrás. Sube con el teclado para que
  * el botón de guardar quede siempre a la vista.
+ *
+ * Todo lo que se mueve lo hace por posición (transform), nunca cambiando el
+ * alto de la ventana: animar el alto a la vez que la posición fallaba a veces
+ * y la ventana se quedaba arriba, encogida, con el teclado ya cerrado.
  */
 const BottomSheet = ({
   visible, onClose, onClosed, onBack, title, subtitle, titleAccessory, children, footer,
-  scrollable = true, maxHeight = 0.9, bodyStyle,
+  scrollable = true, dismissKeyboardOnTap = false, maxHeight = 0.9, bodyStyle,
 }: Props) => {
   const { t } = useTranslation();
   const { ui, colors: dc } = useTheme();
@@ -55,11 +76,16 @@ const BottomSheet = ({
   const screenH = Dimensions.get('window').height;
 
   const [mounted, setMounted] = useState(visible);
-  // Lo que ha subido la ventana con el teclado (iOS); 0 sin teclado
-  const [keyboardLift, setKeyboardLift] = useState(0);
+  // Lo que el teclado tapa de la ventana cuando esta ya no puede subir más
+  // (iOS): el botón sube esa distancia y el cuerpo deja ese hueco al final
+  const [overlap, setOverlap] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
   const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const footerOffset = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const footerRef = useRef<View>(null);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -67,16 +93,28 @@ const BottomSheet = ({
   onClosedRef.current = onClosed;
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  // Alto de la ventana, para saber cuánto puede subir
+  const sheetHeight = useRef(0);
+  // Del efecto del teclado: bajar la ventana si está subida, y recolocarla si
+  // cambia de alto con el teclado abierto
+  const lowerRef = useRef<() => void>(() => {});
+  const reflowRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
       drag.setValue(0);
       progress.setValue(0);
+      // Sin rebote (amortiguación crítica): con rebote la ventana se pasaba
+      // unos 24 puntos hacia arriba, dejaba ver un hueco debajo y volvía; en
+      // las ventanas altas se notaba como una entrada brusca
       Animated.spring(progress, {
-        toValue: 1, useNativeDriver: true, damping: 22, stiffness: 240, mass: 0.9,
+        toValue: 1, useNativeDriver: true, damping: 30, stiffness: 240, mass: 0.9,
       }).start();
     } else if (mounted) {
+      // El teclado se va a la vez que la ventana. Antes seguía en pantalla
+      // hasta que la ventana desaparecía y se cerraba después, por separado
+      Keyboard.dismiss();
       Animated.timing(progress, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
         setMounted(false);
         // En iOS lo avisa el Modal al terminar de cerrarse (onDismiss)
@@ -86,49 +124,93 @@ const BottomSheet = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir o cerrar
   }, [visible]);
 
-  // Sube con el teclado (mismos valores que usaban las ventanas antiguas)
+  // Sube con el teclado
   useEffect(() => {
     if (!mounted) return;
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const ios = Platform.OS === 'ios';
+    const showEvent = ios ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = ios ? 'keyboardWillHide' : 'keyboardDidHide';
+    // Lo que pide el teclado que suba la ventana
+    let target = 0;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // La ventana sube entera hasta donde cabe. Si no cabe (iOS, ventanas
+    // altas o pantallas bajas como el iPhone SE), se queda con el título a
+    // la vista y lo que falta lo sube solo el botón, por encima del cuerpo,
+    // que se desplaza. Antes subía entera y el título, la X y hasta el
+    // importe se salían por arriba
+    const place = (duration: number) => {
+      const room = Math.max(0, screenH - sheetHeight.current - insets.top - KEYBOARD_TOP_GAP);
+      const shift = ios && scrollable ? Math.min(target, room) : target;
+      const covered = target - shift;
+      Animated.parallel([
+        Animated.timing(keyboardOffset, { toValue: -shift, duration, useNativeDriver: true }),
+        Animated.timing(footerOffset, { toValue: -covered, duration, useNativeDriver: true }),
+      ]).start();
+      setOverlap(covered);
+      if (covered > 0) setTimeout(revealFocusedInput, duration + 40);
+    };
+
+    // El campo en el que se escribe, a la vista si el botón lo tapa
+    const revealFocusedInput = () => {
+      const input = TextInput.State.currentlyFocusedInput();
+      const scroll = scrollRef.current;
+      const footerView = footerRef.current;
+      if (!input || !scroll || !footerView) return;
+      input.measureInWindow((_x, y, _w, height) => {
+        footerView.measureInWindow((_fx, footerTop) => {
+          const hidden = y + height + REVEAL_GAP - footerTop;
+          if (hidden > 0) scroll.scrollTo({ y: scrollY.current + hidden, animated: true });
+        });
+      });
+    };
+
+    const moveTo = (lift: number, duration: number) => {
+      // iOS repite el aviso al pasar de un campo a otro con el mismo teclado
+      if (lift === target) return;
+      target = lift;
+      place(duration);
+    };
+    reflowRef.current = () => { if (target > 0) place(150); };
+    lowerRef.current = () => moveTo(0, 200);
+
     const show = Keyboard.addListener(showEvent, (e) => {
-      const lift = Platform.OS === 'ios'
-        ? e.endCoordinates.height - insets.bottom
-        : e.endCoordinates.height;
-      Animated.timing(keyboardOffset, {
-        toValue: -lift,
-        duration: Platform.OS === 'ios' ? (e.duration ?? 250) : 200,
-        useNativeDriver: true,
-      }).start();
-      // iOS: la ventana no pasa de lo que queda entre el teclado y la parte de
-      // arriba; el cuerpo se encoge y se desplaza. Antes subía entera y en
-      // pantallas bajas (iPhone SE) el título, la X y hasta el importe se
-      // salían por arriba. Al ritmo del teclado, como KeyboardAvoidingView
-      if (Platform.OS === 'ios') {
-        LayoutAnimation.configureNext({
-          duration: Math.max(10, e.duration || 250),
-          update: { type: LayoutAnimation.Types.keyboard },
-        });
-        setKeyboardLift(lift);
-      }
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      const lift = ios ? e.endCoordinates.height - insets.bottom : e.endCoordinates.height;
+      // Al cambiar de teclado (de números a letras) iOS da duración 0. Con 0
+      // la ventana no llegaba a moverse y el botón quedaba tapado por el
+      // teclado nuevo, más alto; y moverla de golpe se ve como un salto
+      moveTo(lift, ios ? (e.duration || KEYBOARD_MS) : 200);
     });
-    const hide = Keyboard.addListener(hideEvent, (e) => {
-      Animated.timing(keyboardOffset, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-      if (Platform.OS === 'ios') {
-        LayoutAnimation.configureNext({
-          duration: Math.max(10, e.duration || 200),
-          update: { type: LayoutAnimation.Types.keyboard },
-        });
-        setKeyboardLift(0);
-      }
+    const hide = Keyboard.addListener(hideEvent, () => {
+      if (ios) { moveTo(0, 200); return; }
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => { hideTimer = null; moveTo(0, 200); }, ANDROID_HIDE_WAIT);
     });
     return () => {
       show.remove();
       hide.remove();
+      if (hideTimer) clearTimeout(hideTimer);
+      lowerRef.current = () => {};
+      reflowRef.current = () => {};
       keyboardOffset.setValue(0);
-      setKeyboardLift(0);
+      footerOffset.setValue(0);
+      setOverlap(0);
     };
-  }, [mounted, keyboardOffset, insets.bottom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- screenH, maxHeight y scrollable no cambian con la ventana abierta
+  }, [mounted, keyboardOffset, footerOffset, insets.bottom, insets.top]);
+
+  // Android avisa de que el teclado se ha ocultado cuando la pantalla de debajo
+  // se vuelve a dibujar, y con una ventana encima eso puede no pasar: la
+  // ventana se quedaba arriba sin teclado. Si tras un toque no queda ningún
+  // campo activo, el teclado ya no está: se baja sin esperar al aviso
+  const lowerIfKeyboardGone = Platform.OS === 'android'
+    ? () => {
+        setTimeout(() => {
+          if (!TextInput.State.currentlyFocusedInput()) lowerRef.current();
+        }, 250);
+      }
+    : undefined;
 
   // Deslizar hacia abajo desde el asa o el título
   const pan = useRef(
@@ -159,22 +241,19 @@ const BottomSheet = ({
     }),
   ).current;
 
-  // Con el teclado abierto (iOS), el alto que cabe por encima de él. Solo si el
-  // cuerpo se desplaza: uno fijo no encoge y el botón se quedaría debajo
-  const sheetMaxHeight = scrollable && keyboardLift > 0
-    ? Math.min(screenH * maxHeight, screenH - keyboardLift - insets.top - KEYBOARD_TOP_GAP)
-    : screenH * maxHeight;
-
   const slide = progress.interpolate({ inputRange: [0, 1], outputRange: [screenH, 0] });
   const translateY = Animated.add(Animated.add(slide, drag), keyboardOffset);
 
   const Body = scrollable ? ScrollView : View;
   const bodyProps = scrollable
     ? {
-        keyboardShouldPersistTaps: 'handled' as const,
+        ref: scrollRef,
+        keyboardShouldPersistTaps: dismissKeyboardOnTap ? 'handled' as const : 'always' as const,
         showsVerticalScrollIndicator: false,
         style: styles.bodyScroll,
         contentContainerStyle: [styles.body, bodyStyle],
+        scrollEventThrottle: 32,
+        onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => { scrollY.current = e.nativeEvent.contentOffset.y; },
       }
     : { style: [styles.body, bodyStyle] };
 
@@ -196,10 +275,17 @@ const BottomSheet = ({
           styles.sheet,
           {
             backgroundColor: ui.sheet,
-            maxHeight: sheetMaxHeight,
+            maxHeight: screenH * maxHeight,
             transform: [{ translateY }],
           },
         ]}
+        onLayout={(e) => {
+          const { height } = e.nativeEvent.layout;
+          if (height === sheetHeight.current) return;
+          sheetHeight.current = height;
+          reflowRef.current();
+        }}
+        onTouchEnd={lowerIfKeyboardGone}
       >
         <View {...pan.panHandlers}>
           <View style={[styles.grab, { backgroundColor: ui.hair2 }]} />
@@ -240,9 +326,20 @@ const BottomSheet = ({
           ) : null}
         </View>
 
-        <Body {...bodyProps}>{children}</Body>
+        <Body {...bodyProps}>
+          {children}
+          {overlap > 0 ? <View style={{ height: overlap }} /> : null}
+        </Body>
 
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>{footer}</View>
+        <Animated.View
+          ref={footerRef}
+          style={[
+            styles.footer,
+            { paddingBottom: insets.bottom + 16, backgroundColor: ui.sheet, transform: [{ translateY: footerOffset }] },
+          ]}
+        >
+          {footer}
+        </Animated.View>
       </Animated.View>
     </Modal>
   );

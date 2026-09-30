@@ -750,6 +750,7 @@
     "colorPickerTitle": "Własny kolor",
     "colorPickerHint": "Dotknij lub przesuń palcem, aby wybrać odcień",
     "colorPickerUse": "Użyj tego koloru",
-    "customColor": "Własny kolor"
+    "customColor": "Własny kolor",
+    "done": "Gotowe"
   }
 }

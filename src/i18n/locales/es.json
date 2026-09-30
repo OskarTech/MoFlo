@@ -742,6 +742,7 @@
     "colorPickerTitle": "Color personalizado",
     "colorPickerHint": "Toca o arrastra el dedo para elegir el tono",
     "colorPickerUse": "Usar este color",
-    "customColor": "Color personalizado"
+    "customColor": "Color personalizado",
+    "done": "Listo"
   }
 }

@@ -138,7 +138,7 @@ const AddMoneyModal = ({
       />
 
       {/* Importes rápidos: rellenan la cifra */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={styles.chips}>
         {quickAmounts.map((a) => {
           const on = hasAmount && parsed === a;
           return (

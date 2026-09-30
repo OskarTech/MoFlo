@@ -49,7 +49,7 @@ export const CategoryPicker = ({
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps="always"
       style={styles.bleed}
       contentContainerStyle={styles.row}
     >
@@ -117,7 +117,7 @@ export const DayPicker = ({
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps="always"
       style={styles.bleed}
       contentContainerStyle={styles.days}
     >

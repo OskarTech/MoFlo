@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, Alert, Platform, Keyboard, Switch,
+  View, StyleSheet, TouchableOpacity, Alert, Platform, Keyboard, Switch, Modal,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -147,6 +147,8 @@ const AddReminderModal = ({
   const [selectedDate, setSelectedDate] = useState(getDefaultDate());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  // Lo que enseña la ventana flotante de iOS; se conserva mientras se cierra
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [saving, setSaving] = useState(false);
   // Por defecto es una nota sin fecha; con el interruptor se añade fecha, hora y notificación
   const [withDate, setWithDate] = useState(false);
@@ -196,6 +198,19 @@ const AddReminderModal = ({
     setShowDatePicker(false);
     setShowTimePicker(false);
   }, [visible, editingReminder]);
+
+  // Fecha u hora. Se oculta el teclado: tapaba el selector
+  const openPicker = (mode: 'date' | 'time') => {
+    Keyboard.dismiss();
+    setPickerMode(mode);
+    setShowDatePicker(prev => (mode === 'date' ? !prev : false));
+    setShowTimePicker(prev => (mode === 'time' ? !prev : false));
+  };
+
+  const closePickers = () => {
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+  };
 
   const handleDismiss = () => {
     setDescription('');
@@ -276,7 +291,7 @@ const AddReminderModal = ({
             <View style={[styles.groupDivider, { backgroundColor: ui.hair }]} />
             <TouchableOpacity
               style={styles.groupRow}
-              onPress={() => { setShowDatePicker(prev => !prev); setShowTimePicker(false); }}
+              onPress={() => openPicker('date')}
               activeOpacity={0.8}
             >
               <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
@@ -290,7 +305,7 @@ const AddReminderModal = ({
             <View style={[styles.groupDivider, { backgroundColor: ui.hair }]} />
             <TouchableOpacity
               style={styles.groupRow}
-              onPress={() => { setShowTimePicker(prev => !prev); setShowDatePicker(false); }}
+              onPress={() => openPicker('time')}
               activeOpacity={0.8}
             >
               <View style={[styles.groupIcon, { backgroundColor: ui.fill }]}>
@@ -305,16 +320,15 @@ const AddReminderModal = ({
         )}
       </View>
 
-      {withDate && showDatePicker && (
+      {/* Android: el sistema abre su propia ventana de fecha u hora */}
+      {Platform.OS === 'android' && withDate && showDatePicker && (
         <DateTimePicker
           value={selectedDate}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           minimumDate={new Date()}
-          textColor={dc.textPrimary}
-          themeVariant={isDark ? 'dark' : 'light'}
           onChange={(_, date) => {
-            if (Platform.OS === 'android') setShowDatePicker(false);
+            setShowDatePicker(false);
             if (date) {
               const updated = new Date(selectedDate);
               updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
@@ -323,17 +337,14 @@ const AddReminderModal = ({
           }}
         />
       )}
-
-      {withDate && showTimePicker && (
+      {Platform.OS === 'android' && withDate && showTimePicker && (
         <DateTimePicker
           value={selectedDate}
           mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           is24Hour={i18n.language !== 'en'}
-          textColor={dc.textPrimary}
-          themeVariant={isDark ? 'dark' : 'light'}
           onChange={(_, time) => {
-            if (Platform.OS === 'android') setShowTimePicker(false);
+            setShowTimePicker(false);
             if (time) {
               const updated = new Date(selectedDate);
               updated.setHours(time.getHours(), time.getMinutes());
@@ -341,6 +352,59 @@ const AddReminderModal = ({
             }
           }}
         />
+      )}
+
+      {/* iOS: en una ventana flotante encima de esta. Dentro de la hoja el
+          selector quedaba debajo del teclado o fuera de la vista. Va dentro
+          de la hoja porque iOS no abre una ventana al lado de otra abierta */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={withDate && (showDatePicker || showTimePicker)}
+          transparent
+          animationType="fade"
+          onRequestClose={closePickers}
+        >
+          <View style={styles.pickerOverlay}>
+            <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closePickers} accessible={false} />
+            <View style={[styles.pickerCard, { backgroundColor: ui.sheet }]}>
+              <Text style={[styles.pickerTitle, { color: dc.textPrimary }]}>
+                {t(pickerMode === 'time' ? 'reminders.reminderTime' : 'reminders.reminderDate')}
+              </Text>
+              {pickerMode === 'time' ? (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="time"
+                  display="spinner"
+                  is24Hour={i18n.language !== 'en'}
+                  textColor={dc.textPrimary}
+                  themeVariant={isDark ? 'dark' : 'light'}
+                  onChange={(_, time) => {
+                    if (!time) return;
+                    const updated = new Date(selectedDate);
+                    updated.setHours(time.getHours(), time.getMinutes());
+                    setSelectedDate(updated);
+                  }}
+                />
+              ) : (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="inline"
+                  minimumDate={new Date()}
+                  accentColor={ui.accent}
+                  themeVariant={isDark ? 'dark' : 'light'}
+                  onChange={(_, date) => {
+                    if (!date) return;
+                    const updated = new Date(selectedDate);
+                    updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                    setSelectedDate(updated);
+                  }}
+                />
+              )}
+              <SheetButton label={t('common.done')} onPress={closePickers} style={styles.pickerDone} />
+            </View>
+          </View>
+        </Modal>
       )}
     </BottomSheet>
   );
@@ -648,6 +712,13 @@ const styles = StyleSheet.create({
   groupLabel: { fontSize: 15, fontFamily: 'Poppins_500Medium' },
   groupHint: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', marginTop: 1 },
   groupValue: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  pickerOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.46)',
+  },
+  pickerCard: { width: '100%', maxWidth: 380, borderRadius: 24, padding: 18 },
+  pickerTitle: { fontSize: 19, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3, marginBottom: 6 },
+  pickerDone: { marginTop: 12 },
   groupDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
 
   // Solicitudes pendientes para unirse a la cuenta compartida
