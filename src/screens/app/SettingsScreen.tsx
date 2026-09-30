@@ -837,12 +837,14 @@ const SettingsScreen = () => {
         label={t('settings.theme')} value={selectedThemeLabel}
         onPress={() => setShowThemeModal(true)}
       />
-      {/* Fuente: preferencia personal, también visible en la cuenta compartida */}
+      {/* Fuente: preferencia personal, también visible en la cuenta compartida.
+          Cambiarla es de premium; quien ya eligió una la conserva */}
       <SettingsRow
         icon="text-outline"
         label={t('settings.font')}
-        value={FONT_OPTIONS.find(f => f.id === selectedFont)?.label}
-        onPress={() => setShowFontModal(true)}
+        subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
+        value={isPremium ? FONT_OPTIONS.find(f => f.id === selectedFont)?.label : undefined}
+        onPress={() => requirePremium(() => setShowFontModal(true))}
       />
       {/* Vibración: ajuste de la app, independiente de la cuenta activa */}
       <SettingsRow
