@@ -14,6 +14,21 @@ const DAILY_NOTIFICATION_TITLE = '💰 MoFlo';
 const DAILY_ENABLED_KEY = '@moflo_daily_notif';
 // Idioma del texto con el que se programó la diaria
 const DAILY_LANGUAGE_KEY = '@moflo_daily_notif_language';
+// Hora elegida para la diaria, "H:M"
+const DAILY_TIME_KEY = '@moflo_daily_notif_time';
+
+export type DailyTime = { hour: number; minute: number };
+// La de siempre, para quien la activó antes de poder elegir la hora
+const DEFAULT_DAILY_TIME: DailyTime = { hour: 20, minute: 0 };
+
+export const getDailyNotificationTime = async (): Promise<DailyTime> => {
+  try {
+    const saved = await AsyncStorage.getItem(DAILY_TIME_KEY);
+    const [hour, minute] = (saved ?? '').split(':').map(Number);
+    if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) return { hour, minute };
+  } catch {}
+  return DEFAULT_DAILY_TIME;
+};
 
 export const ensureNotificationChannel = async (): Promise<void> => {
   if (Platform.OS !== 'android') return;
@@ -44,8 +59,11 @@ export const cancelDailyNotification = async (): Promise<void> => {
   }
 };
 
-// Programa (o reprograma) la notificación diaria de las 20:00
-export const scheduleDailyNotification = async (body: string): Promise<void> => {
+// Programa (o reprograma) la notificación diaria. Con time se programa a esa
+// hora y se guarda; sin él, a la guardada (las 20:00 si no se eligió ninguna)
+export const scheduleDailyNotification = async (body: string, time?: DailyTime): Promise<void> => {
+  if (time) await AsyncStorage.setItem(DAILY_TIME_KEY, `${time.hour}:${time.minute}`).catch(() => {});
+  const { hour, minute } = time ?? await getDailyNotificationTime();
   await ensureNotificationChannel();
   await cancelDailyNotification();
   await Notifications.scheduleNotificationAsync({
@@ -53,8 +71,8 @@ export const scheduleDailyNotification = async (body: string): Promise<void> => 
     content: { title: DAILY_NOTIFICATION_TITLE, body, sound: true },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 20,
-      minute: 0,
+      hour,
+      minute,
       channelId: ANDROID_CHANNEL_ID,
     },
   });

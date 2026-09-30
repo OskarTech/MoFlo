@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Alert, Linking, Share,
   Switch, Platform, Clipboard, BackHandler, ActivityIndicator,
@@ -10,6 +10,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as StoreReview from 'expo-store-review';
 import * as Notifications from 'expo-notifications';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -44,7 +45,9 @@ import { resetPurchasesUser } from '../../services/revenuecat';
 import { deleteSubcollections } from '../../services/firebase/batchDelete';
 import { reauthenticate, needsPasswordToReauthenticate } from '../../services/firebase/reauth.service';
 import ExportDataModal from '../../components/common/ExportDataModal';
-import { scheduleDailyNotification, cancelDailyNotification } from '../../services/notifications.service';
+import {
+  scheduleDailyNotification, cancelDailyNotification, getDailyNotificationTime, DailyTime,
+} from '../../services/notifications.service';
 import Constants from 'expo-constants';
 import { reloadAppAsync } from 'expo';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
@@ -69,9 +72,21 @@ const sampleDate = (format: DateFormat) => {
   return format === 'MM/DD/YYYY' ? `${month}/${day}/${d.getFullYear()}` : `${day}/${month}/${d.getFullYear()}`;
 };
 
+// Hoy a la hora del recordatorio diario, para el selector
+const dailyTimeDate = ({ hour, minute }: DailyTime) => {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d;
+};
+
+// Como en Recordatorios: 12 h en inglés, 24 h en el resto
+const formatDailyTime = (time: DailyTime) => (i18n.language === 'en'
+  ? dailyTimeDate(time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  : `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`);
+
 const SettingsScreen = () => {
   const { t } = useTranslation();
-  const { colors: dc, ui } = useTheme();
+  const { isDark, colors: dc, ui } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
   // Ajustes se abre desde la tuerca de cualquier pantalla: volver lleva a la
@@ -120,6 +135,13 @@ const SettingsScreen = () => {
   const [reauthError, setReauthError] = useState('');
   const [isReauthenticating, setIsReauthenticating] = useState(false);
   const [dailyNotifEnabled, setDailyNotifEnabled] = useState(false);
+  const [dailyTime, setDailyTime] = useState<DailyTime>({ hour: 20, minute: 0 });
+  // Eligiendo la hora al activarlo: el interruptor ya sale encendido
+  const [enablingDaily, setEnablingDaily] = useState(false);
+  // iOS: la hoja con el selector de hora y la hora que marca
+  const [showDailyTimeSheet, setShowDailyTimeSheet] = useState(false);
+  const [dailyTimeDraft, setDailyTimeDraft] = useState(new Date());
+  const dailyTimeToSave = useRef<{ date: Date; enabling: boolean } | null>(null);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -141,6 +163,7 @@ const SettingsScreen = () => {
 
   // Shared state
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
   const [editingSharedName, setEditingSharedName] = useState(false);
   const [newSharedName, setNewSharedName] = useState(sharedAccount?.name ?? '');
   const [showSharedCurrencyModal, setShowSharedCurrencyModal] = useState(false);
@@ -160,6 +183,7 @@ const SettingsScreen = () => {
   const loadNotifSettings = async () => {
     const val = await AsyncStorage.getItem(NOTIF_KEY);
     setDailyNotifEnabled(val === 'true');
+    setDailyTime(await getDailyNotificationTime());
   };
 
   // ── FOTOS (perfil y cuenta compartida) ────────────────────────
@@ -224,23 +248,52 @@ const SettingsScreen = () => {
     setEditingName(false);
   };
 
+  // Al activarlo se pide el permiso y después la hora; se activa al elegirla
   const handleDailyNotif = async (enabled: boolean) => {
-    setDailyNotifEnabled(enabled);
-    await AsyncStorage.setItem(NOTIF_KEY, String(enabled));
-    if (enabled) {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        setDailyNotifEnabled(false);
-        await AsyncStorage.setItem(NOTIF_KEY, 'false');
-        Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
-        return;
-      }
-      // Solo reprograma la diaria: cancelar todas borraría también los recordatorios
-      await scheduleDailyNotification(t('settings.notifMovementsSubtitle'));
-      Alert.alert('✅', t('settings.notifDailyEnabled'));
-    } else {
+    if (!enabled) {
+      setDailyNotifEnabled(false);
+      await AsyncStorage.setItem(NOTIF_KEY, 'false');
       await cancelDailyNotification();
+      return;
     }
+    setEnablingDaily(true);
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== 'granted') {
+      setEnablingDaily(false);
+      Alert.alert(t('reminders.permissionDenied'), t('reminders.permissionDeniedMessage'));
+      return;
+    }
+    askDailyTime(true);
+  };
+
+  // La hora del recordatorio: en Android, la ventana del sistema; en iOS, una
+  // hoja con el selector. Si se cancela al activarlo, sigue desactivado
+  const askDailyTime = (enabling: boolean) => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: dailyTimeDate(dailyTime),
+        mode: 'time',
+        is24Hour: i18n.language !== 'en',
+        onChange: (event, date) => {
+          if (event.type === 'set' && date) saveDailyTime(date, enabling);
+          else if (enabling) setEnablingDaily(false);
+        },
+      });
+      return;
+    }
+    setDailyTimeDraft(dailyTimeDate(dailyTime));
+    setShowDailyTimeSheet(true);
+  };
+
+  const saveDailyTime = async (date: Date, enabling: boolean) => {
+    const time = { hour: date.getHours(), minute: date.getMinutes() };
+    setDailyTime(time);
+    setDailyNotifEnabled(true);
+    setEnablingDaily(false);
+    await AsyncStorage.setItem(NOTIF_KEY, 'true');
+    // Solo reprograma la diaria: cancelar todas borraría también los recordatorios
+    await scheduleDailyNotification(t('settings.notifMovementsSubtitle'), time);
+    if (enabling) Alert.alert('✅', t('settings.notifDailyEnabled', { time: formatDailyTime(time) }));
   };
 
   const handleDeleteData = () => {
@@ -815,35 +868,22 @@ const SettingsScreen = () => {
     </>
   );
 
-  // Sección Aplicación: igual en ambos modos
+  // Exportar: los datos de la cuenta activa, por eso va en sus preferencias
+  const exportRow = (
+    <SettingsRow
+      icon="download-outline"
+      label={t('export.title')}
+      subtitle={!isSharedMode && !isPremium
+        ? `⭐ ${t('premium.badge')}`
+        : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
+      onPress={handleExportData}
+    />
+  );
+
+  // Sección Aplicación: ajustes de toda la app, los mismos en la cuenta
+  // individual y en la compartida
   const appSection = (
     <SettingsSection title={t('settings.appSection')}>
-      <SettingsRow
-        icon="compass-outline"
-        label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
-        onPress={() => {
-          navigation.navigate('HomeTab' as never);
-          setTimeout(() => useWalkthroughStore.getState().start(), 250);
-        }}
-      />
-      <SettingsRow
-        icon="star-outline"
-        label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}
-        onPress={handleRateApp}
-      />
-      <SettingsRow
-        icon="share-social-outline"
-        label={t('settings.shareApp')} subtitle={t('settings.shareAppSubtitle')}
-        onPress={handleShare}
-      />
-      <SettingsRow
-        icon="download-outline"
-        label={t('export.title')}
-        subtitle={!isSharedMode && !isPremium
-          ? `⭐ ${t('premium.badge')}`
-          : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
-        onPress={handleExportData}
-      />
       {/* Apariencia: afecta a toda la app, no a la cuenta activa */}
       <SettingsRow
         icon="moon-outline"
@@ -858,6 +898,11 @@ const SettingsScreen = () => {
         subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : undefined}
         value={isPremium ? FONT_OPTIONS.find(f => f.id === selectedFont)?.label : undefined}
         onPress={() => requirePremium(() => setShowFontModal(true))}
+      />
+      <SettingsRow
+        icon="language-outline"
+        label={t('settings.language')} value={selectedLanguageLabel}
+        onPress={() => setShowLanguageModal(true)}
       />
       {/* Vibración: ajuste de la app, independiente de la cuenta activa */}
       <SettingsRow
@@ -874,6 +919,36 @@ const SettingsScreen = () => {
             }}
           />
         }
+      />
+      {/* Recordatorio diario: se programa en el móvil, sea cual sea la cuenta.
+          Activado, tocando la fila se cambia la hora */}
+      <SettingsRow
+        icon="notifications-outline"
+        label={t('settings.dailyReminder')}
+        subtitle={dailyNotifEnabled
+          ? t('settings.dailyReminderAt', { time: formatDailyTime(dailyTime) })
+          : t('settings.dailyReminderSubtitle')}
+        onPress={enablingDaily ? undefined
+          : dailyNotifEnabled ? () => askDailyTime(false) : () => handleDailyNotif(true)}
+        right={<Switch {...switchProps(dailyNotifEnabled || enablingDaily)} onValueChange={handleDailyNotif} />}
+      />
+      <SettingsRow
+        icon="compass-outline"
+        label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
+        onPress={() => {
+          navigation.navigate('HomeTab' as never);
+          setTimeout(() => useWalkthroughStore.getState().start(), 250);
+        }}
+      />
+      <SettingsRow
+        icon="share-social-outline"
+        label={t('settings.shareApp')} subtitle={t('settings.shareAppSubtitle')}
+        onPress={handleShare}
+      />
+      <SettingsRow
+        icon="star-outline"
+        label={t('settings.rateApp')} subtitle={t('settings.rateAppSubtitle')}
+        onPress={handleRateApp}
       />
       <SettingsRow
         icon="chatbubble-outline"
@@ -946,22 +1021,8 @@ const SettingsScreen = () => {
               </SettingsSection>
             )}
 
-            <SettingsSection title={t('settings.preferences')}>
-              <SettingsRow
-                icon="coins-duotone"
-                label={t('settings.currency')} value={selectedCurrencyLabel}
-                onPress={() => setShowCurrencyModal(true)}
-              />
-              <SettingsRow
-                icon="language-outline"
-                label={t('settings.language')} value={selectedLanguageLabel}
-                onPress={() => setShowLanguageModal(true)}
-              />
-              <SettingsRow
-                icon="calendar-outline"
-                label={t('settings.dateFormat')} value={selectedDateFormatLabel}
-                onPress={() => setShowDateFormatModal(true)}
-              />
+            {/* Cómo se personaliza la cuenta individual */}
+            <SettingsSection title={t('settings.individualPreferences')}>
               <SettingsRow
                 icon="color-palette-outline"
                 label={t('settings.colorPalette')}
@@ -979,11 +1040,16 @@ const SettingsScreen = () => {
                 onPress={() => requirePremium(() => navigation.navigate('Categories'))}
               />
               <SettingsRow
-                icon="notifications-outline"
-                label={t('settings.notifMovements')}
-                subtitle={t('settings.notifMovementsSubtitle')}
-                right={<Switch {...switchProps(dailyNotifEnabled)} onValueChange={handleDailyNotif} />}
+                icon="coins-duotone"
+                label={t('settings.currency')} value={selectedCurrencyLabel}
+                onPress={() => setShowCurrencyModal(true)}
               />
+              <SettingsRow
+                icon="calendar-outline"
+                label={t('settings.dateFormat')} value={selectedDateFormatLabel}
+                onPress={() => setShowDateFormatModal(true)}
+              />
+              {exportRow}
             </SettingsSection>
 
             {appSection}
@@ -1008,42 +1074,6 @@ const SettingsScreen = () => {
           </>
         ) : (
           <>
-            {/* Enlace de invitación */}
-            <SettingsSection title={t('sharedAccount.inviteLink')}>
-              <View style={[styles.invite, { backgroundColor: ui.field }]}>
-                <Text style={[styles.inviteInfo, { color: dc.textSecondary }]}>
-                  {t('sharedAccount.inviteInfo')}
-                </Text>
-                <Text style={[styles.linkText, { color: dc.textPrimary }]} numberOfLines={2}>
-                  {getInviteLink()}
-                </Text>
-                <View style={styles.linkButtons}>
-                  <TouchableOpacity
-                    style={[styles.linkBtn, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.sheet }]}
-                    onPress={handleCopyLink}
-                  >
-                    <Icon
-                      name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
-                      size={16}
-                      color={linkCopied ? ui.incomeText : ui.accent}
-                    />
-                    <Text style={[styles.linkBtnText, { color: linkCopied ? ui.incomeText : ui.accent }]}>
-                      {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.linkBtn, { backgroundColor: ui.sheet }]}
-                    onPress={handleShareLink}
-                  >
-                    <Icon name="share-social-outline" size={16} color={ui.accent} />
-                    <Text style={[styles.linkBtnText, { color: ui.accent }]}>
-                      {t('sharedAccount.shareLink')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </SettingsSection>
-
             {/* Solicitudes pendientes (solo creador) */}
             {isCreator && visibleRequests.length > 0 && (
               <SettingsSection title={`${t('sharedAccount.pendingRequests')} (${visibleRequests.length})`}>
@@ -1117,19 +1147,17 @@ const SettingsScreen = () => {
                   </View>
                 );
               })}
+              {/* El enlace de invitación, en su propia hoja: arriba del todo
+                  ocupaba mucho con la dirección entera a la vista */}
+              <SettingsRow
+                icon="mail-outline"
+                label={t('sharedAccount.inviteMembers')}
+                onPress={() => setShowInviteSheet(true)}
+              />
             </SettingsSection>
 
-            <SettingsSection title={t('settings.preferences')}>
-              <SettingsRow
-                icon="coins-duotone"
-                label={t('settings.currency')} value={selectedSharedCurrencyLabel}
-                onPress={() => setShowSharedCurrencyModal(true)}
-              />
-              <SettingsRow
-                icon="calendar-outline"
-                label={t('settings.dateFormat')} value={selectedSharedDateFormatLabel}
-                onPress={() => setShowSharedDateFormatModal(true)}
-              />
+            {/* Cómo se personaliza la cuenta compartida */}
+            <SettingsSection title={t('settings.sharedPreferences')}>
               <SettingsRow
                 icon="color-palette-outline"
                 label={t('settings.colorPalette')}
@@ -1144,11 +1172,22 @@ const SettingsScreen = () => {
                 onPress={() => sharedAccount && navigation.navigate('SharedCategories', { accountId: sharedAccount.id })}
               />
               <SettingsRow
+                icon="coins-duotone"
+                label={t('settings.currency')} value={selectedSharedCurrencyLabel}
+                onPress={() => setShowSharedCurrencyModal(true)}
+              />
+              <SettingsRow
+                icon="calendar-outline"
+                label={t('settings.dateFormat')} value={selectedSharedDateFormatLabel}
+                onPress={() => setShowSharedDateFormatModal(true)}
+              />
+              <SettingsRow
                 icon="notifications-outline"
                 label={t('sharedAccount.notifTitle')}
                 subtitle={t('sharedAccount.notifSubtitle')}
                 right={<Switch {...switchProps(notificationsEnabled)} onValueChange={setNotificationsEnabled} />}
               />
+              {exportRow}
             </SettingsSection>
 
             {appSection}
@@ -1257,6 +1296,43 @@ const SettingsScreen = () => {
         }}
         onDismiss={() => setShowLanguageModal(false)}
       />
+      {/* iOS: hora del recordatorio diario (en Android, la ventana del sistema) */}
+      {Platform.OS === 'ios' && (
+        <BottomSheet
+          visible={showDailyTimeSheet}
+          onClose={() => {
+            setShowDailyTimeSheet(false);
+            setEnablingDaily(false);
+          }}
+          // Se guarda cuando la hoja ya no está: el aviso de activado, con
+          // ella aún cerrándose, iOS podía no enseñarlo
+          onClosed={() => {
+            const pending = dailyTimeToSave.current;
+            dailyTimeToSave.current = null;
+            if (pending) saveDailyTime(pending.date, pending.enabling);
+          }}
+          title={t('settings.dailyReminderTime')}
+          footer={(
+            <SheetButton
+              label={t('settings.save')}
+              onPress={() => {
+                dailyTimeToSave.current = { date: dailyTimeDraft, enabling: enablingDaily };
+                setShowDailyTimeSheet(false);
+              }}
+            />
+          )}
+        >
+          <DateTimePicker
+            value={dailyTimeDraft}
+            mode="time"
+            display="spinner"
+            is24Hour={i18n.language !== 'en'}
+            textColor={dc.textPrimary}
+            themeVariant={isDark ? 'dark' : 'light'}
+            onChange={(_, date) => { if (date) setDailyTimeDraft(date); }}
+          />
+        </BottomSheet>
+      )}
       <AppearanceSheet
         visible={showThemeModal}
         paletteId={isSharedMode ? selectedSharedPaletteId : selectedPaletteId}
@@ -1313,6 +1389,42 @@ const SettingsScreen = () => {
       />
 
       {/* ── MODALES COMPARTIDOS ──────────────────────────────── */}
+      <BottomSheet
+        visible={showInviteSheet}
+        onClose={() => setShowInviteSheet(false)}
+        title={t('sharedAccount.inviteLink')}
+        subtitle={t('sharedAccount.inviteInfo')}
+      >
+        <View style={[styles.invite, { backgroundColor: ui.field }]}>
+          <Text style={[styles.linkText, { color: dc.textPrimary }]} numberOfLines={2}>
+            {getInviteLink()}
+          </Text>
+        </View>
+        <View style={styles.linkButtons}>
+          <TouchableOpacity
+            style={[styles.linkBtn, { backgroundColor: linkCopied ? withAlpha(ui.incomeText, 0.14) : ui.field }]}
+            onPress={handleCopyLink}
+          >
+            <Icon
+              name={linkCopied ? 'checkmark-circle' : 'copy-outline'}
+              size={16}
+              color={linkCopied ? ui.incomeText : ui.accent}
+            />
+            <Text style={[styles.linkBtnText, { color: linkCopied ? ui.incomeText : ui.accent }]}>
+              {linkCopied ? t('sharedAccount.linkCopied') : t('sharedAccount.copyLink')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.linkBtn, { backgroundColor: ui.field }]}
+            onPress={handleShareLink}
+          >
+            <Icon name="share-social-outline" size={16} color={ui.accent} />
+            <Text style={[styles.linkBtnText, { color: ui.accent }]}>
+              {t('sharedAccount.shareLink')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
       <OptionSheet
         visible={showSharedCurrencyModal}
         title={t('settings.currency')}
@@ -1478,14 +1590,13 @@ const styles = StyleSheet.create({
   upgradeTitle: { fontSize: 16, fontFamily: 'Poppins_700Bold' },
   upgradeSubtitle: { fontSize: 13, fontFamily: 'Poppins_400Regular', marginTop: 1 },
 
-  // Enlace de invitación
-  invite: { borderRadius: 18, padding: 14, marginTop: 8 },
-  inviteInfo: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 6 },
-  linkText: { fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 12, lineHeight: 18 },
-  linkButtons: { flexDirection: 'row', gap: 8 },
+  // Enlace de invitación (en su hoja)
+  invite: { borderRadius: 16, padding: 14 },
+  linkText: { fontSize: 12.5, fontFamily: 'Poppins_400Regular', lineHeight: 19 },
+  linkButtons: { flexDirection: 'row', gap: 8, marginTop: 10 },
   linkBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, padding: 10, borderRadius: 12,
+    justifyContent: 'center', gap: 6, padding: 12, borderRadius: 14,
   },
   linkBtnText: { fontSize: 12.5, fontFamily: 'Poppins_600SemiBold' },
 
