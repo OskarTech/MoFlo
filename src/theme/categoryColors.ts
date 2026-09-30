@@ -79,35 +79,6 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
       ],
     },
   },
-  // Menta
-  mint: {
-    light: {
-      expense: [
-        '#3A5FC9', '#F68390', '#AC6721', '#DAB060',
-        '#5F3E34', '#58A9D3', '#8D3879', '#9572E7',
-        '#D3316A', '#AF2D18', '#C85EB4', '#E4752E',
-      ],
-      expenseOther: '#6C7487',
-      income: [
-        '#34B816', '#03A9A0', '#9AA506', '#04813C',
-        '#02BDB3', '#9DB73B', '#03968E', '#A5B30B',
-        '#0DA89F', '#02833B', '#A4AE1F', '#0E7F62',
-      ],
-    },
-    dark: {
-      expense: [
-        '#5071DE', '#E62E23', '#F48A64', '#EBD070',
-        '#9C6F53', '#3AB1E8', '#AD5697', '#E1B8F9',
-        '#F764CB', '#F36A8A', '#D33ABB', '#D8732B',
-      ],
-      expenseOther: '#9598A0',
-      income: [
-        '#2BAE07', '#089B93', '#939D11', '#0F853F',
-        '#13AAA1', '#7A9104', '#0FA89F', '#7E8900',
-        '#12AAA1', '#07853D', '#939D00', '#058364',
-      ],
-    },
-  },
   // Rosa
   rose: {
     light: {
@@ -308,6 +279,93 @@ export const CATEGORY_COLORS: Record<ColorPaletteId, { light: CategoryColorSet; 
         '#3AAF3D', '#028063', '#8F9E0B', '#247524',
         '#169C94', '#49AE00', '#0C7C5B', '#939D00',
         '#009A92', '#277513', '#8F9D2C', '#068164',
+      ],
+    },
+  },
+  // Atardecer
+  sunset: {
+    light: {
+      expense: [
+        '#A8326E', '#214A9F', '#E96D2F', '#DAB821',
+        '#40A7D6', '#8447CB', '#5E4324', '#CE63AD',
+        '#C84458', '#A466E4', '#F2959E', '#8B5C03',
+      ],
+      expenseOther: '#7D7279',
+      income: [
+        '#40C23B', '#169375', '#B4B436', '#30792D',
+        '#1BB4A6', '#3BC825', '#197F5F', '#A8A70C',
+        '#23B9AB', '#39881E', '#A8B13C', '#1A7658',
+      ],
+    },
+    dark: {
+      expense: [
+        '#D4609A', '#5886F6', '#F18B3C', '#D5C17C',
+        '#62C5EF', '#8A5EB9', '#A66D21', '#D776C1',
+        '#BD4B61', '#8D95F3', '#FBA3BB', '#F3D353',
+      ],
+      expenseOther: '#A9A0A6',
+      income: [
+        '#1FB028', '#14866A', '#9C9B13', '#337C2F',
+        '#2AA397', '#1CB006', '#158463', '#9C9B06',
+        '#14998C', '#287C07', '#949D22', '#188161',
+      ],
+    },
+  },
+  // Aurora
+  aurora: {
+    light: {
+      expense: [
+        '#4A55C8', '#E85C0A', '#DCB735', '#EA75B4',
+        '#57ADEE', '#C1384C', '#5C39A1', '#583A00',
+        '#A47AED', '#F2979C', '#9D217F', '#815B1B',
+      ],
+      expenseOther: '#72748A',
+      income: [
+        '#32CA44', '#089B7E', '#A5BC3E', '#228235',
+        '#0DBCAF', '#2DD02E', '#0B8768', '#9AB014',
+        '#15C1B3', '#2B9027', '#9AB945', '#0C7E61',
+      ],
+    },
+    dark: {
+      expense: [
+        '#7C86F0', '#F36D2D', '#DABF74', '#F783C3',
+        '#67BAF6', '#CA3F61', '#7B64D4', '#A2650C',
+        '#9199F9', '#F4A5AA', '#C53DB1', '#F6D360',
+      ],
+      expenseOther: '#8C8EA3',
+      income: [
+        '#10B831', '#068E73', '#8EA41C', '#258437',
+        '#1CAB9F', '#0EB80F', '#078C6C', '#8EA40F',
+        '#06A195', '#1A8410', '#86A52A', '#0A896A',
+      ],
+    },
+  },
+  // Carbón
+  charcoal: {
+    light: {
+      expense: [
+        '#DDA02A', '#29568C', '#C63847', '#4FB1EF',
+        '#7234C3', '#DD6507', '#D461AB', '#613C15',
+        '#B46AE6', '#E68489', '#A2138A', '#8E5400',
+      ],
+      expenseOther: '#77756F',
+      income: [
+        '#40C538', '#169672', '#B4B833', '#307D2A',
+        '#1BB8A3', '#3BCB22', '#19825C', '#A8AB08',
+        '#23BCA8', '#398B1B', '#A8B439', '#1A7955',
+      ],
+    },
+    dark: {
+      expense: [
+        '#F0B440', '#4F8AFE', '#CA355C', '#79C5E8',
+        '#7861C2', '#EA784C', '#D172BC', '#B16B0A',
+        '#9B95EB', '#FA90A4', '#BF2BAB', '#EBD762',
+      ],
+      expenseOther: '#918E88',
+      income: [
+        '#1FB325', '#148A67', '#9C9F10', '#337F2B',
+        '#2AA693', '#1CB303', '#158760', '#9C9F03',
+        '#149C89', '#287F04', '#94A11E', '#18845E',
       ],
     },
   },

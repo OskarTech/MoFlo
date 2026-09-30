@@ -34,8 +34,8 @@ const OVERSCROLL = 800;
 const GLOW_BLEED = 2;
 
 /**
- * Fondo de la cabecera: el color de la tarjeta de balance con un brillo de
- * primaryLight arriba a la derecha y otro blanco muy suave abajo a la
+ * Fondo de la cabecera: el color de la tarjeta de balance con el brillo de
+ * la paleta arriba a la derecha y otro blanco muy suave abajo a la
  * izquierda. Se dibuja con react-native-svg, que ya estaba en la app.
  */
 export const HeroGlow = ({ width, height }: { width: number; height: number }) => {

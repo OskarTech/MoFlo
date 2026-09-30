@@ -10,8 +10,8 @@ import { formatAmount } from '../../utils/formatAmount';
 import BottomSheet from './BottomSheet';
 
 export const PALETTE_ORDER: ColorPaletteId[] = [
-  'green', 'earth', 'mint', 'rose', 'mono', 'navy', 'wine', 'lime',
-  'teal', 'cocoa',
+  'green', 'earth', 'rose', 'mono', 'navy', 'wine', 'lime',
+  'teal', 'cocoa', 'sunset', 'aurora', 'charcoal',
 ];
 
 interface Props {
