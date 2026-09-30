@@ -749,8 +749,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     await AsyncStorage.setItem(ACTIVE_KEY, enabled ? 'shared' : 'individual');
 
     if (enabled && sharedAccount) {
+      // Sin esperar a sus ajustes de la red: los lee al final quien entra en
+      // la compartida (activateSharedAccount). Esperándolos aquí, Inicio salía
+      // ya con la cuenta compartida pero con los movimientos de la individual
+      // hasta que llegaban
       get().subscribeToSharedMovements(sharedAccount.id);
-      await get().loadSharedSettings(sharedAccount.id);
     } else {
       stopMovementListeners();
       const { useSavingsStore } = require('./savingsStore');

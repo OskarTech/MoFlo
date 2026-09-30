@@ -21,6 +21,30 @@ const STORAGE_KEYS = {
   SHARED_RECURRING: '@moflo_shared_recurring',
 };
 
+/**
+ * Movimientos y fijos de la cuenta compartida guardados en el móvil, o null si
+ * no hay copia. Para ponerlos a la vez que la app pasa a la compartida (ver
+ * activateSharedAccount), antes de que llegue nada de la red.
+ */
+export const readSharedCache = async (): Promise<{
+  movements: Movement[];
+  recurringMovements: RecurringMovement[];
+} | null> => {
+  try {
+    const [movements, recurring] = await Promise.all([
+      AsyncStorage.getItem(STORAGE_KEYS.SHARED_MOVEMENTS),
+      AsyncStorage.getItem(STORAGE_KEYS.SHARED_RECURRING),
+    ]);
+    if (!movements && !recurring) return null;
+    return {
+      movements: movements ? JSON.parse(movements) : [],
+      recurringMovements: recurring ? JSON.parse(recurring) : [],
+    };
+  } catch {
+    return null;
+  }
+};
+
 export interface AnnualMonthData {
   month: number;
   income: number;

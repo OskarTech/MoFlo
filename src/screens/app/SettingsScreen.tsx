@@ -933,11 +933,11 @@ const SettingsScreen = () => {
                     : t('sharedAccount.noAccount')}
                   onPress={() => {
                     if (sharedAccount) {
-                      // A Inicio en el momento; la cuenta se carga mientras
-                      // tanto, como al elegirla en el selector de Inicio
-                      activateSharedAccount(sharedAccount.id)
+                      // A Inicio en cuanto la app está en la compartida, sin
+                      // esperar a la red; el resto se carga mientras tanto,
+                      // como al elegirla en el selector de Inicio
+                      activateSharedAccount(sharedAccount.id, () => navigation.navigate('HomeTab'))
                         .catch((e) => reportError(e, 'abrir cuenta compartida'));
-                      navigation.navigate('HomeTab');
                     } else {
                       navigation.navigate('SharedAccount');
                     }

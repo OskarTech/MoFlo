@@ -10,6 +10,7 @@ import Icon, { IconName } from './Icon';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { ImeHeightView } from '../../../modules/ime-height';
 
 interface Props {
   visible: boolean;
@@ -42,7 +43,7 @@ interface Props {
 
 const CLOSE_DISTANCE = 90;
 
-// Hueco que queda arriba cuando el teclado hace subir la ventana (iOS)
+// Hueco que queda arriba cuando el teclado hace subir la ventana
 const KEYBOARD_TOP_GAP = 12;
 
 // Aire entre el campo en el que se escribe y el botón, al traerlo a la vista
@@ -76,8 +77,8 @@ const BottomSheet = ({
   const screenH = Dimensions.get('window').height;
 
   const [mounted, setMounted] = useState(visible);
-  // Lo que el teclado tapa de la ventana cuando esta ya no puede subir más
-  // (iOS): el botón sube esa distancia y el cuerpo deja ese hueco al final
+  // Lo que el teclado tapa de la ventana cuando esta ya no puede subir más:
+  // el botón sube esa distancia y el cuerpo deja ese hueco al final
   const [overlap, setOverlap] = useState(0);
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
@@ -102,12 +103,23 @@ const BottomSheet = ({
   // cambia de alto con el teclado abierto
   const lowerRef = useRef<() => void>(() => {});
   const reflowRef = useRef<() => void>(() => {});
+  // Android: alto de la ventana (Modal) en la que va, para saber cuánto puede
+  // subir, y qué hacer cuando cambia el alto del teclado (ver ImeHeightView)
+  const modalHeight = useRef(0);
+  const imeRef = useRef<(height: number) => void>(() => {});
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
       drag.setValue(0);
       progress.setValue(0);
+      // Android: sale siempre abajo. Una animación de bajar con el teclado que
+      // se cortaba al cerrarse devolvía después su valor (arriba) y la ventana
+      // se abría la siguiente vez subida y sin teclado
+      if (Platform.OS === 'android') {
+        keyboardOffset.setValue(0);
+        footerOffset.setValue(0);
+      }
       // Sin rebote (amortiguación crítica): con rebote la ventana se pasaba
       // unos 24 puntos hacia arriba, dejaba ver un hueco debajo y volvía; en
       // las ventanas altas se notaba como una entrada brusca
@@ -139,14 +151,19 @@ const BottomSheet = ({
     // Desplazamiento hecho para enseñar el campo: de dónde a dónde
     let revealed: { from: number; to: number } | null = null;
 
-    // La ventana sube entera hasta donde cabe. Si no cabe (iOS, ventanas
-    // altas o pantallas bajas como el iPhone SE), se queda con el título a
-    // la vista y lo que falta lo sube solo el botón, por encima del cuerpo,
-    // que se desplaza. Antes subía entera y el título, la X y hasta el
-    // importe se salían por arriba
+    // La ventana sube entera hasta donde cabe. Si no cabe (ventanas altas o
+    // pantallas bajas como el iPhone SE o los Android 16:9), se queda con el
+    // título a la vista y lo que falta lo sube solo el botón, por encima del
+    // cuerpo, que se desplaza. Antes subía entera y el título, la X y hasta
+    // el importe se salían por arriba. En Android se mide el alto de la
+    // ventana en la que va: el de Dimensions puede no contar las barras
     const place = (duration: number) => {
-      const room = Math.max(0, screenH - sheetHeight.current - insets.top - KEYBOARD_TOP_GAP);
-      const shift = ios && scrollable ? Math.min(target, room) : target;
+      // Android: cerrándose no se mueve con el teclado, baja con la ventana.
+      // Animándolo ahora, la animación se cortaba al cerrarse (ver arriba)
+      if (!ios && !visibleRef.current) return;
+      const available = ios ? screenH : (modalHeight.current || screenH);
+      const room = Math.max(0, available - sheetHeight.current - insets.top - KEYBOARD_TOP_GAP);
+      const shift = scrollable ? Math.min(target, room) : target;
       const covered = target - shift;
       Animated.parallel([
         Animated.timing(keyboardOffset, { toValue: -shift, duration, useNativeDriver: true }),
@@ -209,12 +226,26 @@ const BottomSheet = ({
       if (hideTimer) clearTimeout(hideTimer);
       hideTimer = setTimeout(() => { hideTimer = null; moveTo(0, 200); }, ANDROID_HIDE_WAIT);
     });
+    // Android 11 o posterior: React Native no avisa si el teclado cambia de
+    // alto sin ocultarse (del importe, con números, a la nota, con letras y
+    // sugerencias, más alto), y el botón quedaba medio tapado. Este aviso sale
+    // de la propia ventana cada vez que cambia. Solo con el teclado ya abierto:
+    // al salir, el alto lo da React Native, como siempre
+    imeRef.current = (height) => {
+      if (height > 0) {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        if (target > 0 && Math.abs(height - target) >= 1) moveTo(height, 200);
+      } else if (target > 0 && !hideTimer) {
+        hideTimer = setTimeout(() => { hideTimer = null; moveTo(0, 200); }, ANDROID_HIDE_WAIT);
+      }
+    };
     return () => {
       show.remove();
       hide.remove();
       if (hideTimer) clearTimeout(hideTimer);
       lowerRef.current = () => {};
       reflowRef.current = () => {};
+      imeRef.current = () => {};
       keyboardOffset.setValue(0);
       footerOffset.setValue(0);
       setOverlap(0);
@@ -289,8 +320,20 @@ const BottomSheet = ({
       onRequestClose={onBack ?? onClose}
       onDismiss={() => onClosedRef.current?.()}
     >
+      {ImeHeightView ? (
+        <ImeHeightView
+          style={styles.imeProbe}
+          pointerEvents="none"
+          onImeChange={(e) => imeRef.current(e.nativeEvent.height)}
+        />
+      ) : null}
       <TouchableWithoutFeedback onPress={onClose} accessible={false}>
-        <Animated.View style={[styles.backdrop, { opacity: progress }]} />
+        <Animated.View
+          style={[styles.backdrop, { opacity: progress }]}
+          onLayout={Platform.OS === 'android'
+            ? (e) => { modalHeight.current = e.nativeEvent.layout.height; }
+            : undefined}
+        />
       </TouchableWithoutFeedback>
 
       <Animated.View
@@ -492,6 +535,7 @@ export const SheetLabel = ({ children, style }: { children: React.ReactNode; sty
 
 const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.46)' },
+  imeProbe: { position: 'absolute', width: 0, height: 0 },
   sheet: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,

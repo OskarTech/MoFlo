@@ -42,6 +42,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+modules/*/android/build/
 
 # Firebase
 google-service-info.plist

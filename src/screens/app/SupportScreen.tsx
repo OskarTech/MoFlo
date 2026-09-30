@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Alert, Platform, ScrollView, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { Text } from 'react-native-paper';
 import Icon from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
@@ -50,6 +50,16 @@ const SupportScreen = () => {
   const scrollRef = useRef<ScrollView>(null);
   const messageFocused = useRef(false);
   const showMessageEnd = () => scrollRef.current?.scrollToEnd({ animated: true });
+
+  // Android: con el teclado abierto sobra el hueco de la barra de pestañas que
+  // la hoja deja debajo, y el botón quedaba muy separado del teclado
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const handleSend = async () => {
     if (!isValid) return;
@@ -104,14 +114,19 @@ const SupportScreen = () => {
     </>
   );
 
-  return (
+  const screen = (
     <HeroScrollScreen
       hero={hero}
       scrollRef={scrollRef}
       keyboardShouldPersistTaps="handled"
       // iOS: deja debajo el hueco del teclado, para poder desplazar hasta el final
       automaticallyAdjustKeyboardInsets
-      sheetStyle={styles.sheet}
+      sheetStyle={[styles.sheet, keyboardOpen && styles.sheetKeyboard]}
+      // Android: al volver a abrir el teclado sin salir del mensaje no hay
+      // onFocus, y el botón quedaba medio tapado. Se hace cuando la pantalla
+      // ya se ha encogido y después de que Android la mueva hasta el cursor,
+      // que si no cortaba este desplazamiento a medias
+      onLayout={Platform.OS === 'android' ? () => { if (keyboardOpen && messageFocused.current) setTimeout(showMessageEnd, 250); } : undefined}
     >
       {/* Email del usuario: solo informativo */}
       <View style={[styles.emailInfo, { backgroundColor: ui.field }]}>
@@ -150,11 +165,25 @@ const SupportScreen = () => {
       />
     </HeroScrollScreen>
   );
+
+  // Android: el teclado no encoge la pantalla y tapaba el final del mensaje y
+  // el botón, sin poder desplazarla. Aquí se encoge la vista, como en las
+  // pantallas de acceso. En iOS lo hace automaticallyAdjustKeyboardInsets.
+  // Solo con el teclado abierto: al cerrarlo, la posición que da Android no
+  // es la del borde y la pantalla se quedaba encogida, con una franja gris
+  if (Platform.OS !== 'android') return screen;
+  return (
+    <KeyboardAvoidingView behavior="height" enabled={keyboardOpen} style={[styles.flex, { backgroundColor: ui.sheet }]}>
+      {screen}
+    </KeyboardAvoidingView>
+  );
 };
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   heroText: { fontSize: 13.5, fontFamily: 'Poppins_400Regular', lineHeight: 20, paddingHorizontal: 20, paddingTop: 10 },
   sheet: { paddingHorizontal: 20 },
+  sheetKeyboard: { paddingBottom: 20 },
   emailInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
   emailText: { flex: 1, minWidth: 0 },
   emailInfoLabel: { fontSize: 11.5, fontFamily: 'Poppins_400Regular' },

@@ -162,13 +162,14 @@ const SharedAccountScreen = () => {
     );
   };
 
-  // A Inicio en el momento; la cuenta se carga mientras tanto, como al
-  // elegirla en el selector de Inicio. Esperando a que cargase, el botón
-  // parecía no hacer nada y luego saltaba a Inicio, se estuviera donde se estuviera
+  // A Inicio en cuanto la app está en la compartida, sin esperar a la red; la
+  // cuenta se carga mientras tanto, como al elegirla en el selector de Inicio.
+  // Esperando a que cargase, el botón parecía no hacer nada y luego saltaba a
+  // Inicio, se estuviera donde se estuviera
   const handleOpenShared = () => {
     if (!sharedAccount) return;
-    activateSharedAccount(sharedAccount.id).catch((e) => reportError(e, 'abrir cuenta compartida'));
-    navigation.navigate('HomeTab');
+    activateSharedAccount(sharedAccount.id, () => navigation.navigate('HomeTab'))
+      .catch((e) => reportError(e, 'abrir cuenta compartida'));
   };
 
   const handleCopyLink = () => {
