@@ -48,6 +48,13 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
 
   const isSavingRef = useRef(false);
 
+  // El movimiento que se edita, el mismo mientras la ventana se cierra: quien
+  // la abre lo quita en cuanto se pide cerrar, y la ventana pasaba a decir
+  // "Añadir movimiento" mientras bajaba
+  const shownEditing = useRef(editingMovement ?? null);
+  if (visible) shownEditing.current = editingMovement ?? null;
+  const editing = shownEditing.current;
+
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
@@ -89,8 +96,12 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       setCategoryId(editingMovement.category);
       return;
     }
-    const newType = initialType ?? type;
-    if (initialType && initialType !== type) setType(initialType);
+    // Una nueva sale vacía. Se vacía aquí, al abrir, y no al cerrar: al cerrar
+    // se veía cómo se borraba lo escrito mientras la ventana bajaba
+    const newType = initialType ?? 'expense';
+    setType(newType);
+    setAmount('');
+    setNote('');
     const sorted = getSortedCategoriesForType(newType);
     setCategoryId(sorted[0]?.id ?? 'other');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,7 +115,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
   // Al editar un movimiento cuya categoría ya se borró, esa categoría no está en
   // la lista: se añade al principio, tachada, para que se vea cuál tiene y se
   // pueda conservar. Solo si está borrada de verdad y el tipo es el suyo.
-  const editingCategoryId = editingMovement?.type === type ? editingMovement.category : undefined;
+  const editingCategoryId = editing?.type === type ? editing.category : undefined;
   const chipCategories: CategoryChip[] = editingCategoryId
     && !categoryList.some(c => c.id === editingCategoryId)
     && (isSharedMode
@@ -124,14 +135,6 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       ]
     : categoryList;
 
-  const handleDismiss = () => {
-    setType('expense');
-    setAmount('');
-    setNote('');
-    setCategoryId('housing');
-    onDismiss();
-  };
-
   const handleTypeChange = (newType: MovementType) => {
     lightHaptic();
     setType(newType);
@@ -142,7 +145,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
 
   const handleAddCategoryPress = () => {
     requirePremium(() => {
-      handleDismiss();
+      onDismiss();
       if (isSharedMode && sharedAccount) {
         navigationRef.navigate('Settings', {
           screen: 'SharedCategories',
@@ -162,9 +165,9 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     isSavingRef.current = true;
     lightHaptic();
 
-    if (editingMovement) {
+    if (editing) {
       // La fecha original se conserva: el store ignora cualquier cambio de fecha
-      updateMovement(editingMovement.id, {
+      updateMovement(editing.id, {
         type,
         amount: parsedAmount,
         category: categoryId as any,
@@ -174,7 +177,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       }).finally(() => {
         isSavingRef.current = false;
       });
-      handleDismiss();
+      onDismiss();
       return;
     }
 
@@ -196,19 +199,19 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     addMovement(movement).finally(() => {
       isSavingRef.current = false;
     });
-    handleDismiss();
+    onDismiss();
   };
 
   const isValid = !!amount && parseAmountInput(amount) > 0;
-  const saveLabel = editingMovement
+  const saveLabel = editing
     ? t('movements.save')
     : t(type === 'income' ? 'movements.saveIncome' : 'movements.saveExpense');
 
   return (
     <BottomSheet
       visible={visible}
-      onClose={handleDismiss}
-      title={editingMovement ? t('movements.edit') : t('movements.add')}
+      onClose={onDismiss}
+      title={editing ? t('movements.edit') : t('movements.add')}
       footer={<SheetButton label={saveLabel} onPress={handleSave} disabled={!isValid} />}
     >
       <SegmentedControl

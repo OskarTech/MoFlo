@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, StyleSheet, ScrollView,
+  View, StyleSheet,
   TouchableOpacity, Alert, Share,
-  Clipboard, Keyboard, Platform,
+  Clipboard, Platform,
   KeyboardAvoidingView,
 } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
@@ -12,9 +12,8 @@ import Icon from '../../components/common/Icon';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { useMovementStore } from '../../store/movementStore';
-import { useSavingsStore } from '../../store/savingsStore';
-import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { activateSharedAccount } from '../../store/activateSharedAccount';
+import { reportError } from '../../services/crashReporting';
 import { usePremium } from '../../hooks/usePremium';
 import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { useTheme } from '../../hooks/useTheme';
@@ -42,14 +41,12 @@ const SharedAccountScreen = () => {
   const {
     sharedAccount, isLoading,
     createSharedAccount, joinSharedAccount,
-    setSharedMode, getInviteLink,
+    getInviteLink,
     pendingJoinRequest, incomingRequests,
     cancelJoinRequest, clearRejectedRequest,
     approveJoinRequest, rejectJoinRequest,
-    subscribeToSharedMovements, loadSharedSettings,
     subscribeToIncomingRequests,
   } = useSharedAccountStore();
-  const { loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
   const currentUid = auth().currentUser?.uid;
   const isCreator = !!sharedAccount && sharedAccount.createdBy === currentUid;
   const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
@@ -59,15 +56,6 @@ const SharedAccountScreen = () => {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [loading, setLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const sub = Keyboard.addListener('keyboardWillShow', () => {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    });
-    return () => sub.remove();
-  }, []);
 
   useEffect(() => {
     if (sharedAccount && sharedAccount.createdBy === currentUid) {
@@ -88,19 +76,6 @@ const SharedAccountScreen = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando llega un código por enlace: repetirlo al cambiar la solicitud volvería a abrir el formulario
   }, [route.params]);
 
-  const activateSharedMode = async (accountId: string) => {
-    setSharedAccountId(accountId);
-    useSavingsStore.getState().setSharedAccountId(accountId);
-    await setSharedMode(true);
-    subscribeToSharedMovements(accountId);
-    await loadSharedData(accountId);
-    await useSavingsStore.getState().loadSharedHuchas(accountId);
-    await applyRecurringMovements();
-    await useSharedCategoryStore.getState().loadSharedCategories(accountId);
-    useSharedCategoryStore.getState().subscribeToSharedCategories(accountId);
-    await loadSharedSettings(accountId);
-  };
-
   const handleCreate = async () => {
     if (!accountName.trim()) return;
     setLoading(true);
@@ -108,7 +83,7 @@ const SharedAccountScreen = () => {
       await createSharedAccount(accountName.trim());
       const created = useSharedAccountStore.getState().sharedAccount;
       if (created) {
-        await activateSharedMode(created.id);
+        await activateSharedAccount(created.id);
         navigation.navigate('HomeTab');
       }
     } catch {
@@ -187,10 +162,12 @@ const SharedAccountScreen = () => {
     );
   };
 
-  const handleOpenShared = async () => {
+  // A Inicio en el momento; la cuenta se carga mientras tanto, como al
+  // elegirla en el selector de Inicio. Esperando a que cargase, el botón
+  // parecía no hacer nada y luego saltaba a Inicio, se estuviera donde se estuviera
+  const handleOpenShared = () => {
     if (!sharedAccount) return;
-    await loadSharedData(sharedAccount.id);
-    await setSharedMode(true);
+    activateSharedAccount(sharedAccount.id).catch((e) => reportError(e, 'abrir cuenta compartida'));
     navigation.navigate('HomeTab');
   };
 
@@ -268,14 +245,18 @@ const SharedAccountScreen = () => {
   );
 
   return (
+    // Con el teclado, como en las pantallas de acceso: en Android la vista se
+    // encoge y en iOS el desplazamiento le deja sitio. En iOS se hacían las dos
+    // cosas a la vez y además se desplazaba hasta el final: la pantalla subía
+    // sin necesidad y la cabecera desaparecía
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -120}
+      behavior="height"
+      enabled={Platform.OS === 'android'}
+      keyboardVerticalOffset={-120}
     >
       <HeroScrollScreen
         hero={hero}
-        scrollRef={scrollRef}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         sheetStyle={styles.sheet}

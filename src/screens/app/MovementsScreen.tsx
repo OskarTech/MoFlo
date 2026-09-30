@@ -256,13 +256,15 @@ const MovementsScreen = () => {
     setShowRecurringModal(true);
   }, [setShowRecurringModal]);
 
+  // filterRequest cambia en cada "Ver todo" de Inicio: pidiendo dos veces el
+  // mismo filtro, la segunda no cambiaba nada y se quedaba el que hubiera
   useEffect(() => {
     if (route.params?.initialFilter) {
       setFilter(route.params.initialFilter);
       // Se llega desde el resumen del mes actual
       setPickedMonth(null);
     }
-  }, [route.params?.initialFilter]);
+  }, [route.params?.initialFilter, route.params?.filterRequest]);
 
   useEffect(() => {
     setActiveHistorialFilter(filter);
@@ -535,6 +537,9 @@ const MovementsScreen = () => {
         scrollEventThrottle={16}
         onScrollBeginDrag={closeOpenSwipeable}
         keyboardShouldPersistTaps="handled"
+        // iOS: deja debajo el hueco del teclado. Buscando, las últimas filas
+        // no se podían subir por encima de él
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
         maxToRenderPerBatch={8}

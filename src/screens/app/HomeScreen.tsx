@@ -395,7 +395,7 @@ const HomeScreen = () => {
         type={typeSummary.type}
         origin={typeSummary.origin}
         onDismiss={() => setShowTypeSummary(false)}
-        onSeeAll={(type) => navigation.navigate('HistorialTab', { initialFilter: type })}
+        onSeeAll={(type) => navigation.navigate('HistorialTab', { initialFilter: type, filterRequest: Date.now() })}
       />
     </>
   );

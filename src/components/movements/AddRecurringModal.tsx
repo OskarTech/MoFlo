@@ -51,6 +51,11 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 
   const isSavingRef = useRef(false);
 
+  // El fijo que se edita, el mismo mientras la ventana se cierra (ver AddMovementModal)
+  const shownEditing = useRef(editingRecurring ?? null);
+  if (visible) shownEditing.current = editingRecurring ?? null;
+  const editing = shownEditing.current;
+
   const currencySymbol = isSharedMode
     ? getSharedCurrencySymbol()
     : getCurrencySymbol();
@@ -93,7 +98,13 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
       setPickerKey((k) => k + 1);
       return;
     }
-    const sorted = getSortedCategoriesForType(type);
+    // Uno nuevo sale vacío. Se vacía aquí, al abrir, y no al cerrar: al cerrar
+    // se veía cómo se borraba lo escrito mientras la ventana bajaba
+    setType('expense');
+    setAmount('');
+    setNote('');
+    setRecurringDay(1);
+    const sorted = getSortedCategoriesForType('expense');
     setCategoryId(sorted[0]?.id ?? 'other');
     setPickerKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,7 +118,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
   // Al editar un recurrente cuya categoría ya se borró, esa categoría no está en
   // la lista: se añade al principio, tachada, para que se vea cuál tiene y se
   // pueda conservar. Solo si está borrada de verdad y el tipo es el suyo.
-  const editingCategoryId = editingRecurring?.type === type ? editingRecurring.category : undefined;
+  const editingCategoryId = editing?.type === type ? editing.category : undefined;
   const chipCategories: CategoryChip[] = editingCategoryId
     && !categoryList.some(c => c.id === editingCategoryId)
     && (isSharedMode
@@ -127,15 +138,6 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
       ]
     : categoryList;
 
-  const handleDismiss = () => {
-    setType('expense');
-    setAmount('');
-    setNote('');
-    setCategoryId('housing');
-    setRecurringDay(1);
-    onDismiss();
-  };
-
   const handleTypeChange = (newType: MovementType) => {
     lightHaptic();
     setType(newType);
@@ -146,7 +148,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 
   const handleAddCategoryPress = () => {
     requirePremium(() => {
-      handleDismiss();
+      onDismiss();
       if (isSharedMode && sharedAccount) {
         navigationRef.navigate('Settings', {
           screen: 'SharedCategories',
@@ -168,7 +170,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     isSavingRef.current = true;
     lightHaptic();
 
-    if (editingRecurring) {
+    if (editing) {
       const updates: Partial<RecurringMovement> = {
         type,
         amount: parsedAmount,
@@ -177,10 +179,10 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
         recurringDay: day,
         note: note.trim() || undefined,
       };
-      updateRecurringMovement(editingRecurring.id, updates).finally(() => {
+      updateRecurringMovement(editing.id, updates).finally(() => {
         isSavingRef.current = false;
       });
-      handleDismiss();
+      onDismiss();
       return;
     }
 
@@ -203,7 +205,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
     addRecurringMovement(newRecurring).finally(() => {
       isSavingRef.current = false;
     });
-    handleDismiss();
+    onDismiss();
   };
 
   const isValid = !!amount &&
@@ -214,8 +216,8 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
   return (
     <BottomSheet
       visible={visible}
-      onClose={handleDismiss}
-      title={editingRecurring ? t('recurring.edit') : t('recurring.add')}
+      onClose={onDismiss}
+      title={editing ? t('recurring.edit') : t('recurring.add')}
       footer={<SheetButton label={t('movements.save')} onPress={handleSave} disabled={!isValid} />}
     >
       <SegmentedControl

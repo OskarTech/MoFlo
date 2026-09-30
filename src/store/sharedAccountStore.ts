@@ -93,6 +93,17 @@ const returnToPersonalData = () => {
   useSavingsStore.getState().loadHuchas().catch(() => {});
 };
 
+// Moneda y paleta de la cuenta, de la copia guardada en el móvil
+const readCachedSharedSettings = async (accountId: string) => {
+  const cached = await AsyncStorage.getItem(`@moflo_shared_settings_${accountId}`);
+  if (!cached) return null;
+  const parsed = JSON.parse(cached);
+  return {
+    sharedCurrencyCode: (parsed.currencyCode ?? 'EUR') as string,
+    sharedColorPalette: (parsed.colorPalette ?? 'navy') as ColorPaletteId,
+  };
+};
+
 export type JoinResult =
   | 'pending'
   | 'already_member'
@@ -359,6 +370,10 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         if (activeMode === 'shared') {
           get().subscribeToSharedMovements(account.id);
           await get().loadSharedSettings(account.id);
+        } else {
+          // En individual también, sin esperar: así la copia de sus ajustes
+          // ya está en el móvil la primera vez que se entre en la cuenta
+          get().loadSharedSettings(account.id);
         }
       } else {
         set({ sharedAccount: null, isSharedMode: false, incomingRequests: [] });
@@ -721,6 +736,15 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── MODO COMPARTIDO ────────────────────────────────────────────
   setSharedMode: async (enabled) => {
     const { sharedAccount } = get();
+    if (enabled && sharedAccount) {
+      // Su paleta y su moneda, antes de cambiar. Cambiando primero, toda la
+      // app se veía un instante en azul marino y en euros (los valores por
+      // defecto) hasta que se leían las de la cuenta
+      try {
+        const cached = await readCachedSharedSettings(sharedAccount.id);
+        if (cached) set(cached);
+      } catch {}
+    }
     set({ isSharedMode: enabled });
     await AsyncStorage.setItem(ACTIVE_KEY, enabled ? 'shared' : 'individual');
 
@@ -758,14 +782,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   // ── SETTINGS COMPARTIDOS ───────────────────────────────────────
   loadSharedSettings: async (accountId) => {
     try {
-      const cached = await AsyncStorage.getItem(`@moflo_shared_settings_${accountId}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        set({
-          sharedCurrencyCode: parsed.currencyCode ?? 'EUR',
-          sharedColorPalette: parsed.colorPalette ?? 'navy',
-        });
-      }
+      const cached = await readCachedSharedSettings(accountId);
+      if (cached) set(cached);
 
       const doc = await firestore()
         .collection('sharedAccounts').doc(accountId).get();

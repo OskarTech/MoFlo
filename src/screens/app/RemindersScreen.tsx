@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Alert, Platform, Keyboard, Switch, Modal,
 } from 'react-native';
@@ -187,14 +187,22 @@ const AddReminderModal = ({
     return () => sub.remove();
   }, [visible]);
 
+  // El recordatorio que se edita, el mismo mientras la ventana se cierra:
+  // quien la abre lo quita en cuanto se pide cerrar, y el título cambiaba
+  // mientras la ventana bajaba
+  const shownEditing = useRef(editingReminder ?? null);
+  if (visible) shownEditing.current = editingReminder ?? null;
+  const editing = shownEditing.current;
+
   // Al abrir en modo edición se precargan los valores; una nota sin fecha
-  // abre con el interruptor desactivado.
+  // abre con el interruptor desactivado. Uno nuevo sale vacío: se vacía aquí,
+  // al abrir, y no al cerrar, que se veía cómo se borraba lo escrito
   useEffect(() => {
-    if (!visible || !editingReminder) return;
-    const hasDate = !!editingReminder.date;
-    setDescription(editingReminder.title);
+    if (!visible) return;
+    const hasDate = !!editingReminder?.date;
+    setDescription(editingReminder?.title ?? '');
     setWithDate(hasDate);
-    setSelectedDate(hasDate ? new Date(editingReminder.date!) : getDefaultDate());
+    setSelectedDate(hasDate ? new Date(editingReminder!.date!) : getDefaultDate());
     setShowDatePicker(false);
     setShowTimePicker(false);
   }, [visible, editingReminder]);
@@ -213,9 +221,6 @@ const AddReminderModal = ({
   };
 
   const handleDismiss = () => {
-    setDescription('');
-    setSelectedDate(getDefaultDate());
-    setWithDate(false);
     setShowDatePicker(false);
     setShowTimePicker(false);
     onDismiss();
@@ -246,7 +251,7 @@ const AddReminderModal = ({
     <BottomSheet
       visible={visible}
       onClose={handleDismiss}
-      title={editingReminder ? t('reminders.edit') : t('reminders.add')}
+      title={editing ? t('reminders.edit') : t('reminders.add')}
       footer={(
         <SheetButton
           label={t('reminders.save')}

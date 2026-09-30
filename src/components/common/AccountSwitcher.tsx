@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
+import { activateSharedAccount } from '../../store/activateSharedAccount';
 import { useMovementStore } from '../../store/movementStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -31,12 +31,8 @@ const AccountSwitcher = () => {
   const { isPremium } = usePremiumStore();
   const displayName = useSettingsStore((s) => s.displayName);
   const photoURL = useSettingsStore((s) => s.photoURL);
-  const {
-    sharedAccount, isSharedMode,
-    setSharedMode, subscribeToSharedMovements, loadSharedSettings,
-  } = useSharedAccountStore();
-  const { loadSharedCategories } = useSharedCategoryStore();
-  const { loadData, loadSharedData, setSharedAccountId, applyRecurringMovements } = useMovementStore();
+  const { sharedAccount, isSharedMode, setSharedMode } = useSharedAccountStore();
+  const { loadData, setSharedAccountId } = useMovementStore();
 
   const [showSheet, setShowSheet] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
@@ -59,16 +55,7 @@ const AccountSwitcher = () => {
       return;
     }
     if (sharedAccount) {
-      setSharedAccountId(sharedAccount.id);
-      useSavingsStore.getState().setSharedAccountId(sharedAccount.id);
-      await setSharedMode(true);
-      subscribeToSharedMovements(sharedAccount.id);
-      await loadSharedData(sharedAccount.id);
-      await useSavingsStore.getState().loadSharedHuchas(sharedAccount.id);
-      await applyRecurringMovements();
-      await loadSharedCategories(sharedAccount.id);
-      useSharedCategoryStore.getState().subscribeToSharedCategories(sharedAccount.id);
-      await loadSharedSettings(sharedAccount.id);
+      await activateSharedAccount(sharedAccount.id);
     } else {
       setTimeout(() => navigation.navigate('Settings', { screen: 'SharedAccount' }), 300);
     }

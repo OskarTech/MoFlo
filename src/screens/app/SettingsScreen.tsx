@@ -23,6 +23,7 @@ import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { activateSharedAccount } from '../../store/activateSharedAccount';
 import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
 import PremiumModal from '../../components/common/PremiumModal';
@@ -204,6 +205,18 @@ const SettingsScreen = () => {
   };
 
   // ── INDIVIDUAL HANDLERS ───────────────────────────────────────
+
+  // Las ventanas de nombre salen con el nombre guardado. Se repone al abrir y
+  // no al cerrar: al cerrar, lo escrito cambiaba mientras la ventana bajaba
+  const openNameSheet = () => {
+    setNameInput(displayName ?? '');
+    setEditingName(true);
+  };
+
+  const openSharedNameSheet = () => {
+    setNewSharedName(sharedAccount?.name ?? '');
+    setEditingSharedName(true);
+  };
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;
@@ -750,7 +763,7 @@ const SettingsScreen = () => {
           <View style={styles.profileInfo}>
             <TouchableOpacity
               style={styles.nameRow}
-              onPress={() => setEditingName(true)}
+              onPress={openNameSheet}
               activeOpacity={0.7}
               accessibilityRole="button"
             >
@@ -778,7 +791,7 @@ const SettingsScreen = () => {
           <View style={styles.profileInfo}>
             <TouchableOpacity
               style={styles.nameRow}
-              onPress={() => isCreator && setEditingSharedName(true)}
+              onPress={() => isCreator && openSharedNameSheet()}
               activeOpacity={isCreator ? 0.7 : 1}
               disabled={!isCreator}
             >
@@ -918,9 +931,12 @@ const SettingsScreen = () => {
                   subtitle={sharedAccount
                     ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
                     : t('sharedAccount.noAccount')}
-                  onPress={async () => {
+                  onPress={() => {
                     if (sharedAccount) {
-                      await setSharedMode(true);
+                      // A Inicio en el momento; la cuenta se carga mientras
+                      // tanto, como al elegirla en el selector de Inicio
+                      activateSharedAccount(sharedAccount.id)
+                        .catch((e) => reportError(e, 'abrir cuenta compartida'));
                       navigation.navigate('HomeTab');
                     } else {
                       navigation.navigate('SharedAccount');
@@ -1142,7 +1158,7 @@ const SettingsScreen = () => {
                 <SettingsRow
                   icon="pencil-outline"
                   label={t('sharedAccount.renameAccount')}
-                  onPress={() => setEditingSharedName(true)}
+                  onPress={openSharedNameSheet}
                 />
               )}
               {isCreator && kickableMembers.length > 0 && (
@@ -1186,7 +1202,7 @@ const SettingsScreen = () => {
       {/* ── NOMBRES ──────────────────────────────────────────── */}
       <BottomSheet
         visible={editingName}
-        onClose={() => { setEditingName(false); setNameInput(displayName ?? ''); }}
+        onClose={() => setEditingName(false)}
         title={t('settings.displayName')}
         footer={<SheetButton label={t('settings.save')} onPress={handleSaveName} disabled={!nameInput.trim()} />}
       >
@@ -1202,7 +1218,7 @@ const SettingsScreen = () => {
       </BottomSheet>
       <BottomSheet
         visible={editingSharedName && isCreator}
-        onClose={() => { setEditingSharedName(false); setNewSharedName(sharedAccount?.name ?? ''); }}
+        onClose={() => setEditingSharedName(false)}
         title={t('sharedAccount.renameAccount')}
         footer={<SheetButton label={t('settings.save')} onPress={handleRenameAccount} disabled={!newSharedName.trim()} />}
       >

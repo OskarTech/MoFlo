@@ -3,7 +3,7 @@ import {
   View, StyleSheet, Modal, Animated, PanResponder, Keyboard, Platform,
   TouchableOpacity, TouchableWithoutFeedback, ScrollView, Dimensions,
   ActivityIndicator, StyleProp, ViewStyle, TextInput, TextInputProps,
-  NativeScrollEvent, NativeSyntheticEvent,
+  NativeScrollEvent, NativeSyntheticEvent, LayoutChangeEvent,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import Icon, { IconName } from './Icon';
@@ -85,7 +85,10 @@ const BottomSheet = ({
   const footerOffset = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
-  const footerRef = useRef<View>(null);
+  const sheetRef = useRef<View>(null);
+  // Principio del contenido que se desplaza, y alto de su hueco en la ventana
+  const contentTopRef = useRef<View>(null);
+  const bodyHeight = useRef(0);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -133,6 +136,8 @@ const BottomSheet = ({
     // Lo que pide el teclado que suba la ventana
     let target = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    // Desplazamiento hecho para enseñar el campo: de dónde a dónde
+    let revealed: { from: number; to: number } | null = null;
 
     // La ventana sube entera hasta donde cabe. Si no cabe (iOS, ventanas
     // altas o pantallas bajas como el iPhone SE), se queda con el título a
@@ -148,19 +153,36 @@ const BottomSheet = ({
         Animated.timing(footerOffset, { toValue: -covered, duration, useNativeDriver: true }),
       ]).start();
       setOverlap(covered);
-      if (covered > 0) setTimeout(revealFocusedInput, duration + 40);
+      if (covered > 0) setTimeout(() => revealFocusedInput(covered), duration + 40);
+      // Al irse el teclado, el contenido vuelve a donde estaba, salvo que
+      // entretanto se haya desplazado a mano
+      if (target === 0 && revealed) {
+        if (Math.abs(scrollY.current - revealed.to) < 2) {
+          scrollRef.current?.scrollTo({ y: revealed.from, animated: true });
+        }
+        revealed = null;
+      }
     };
 
-    // El campo en el que se escribe, a la vista si el botón lo tapa
-    const revealFocusedInput = () => {
+    // El campo en el que se escribe, a la vista si el botón lo tapa (pantallas
+    // bajas, como el iPhone SE). Se mide dónde cae dentro del contenido, que
+    // no depende de lo que se haya desplazado ni de lo que el botón y la
+    // ventana hayan subido con el teclado: midiendo en la pantalla eso no se
+    // contaba y el campo se quedaba debajo del botón
+    const revealFocusedInput = (covered: number) => {
       const input = TextInput.State.currentlyFocusedInput();
       const scroll = scrollRef.current;
-      const footerView = footerRef.current;
-      if (!input || !scroll || !footerView) return;
-      input.measureInWindow((_x, y, _w, height) => {
-        footerView.measureInWindow((_fx, footerTop) => {
-          const hidden = y + height + REVEAL_GAP - footerTop;
-          if (hidden > 0) scroll.scrollTo({ y: scrollY.current + hidden, animated: true });
+      const sheet = sheetRef.current;
+      const contentTop = contentTopRef.current;
+      if (!input || !scroll || !sheet || !contentTop) return;
+      contentTop.measureLayout(sheet, (_cx, top) => {
+        input.measureLayout(sheet, (_x, y, _w, height) => {
+          // Desplazamiento con el que el campo queda justo encima del botón
+          const needed = y - top + height + REVEAL_GAP - (bodyHeight.current - covered);
+          if (needed > scrollY.current) {
+            revealed = { from: revealed?.from ?? scrollY.current, to: needed };
+            scroll.scrollTo({ y: needed, animated: true });
+          }
         });
       });
     };
@@ -252,6 +274,7 @@ const BottomSheet = ({
         showsVerticalScrollIndicator: false,
         style: styles.bodyScroll,
         contentContainerStyle: [styles.body, bodyStyle],
+        onLayout: (e: LayoutChangeEvent) => { bodyHeight.current = e.nativeEvent.layout.height; },
         scrollEventThrottle: 32,
         onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => { scrollY.current = e.nativeEvent.contentOffset.y; },
       }
@@ -271,6 +294,7 @@ const BottomSheet = ({
       </TouchableWithoutFeedback>
 
       <Animated.View
+        ref={sheetRef}
         style={[
           styles.sheet,
           {
@@ -327,12 +351,14 @@ const BottomSheet = ({
         </View>
 
         <Body {...bodyProps}>
+          {scrollable ? (
+            <View ref={contentTopRef} collapsable={false} pointerEvents="none" style={styles.contentTop} />
+          ) : null}
           {children}
           {overlap > 0 ? <View style={{ height: overlap }} /> : null}
         </Body>
 
         <Animated.View
-          ref={footerRef}
           style={[
             styles.footer,
             { paddingBottom: insets.bottom + 16, backgroundColor: ui.sheet, transform: [{ translateY: footerOffset }] },
@@ -484,6 +510,8 @@ const styles = StyleSheet.create({
   close: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
   bodyScroll: { flexGrow: 0, flexShrink: 1 },
   body: { paddingHorizontal: 20 },
+  // Marca sin tamaño en el principio del contenido, fuera del flujo
+  contentTop: { position: 'absolute', top: 0, left: 0, width: 0, height: 0 },
   footer: { paddingHorizontal: 20, paddingTop: 12 },
   button: {
     height: 52, borderRadius: 16, flexDirection: 'row', gap: 8,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
 import { Text } from 'react-native-paper';
 import Icon from '../../components/common/Icon';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +43,13 @@ const SupportScreen = () => {
   const [sending, setSending] = useState(false);
 
   const isValid = !!name.trim() && !!message.trim();
+
+  // Con el teclado abierto, el final del mensaje y el botón de enviar se traen
+  // a la vista: al entrar en el campo y cada vez que el mensaje crece. Antes
+  // el teclado tapaba medio campo y el botón, y la pantalla no se podía mover
+  const scrollRef = useRef<ScrollView>(null);
+  const messageFocused = useRef(false);
+  const showMessageEnd = () => scrollRef.current?.scrollToEnd({ animated: true });
 
   const handleSend = async () => {
     if (!isValid) return;
@@ -98,7 +105,14 @@ const SupportScreen = () => {
   );
 
   return (
-    <HeroScrollScreen hero={hero} keyboardShouldPersistTaps="handled" sheetStyle={styles.sheet}>
+    <HeroScrollScreen
+      hero={hero}
+      scrollRef={scrollRef}
+      keyboardShouldPersistTaps="handled"
+      // iOS: deja debajo el hueco del teclado, para poder desplazar hasta el final
+      automaticallyAdjustKeyboardInsets
+      sheetStyle={styles.sheet}
+    >
       {/* Email del usuario: solo informativo */}
       <View style={[styles.emailInfo, { backgroundColor: ui.field }]}>
         <Icon name="mail-outline" size={18} color={dc.textSecondary} />
@@ -117,6 +131,13 @@ const SupportScreen = () => {
         onChangeText={setMessage}
         multiline
         style={styles.messageInput}
+        onFocus={() => {
+          messageFocused.current = true;
+          // Cuando el teclado ya ha subido
+          setTimeout(showMessageEnd, 350);
+        }}
+        onBlur={() => { messageFocused.current = false; }}
+        onContentSizeChange={() => { if (messageFocused.current) showMessageEnd(); }}
       />
 
       <SheetButton

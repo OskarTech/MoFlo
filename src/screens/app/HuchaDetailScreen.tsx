@@ -62,24 +62,27 @@ const AddMoneyModal = ({
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState<HuchaMovementType>('deposit');
 
-  // Al abrirse para corregir un apunte, sale con lo que tenía
+  // Al abrirse para corregir un apunte, sale con lo que tenía; si no, vacía.
+  // Se vacía al abrir y no al cerrar: al cerrar, el importe se ponía a cero y
+  // la ventana encogía mientras bajaba
   useEffect(() => {
-    if (!visible || !editing) return;
-    setMode(editing.type);
-    setAmount(formatAmountForInput(editing.amount));
+    if (!visible) return;
+    setMode(editing ? editing.type : 'deposit');
+    setAmount(editing ? formatAmountForInput(editing.amount) : '');
   }, [visible, editing]);
 
-  const reset = () => {
-    setAmount('');
-    setMode('deposit');
-  };
+  // Lo que hay en la hucha, lo mismo mientras la ventana se cierra: al
+  // guardar, la hucha cambia y la ventana volvía a hacer la cuenta mientras bajaba
+  const shownCurrent = useRef(huchaCurrentAmount);
+  if (visible) shownCurrent.current = huchaCurrentAmount;
+  const currentAmount = shownCurrent.current;
 
   const parsed = parseAmountInput(amount);
   const hasAmount = !isNaN(parsed) && parsed > 0;
   // Cómo quedaría la hucha: no puede bajar de cero (margen para los decimales)
   const rawProjected = hasAmount
-    ? mode === 'deposit' ? huchaCurrentAmount + parsed : huchaCurrentAmount - parsed
-    : huchaCurrentAmount;
+    ? mode === 'deposit' ? currentAmount + parsed : currentAmount - parsed
+    : currentAmount;
   const tooMuch = hasAmount && rawProjected < -0.005;
   const changed = !editing || mode !== editing.type || Math.abs(parsed - editing.amount) > 0.001;
   const isValid = hasAmount && !tooMuch && changed;
@@ -92,25 +95,19 @@ const AddMoneyModal = ({
     if (isSavingRef.current || !isValid) return;
     isSavingRef.current = true;
     onConfirm(parsed, mode);
-    reset();
     setTimeout(() => { isSavingRef.current = false; }, 600);
-  };
-
-  const handleDismiss = () => {
-    reset();
-    onDismiss();
   };
 
   return (
     <BottomSheet
       visible={visible}
-      onClose={handleDismiss}
+      onClose={onDismiss}
       title={editing ? t('movements.edit') : huchaName}
       subtitle={editing
         ? `${huchaName} · ${formatDate(editing.date)}`
         : hasTarget
-          ? `${formatAmount(huchaCurrentAmount)} ${t('hucha.of')} ${formatAmount(huchaTargetAmount)} ${currencySymbol}`
-          : `${formatAmount(huchaCurrentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
+          ? `${formatAmount(currentAmount)} ${t('hucha.of')} ${formatAmount(huchaTargetAmount)} ${currencySymbol}`
+          : `${formatAmount(currentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
       footer={editing ? (
         <SheetButton label={t('movements.save')} onPress={handleConfirm} disabled={!isValid} />
       ) : (
@@ -171,10 +168,10 @@ const AddMoneyModal = ({
           </View>
           {hasTarget && (
             <View style={[styles.previewBar, { backgroundColor: withAlpha(huchaColor, 0.18) }]}>
-              <View style={{ width: `${pctOf(Math.min(huchaCurrentAmount, projected))}%`, backgroundColor: huchaColor }} />
+              <View style={{ width: `${pctOf(Math.min(currentAmount, projected))}%`, backgroundColor: huchaColor }} />
               <View
                 style={{
-                  width: `${Math.abs(pctOf(projected) - pctOf(huchaCurrentAmount))}%`,
+                  width: `${Math.abs(pctOf(projected) - pctOf(currentAmount))}%`,
                   backgroundColor: mode === 'deposit' ? withAlpha(huchaColor, 0.5) : withAlpha(dc.expense, 0.45),
                 }}
               />
@@ -554,6 +551,10 @@ const HuchaDetailScreen = () => {
           onScrollEndDrag={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
           onMomentumScrollEnd={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
           keyboardShouldPersistTaps="handled"
+          // iOS: deja debajo el hueco del teclado. Sin él, en pantallas bajas
+          // el importe de la aportación automática quedaba tapado y la
+          // pantalla no se podía mover
+          automaticallyAdjustKeyboardInsets
         >
           {isClosed && (
             <View style={[styles.closedBanner, { backgroundColor: withAlpha(dc.income, 0.14) }]}>
