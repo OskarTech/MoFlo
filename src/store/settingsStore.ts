@@ -8,6 +8,7 @@ import {
   fetchSettingsFromFirestore,
 } from '../services/firebase/firestore.service';
 import { ColorPaletteId } from '../theme';
+import { CURRENCIES } from '../constants/currencies';
 import { refreshDailyNotificationLanguage } from '../services/notifications.service';
 import { deletePhotos, uploadPhoto, userPhotoFolder } from '../services/firebase/photo.service';
 
@@ -56,20 +57,9 @@ const syncPhotoToSharedAccounts = async (uid: string, photoURL: string | null) =
 
 const STORAGE_KEY = '@moflo_settings';
 
-export interface Currency {
-  code: string;
-  symbol: string;
-  label: string;
-}
-
-export const CURRENCIES: Currency[] = [
-  { code: 'EUR', symbol: '€', label: 'Euro (€)' },
-  { code: 'USD', symbol: '$', label: 'Dollar ($)' },
-  { code: 'GBP', symbol: '£', label: 'Pound (£)' },
-  { code: 'PLN', symbol: 'zł', label: 'Złoty (zł)' },
-  { code: 'CHF', symbol: 'CHF', label: 'Franc (CHF)' },
-  { code: 'MXN', symbol: 'MX$', label: 'Peso (MX$)' },
-];
+// En su propio archivo: los usa formatAmount, que no puede cargar este store
+export { CURRENCIES };
+export type { Currency } from '../constants/currencies';
 
 export const LANGUAGES = [
   { code: 'en', label: 'English' },

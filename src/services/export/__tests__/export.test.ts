@@ -14,6 +14,7 @@ const input = (over: Partial<ExportInput> = {}): ExportInput => ({
   isShared: false,
   memberCount: 1,
   currencySymbol: '€',
+  symbolBefore: false,
   dateFormat: 'DD/MM/YYYY',
   separators: { thousands: '.', decimal: ',' },
   exportedAt: new Date(2026, 8, 26),
@@ -87,6 +88,10 @@ describe('resumen', () => {
 
   it('formatea importes y nombres de fichero como la app', () => {
     expect(formatMoney(-1234.5, input())).toBe('-1.234,50 €');
+    // Dólar o libra: el símbolo delante y el signo antes que él
+    expect(formatMoney(-1234.5, input({ currencySymbol: '$', symbolBefore: true }))).toBe('-$1.234,50');
+    expect(formatMoney(12, input({ currencySymbol: '£', symbolBefore: true }))).toBe('£12,00');
+    expect(formatMoney(12, input({ currencySymbol: 'CHF', symbolBefore: true }))).toBe('CHF 12,00');
     expect(fileBaseName(input({ isShared: true, accountName: 'Casa Ñoño / 2026' }))).toBe('MoFlo_Casa_Nono_2026_2026-09-26');
     expect(fileBaseName(input())).toBe('MoFlo_2026-09-26');
   });

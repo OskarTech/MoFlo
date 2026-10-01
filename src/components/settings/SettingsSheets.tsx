@@ -12,7 +12,7 @@ import {
   FONT_OPTIONS, AppFontId, getActiveFont, getPreviewFontFamily, getPreviewFontMap,
 } from '../../theme/fonts';
 import { withAlpha } from '../../utils/color';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatMoney } from '../../utils/formatAmount';
 
 /** Marca redonda de la opción elegida */
 const Check = ({ on }: { on: boolean }) => {
@@ -182,7 +182,7 @@ export const FontSheet = ({
       .catch((e) => console.error('Error loading font previews:', e));
   }, [visible, previewReady]);
 
-  const sample = `${formatAmount(839.82)} ${currencySymbol}`;
+  const sample = formatMoney(839.82, currencySymbol);
 
   return (
     <BottomSheet

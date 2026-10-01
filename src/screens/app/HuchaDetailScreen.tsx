@@ -16,7 +16,9 @@ import PremiumModal from '../../components/common/PremiumModal';
 import { useTheme } from '../../hooks/useTheme';
 import { HuchaMovement, HuchaMovementType } from '../../types';
 import { formatDate } from '../../utils/dateFormat';
-import { formatAmount, parseAmountInput, formatAmountForInput } from '../../utils/formatAmount';
+import {
+  formatAmount, formatMoney, joinMoney, withCurrency, parseAmountInput, formatAmountForInput,
+} from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { warningHaptic, lightHaptic } from '../../utils/haptics';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
@@ -89,7 +91,7 @@ const AddMoneyModal = ({
   const hasTarget = huchaTargetAmount > 0;
   const projected = Math.max(0, rawProjected);
   const pctOf = (v: number) => (hasTarget ? Math.max(0, Math.min(100, (v / huchaTargetAmount) * 100)) : 0);
-  const amountText = `${formatAmount(hasAmount ? parsed : 0)} ${currencySymbol}`;
+  const amountText = formatMoney(hasAmount ? parsed : 0, currencySymbol);
 
   const handleConfirm = () => {
     if (isSavingRef.current || !isValid) return;
@@ -106,8 +108,8 @@ const AddMoneyModal = ({
       subtitle={editing
         ? `${huchaName} · ${formatDate(editing.date)}`
         : hasTarget
-          ? `${formatAmount(currentAmount)} ${t('hucha.of')} ${formatAmount(huchaTargetAmount)} ${currencySymbol}`
-          : `${formatAmount(currentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
+          ? joinMoney(formatAmount(currentAmount), formatAmount(huchaTargetAmount), currencySymbol, ` ${t('hucha.of')} `)
+          : `${formatMoney(currentAmount, currencySymbol)} · ${t('hucha.accumulating')}`}
       footer={editing ? (
         <SheetButton label={t('movements.save')} onPress={handleConfirm} disabled={!isValid} />
       ) : (
@@ -146,7 +148,7 @@ const AddMoneyModal = ({
               activeOpacity={0.75}
             >
               <Text style={[styles.chipText, { color: on ? ui.accent : dc.textPrimary }]}>
-                {formatAmount(a, a % 1 === 0 ? 0 : 2)} {currencySymbol}
+                {formatMoney(a, currencySymbol, { decimals: a % 1 === 0 ? 0 : 2 })}
               </Text>
             </TouchableOpacity>
           );
@@ -159,7 +161,7 @@ const AddMoneyModal = ({
           <View style={styles.previewHead}>
             <Text style={[styles.previewText, { color: dc.textPrimary }]}>
               {t(mode === 'deposit' ? 'hucha.willReach' : 'hucha.willRemain', {
-                amount: `${formatAmount(projected)} ${currencySymbol}`,
+                amount: formatMoney(projected, currencySymbol),
               })}
             </Text>
             {hasTarget && (
@@ -445,7 +447,7 @@ const HuchaDetailScreen = () => {
     const label = m.type === 'deposit' ? t('hucha.depositLabel') : t('hucha.withdrawalLabel');
     Alert.alert(
       t('movementsList.deleteConfirm'),
-      `${label} · ${formatAmount(m.amount)} ${currencySymbol}`,
+      `${label} · ${formatMoney(m.amount, currencySymbol)}`,
       [
         { text: t('movements.cancel'), style: 'cancel' },
         { text: t('movementsList.delete'), style: 'destructive', onPress: () => { deleteHuchaMovement(m.id); } },
@@ -511,13 +513,13 @@ const HuchaDetailScreen = () => {
         )}
         <View style={styles.heroAmountRow}>
           <Text style={[styles.heroAmount, { color: ui.onHero }]} numberOfLines={1}>
-            {formatAmount(hucha.currentAmount)} {currencySymbol}
+            {formatMoney(hucha.currentAmount, currencySymbol)}
           </Text>
           {hasTarget && <Text style={[styles.heroPct, { color: ui.onHero }]}>{Math.round(pct)}%</Text>}
         </View>
         <Text style={[styles.heroTarget, { color: ui.onHeroSoft }]}>
           {hasTarget
-            ? `${t('hucha.of')} ${formatAmount(hucha.targetAmount)} ${currencySymbol}`
+            ? `${t('hucha.of')} ${formatMoney(hucha.targetAmount, currencySymbol)}`
             : t('hucha.accumulating')}
         </Text>
         {hasTarget && (
@@ -527,7 +529,7 @@ const HuchaDetailScreen = () => {
         )}
         {remaining > 0 && monthsEstimate !== null && (
           <Text style={[styles.heroEstimate, { color: ui.onHeroSoft }]}>
-            {t('hucha.remaining', { amount: formatAmount(remaining) })}
+            {t('hucha.remaining', { amount: formatMoney(remaining, currencySymbol) })}
             {' · '}
             {t('hucha.monthsEstimate', { months: monthsEstimate })}
           </Text>
@@ -606,7 +608,9 @@ const HuchaDetailScreen = () => {
                         onPress={() => handleQuickAdd(a)}
                         activeOpacity={0.7}
                       >
-                        <Text style={[styles.quickBtnText, { color: ui.savingsText }]}>+{a}{currencySymbol}</Text>
+                        <Text style={[styles.quickBtnText, { color: ui.savingsText }]}>
+                          {withCurrency(String(a), currencySymbol, { sign: '+', space: false })}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                     <TouchableOpacity
@@ -637,7 +641,9 @@ const HuchaDetailScreen = () => {
                   <Text style={[styles.autoLabel, { color: dc.textPrimary }]}>{t('hucha.automatic')}</Text>
                   {hucha.isAutomatic && hucha.monthlyAmount && !showAutoInput && (
                     <Text style={[styles.autoMeta, { color: dc.textSecondary }]}>
-                      {t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })}
+                      {t('hucha.everyMonth', {
+                        amount: formatMoney(hucha.monthlyAmount, currencySymbol, { decimals: hucha.monthlyAmount % 1 === 0 ? 0 : 2 }),
+                      })}
                       {hucha.recurringDay ? ` · ${t('hucha.dayN', { day: hucha.recurringDay })}` : ''}
                       {nextDateLabel ? ` · ${t('hucha.nextContribution', { date: nextDateLabel })}` : ''}
                     </Text>
@@ -674,7 +680,7 @@ const HuchaDetailScreen = () => {
                     <View style={styles.autoAmountRow}>
                       <RNTextInput
                         style={[styles.autoInput, { backgroundColor: ui.sheet, color: dc.textPrimary }]}
-                        placeholder={t('hucha.automaticAmount')}
+                        placeholder={t('hucha.automaticAmount', { symbol: currencySymbol })}
                         placeholderTextColor={dc.textSecondary}
                         keyboardType="decimal-pad"
                         value={autoAmount}
@@ -723,7 +729,7 @@ const HuchaDetailScreen = () => {
                           <Text style={[styles.historyDate, { color: dc.textSecondary }]}>{formatDate(m.date)}</Text>
                         </View>
                         <Text style={[styles.historyAmount, { color: isDeposit ? ui.savingsText : dc.textPrimary }]}>
-                          {isDeposit ? '+' : '-'}{formatAmount(m.amount)} {currencySymbol}
+                          {formatMoney(m.amount, currencySymbol, { sign: isDeposit ? '+' : '-' })}
                         </Text>
                       </View>
                     </SwipeableRow>
@@ -780,8 +786,8 @@ const HuchaDetailScreen = () => {
         onClosed={runAfterMenuClosed}
         title={hucha.name}
         subtitle={hasTarget
-          ? `${formatAmount(hucha.currentAmount)} / ${formatAmount(hucha.targetAmount)} ${currencySymbol}`
-          : `${formatAmount(hucha.currentAmount)} ${currencySymbol} · ${t('hucha.accumulating')}`}
+          ? joinMoney(formatAmount(hucha.currentAmount), formatAmount(hucha.targetAmount), currencySymbol, ' / ')
+          : `${formatMoney(hucha.currentAmount, currencySymbol)} · ${t('hucha.accumulating')}`}
       >
         {!isClosed && (
           <View style={styles.editBlock}>

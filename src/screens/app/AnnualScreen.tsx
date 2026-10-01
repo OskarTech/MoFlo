@@ -17,7 +17,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { MovementType } from '../../types';
 import StrikeText from '../../components/common/StrikeText';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatAmount, formatMoney } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import SwipeNavigator from '../../components/common/SwipeNavigator';
 import { SegmentedControl } from '../../components/common/BottomSheet';
@@ -522,7 +522,7 @@ const AnnualScreen = () => {
           <View style={styles.detailAvgBox}>
             <Text style={[styles.detailLabel, { color: dc.textSecondary }]}>{t('resumen.avgPerMonth')}</Text>
             <Text style={[styles.detailAvg, { color: dc.textPrimary }]}>
-              {formatAmount(data.monthlyAvg, 0)} {currencySymbol}
+              {formatMoney(data.monthlyAvg, currencySymbol, { decimals: 0 })}
             </Text>
           </View>
         </View>
@@ -551,14 +551,14 @@ const AnnualScreen = () => {
             <View key={yr}>
               <Text style={[styles.detailYearLbl, { color: dc.textSecondary }]}>{yr}</Text>
               <Text style={[styles.detailYearVal, { color: dc.textPrimary }]}>
-                {formatAmount(amt as number, 0)} {currencySymbol}
+                {formatMoney(amt as number, currencySymbol, { decimals: 0 })}
               </Text>
             </View>
           ))}
           <View>
             <Text style={[styles.detailYearLbl, { color: dc.textSecondary }]}>{t('resumen.total')}</Text>
             <Text style={[styles.detailYearVal, { color: dc.textPrimary }]}>
-              {formatAmount(data.total, 0)} {currencySymbol}
+              {formatMoney(data.total, currencySymbol, { decimals: 0 })}
             </Text>
           </View>
         </View>
@@ -583,7 +583,7 @@ const AnnualScreen = () => {
                 {mv.note || renderCatName(item.category, type)}
               </Text>
               <Text style={[styles.movAmount, { color: isIncome ? ui.incomeText : dc.textPrimary }]}>
-                {isIncome ? '+' : '-'}{formatAmount(mv.amount)} {currencySymbol}
+                {formatMoney(mv.amount, currencySymbol, { sign: isIncome ? '+' : '-' })}
               </Text>
             </View>
           );
@@ -630,7 +630,7 @@ const AnnualScreen = () => {
               {subTabLabel(type)} · {periodLabel}
             </Text>
             <Text style={[styles.pieInfoAmount, { color: dc.textPrimary }]} numberOfLines={1}>
-              {formatAmount(total)} {currencySymbol}
+              {formatMoney(total, currencySymbol)}
             </Text>
             <Text style={[styles.pieInfoSub, { color: dc.textSecondary }]}>
               {breakdown.length} {t('resumen.categories')}
@@ -662,7 +662,7 @@ const AnnualScreen = () => {
                         {renderCatName(item.category, type)}
                       </Text>
                       <Text style={[styles.catAmount, { color: dc.textPrimary }]}>
-                        {formatAmount(item.amount, 0)} {currencySymbol}
+                        {formatMoney(item.amount, currencySymbol, { decimals: 0 })}
                       </Text>
                     </View>
                     <Text style={[styles.catPct, { color: dc.textSecondary }]}>
@@ -698,7 +698,7 @@ const AnnualScreen = () => {
         </Text>
         <View style={styles.huchaTotalRow}>
           <Text style={[styles.huchaTotal, { color: dc.textPrimary }]}>
-            {formatAmount(huchasTotalThisYear, 0)} {currencySymbol}
+            {formatMoney(huchasTotalThisYear, currencySymbol, { decimals: 0 })}
           </Text>
           {huchasTotalThisMonth > 0 && (
             <Text style={[styles.huchaThisMonth, { color: ui.incomeText }]}>
@@ -768,10 +768,10 @@ const AnnualScreen = () => {
             </View>
             <View style={[styles.huchaStatsRow, { borderTopColor: ui.hair }]}>
               {[
-                [t('resumen.thisMonthLabel'), `${formatAmount(thisMonth, 0)} ${currencySymbol}`],
-                [t('resumen.enYear', { year: currentYear }), `${formatAmount(thisYear, 0)} ${currencySymbol}`],
+                [t('resumen.thisMonthLabel'), formatMoney(thisMonth, currencySymbol, { decimals: 0 })],
+                [t('resumen.enYear', { year: currentYear }), formatMoney(thisYear, currencySymbol, { decimals: 0 })],
                 [t('resumen.automatic'), h.isAutomatic && h.monthlyAmount
-                  ? `${formatAmount(h.monthlyAmount, 0)} ${currencySymbol}` : t('resumen.manual')],
+                  ? formatMoney(h.monthlyAmount, currencySymbol, { decimals: 0 }) : t('resumen.manual')],
               ].map(([label, value], i) => (
                 <React.Fragment key={i}>
                   {i > 0 && <View style={[styles.huchaStatSep, { backgroundColor: ui.hair }]} />}
@@ -812,7 +812,7 @@ const AnnualScreen = () => {
               {t('resumen.balance')} · {selectorLabel}
             </Text>
             <Text style={[styles.heroAmount, { color: ui.onHero }]} numberOfLines={1}>
-              {balance >= 0 ? '+' : ''}{formatAmount(balance)} {currencySymbol}
+              {formatMoney(balance, currencySymbol, { sign: balance >= 0 ? '+' : '-' })}
             </Text>
           </View>
           <View style={[styles.modeToggle, { backgroundColor: 'rgba(255,255,255,0.14)' }]}>
@@ -853,7 +853,7 @@ const AnnualScreen = () => {
                 color={ui.onHero}
               />
               <Text style={[styles.heroPillText, { color: ui.onHero }]}>
-                {balanceDiff >= 0 ? '+' : ''}{formatAmount(balanceDiff, 0)} {currencySymbol} vs {yearMode ? selectedYear - 1 : shortMonth(prevSelMonth)}
+                {formatMoney(balanceDiff, currencySymbol, { decimals: 0, sign: balanceDiff >= 0 ? '+' : '-' })} vs {yearMode ? selectedYear - 1 : shortMonth(prevSelMonth)}
               </Text>
             </View>
           )}
@@ -927,7 +927,7 @@ const AnnualScreen = () => {
                 />
                 <Text style={[styles.badgeText, { color: rhythmGood ? ui.incomeText : ui.expenseText }]}>
                   {t(rhythm.diff < 0 ? 'resumen.lessThanPrev' : 'resumen.moreThanPrev', {
-                    amount: `${formatAmount(Math.abs(rhythm.diff))} ${currencySymbol}`,
+                    amount: formatMoney(Math.abs(rhythm.diff), currencySymbol),
                     day: rhythm.compareDay,
                   })}
                 </Text>

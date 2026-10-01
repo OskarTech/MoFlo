@@ -2,8 +2,11 @@ import {
   formatAmount,
   formatAmountForInput,
   formatMoney,
+  joinMoney,
   parseAmountInput,
   splitAmountParts,
+  symbolGoesBefore,
+  withCurrency,
 } from '../formatAmount';
 
 // Idioma de los ajustes, que decide los separadores. Se simula el store para no
@@ -65,6 +68,34 @@ describe('splitAmountParts y formatMoney', () => {
 
   it('pone el símbolo de la moneda detrás', () => {
     expect(formatMoney(12.5, '€')).toBe('12,50 €');
+  });
+
+  it('el dólar, la libra, el franco suizo y el peso mexicano van delante; el resto, detrás', () => {
+    expect(['€', '$', '£', 'zł', 'CHF', 'MX$'].filter(symbolGoesBefore)).toEqual(['$', '£', 'CHF', 'MX$']);
+    // El de letras, con espacio
+    expect(formatMoney(-12.5, 'CHF')).toBe('-CHF 12,50');
+    expect(withCurrency('10', 'CHF', { sign: '+', space: false })).toBe('+CHF 10');
+    expect(joinMoney('750', '3.000', 'CHF', ' de ')).toBe('CHF 750 de CHF 3.000');
+    expect(formatMoney(1234.5, '$')).toBe('$1.234,50');
+    expect(formatMoney(12.5, '£', { decimals: 0 })).toBe('£13');
+    expect(formatMoney(12.5, 'MX$')).toBe('MX$12,50');
+    expect(formatMoney(12.5, 'zł')).toBe('12,50 zł');
+  });
+
+  it('el signo va delante de todo, también el de un importe negativo', () => {
+    expect(formatMoney(-12.5, '$')).toBe('-$12,50');
+    expect(formatMoney(-12.5, '€')).toBe('-12,50 €');
+    expect(formatMoney(12.5, '$', { sign: '+' })).toBe('+$12,50');
+    expect(formatMoney(12.5, '€', { sign: '+' })).toBe('+12,50 €');
+  });
+
+  it('withCurrency y joinMoney colocan el símbolo en textos ya escritos', () => {
+    expect(withCurrency('••••', '$')).toBe('$••••');
+    expect(withCurrency('••••', '€')).toBe('•••• €');
+    expect(withCurrency('10', '€', { sign: '+', space: false })).toBe('+10€');
+    expect(withCurrency('10', '$', { sign: '+', space: false })).toBe('+$10');
+    expect(joinMoney('750', '3.000', '€', ' de ')).toBe('750 de 3.000 €');
+    expect(joinMoney('750', '3.000', '$', ' de ')).toBe('$750 de $3.000');
   });
 });
 

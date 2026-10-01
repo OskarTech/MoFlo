@@ -172,8 +172,7 @@
   "expense": "Wydatki",
   "net": "Netto",
   "perMonth": "/ mies.",
-  "dayPickerLabel": "Dzień każdego miesiąca",
-  "addHint": "Dotknij +, aby dodać cykliczną transakcję"
+  "dayPickerLabel": "Dzień każdego miesiąca"
   },
   "movementsList": {
   "title": "Transakcje",
@@ -379,19 +378,19 @@
   "chooseIcon": "Wybierz ikonę",
   "chooseColor": "Wybierz kolor",
   "automatic": "Miesięczna automatyczna wpłata",
-  "automaticAmount": "Kwota miesięczna (€)",
+  "automaticAmount": "Kwota miesięczna ({{symbol}})",
   "dayOfMonth": "Dzień",
   "dayN": "dzień {{day}}",
   "chooseDayOfMonth": "Wybierz dzień wpłaty",
   "nextContribution": "następny {{date}}",
-  "everyMonth": "{{amount}} {{symbol}} miesięcznie",
-  "thisMonthAdded": "+{{amount}}{{symbol}} w tym miesiącu",
-  "thisMonthWithdrawn": "-{{amount}}{{symbol}} w tym miesiącu",
+  "everyMonth": "{{amount}} miesięcznie",
+  "thisMonthAdded": "+{{amount}} w tym miesiącu",
+  "thisMonthWithdrawn": "-{{amount}} w tym miesiącu",
   "addMoney": "+ Dodaj do celu",
   "addMoneyTitle": "Dodaj pieniądze",
   "withdrawMoneyTitle": "Wypłać środki",
   "quickAdd": "Szybkie dodawanie",
-  "remaining": "Brakuje {{amount}} €",
+  "remaining": "Brakuje {{amount}}",
   "monthsEstimate": "~{{months}} miesięcy w obecnym tempie",
   "save": "Zapisz",
   "cancel": "Anuluj",
@@ -526,8 +525,7 @@
   "new": "Nowa",
   "swipeHint": "Przesuń kategorię w lewo, aby ją edytować lub usunąć",
   "color": "Kolor",
-  "colorAuto": "Automatyczny",
-  "addHint": "Dotknij +, aby utworzyć kategorię"
+  "colorAuto": "Automatyczny"
   },
   "export": {
   "title": "Eksport danych",

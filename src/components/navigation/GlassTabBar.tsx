@@ -17,9 +17,6 @@ export const TAB_BAR_HEIGHT = 62;
 // Margen de la barra con los lados de la pantalla
 const SIDE = 14;
 
-// Distancia del centro del botón + al borde derecho (para señalarlo, ver AddHint)
-export const FAB_CENTER_FROM_RIGHT = SIDE + TAB_BAR_HEIGHT / 2;
-
 const IS_IOS = Platform.OS === 'ios';
 
 // El difuminado es nativo (expo-blur): una build anterior a él no lo trae y,

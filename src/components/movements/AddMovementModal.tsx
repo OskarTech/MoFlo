@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -47,6 +48,18 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
   const [pickerKey, setPickerKey] = useState(0);
 
   const isSavingRef = useRef(false);
+  const amountRef = useRef<TextInput>(null);
+
+  // Añadiendo, el teclado numérico sale solo, listo para el importe. Editando,
+  // no: casi siempre se cambia otra cosa. Con un momento de espera, cuando la
+  // hoja ya está en pantalla: enfocando el campo mientras aparecía, iOS no la
+  // enseñaba hasta tener el teclado listo, y la primera vez tras abrir la app
+  // tardaba segundos en salir
+  useEffect(() => {
+    if (!visible || editingMovement) return;
+    const id = setTimeout(() => amountRef.current?.focus(), 250);
+    return () => clearTimeout(id);
+  }, [visible, editingMovement]);
 
   // El movimiento que se edita, el mismo mientras la ventana se cierra: quien
   // la abre lo quita en cuanto se pide cerrar, y la ventana pasaba a decir
@@ -223,7 +236,12 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
         onChange={handleTypeChange}
       />
 
-      <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
+      <AmountInput
+        ref={amountRef}
+        value={amount}
+        onChangeText={setAmount}
+        currencySymbol={currencySymbol}
+      />
 
       <FilledInput
         icon="create-outline"

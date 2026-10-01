@@ -1,5 +1,5 @@
 import { getDateLocale } from './dateFormat';
-import { formatAmount } from './formatAmount';
+import { formatMoney } from './formatAmount';
 
 export interface DayGroup<T> {
   key: string;
@@ -53,5 +53,5 @@ export const dayLabel = (
 /** Total de un día para su cabecera: lo gastado, o lo que entró si no hubo gastos */
 export const dayTotalLabel = (group: { income: number; expense: number }, currencySymbol: string): string =>
   group.expense > 0
-    ? `-${formatAmount(group.expense)} ${currencySymbol}`
-    : `+${formatAmount(group.income)} ${currencySymbol}`;
+    ? formatMoney(group.expense, currencySymbol, { sign: '-' })
+    : formatMoney(group.income, currencySymbol, { sign: '+' });

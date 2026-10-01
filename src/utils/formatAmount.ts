@@ -1,5 +1,6 @@
 import i18n from '../i18n';
 import { useSettingsStore } from '../store/settingsStore';
+import { CURRENCIES } from '../constants/currencies';
 
 /**
  * Formato numérico por idioma.
@@ -64,12 +65,55 @@ export const formatAmount = (amount: number, decimals = 2): string => {
   return decPart ? `${sign}${intPart}${decimal}${decPart}` : `${sign}${intPart}`;
 };
 
-/** Importe con el símbolo de moneda detrás. */
+const SYMBOLS_BEFORE = new Set(CURRENCIES.filter((c) => c.symbolBefore).map((c) => c.symbol));
+
+/** Si el símbolo de esa moneda va delante del importe ($12,50, CHF 12,50) y no detrás (12,50 €) */
+export const symbolGoesBefore = (currencySymbol: string): boolean => SYMBOLS_BEFORE.has(currencySymbol);
+
+// Delante, un símbolo de letras se separa del número (CHF 12,50); uno como $ o
+// £ va pegado ($12,50, MX$12,50)
+export const beforeGap = (currencySymbol: string) => (/[A-Za-z]$/.test(currencySymbol) ? ' ' : '');
+
+/**
+ * Pone el símbolo de la moneda a un importe ya escrito (o a lo que lo tapa,
+ * como los puntos del saldo oculto): delante en las monedas que lo llevan así
+ * ($12,50, CHF 12,50), detrás y con un espacio en el resto (12,50 €).
+ * `sign` (+ o -) va delante de todo: -$12,50. `space: false` lo pega también
+ * detrás, para los textos cortos que ya lo llevaban así (+10€).
+ */
+export const withCurrency = (
+  amountText: string,
+  currencySymbol: string,
+  { sign = '', space = true }: { sign?: string; space?: boolean } = {},
+): string => (symbolGoesBefore(currencySymbol)
+  ? `${sign}${currencySymbol}${beforeGap(currencySymbol)}${amountText}`
+  : `${sign}${amountText}${space ? ' ' : ''}${currencySymbol}`);
+
+/**
+ * Dos importes de la misma moneda con un texto entre medias ("750 de 3.000 €").
+ * Con el símbolo detrás va solo al final, como hasta ahora; con el símbolo
+ * delante, en los dos ($750 de $3.000).
+ */
+export const joinMoney = (
+  firstText: string,
+  secondText: string,
+  currencySymbol: string,
+  joiner: string,
+): string => (symbolGoesBefore(currencySymbol)
+  ? `${withCurrency(firstText, currencySymbol)}${joiner}${withCurrency(secondText, currencySymbol)}`
+  : `${firstText}${joiner}${secondText} ${currencySymbol}`);
+
+/**
+ * Importe con su símbolo, delante o detrás según la moneda (ver withCurrency).
+ * Sin `sign`, lleva el de un importe negativo: -$12,50 y no $-12,50.
+ */
 export const formatMoney = (
   amount: number,
   currencySymbol: string,
-  decimals = 2,
-): string => `${formatAmount(amount, decimals)} ${currencySymbol}`;
+  { decimals = 2, sign }: { decimals?: number; sign?: string } = {},
+): string => withCurrency(formatAmount(Math.abs(amount), decimals), currencySymbol, {
+  sign: sign ?? (amount < 0 ? '-' : ''),
+});
 
 /**
  * Importe tal y como debe aparecer dentro de un campo de texto editable:

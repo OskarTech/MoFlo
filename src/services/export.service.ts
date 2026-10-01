@@ -57,6 +57,7 @@ const collectInput = (): ExportInput => {
     isShared,
     memberCount: account?.members?.length ?? 1,
     currencySymbol: CURRENCIES.find((c) => c.code === currencyCode)?.symbol ?? '€',
+    symbolBefore: !!CURRENCIES.find((c) => c.code === currencyCode)?.symbolBefore,
     dateFormat: ((isShared ? shared.sharedDateFormat : settings.dateFormat) === 'MM/DD/YYYY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY') as ExportDateFormat,
     separators: getSeparators(),
     exportedAt: new Date(),

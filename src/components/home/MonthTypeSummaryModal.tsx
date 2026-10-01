@@ -12,7 +12,7 @@ import { Movement, MovementType } from '../../types';
 import AnimatedBar from '../common/AnimatedBar';
 import StrikeText from '../common/StrikeText';
 import MemberName from '../common/MemberName';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatMoney } from '../../utils/formatAmount';
 import { getMemberLabel } from '../../utils/memberLabel';
 import { withAlpha } from '../../utils/color';
 import { byMostRecent } from '../../utils/sortMovements';
@@ -163,7 +163,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
           <Text style={[styles.totalLabel, { color: ui.onHeroSoft }]}>{t('resumen.total')}</Text>
           {/* Sin adjustsFontSizeToFit: en iOS (nueva arquitectura) puede dejar el texto invisible */}
           <Text style={[styles.totalAmount, { color: ui.onHero }]} numberOfLines={1}>
-            {total > 0 ? sign : ''}{formatAmount(total)} {currencySymbol}
+            {formatMoney(total, currencySymbol, { sign: total > 0 ? sign : '' })}
           </Text>
           <View style={styles.statsRow}>
             <Text style={[styles.statText, { color: ui.onHeroSoft }]} numberOfLines={1}>
@@ -173,7 +173,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
               <View style={styles.trendPill}>
                 <Icon name={diff > 0 ? 'trending-up' : 'trending-down'} size={12} color={ui.onHero} />
                 <Text style={[styles.trendText, { color: ui.onHero }]} numberOfLines={1}>
-                  {diff > 0 ? '+' : '-'}{formatAmount(Math.abs(diff))} {currencySymbol} vs {shortMonth(prevMonthIdx)}
+                  {formatMoney(Math.abs(diff), currencySymbol, { sign: diff > 0 ? '+' : '-' })} vs {shortMonth(prevMonthIdx)}
                 </Text>
               </View>
             )}
@@ -210,7 +210,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                         <StrikeText struck={cat.deleted(g.category, type)}>{cat.name(g.category, type)}</StrikeText>
                       </Text>
                       <Text style={[styles.catAmount, { color: amountColor }]} numberOfLines={1}>
-                        {sign}{formatAmount(g.amount)} {currencySymbol}
+                        {formatMoney(g.amount, currencySymbol, { sign })}
                       </Text>
                     </View>
                     <Text style={[styles.catCount, { color: dc.textSecondary }]} numberOfLines={1}>
@@ -259,7 +259,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
                             </Text>
                           </View>
                           <Text style={[styles.movAmount, { color: dc.textPrimary }]} numberOfLines={1}>
-                            {sign}{formatAmount(mov.amount)} {currencySymbol}
+                            {formatMoney(mov.amount, currencySymbol, { sign })}
                           </Text>
                         </View>
                       );

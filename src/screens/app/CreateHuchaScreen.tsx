@@ -294,7 +294,7 @@ const CreateHuchaScreen = () => {
                 {isAutomatic && (
                   <View style={[styles.autoFields, { borderTopColor: ui.hair }]}>
                     <FilledInput
-                      placeholder={t('hucha.automaticAmount')}
+                      placeholder={t('hucha.automaticAmount', { symbol: currencySymbol })}
                       keyboardType="decimal-pad"
                       value={monthlyAmount}
                       onChangeText={setMonthlyAmount}

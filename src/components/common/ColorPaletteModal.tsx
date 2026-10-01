@@ -6,7 +6,7 @@ import Icon from './Icon';
 import { useTheme } from '../../hooks/useTheme';
 import { getDynamicColors, ColorPaletteId } from '../../theme';
 import { CATEGORY_COLORS } from '../../theme/categoryColors';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatMoney } from '../../utils/formatAmount';
 import BottomSheet from './BottomSheet';
 
 export const PALETTE_ORDER: ColorPaletteId[] = [
@@ -30,7 +30,7 @@ interface Props {
 const ColorPaletteModal = ({ visible, selectedPalette, onSelect, onDismiss, currencySymbol = '€' }: Props) => {
   const { t } = useTranslation();
   const { isDark, ui } = useTheme();
-  const sample = `${formatAmount(839.82)} ${currencySymbol}`;
+  const sample = formatMoney(839.82, currencySymbol);
 
   return (
     <BottomSheet

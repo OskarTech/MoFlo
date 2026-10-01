@@ -1,7 +1,7 @@
 import { utf8, zip } from './zip';
 import {
   ExportInput, ExportSummary, CategoryRow,
-  accountLabel, formatDay, monthLabel, periodLabel, sortedHuchaMovements, sortedMovements,
+  accountLabel, formatDay, monthLabel, periodLabel, sortedHuchaMovements, sortedMovements, symbolGap,
 } from './data';
 
 // Excel (.xlsx) escrito a mano: un zip con los XML del formato Office Open XML.
@@ -170,7 +170,9 @@ const sheetNames = (names: string[]) => {
 export const buildXlsx = (input: ExportInput, summary: ExportSummary): Uint8Array => {
   const { t } = input;
   const st = new Styles();
-  const money = `#,##0.00\\ "${input.currencySymbol.replace(/"/g, '')}"`;
+  // El formato de número de Excel, con el símbolo delante o detrás como en la app
+  const symbol = `"${input.currencySymbol.replace(/"/g, '')}${input.symbolBefore ? symbolGap(input) : ''}"`;
+  const money = input.symbolBefore ? `${symbol}#,##0.00` : `#,##0.00\\ ${symbol}`;
   const dateFmt = input.dateFormat === 'MM/DD/YYYY' ? 'mm/dd/yyyy' : 'dd/mm/yyyy';
   const S = {
     title: st.get({ bold: true, size: 18, color: input.accent }),

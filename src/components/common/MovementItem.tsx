@@ -7,7 +7,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { getMemberLabel } from '../../utils/memberLabel';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatMoney } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { Movement, MovementType } from '../../types';
 import StrikeText from './StrikeText';
@@ -86,7 +86,7 @@ const MovementItem = ({ movement, currencySymbol, detail, redExpenses, style }: 
         style={[styles.amount, { color: amountColor }]}
         numberOfLines={1}
       >
-        {isIncome ? '+' : '-'}{formatAmount(movement.amount)} {currencySymbol}
+        {formatMoney(movement.amount, currencySymbol, { sign: isIncome ? '+' : '-' })}
       </Text>
     </View>
   );

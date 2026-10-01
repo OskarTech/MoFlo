@@ -7,7 +7,7 @@ import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatMoney } from '../../utils/formatAmount';
 import { getDateLocale } from '../../utils/dateFormat';
 import { byMostRecent } from '../../utils/sortMovements';
 import MovementItem from '../common/MovementItem';
@@ -150,11 +150,11 @@ const DailySummaryModal = ({ visible, origin, onDismiss }: Props) => {
           <Text style={[styles.balanceLabel, { color: ui.onHeroSoft }]}>{t('home.dayBalance')}</Text>
           {/* Sin adjustsFontSizeToFit: en iOS (nueva arquitectura) puede dejar el texto invisible */}
           <Text style={[styles.balanceAmount, { color: ui.onHero }]} numberOfLines={1}>
-            {balanceSign}{formatAmount(Math.abs(balance))} {currencySymbol}
+            {formatMoney(Math.abs(balance), currencySymbol, { sign: balanceSign })}
           </Text>
           <View style={styles.statsRow}>
-            {stat('arrow-down', t('home.income'), `${formatAmount(totalIncome)} ${currencySymbol}`)}
-            {stat('arrow-up', t('home.expenses'), `${formatAmount(totalExpense)} ${currencySymbol}`, true)}
+            {stat('arrow-down', t('home.income'), formatMoney(totalIncome, currencySymbol))}
+            {stat('arrow-up', t('home.expenses'), formatMoney(totalExpense, currencySymbol), true)}
           </View>
         </>
       )}

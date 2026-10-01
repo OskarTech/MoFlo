@@ -10,7 +10,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { Hucha } from '../../types';
-import { formatAmount as formatAmountLocalized } from '../../utils/formatAmount';
+import { formatAmount as formatAmountLocalized, withCurrency } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroTitleBar, HeroChip } from '../../components/layout/HeroBar';
@@ -59,8 +59,10 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
             {hucha.name}
           </Text>
           <Text style={[styles.cardAmounts, { color: dc.textSecondary }]} numberOfLines={1}>
-            {formatAmount(hucha.currentAmount)} {currencySymbol}
-            {hasTarget ? ` ${t('hucha.of')} ${formatAmount(hucha.targetAmount)} ${currencySymbol}` : ` · ${t('hucha.accumulating')}`}
+            {withCurrency(formatAmount(hucha.currentAmount), currencySymbol)}
+            {hasTarget
+              ? ` ${t('hucha.of')} ${withCurrency(formatAmount(hucha.targetAmount), currencySymbol)}`
+              : ` · ${t('hucha.accumulating')}`}
           </Text>
         </View>
         {hasTarget ? (
@@ -90,7 +92,7 @@ const HuchaCard = ({ hucha, onPress }: { hucha: Hucha; onPress: () => void }) =>
           />
           <Text style={[styles.cardMeta, { color: dc.textSecondary }]} numberOfLines={1}>
             {hucha.isAutomatic && hucha.monthlyAmount
-              ? t('hucha.everyMonth', { amount: hucha.monthlyAmount, symbol: currencySymbol })
+              ? t('hucha.everyMonth', { amount: withCurrency(formatAmount(hucha.monthlyAmount), currencySymbol) })
               : ''}
             {hucha.targetDate && hucha.isAutomatic && hucha.monthlyAmount ? ' · ' : ''}
             {targetDate}
@@ -139,7 +141,7 @@ const HuchaScreen = () => {
       <View style={styles.heroBody}>
         <Text style={[styles.heroLabel, { color: ui.onHeroSoft }]}>{t('hucha.totalSaved')}</Text>
         <Text style={[styles.heroAmount, { color: ui.onHero }]} numberOfLines={1}>
-          {formatAmount(totalSaved)} {currencySymbol}
+          {withCurrency(formatAmount(totalSaved), currencySymbol)}
         </Text>
         {totalTarget > 0 && (
           <>
@@ -147,7 +149,7 @@ const HuchaScreen = () => {
               <View style={[styles.heroFill, { width: `${overallPct}%` }]} />
             </View>
             <Text style={[styles.heroCaption, { color: ui.onHeroSoft }]}>
-              {overallPct}% {t('hucha.of')} {formatAmount(totalTarget)} {currencySymbol}
+              {overallPct}% {t('hucha.of')} {withCurrency(formatAmount(totalTarget), currencySymbol)}
             </Text>
           </>
         )}
@@ -156,7 +158,8 @@ const HuchaScreen = () => {
             <Icon name={thisMonthNet > 0 ? 'arrow-up' : 'arrow-down'} size={13} color={ui.onHero} />
             <Text style={[styles.heroPillText, { color: ui.onHero }]}>
               {t(thisMonthNet > 0 ? 'hucha.thisMonthAdded' : 'hucha.thisMonthWithdrawn', {
-                amount: formatAmount(Math.abs(thisMonthNet)), symbol: currencySymbol,
+                // Pegado, como antes: +50€ este mes, +$50 este mes
+                amount: withCurrency(formatAmount(Math.abs(thisMonthNet)), currencySymbol, { space: false }),
               })}
             </Text>
           </View>

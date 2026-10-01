@@ -168,8 +168,7 @@
   "expense": "Expenses",
   "net": "Net",
   "perMonth": "/ month",
-  "dayPickerLabel": "Day of each month",
-  "addHint": "Tap + to add a recurring movement"
+  "dayPickerLabel": "Day of each month"
   },
   "movementsList": {
   "title": "Movements",
@@ -375,19 +374,19 @@
   "chooseIcon": "Choose an icon",
   "chooseColor": "Choose a color",
   "automatic": "Monthly automatic contribution",
-  "automaticAmount": "Monthly amount (€)",
+  "automaticAmount": "Monthly amount ({{symbol}})",
   "dayOfMonth": "Day",
   "dayN": "day {{day}}",
   "chooseDayOfMonth": "Choose the day to make the contribution",
   "nextContribution": "next {{date}}",
-  "everyMonth": "{{amount}} {{symbol}} per month",
-  "thisMonthAdded": "+{{amount}}{{symbol}} this month",
-  "thisMonthWithdrawn": "-{{amount}}{{symbol}} this month",
+  "everyMonth": "{{amount}} per month",
+  "thisMonthAdded": "+{{amount}} this month",
+  "thisMonthWithdrawn": "-{{amount}} this month",
   "addMoney": "+ Add to goal",
   "addMoneyTitle": "Add money",
   "withdrawMoneyTitle": "Withdraw money",
   "quickAdd": "Quick add",
-  "remaining": "{{amount}} € remaining",
+  "remaining": "{{amount}} remaining",
   "monthsEstimate": "~{{months}} months at current pace",
   "save": "Save",
   "cancel": "Cancel",
@@ -520,8 +519,7 @@
   "new": "New",
   "swipeHint": "Swipe a category to the left to edit or remove it",
   "color": "Color",
-  "colorAuto": "Automatic",
-  "addHint": "Tap + to create a category"
+  "colorAuto": "Automatic"
   },
   "export": {
   "title": "Export data",

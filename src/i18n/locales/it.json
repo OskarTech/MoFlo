@@ -168,8 +168,7 @@
     "expense": "Spese",
     "net": "Netto",
     "perMonth": "/ mese",
-    "dayPickerLabel": "Giorno di ogni mese",
-    "addHint": "Tocca + per aggiungere un movimento ricorrente"
+    "dayPickerLabel": "Giorno di ogni mese"
   },
   "movementsList": {
     "title": "Movimenti",
@@ -375,19 +374,19 @@
     "chooseIcon": "Scegli un'icona",
     "chooseColor": "Scegli un colore",
     "automatic": "Contributo mensile automatico",
-    "automaticAmount": "Importo mensile (€)",
+    "automaticAmount": "Importo mensile ({{symbol}})",
     "dayOfMonth": "Giorno",
     "dayN": "giorno {{day}}",
     "chooseDayOfMonth": "Scegli il giorno per effettuare il contributo",
     "nextContribution": "prossimo {{date}}",
-    "everyMonth": "{{amount}} {{symbol}} al mese",
-    "thisMonthAdded": "+{{amount}}{{symbol}} questo mese",
-    "thisMonthWithdrawn": "-{{amount}}{{symbol}} questo mese",
+    "everyMonth": "{{amount}} al mese",
+    "thisMonthAdded": "+{{amount}} questo mese",
+    "thisMonthWithdrawn": "-{{amount}} questo mese",
     "addMoney": "+ Aggiungi all'obiettivo",
     "addMoneyTitle": "Aggiungi denaro",
     "withdrawMoneyTitle": "Preleva denaro",
     "quickAdd": "Aggiunta rapida",
-    "remaining": "Ti mancano {{amount}} €",
+    "remaining": "Ti mancano {{amount}}",
     "monthsEstimate": "~{{months}} mesi al ritmo attuale",
     "save": "Salva",
     "cancel": "Annulla",
@@ -519,8 +518,7 @@
     "new": "Nuova",
     "swipeHint": "Scorri una categoria verso sinistra per modificarla o rimuoverla",
     "color": "Colore",
-    "colorAuto": "Automatico",
-    "addHint": "Tocca + per creare una categoria"
+    "colorAuto": "Automatico"
   },
   "export": {
     "title": "Esporta dati",

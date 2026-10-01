@@ -11,7 +11,9 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { MovementType } from '../../types';
-import { formatAmount, splitAmountParts } from '../../utils/formatAmount';
+import {
+  beforeGap, formatMoney, splitAmountParts, symbolGoesBefore, withCurrency,
+} from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { getDateLocale } from '../../utils/dateFormat';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
@@ -68,6 +70,7 @@ const BalanceHero = ({
 
   const spentPct = totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0;
   const { intPart, decPart, decimalSeparator } = splitAmountParts(Math.abs(balance));
+  const symbolBefore = symbolGoesBefore(currencySymbol);
 
   // iOS (nueva arquitectura) puede dibujar vacío un Text con adjustsFontSizeToFit dentro
   // de una fila con flexShrink: el tamaño de la parte entera se calcula a mano según
@@ -97,7 +100,7 @@ const BalanceHero = ({
           <Text style={[styles.statLabel, { color: ui.onHeroSoft }]}>{label}</Text>
         </View>
         <Text style={[styles.statAmount, { color: ui.onHero }]} numberOfLines={1}>
-          {hidden ? `${HIDDEN} ${currencySymbol}` : `${formatAmount(amount)} ${currencySymbol}`}
+          {hidden ? withCurrency(HIDDEN, currencySymbol) : formatMoney(amount, currencySymbol)}
         </Text>
       </TouchableOpacity>
     </View>
@@ -140,13 +143,22 @@ const BalanceHero = ({
         ) : (
           <>
             {balance < 0 && <Text style={[styles.amountSign, { color: ui.onHero }]}>-</Text>}
+            {/* El símbolo, pequeño como los decimales: delante en las monedas que
+                lo llevan así ($1.234,56) y detrás en el resto (1.234,56 €) */}
+            {symbolBefore && (
+              <Text style={[styles.amountDec, beforeGap(currencySymbol) ? styles.amountSymbolSpaced : styles.amountSymbolBefore]}>
+                {currencySymbol}
+              </Text>
+            )}
             <Text
               style={[styles.amountInt, { fontSize: intFontSize, lineHeight: intLineHeight, color: ui.onHero }]}
               numberOfLines={1}
             >
               {intPart}
             </Text>
-            <Text style={styles.amountDec}>{decimalSeparator}{decPart} {currencySymbol}</Text>
+            <Text style={styles.amountDec}>
+              {decimalSeparator}{decPart}{symbolBefore ? '' : ` ${currencySymbol}`}
+            </Text>
           </>
         )}
       </View>
@@ -342,7 +354,7 @@ const HomeScreen = () => {
                     <StrikeText struck={cat.deleted(category, 'expense')}>{cat.name(category, 'expense')}</StrikeText>
                   </Text>
                   <Text style={[styles.catAmount, { color: dc.textPrimary }]} numberOfLines={1}>
-                    {formatAmount(amount)} {currencySymbol}
+                    {formatMoney(amount, currencySymbol)}
                   </Text>
                   <View style={[styles.catTrack, { backgroundColor: ui.fill2 }]}>
                     <View style={[styles.catFill, { width: `${percentage}%`, backgroundColor: color }]} />
@@ -427,6 +439,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)', fontSize: BALANCE_DEC_SIZE,
     fontFamily: 'Poppins_600SemiBold', marginBottom: 6, marginLeft: 1,
   },
+  amountSymbolBefore: { marginLeft: 0, marginRight: 2 },
+  // Un símbolo de letras (CHF) se separa más de la cifra
+  amountSymbolSpaced: { marginLeft: 0, marginRight: 7 },
   track: {
     height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)',
     marginTop: 14, overflow: 'hidden',

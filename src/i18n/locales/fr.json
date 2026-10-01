@@ -168,8 +168,7 @@
     "expense": "Dépenses",
     "net": "Net",
     "perMonth": "/ mois",
-    "dayPickerLabel": "Jour de chaque mois",
-    "addHint": "Appuyez sur + pour ajouter un mouvement récurrent"
+    "dayPickerLabel": "Jour de chaque mois"
   },
   "movementsList": {
     "title": "Mouvements",
@@ -375,19 +374,19 @@
     "chooseIcon": "Choisir une icône",
     "chooseColor": "Choisir une couleur",
     "automatic": "Contribution mensuelle automatique",
-    "automaticAmount": "Montant mensuel (€)",
+    "automaticAmount": "Montant mensuel ({{symbol}})",
     "dayOfMonth": "Jour",
     "dayN": "jour {{day}}",
     "chooseDayOfMonth": "Choisissez le jour pour effectuer la contribution",
     "nextContribution": "prochain {{date}}",
-    "everyMonth": "{{amount}} {{symbol}} par mois",
-    "thisMonthAdded": "+{{amount}}{{symbol}} ce mois-ci",
-    "thisMonthWithdrawn": "-{{amount}}{{symbol}} ce mois-ci",
+    "everyMonth": "{{amount}} par mois",
+    "thisMonthAdded": "+{{amount}} ce mois-ci",
+    "thisMonthWithdrawn": "-{{amount}} ce mois-ci",
     "addMoney": "+ Ajouter à l'objectif",
     "addMoneyTitle": "Ajouter de l'argent",
     "withdrawMoneyTitle": "Retirer de l'argent",
     "quickAdd": "Ajout rapide",
-    "remaining": "Il vous reste {{amount}} €",
+    "remaining": "Il vous reste {{amount}}",
     "monthsEstimate": "~{{months}} mois au rythme actuel",
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -519,8 +518,7 @@
     "new": "Nouvelle",
     "swipeHint": "Faites glisser une catégorie vers la gauche pour la modifier ou la supprimer",
     "color": "Couleur",
-    "colorAuto": "Automatique",
-    "addHint": "Appuyez sur + pour créer une catégorie"
+    "colorAuto": "Automatique"
   },
   "export": {
     "title": "Exporter les données",

@@ -135,6 +135,10 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   MXN: 'MX$',
 };
 
+// Monedas cuyo símbolo va delante del importe ($12,50, CHF 12,50), como en la
+// app (src/constants/currencies.ts); el resto, detrás (12,50€)
+const SYMBOLS_BEFORE = new Set(['$', '£', 'CHF', 'MX$']);
+
 // Formato europeo con coma decimal para todos los idiomas
 // (decisión de producto: consistente y sin milésimas si es entero).
 const formatAmount = (amount: number, currency: string): string => {
@@ -142,7 +146,9 @@ const formatAmount = (amount: number, currency: string): string => {
   const [intPart, decPart] = Math.abs(amount).toFixed(2).split('.');
   const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const formatted = decPart === '00' ? withThousands : `${withThousands},${decPart}`;
-  return `${formatted}${symbol}`;
+  if (!SYMBOLS_BEFORE.has(symbol)) return `${formatted}${symbol}`;
+  // Un símbolo de letras se separa del número (CHF 12,50); $ o £ van pegados
+  return `${symbol}${/[A-Za-z]$/.test(symbol) ? ' ' : ''}${formatted}`;
 };
 
 const CATEGORY_LABELS: Record<Lang, Record<string, string>> = {

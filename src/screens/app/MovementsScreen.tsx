@@ -18,7 +18,7 @@ import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { Movement, MovementType, HuchaMovement, RecurringMovement } from '../../types';
 import AddRecurringModal from '../../components/movements/AddRecurringModal';
 import AddMovementModal from '../../components/movements/AddMovementModal';
-import { formatAmount } from '../../utils/formatAmount';
+import { formatAmount, formatMoney } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { groupByDay, dayLabel, dayTotalLabel } from '../../utils/groupByDay';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
@@ -28,7 +28,6 @@ import { HeroTop, HeroSheetCap, HeroStatusBar, useHeroScroll } from '../../compo
 import { HeroTitleBar, MonthSelector } from '../../components/layout/HeroBar';
 import { GroupHeader } from '../../components/layout/SheetSection';
 import { useTabBarSpace } from '../../components/navigation/GlassTabBar';
-import AddHint from '../../components/navigation/AddHint';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import { byMostRecent } from '../../utils/sortMovements';
 
@@ -67,7 +66,7 @@ const MovementRowBase = ({
     const title = movement.note || cat.name(movement.category, movement.type);
     Alert.alert(
       t('movementsList.deleteConfirm'),
-      `${title} · ${formatAmount(movement.amount)} ${currencySymbol}`,
+      `${title} · ${formatMoney(movement.amount, currencySymbol)}`,
       [
         { text: t('movements.cancel'), style: 'cancel' },
         {
@@ -123,7 +122,7 @@ const HuchaMovementRowBase = ({ movement }: { movement: HuchaMovement }) => {
         </Text>
       </View>
       <Text style={[styles.hAmount, { color: isDeposit ? ui.savingsText : dc.textPrimary }]}>
-        {isDeposit ? '+' : '-'}{formatAmount(movement.amount)} {currencySymbol}
+        {formatMoney(movement.amount, currencySymbol, { sign: isDeposit ? '+' : '-' })}
       </Text>
     </View>
   );
@@ -187,7 +186,7 @@ const RecurringRowBase = ({
           </Text>
         </View>
         <Text style={[styles.hAmount, { color: isIncome ? ui.incomeText : dc.textPrimary }]}>
-          {isIncome ? '+' : '-'}{formatAmount(item.amount)} {currencySymbol}
+          {formatMoney(item.amount, currencySymbol, { sign: isIncome ? '+' : '-' })}
         </Text>
       </View>
     </SwipeableRow>
@@ -370,21 +369,21 @@ const MovementsScreen = () => {
     if (filter === 'recurring') {
       return {
         label: `${t('recurring.net')} ${t('recurring.perMonth')}`,
-        value: `${recurringNet >= 0 ? '+' : '-'}${formatAmount(Math.abs(recurringNet))} ${currencySymbol}`,
+        value: formatMoney(Math.abs(recurringNet), currencySymbol, { sign: recurringNet >= 0 ? '+' : '-' }),
       };
     }
     if (filter === 'hucha') {
       const net = monthHuchaMovements.reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
       return {
         label: t('home.movementCount', { count: monthHuchaMovements.length }),
-        value: `${net > 0 ? '+' : net < 0 ? '-' : ''}${formatAmount(Math.abs(net))} ${currencySymbol}`,
+        value: formatMoney(Math.abs(net), currencySymbol, { sign: net > 0 ? '+' : net < 0 ? '-' : '' }),
       };
     }
     const total = monthMovements.reduce((s, m) => s + m.amount, 0);
     const sign = total === 0 ? '' : filter === 'income' ? '+' : '-';
     return {
       label: t('home.movementCount', { count: monthMovements.length }),
-      value: `${sign}${formatAmount(total)} ${currencySymbol}`,
+      value: formatMoney(total, currencySymbol, { sign }),
     };
   })();
 
@@ -493,14 +492,14 @@ const MovementsScreen = () => {
       <View style={styles.recCol}>
         <Text style={[styles.recLabel, { color: dc.textSecondary }]}>{t('recurring.income')}</Text>
         <Text style={[styles.recValue, { color: ui.incomeText }]} numberOfLines={1}>
-          +{formatAmount(recurringIncomeTotal)} {currencySymbol}
+          {formatMoney(recurringIncomeTotal, currencySymbol, { sign: '+' })}
         </Text>
       </View>
       <View style={[styles.recSep, { backgroundColor: ui.hair }]} />
       <View style={styles.recCol}>
         <Text style={[styles.recLabel, { color: dc.textSecondary }]}>{t('recurring.expense')}</Text>
         <Text style={[styles.recValue, { color: dc.textPrimary }]} numberOfLines={1}>
-          -{formatAmount(recurringExpenseTotal)} {currencySymbol}
+          {formatMoney(recurringExpenseTotal, currencySymbol, { sign: '-' })}
         </Text>
       </View>
     </View>
@@ -548,8 +547,7 @@ const MovementsScreen = () => {
         initialNumToRender={10}
         maxToRenderPerBatch={8}
         windowSize={7}
-        // flexGrow: aunque la lista sea corta, el aviso de los fijos queda abajo del todo
-        contentContainerStyle={{ paddingBottom: tabSpace, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: tabSpace }}
         ListHeaderComponent={
           <>
             <HeroTop onHeight={setHeroHeight}>{hero}</HeroTop>
@@ -558,9 +556,6 @@ const MovementsScreen = () => {
           </>
         }
         ListEmptyComponent={emptyState}
-        // En los fijos, el + de la barra añade uno: la flecha lo señala
-        ListFooterComponent={filter === 'recurring' ? <AddHint label={t('recurring.addHint')} /> : null}
-        ListFooterComponentStyle={filter === 'recurring' ? styles.footerFill : undefined}
       />
       <HeroStatusBar scrollY={scrollY} heroHeight={heroHeight} />
 
@@ -618,8 +613,6 @@ const styles = StyleSheet.create({
   hSub: { fontSize: 12.5, fontFamily: 'Poppins_400Regular', marginTop: 1 },
   hAmount: { fontSize: 15, fontFamily: 'Poppins_600SemiBold', flexShrink: 0 },
 
-  // Ocupa lo que queda de pantalla y deja el aviso abajo, sobre el +
-  footerFill: { flexGrow: 1, justifyContent: 'flex-end' },
   emptyState: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
   emptyIcon: {
     width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 14,

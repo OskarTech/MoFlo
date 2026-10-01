@@ -24,6 +24,8 @@ export interface ExportInput {
   isShared: boolean;
   memberCount: number;
   currencySymbol: string;
+  /** El símbolo va delante del importe ($12,50); si no, detrás (12,50 €) */
+  symbolBefore: boolean;
   dateFormat: ExportDateFormat;
   separators: { thousands: string; decimal: string };
   exportedAt: Date;
@@ -169,9 +171,13 @@ export const formatNumber = (n: number, input: ExportInput, decimals = 2): strin
   return `${n < 0 ? '-' : ''}${grouped}${dec ? input.separators.decimal + dec : ''}`;
 };
 
-/** Importe con el símbolo detrás, como en la app */
-export const formatMoney = (n: number, input: ExportInput): string =>
-  `${formatNumber(n, input)} ${input.currencySymbol}`;
+/** Importe con su símbolo, delante o detrás según la moneda, como en la app */
+export const formatMoney = (n: number, input: ExportInput): string => (input.symbolBefore
+  ? `${n < 0 ? '-' : ''}${input.currencySymbol}${symbolGap(input)}${formatNumber(Math.abs(n), input)}`
+  : `${formatNumber(n, input)} ${input.currencySymbol}`);
+
+/** Delante, un símbolo de letras se separa del número (CHF 12,50); $ o £ van pegados */
+export const symbolGap = (input: ExportInput): string => (/[A-Za-z]$/.test(input.currencySymbol) ? ' ' : '');
 
 export const formatDay = (date: Date, format: ExportDateFormat): string => {
   const day = String(date.getDate()).padStart(2, '0');

@@ -18,7 +18,6 @@ import { ColorPickerPanel, RainbowSwatch } from '../common/ColorPicker';
 import { HeroScrollScreen } from '../layout/HeroScreen';
 import { HeroTitleBar } from '../layout/HeroBar';
 import { GroupHeader } from '../layout/SheetSection';
-import AddHint from '../navigation/AddHint';
 
 const outline = (icon: string) => `${icon}-outline` as IoniconName;
 
@@ -468,9 +467,6 @@ const CategoriesManager = ({
           )}
           {customCats.map((cat) => renderRow(cat, false))}
         </View>
-
-        {/* Se crean con el + de la barra: la flecha lo señala */}
-        <AddHint label={t('categories.addHint')} style={styles.addHint} />
       </HeroScrollScreen>
 
       <CategorySheet
@@ -500,8 +496,6 @@ const styles = StyleSheet.create({
   rowIcon: { width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   rowName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   empty: { fontSize: 13, fontFamily: 'Poppins_400Regular', paddingVertical: 8 },
-  // Abajo del todo aunque la lista sea corta, para que la flecha acabe sobre el +
-  addHint: { marginTop: 'auto', paddingTop: 16 },
 
   preview: { alignItems: 'center', gap: 8, paddingBottom: 14 },
   previewIcon: { width: 66, height: 66, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
