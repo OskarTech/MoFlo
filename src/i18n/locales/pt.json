@@ -748,5 +748,9 @@
     "colorPickerUse": "Usar esta cor",
     "customColor": "Cor personalizada",
     "done": "Concluído"
+  },
+  "accountSwitch": {
+    "switching": "A mudar de conta…",
+    "error": "Não foi possível concluir. Verifique a sua ligação e tente novamente."
   }
 }

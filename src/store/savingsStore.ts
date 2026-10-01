@@ -12,11 +12,17 @@ import {
   planAutomaticContributions,
   ContributionCandidate,
 } from '../utils/automaticContributions';
+import { SHARED_CACHE, sharedCacheKey, readSharedCache } from './sharedCache';
 
 const STORAGE_KEY = '@moflo_huchas';
-const SHARED_STORAGE_KEY = '@moflo_shared_huchas';
 const MOV_STORAGE_KEY = '@moflo_hucha_movements';
-const SHARED_MOV_STORAGE_KEY = '@moflo_shared_hucha_movements';
+
+// Copia en el móvil de las huchas y de sus movimientos: la personal o la de
+// esa cuenta compartida (ver sharedCache)
+const huchasKeyFor = (accountId: string | null) =>
+  accountId ? sharedCacheKey(SHARED_CACHE.HUCHAS, accountId) : STORAGE_KEY;
+const movKeyFor = (accountId: string | null) =>
+  accountId ? sharedCacheKey(SHARED_CACHE.HUCHA_MOVEMENTS, accountId) : MOV_STORAGE_KEY;
 
 let unsubscribeShared: (() => void) | null = null;
 let unsubscribeSharedMovements: (() => void) | null = null;
@@ -118,10 +124,13 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
   loadHuchaMovements: async (accountId) => {
     const resolvedId = accountId !== undefined ? accountId : get().sharedAccountId;
-    const key = resolvedId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const key = movKeyFor(resolvedId);
     try {
-      const cached = await AsyncStorage.getItem(key);
-      if (cached) set({ huchaMovements: JSON.parse(cached) });
+      const cached = resolvedId
+        ? await readSharedCache(SHARED_CACHE.HUCHA_MOVEMENTS, resolvedId)
+        : await AsyncStorage.getItem(key);
+      // Sin copia de esa cuenta, vacío: si no, seguían los de la cuenta de antes
+      set({ huchaMovements: cached ? JSON.parse(cached) : [] });
 
       const uid = auth().currentUser?.uid;
       if (!uid) return;
@@ -131,7 +140,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         : getUserMovementsCol();
       const snap = await col.orderBy('createdAt', 'desc').get();
       const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
-      set({ huchaMovements: movements });
+      // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
+      if (get().sharedAccountId === resolvedId) set({ huchaMovements: movements });
       await AsyncStorage.setItem(key, JSON.stringify(movements));
     } catch (e) {
       console.error('Error loading hucha movements:', e);
@@ -142,14 +152,16 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const cached = await AsyncStorage.getItem(STORAGE_KEY);
-      if (cached) set({ huchas: JSON.parse(cached) });
+      // Sin copia, vacío: si no, seguían las de la cuenta compartida
+      set({ huchas: cached ? JSON.parse(cached) : [] });
 
       const uid = auth().currentUser?.uid;
       if (!uid) return;
 
       const snap = await getUserHuchasCol().orderBy('createdAt', 'desc').get();
       const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
-      set({ huchas });
+      // Si entretanto se ha pasado a la compartida, solo se guarda la copia
+      if (get().sharedAccountId === null) set({ huchas });
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(huchas));
       await get().loadHuchaMovements(null);
     } catch (e) {
@@ -162,13 +174,15 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
   loadSharedHuchas: async (accountId) => {
     set({ isLoading: true });
     try {
-      const cached = await AsyncStorage.getItem(SHARED_STORAGE_KEY);
-      if (cached) set({ huchas: JSON.parse(cached) });
+      const cached = await readSharedCache(SHARED_CACHE.HUCHAS, accountId);
+      // Sin copia de esta cuenta, vacío: si no, seguían las de la cuenta de antes
+      set({ huchas: cached ? JSON.parse(cached) : [] });
 
       const snap = await getSharedHuchasCol(accountId).orderBy('createdAt', 'desc').get();
       const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
-      set({ huchas });
-      await AsyncStorage.setItem(SHARED_STORAGE_KEY, JSON.stringify(huchas));
+      // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
+      if (get().sharedAccountId === accountId) set({ huchas });
+      await AsyncStorage.setItem(huchasKeyFor(accountId), JSON.stringify(huchas));
       await get().loadHuchaMovements(accountId);
     } catch (e) {
       console.error('Error loading shared huchas:', e);
@@ -233,7 +247,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const { sharedAccountId, huchas } = get();
     const updated = huchas.map(h => h.id === id ? { ...h, ...data } : h);
     set({ huchas: updated });
-    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const key = huchasKeyFor(sharedAccountId);
     await AsyncStorage.setItem(key, JSON.stringify(updated));
     // Never write currentAmount through this path — it's mutated only by
     // addToHucha/applyAutomaticContributions via FieldValue.increment so that
@@ -277,7 +291,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       h.id === huchaId ? { ...h, currentAmount: newAmount } : h
     );
     set({ huchas: updatedHuchas });
-    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const huchasKey = huchasKeyFor(sharedAccountId);
     await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
 
     const movId = `hm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -297,7 +311,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
 
     const updatedMovements = [huchaMovement, ...get().huchaMovements];
     set({ huchaMovements: updatedMovements });
-    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const movKey = movKeyFor(sharedAccountId);
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
     try {
@@ -348,8 +362,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     );
     const updatedMovements = huchaMovements.map(m => (m.id === id ? { ...m, amount, type } : m));
     set({ huchas: updatedHuchas, huchaMovements: updatedMovements });
-    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
-    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const huchasKey = huchasKeyFor(sharedAccountId);
+    const movKey = movKeyFor(sharedAccountId);
     await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
@@ -387,8 +401,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     );
     const updatedMovements = huchaMovements.filter(m => m.id !== id);
     set({ huchas: updatedHuchas, huchaMovements: updatedMovements });
-    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
-    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const huchasKey = huchasKeyFor(sharedAccountId);
+    const movKey = movKeyFor(sharedAccountId);
     await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
@@ -414,8 +428,8 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     const updatedMovements = huchaMovements.filter(m => m.huchaId !== id);
     set({ huchas: updatedHuchas, huchaMovements: updatedMovements });
 
-    const huchasKey = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
-    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const huchasKey = huchasKeyFor(sharedAccountId);
+    const movKey = movKeyFor(sharedAccountId);
     await AsyncStorage.setItem(huchasKey, JSON.stringify(updatedHuchas));
     await AsyncStorage.setItem(movKey, JSON.stringify(updatedMovements));
 
@@ -460,7 +474,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       nextContributionDate: undefined,
     } : h);
     set({ huchas: updated });
-    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const key = huchasKeyFor(sharedAccountId);
     await AsyncStorage.setItem(key, JSON.stringify(updated));
     try {
       const ref = sharedAccountId
@@ -486,7 +500,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       return rest as Hucha;
     });
     set({ huchas: updated });
-    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const key = huchasKeyFor(sharedAccountId);
     await AsyncStorage.setItem(key, JSON.stringify(updated));
     try {
       const ref = sharedAccountId
@@ -529,13 +543,13 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       };
     });
     set({ huchas: updatedHuchas });
-    const key = sharedAccountId ? SHARED_STORAGE_KEY : STORAGE_KEY;
+    const key = huchasKeyFor(sharedAccountId);
     await AsyncStorage.setItem(key, JSON.stringify(updatedHuchas));
 
     const newMovements = candidates.map(c => c.movement);
     const allMovements = [...newMovements, ...get().huchaMovements];
     set({ huchaMovements: allMovements });
-    const movKey = sharedAccountId ? SHARED_MOV_STORAGE_KEY : MOV_STORAGE_KEY;
+    const movKey = movKeyFor(sharedAccountId);
     await AsyncStorage.setItem(movKey, JSON.stringify(allMovements));
 
     const huchasCol = sharedAccountId ? getSharedHuchasCol(sharedAccountId) : getUserHuchasCol();
@@ -585,7 +599,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         if (subscribedHuchasAccountId !== accountId) return;
         const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
         set({ huchas });
-        AsyncStorage.setItem(SHARED_STORAGE_KEY, JSON.stringify(huchas));
+        AsyncStorage.setItem(huchasKeyFor(accountId), JSON.stringify(huchas));
       }, (e) => {
         reportError(e, 'listener de huchas compartidas');
         // Firestore cierra el listener tras un error: permitir resuscribirse
@@ -615,7 +629,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         if (subscribedHuchaMovementsAccountId !== accountId) return;
         const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
         set({ huchaMovements: movements });
-        AsyncStorage.setItem(SHARED_MOV_STORAGE_KEY, JSON.stringify(movements));
+        AsyncStorage.setItem(movKeyFor(accountId), JSON.stringify(movements));
       }, (e) => {
         reportError(e, 'listener de movimientos de huchas compartidas');
         if (unsubscribeSharedMovements === sub) {

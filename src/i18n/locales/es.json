@@ -749,5 +749,9 @@
     "colorPickerUse": "Usar este color",
     "customColor": "Color personalizado",
     "done": "Listo"
+  },
+  "accountSwitch": {
+    "switching": "Cambiando de cuenta…",
+    "error": "No se ha podido completar. Comprueba tu conexión e inténtalo de nuevo."
   }
 }

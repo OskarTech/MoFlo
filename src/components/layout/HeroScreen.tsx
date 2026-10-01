@@ -6,6 +6,7 @@ import {
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import type { UiColors } from '../../theme/ui';
 import { useTabBarSpace } from '../navigation/GlassTabBar';
 
 // Alto de la franja de la barra de estado. En Android se usa la de StatusBar,
@@ -38,24 +39,35 @@ const GLOW_BLEED = 2;
  * la paleta arriba a la derecha y otro blanco muy suave abajo a la
  * izquierda. Se dibuja con react-native-svg, que ya estaba en la app.
  */
-export const HeroGlow = ({ width, height }: { width: number; height: number }) => {
-  const { ui } = useTheme();
+export const HeroGlow = ({ width, height, colors }: {
+  width: number;
+  height: number;
+  /** Los de otra paleta (la pantalla de carga al cambiar de cuenta); por defecto, los de la activa */
+  colors?: HeroColors;
+}) => {
+  const theme = useTheme();
+  const ui = colors ?? theme.ui;
   const id = useId().replace(/:/g, '');
   if (!width || !height) {
     return <View style={[StyleSheet.absoluteFill, { backgroundColor: ui.hero }]} />;
   }
   return (
     <Svg style={styles.glow} width={width + GLOW_BLEED} height={height} pointerEvents="none">
-      <HeroGlowLayers id={id} width={width} height={height} />
+      <HeroGlowLayers id={id} width={width} height={height} colors={colors} />
     </Svg>
   );
 };
 
+type HeroColors = Pick<UiColors, 'hero' | 'heroGlow' | 'heroGlowOpacity'>;
+
 // Las capas del fondo, para dibujarlas dentro de un Svg: en la cabecera y, las
 // mismas, en la franja de la barra de estado. El brillo se sitúa con el ancho
 // real y el color de fondo llega hasta lo que sobra por la derecha.
-const HeroGlowLayers = ({ id, width, height }: { id: string; width: number; height: number }) => {
-  const { ui } = useTheme();
+const HeroGlowLayers = ({ id, width, height, colors }: {
+  id: string; width: number; height: number; colors?: HeroColors;
+}) => {
+  const theme = useTheme();
+  const ui = colors ?? theme.ui;
   return (
     <>
       <Defs>

@@ -12,6 +12,7 @@ import * as StoreReview from 'expo-store-review';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTheme } from '../../hooks/useTheme';
@@ -24,7 +25,8 @@ import { usePremiumPrice } from '../../hooks/usePremiumPrice';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { activateSharedAccount } from '../../store/activateSharedAccount';
+import { switchToShared, switchToIndividual } from '../../store/accountSwitch';
+import { removeSharedCaches } from '../../store/sharedCache';
 import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
 import PremiumModal from '../../components/common/PremiumModal';
@@ -114,14 +116,13 @@ const SettingsScreen = () => {
   const {
     isSharedMode, sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
-    setSharedMode, getInviteLink, sharedCurrencyCode, sharedColorPalette,
+    getInviteLink, sharedCurrencyCode, sharedColorPalette,
     sharedDateFormat, saveSharedSettings,
     incomingRequests, approveJoinRequest, rejectJoinRequest,
     setSharedAccountPhoto,
   } = useSharedAccountStore();
   const visibleRequests = incomingRequests.filter(r => r.status === 'pending');
 
-  const { loadData } = useMovementStore();
   const user = auth().currentUser;
   const uid = user?.uid;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -416,6 +417,8 @@ const SettingsScreen = () => {
         '@moflo_hucha_movements', '@moflo_shared_hucha_movements',
         `@moflo_hidden_base_${uid}`, `@moflo_reminders_${uid}`, `@moflo_shared_notif_${uid}`,
       ]);
+      // Las copias de cada cuenta compartida van con su id en la clave
+      await removeSharedCaches().catch(() => {});
 
       useMovementStore.getState().resetStore();
       useSettingsStore.getState().resetStore();
@@ -570,16 +573,23 @@ const SettingsScreen = () => {
     });
   };
 
-  // Tras salir de la cuenta compartida o borrarla hay que devolver también las
-  // huchas a la cuenta personal, igual que hace el selector del header. Antes
-  // solo se recargaban los movimientos: las huchas seguían apuntando a la
-  // cuenta compartida y lo nuevo que se creaba lo rechazaban las reglas.
-  const returnToPersonalAccount = async () => {
-    useSavingsStore.getState().setSharedAccountId(null);
-    await loadData();
-    await setSharedMode(false);
-    await useSavingsStore.getState().loadHuchas();
-    navigation.navigate('HomeTab');
+  // Salir de la cuenta compartida o borrarla, con la pantalla de carga: al
+  // quitarla ya se está en Inicio con la cuenta individual entera (también sus
+  // huchas: antes se quedaban apuntando a la compartida y lo nuevo lo
+  // rechazaban las reglas). Sin conexión no se intenta: la pantalla esperaría
+  // a que volviese. Si falla, se sigue en la compartida y se avisa
+  const leaveToPersonalAccount = async (action: () => Promise<void>, context: string) => {
+    const net = await NetInfo.fetch();
+    if (net.isConnected === false) {
+      Alert.alert(t('common.error'), t('accountSwitch.error'));
+      return;
+    }
+    try {
+      await switchToIndividual({ before: action, onArrive: () => navigation.navigate('HomeTab') });
+    } catch (e) {
+      reportError(e, context);
+      Alert.alert(t('common.error'), t('accountSwitch.error'));
+    }
   };
 
   const handleLeave = () => {
@@ -592,10 +602,7 @@ const SettingsScreen = () => {
         {
           text: t('sharedAccount.leaveAccount'),
           style: 'destructive',
-          onPress: async () => {
-            await leaveSharedAccount();
-            await returnToPersonalAccount();
-          },
+          onPress: () => leaveToPersonalAccount(leaveSharedAccount, 'salir de la cuenta compartida'),
         },
       ]
     );
@@ -631,10 +638,7 @@ const SettingsScreen = () => {
         {
           text: t('sharedAccount.deleteAccount'),
           style: 'destructive',
-          onPress: async () => {
-            await deleteSharedAccount();
-            await returnToPersonalAccount();
-          },
+          onPress: () => leaveToPersonalAccount(deleteSharedAccount, 'borrar la cuenta compartida'),
         },
       ]
     );
@@ -1008,10 +1012,8 @@ const SettingsScreen = () => {
                     : t('sharedAccount.noAccount')}
                   onPress={() => {
                     if (sharedAccount) {
-                      // A Inicio en cuanto la app está en la compartida, sin
-                      // esperar a la red; el resto se carga mientras tanto,
-                      // como al elegirla en el selector de Inicio
-                      activateSharedAccount(sharedAccount.id, () => navigation.navigate('HomeTab'))
+                      // Con la pantalla de carga, y a Inicio cuando ya está todo
+                      switchToShared({ onArrive: () => navigation.navigate('HomeTab') })
                         .catch((e) => reportError(e, 'abrir cuenta compartida'));
                     } else {
                       navigation.navigate('SharedAccount');

@@ -13,36 +13,11 @@ import {
   fetchRecurringFromFirestore,
 } from '../services/firebase/firestore.service';
 import { enqueue, processQueue } from '../services/syncQueue.service';
+import { SHARED_CACHE, sharedCacheKey, readSharedCache } from './sharedCache';
 
 const STORAGE_KEYS = {
   MOVEMENTS: '@moflo_movements',
   RECURRING: '@moflo_recurring',
-  SHARED_MOVEMENTS: '@moflo_shared_movements',
-  SHARED_RECURRING: '@moflo_shared_recurring',
-};
-
-/**
- * Movimientos y fijos de la cuenta compartida guardados en el móvil, o null si
- * no hay copia. Para ponerlos a la vez que la app pasa a la compartida (ver
- * activateSharedAccount), antes de que llegue nada de la red.
- */
-export const readSharedCache = async (): Promise<{
-  movements: Movement[];
-  recurringMovements: RecurringMovement[];
-} | null> => {
-  try {
-    const [movements, recurring] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEYS.SHARED_MOVEMENTS),
-      AsyncStorage.getItem(STORAGE_KEYS.SHARED_RECURRING),
-    ]);
-    if (!movements && !recurring) return null;
-    return {
-      movements: movements ? JSON.parse(movements) : [],
-      recurringMovements: recurring ? JSON.parse(recurring) : [],
-    };
-  } catch {
-    return null;
-  }
 };
 
 export interface AnnualMonthData {
@@ -159,10 +134,14 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         ]);
 
         if (firestoreMovements.length > 0 || firestoreRecurring.length > 0) {
-          set({
-            movements: firestoreMovements,
-            recurringMovements: firestoreRecurring,
-          });
+          // Si entretanto se ha pasado a la compartida, solo se guarda la copia:
+          // en pantalla pisaría los movimientos de la otra cuenta
+          if (get().sharedAccountId === null) {
+            set({
+              movements: firestoreMovements,
+              recurringMovements: firestoreRecurring,
+            });
+          }
           await Promise.all([
             AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(firestoreMovements)),
             AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(firestoreRecurring)),
@@ -180,10 +159,13 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   loadSharedData: async (accountId) => {
     set({ isLoading: true, sharedAccountId: accountId });
     try {
-      const cachedMovements = await AsyncStorage.getItem(STORAGE_KEYS.SHARED_MOVEMENTS);
-      const cachedRecurring = await AsyncStorage.getItem(STORAGE_KEYS.SHARED_RECURRING);
-      if (cachedMovements) set({ movements: JSON.parse(cachedMovements) });
-      if (cachedRecurring) set({ recurringMovements: JSON.parse(cachedRecurring) });
+      const cachedMovements = await readSharedCache(SHARED_CACHE.MOVEMENTS, accountId);
+      const cachedRecurring = await readSharedCache(SHARED_CACHE.RECURRING, accountId);
+      // Sin copia de esta cuenta, vacío: si no, seguían los de la cuenta de antes
+      set({
+        movements: cachedMovements ? JSON.parse(cachedMovements) : [],
+        recurringMovements: cachedRecurring ? JSON.parse(cachedRecurring) : [],
+      });
 
       await processQueue();
 
@@ -201,10 +183,13 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
           .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
 
-        set({ movements: [...movements], recurringMovements: [...recurring] });
+        // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
+        if (get().sharedAccountId === accountId) {
+          set({ movements: [...movements], recurringMovements: [...recurring] });
+        }
         await Promise.all([
-          AsyncStorage.setItem(STORAGE_KEYS.SHARED_MOVEMENTS, JSON.stringify(movements)),
-          AsyncStorage.setItem(STORAGE_KEYS.SHARED_RECURRING, JSON.stringify(recurring)),
+          AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements)),
+          AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.RECURRING, accountId), JSON.stringify(recurring)),
         ]);
       }
     } catch (e) {
@@ -217,13 +202,13 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   // ── GUARDAR EN ASYNCSTORAGE ────────────────────────────────────
   saveMovements: async (movements) => {
     const { sharedAccountId } = get();
-    const key = sharedAccountId ? STORAGE_KEYS.SHARED_MOVEMENTS : STORAGE_KEYS.MOVEMENTS;
+    const key = sharedAccountId ? sharedCacheKey(SHARED_CACHE.MOVEMENTS, sharedAccountId) : STORAGE_KEYS.MOVEMENTS;
     await AsyncStorage.setItem(key, JSON.stringify(movements));
   },
 
   saveRecurring: async (recurring) => {
     const { sharedAccountId } = get();
-    const key = sharedAccountId ? STORAGE_KEYS.SHARED_RECURRING : STORAGE_KEYS.RECURRING;
+    const key = sharedAccountId ? sharedCacheKey(SHARED_CACHE.RECURRING, sharedAccountId) : STORAGE_KEYS.RECURRING;
     await AsyncStorage.setItem(key, JSON.stringify(recurring));
   },
 

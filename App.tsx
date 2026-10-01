@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator, { navigationRef } from './src/navigation/RootNavigator';
+import AccountSwitchOverlay from './src/components/common/AccountSwitchOverlay';
 import { COLOR_PALETTES } from './src/theme';
 import { useSettingsStore } from './src/store/settingsStore';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
@@ -196,6 +197,8 @@ export default function App() {
         <PaperProvider theme={theme}>
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <RootNavigator />
+          {/* Encima de toda la app: la tapa mientras se cambia de cuenta */}
+          <AccountSwitchOverlay />
           {updateInfo && (
             <UpdateAvailableModal
               visible={showUpdateModal}

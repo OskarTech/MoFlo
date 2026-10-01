@@ -1,53 +1,56 @@
-import { readSharedCache, useMovementStore } from './movementStore';
+import { useMovementStore } from './movementStore';
 import { useSavingsStore } from './savingsStore';
 import { useSharedAccountStore } from './sharedAccountStore';
 import { useSharedCategoryStore } from './sharedCategoryStore';
 
+// Espera a todas aunque alguna falle (si no, se dejaba de esperar a las demás
+// y la pantalla de carga se quitaba con ellas a medias); después, el primer error
+const settleAll = async (loads: Promise<unknown>[]) => {
+  const results = await Promise.allSettled(loads);
+  const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failed) throw failed.reason;
+};
+
 /**
- * Pasa la app a la cuenta compartida: desde aquí lo nuevo se guarda en ella,
- * se escuchan sus cambios y se cargan sus movimientos, huchas, categorías y
- * ajustes.
+ * Pasa la app a la cuenta compartida y carga todo lo suyo: desde aquí lo nuevo
+ * se guarda en ella, se escuchan sus cambios y se cargan sus movimientos,
+ * fijos, huchas, categorías y ajustes. Termina cuando está todo.
  *
- * Todas las formas de entrar pasan por aquí. Antes cada una hacía su parte:
- * desde Ajustes solo se cambiaba el modo, y con "Abrir cuenta compartida"
- * faltaban las huchas y las categorías. La app enseñaba la cuenta compartida,
- * pero lo que se añadía se guardaba en la personal.
- *
- * La app cambia de golpe: la paleta, la moneda y los movimientos que tenía
- * guardados en el móvil se ponen a la vez que el modo, antes de que llegue
- * nada de la red. Poniendo los movimientos después, Inicio salía un momento
- * con la cuenta compartida y los movimientos de la individual. onSwitched se
- * llama en ese mismo momento: quien lleva a Inicio lo hace ahí, y yendo antes
- * Inicio se veía un momento con la cuenta individual.
+ * Todas las formas de entrar pasan por aquí (ver accountSwitch, que tapa la
+ * app mientras tanto). Antes cada una hacía su parte: desde Ajustes solo se
+ * cambiaba el modo, y con "Abrir cuenta compartida" faltaban las huchas y las
+ * categorías. La app enseñaba la compartida, pero lo que se añadía se guardaba
+ * en la personal.
  */
-export const activateSharedAccount = async (accountId: string, onSwitched?: () => void) => {
+export const activateSharedAccount = async (accountId: string) => {
   const shared = useSharedAccountStore.getState();
   useMovementStore.getState().setSharedAccountId(accountId);
   useSavingsStore.getState().setSharedAccountId(accountId);
-  const cached = await readSharedCache();
-
-  // En el mismo momento en que cambia el modo (sin esperas en medio, así se
-  // dibuja una sola vez): sus movimientos y, si hay, la pantalla a la que se va
-  let switched = false;
-  const switchNow = () => {
-    if (switched) return;
-    switched = true;
-    if (cached) useMovementStore.setState(cached);
-    onSwitched?.();
-  };
-  const unsubscribe = useSharedAccountStore.subscribe((s) => { if (s.isSharedMode) switchNow(); });
-  try {
-    await shared.setSharedMode(true);
-  } finally {
-    unsubscribe();
-  }
-  switchNow();
-
+  await shared.setSharedMode(true);
   shared.subscribeToSharedMovements(accountId);
-  await useMovementStore.getState().loadSharedData(accountId);
-  await useSavingsStore.getState().loadSharedHuchas(accountId);
-  await useMovementStore.getState().applyRecurringMovements();
-  await useSharedCategoryStore.getState().loadSharedCategories(accountId);
-  useSharedCategoryStore.getState().subscribeToSharedCategories(accountId);
-  await shared.loadSharedSettings(accountId);
+
+  // A la vez lo que no depende de lo demás: la espera es la de la más lenta
+  await settleAll([
+    useMovementStore.getState().loadSharedData(accountId)
+      .then(() => useMovementStore.getState().applyRecurringMovements()),
+    useSavingsStore.getState().loadSharedHuchas(accountId),
+    useSharedCategoryStore.getState().loadSharedCategories(accountId)
+      .then(() => useSharedCategoryStore.getState().subscribeToSharedCategories(accountId)),
+    shared.loadSharedSettings(accountId),
+  ]);
+};
+
+/**
+ * Vuelve a la cuenta individual y carga sus movimientos, fijos y huchas.
+ * Primero se deja de escuchar la compartida: si no, un cambio suyo que llegase
+ * mientras tanto se colaba entre los datos personales.
+ */
+export const activateIndividualAccount = async () => {
+  useMovementStore.getState().setSharedAccountId(null);
+  useSavingsStore.getState().setSharedAccountId(null);
+  await useSharedAccountStore.getState().setSharedMode(false);
+  await settleAll([
+    useMovementStore.getState().loadData(),
+    useSavingsStore.getState().loadHuchas(),
+  ]);
 };

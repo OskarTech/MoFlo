@@ -749,5 +749,9 @@
     "colorPickerUse": "Use this color",
     "customColor": "Custom color",
     "done": "Done"
+  },
+  "accountSwitch": {
+    "switching": "Switching account…",
+    "error": "This couldn't be completed. Check your connection and try again."
   }
 }

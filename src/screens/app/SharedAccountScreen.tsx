@@ -12,7 +12,7 @@ import Icon from '../../components/common/Icon';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { activateSharedAccount } from '../../store/activateSharedAccount';
+import { switchToShared } from '../../store/accountSwitch';
 import { reportError } from '../../services/crashReporting';
 import { usePremium } from '../../hooks/usePremium';
 import { usePremiumPrice } from '../../hooks/usePremiumPrice';
@@ -81,10 +81,9 @@ const SharedAccountScreen = () => {
     setLoading(true);
     try {
       await createSharedAccount(accountName.trim());
-      const created = useSharedAccountStore.getState().sharedAccount;
-      if (created) {
-        await activateSharedAccount(created.id);
-        navigation.navigate('HomeTab');
+      if (useSharedAccountStore.getState().sharedAccount) {
+        // Con la pantalla de carga, y a Inicio cuando ya está todo
+        await switchToShared({ brandNew: true, onArrive: () => navigation.navigate('HomeTab') });
       }
     } catch {
       Alert.alert(t('common.error'), t('sharedAccount.createError'));
@@ -162,13 +161,12 @@ const SharedAccountScreen = () => {
     );
   };
 
-  // A Inicio en cuanto la app está en la compartida, sin esperar a la red; la
-  // cuenta se carga mientras tanto, como al elegirla en el selector de Inicio.
-  // Esperando a que cargase, el botón parecía no hacer nada y luego saltaba a
-  // Inicio, se estuviera donde se estuviera
+  // La pantalla de carga sale al momento y, cuando ya está todo, se llega a
+  // Inicio con la cuenta entera. Antes, sin nada que lo indicase, el botón
+  // parecía no hacer nada y luego saltaba a Inicio
   const handleOpenShared = () => {
     if (!sharedAccount) return;
-    activateSharedAccount(sharedAccount.id, () => navigation.navigate('HomeTab'))
+    switchToShared({ onArrive: () => navigation.navigate('HomeTab') })
       .catch((e) => reportError(e, 'abrir cuenta compartida'));
   };
 

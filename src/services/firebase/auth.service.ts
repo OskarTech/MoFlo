@@ -11,6 +11,7 @@ import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useReminderStore } from '../../store/reminderStore';
+import { removeSharedCaches } from '../../store/sharedCache';
 import { clearPushTokens } from './pushTokens.service';
 import { processQueue } from '../syncQueue.service';
 import { resetPurchasesUser } from '../revenuecat';
@@ -128,6 +129,8 @@ export const logout = async () => {
   }
 
   await AsyncStorage.multiRemove(keysToRemove);
+  // Las copias de cada cuenta compartida van con su id en la clave
+  await removeSharedCaches().catch(() => {});
 
   // 6. Cierra sesión en Firebase
   await auth().signOut();

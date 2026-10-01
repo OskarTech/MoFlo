@@ -81,20 +81,22 @@ const stopMovementListeners = () => {
 // la cuenta personal en el selector del header. Sin esto, movimientos y huchas
 // seguían apuntando a una cuenta que ya no existe, y lo nuevo que se creaba lo
 // rechazaban las reglas: no se guardaba en ningún sitio.
-const returnToPersonalData = () => {
+const returnToPersonalData = (): Promise<void> => {
   stopMovementListeners();
   const { useSavingsStore } = require('./savingsStore');
   const { useMovementStore } = require('./movementStore');
   useSavingsStore.getState().unsubscribeSharedHuchas();
   useMovementStore.getState().setSharedAccountId(null);
   useSavingsStore.getState().setSharedAccountId(null);
-  // Sin await: se llama desde un listener
-  useMovementStore.getState().loadData().catch(() => {});
-  useSavingsStore.getState().loadHuchas().catch(() => {});
+  // Termina cuando están los datos personales (lo espera la pantalla de carga)
+  return Promise.all([
+    useMovementStore.getState().loadData().catch(() => {}),
+    useSavingsStore.getState().loadHuchas().catch(() => {}),
+  ]).then(() => {});
 };
 
 // Moneda y paleta de la cuenta, de la copia guardada en el móvil
-const readCachedSharedSettings = async (accountId: string) => {
+export const readCachedSharedSettings = async (accountId: string) => {
   const cached = await AsyncStorage.getItem(`@moflo_shared_settings_${accountId}`);
   if (!cached) return null;
   const parsed = JSON.parse(cached);
@@ -333,19 +335,30 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
               AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             } else {
               const wasSharedMode = get().isSharedMode;
-              set({
-                sharedAccount: null,
-                isSharedMode: false,
-                sharedMovements: [],
-                sharedRecurring: [],
-                incomingRequests: [],
-              });
-              if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
-              const { useReminderStore } = require('./reminderStore');
-              useReminderStore.getState().unsubscribeSharedReminders(true);
-              AsyncStorage.removeItem(STORAGE_KEY);
-              AsyncStorage.setItem(ACTIVE_KEY, 'individual');
-              if (wasSharedMode) returnToPersonalData();
+              const leave = () => {
+                set({
+                  sharedAccount: null,
+                  isSharedMode: false,
+                  sharedMovements: [],
+                  sharedRecurring: [],
+                  incomingRequests: [],
+                });
+                if (incomingRequestsUnsubscribe) { incomingRequestsUnsubscribe(); incomingRequestsUnsubscribe = null; }
+                const { useReminderStore } = require('./reminderStore');
+                useReminderStore.getState().unsubscribeSharedReminders(true);
+                AsyncStorage.removeItem(STORAGE_KEY);
+                AsyncStorage.setItem(ACTIVE_KEY, 'individual');
+                return wasSharedMode ? returnToPersonalData() : Promise.resolve();
+              };
+              if (wasSharedMode) {
+                // Se estaba en ella: la pantalla de carga tapa en el mismo
+                // momento en que la app pasa a la individual y se quita con
+                // sus datos ya cargados
+                const { switchAccountNow, individualLook } = require('./accountSwitch');
+                switchAccountNow(individualLook(), leave);
+              } else {
+                leave();
+              }
               // Ya no hay nada que escuchar de esta cuenta
               if (accountUnsubscribe === accountSub) {
                 accountSub();

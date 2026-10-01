@@ -7,9 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { usePremiumStore } from '../../store/premiumStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
-import { activateSharedAccount } from '../../store/activateSharedAccount';
-import { useMovementStore } from '../../store/movementStore';
-import { useSavingsStore } from '../../store/savingsStore';
+import { switchToShared, switchToIndividual } from '../../store/accountSwitch';
+import { reportError } from '../../services/crashReporting';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useWalkthroughTarget } from '../walkthrough/useWalkthroughTarget';
 import BottomSheet from './BottomSheet';
@@ -31,31 +30,29 @@ const AccountSwitcher = () => {
   const { isPremium } = usePremiumStore();
   const displayName = useSettingsStore((s) => s.displayName);
   const photoURL = useSettingsStore((s) => s.photoURL);
-  const { sharedAccount, isSharedMode, setSharedMode } = useSharedAccountStore();
-  const { loadData, setSharedAccountId } = useMovementStore();
+  const { sharedAccount, isSharedMode } = useSharedAccountStore();
 
   const [showSheet, setShowSheet] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
-  const handleSelectIndividual = async () => {
+  // Con la pantalla de carga: al quitarla ya está la cuenta entera
+  const handleSelectIndividual = () => {
     setShowSheet(false);
     if (isSharedMode) {
-      setSharedAccountId(null);
-      useSavingsStore.getState().setSharedAccountId(null);
-      await setSharedMode(false);
-      await loadData();
-      await useSavingsStore.getState().loadHuchas();
+      switchToIndividual().catch((e) => reportError(e, 'volver a la cuenta individual'));
     }
   };
 
-  const handleSelectShared = async () => {
+  const handleSelectShared = () => {
     setShowSheet(false);
     if (!isPremium) {
       setTimeout(() => setShowPremiumModal(true), 300);
       return;
     }
     if (sharedAccount) {
-      await activateSharedAccount(sharedAccount.id);
+      // Ya se está en ella: nada que cambiar
+      if (isSharedMode) return;
+      switchToShared().catch((e) => reportError(e, 'abrir cuenta compartida'));
     } else {
       setTimeout(() => navigation.navigate('Settings', { screen: 'SharedAccount' }), 300);
     }
