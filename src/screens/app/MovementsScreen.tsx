@@ -205,7 +205,6 @@ const MovementsScreen = () => {
   // al store completo, eso provocaba un segundo render de toda la pantalla
   const movements = useMovementStore((s) => s.movements);
   const deleteMovement = useMovementStore((s) => s.deleteMovement);
-  const setShowMovementModal = useMovementStore((s) => s.setShowMovementModal);
   const recurringMovements = useMovementStore((s) => s.recurringMovements);
   const deleteRecurringMovement = useMovementStore((s) => s.deleteRecurringMovement);
   const showRecurringModal = useMovementStore((s) => s.showRecurringModal);
@@ -332,6 +331,19 @@ const MovementsScreen = () => {
     [huchaMovements, selectedMonth],
   );
 
+  // El buscador en las huchas: por lo que se ve en la fila (nombre de la hucha,
+  // añadido o retirado e importe), igual que en ingresos y gastos
+  const filteredHuchaMovements = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return monthHuchaMovements;
+    return monthHuchaMovements.filter((m) => {
+      const name = (m.huchaName || '').toLowerCase();
+      const kind = t(m.type === 'deposit' ? 'hucha.depositLabel' : 'hucha.withdrawalLabel').toLowerCase();
+      return name.includes(q) || kind.includes(q)
+        || m.amount.toFixed(2).includes(q) || formatAmount(m.amount).includes(q);
+    });
+  }, [monthHuchaMovements, searchQuery, t]);
+
   const sortedRecurring = useMemo(
     () => [...recurringMovements].sort((a, b) => a.recurringDay - b.recurringDay),
     [recurringMovements],
@@ -343,7 +355,7 @@ const MovementsScreen = () => {
       return sortedRecurring.length ? [{ key: 'recurring', data: sortedRecurring }] : [];
     }
     const list = filter === 'hucha'
-      ? monthHuchaMovements.map((m) => ({ ...m, type: m.type === 'deposit' ? 'income' : 'expense', _hucha: m }))
+      ? filteredHuchaMovements.map((m) => ({ ...m, type: m.type === 'deposit' ? 'income' : 'expense', _hucha: m }))
       : filteredMovements;
     return groupByDay(list as any[]).map((g) => ({
       key: g.key,
@@ -351,7 +363,7 @@ const MovementsScreen = () => {
       total: filter === 'hucha' ? undefined : dayTotalLabel(g, currencySymbol),
       data: g.items,
     }));
-  }, [filter, sortedRecurring, monthHuchaMovements, filteredMovements, t, language, currencySymbol]);
+  }, [filter, sortedRecurring, filteredHuchaMovements, filteredMovements, t, language, currencySymbol]);
 
   // Resumen de la cabecera
   const summary = (() => {
@@ -454,8 +466,9 @@ const MovementsScreen = () => {
     </>
   );
 
-  // Arriba de la lista, en la hoja: el buscador o el resumen de los fijos
-  const sheetTop = (filter === 'income' || filter === 'expense') ? (
+  // Arriba de la lista, en la hoja: el buscador (ingresos, gastos y huchas) o
+  // el resumen de los fijos
+  const sheetTop = filter !== 'recurring' ? (
     <View style={[styles.search, { backgroundColor: ui.field }]}>
       <Icon name="search-outline" size={17} color={dc.textSecondary} />
       <RNTextInput
@@ -506,18 +519,8 @@ const MovementsScreen = () => {
       <View style={[styles.emptyIcon, { backgroundColor: ui.accentSoft }]}>
         <Icon name={filter === 'hucha' ? 'piggy-bank-duotone' : 'search-outline'} size={28} color={ui.accent} />
       </View>
+      {/* Sin botón de añadir: para eso está el + de la barra de abajo */}
       <Text style={[styles.emptyText, { color: dc.textPrimary }]}>{t('movementsList.noMovements')}</Text>
-      {/* En el filtro de huchas, y en meses pasados, la acción no es añadir un movimiento suelto */}
-      {filter !== 'hucha' && selectedMonth === currentMonth && (
-        <TouchableOpacity
-          style={[styles.emptyAction, { backgroundColor: dc.primary }]}
-          onPress={() => { lightHaptic(); setShowMovementModal(true); }}
-          activeOpacity={0.85}
-        >
-          <Icon name="add" size={16} color="#FFFFFF" />
-          <Text style={styles.emptyActionText}>{t('movements.add')}</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 
@@ -626,11 +629,6 @@ const styles = StyleSheet.create({
     fontSize: 13, fontFamily: 'Poppins_400Regular',
     textAlign: 'center', paddingHorizontal: 12, marginTop: 6,
   },
-  emptyAction: {
-    marginTop: 16, paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6,
-  },
-  emptyActionText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold', color: '#FFFFFF' },
 });
 
 export default MovementsScreen;
