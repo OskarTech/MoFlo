@@ -43,6 +43,13 @@ const OVERSCROLL = 800;
 // Lo que sobra queda fuera de la pantalla o lo recorta la tarjeta.
 const GLOW_BLEED = 2;
 
+// Android (react-native-svg 15.12): en un degradado radial en elipse, el centro
+// de arriba abajo sale multiplicado por ry/rx; en iOS no. Los brillos con el
+// centro en el borde de abajo quedaban mucho más arriba: la línea de abajo
+// salía arriba a la izquierda. Se le pasa ya dividido para que caiga donde toca
+const ellipseCy = (cy: number, rx: number, ry: number) =>
+  (Platform.OS === 'android' && rx > 0 && ry > 0 ? cy * (rx / ry) : cy);
+
 /**
  * Fondo de la cabecera: el color de la tarjeta de balance con el brillo de
  * la paleta arriba a la derecha, una línea de ese brillo a lo largo del borde
@@ -90,7 +97,8 @@ const HeroGlowLayers = ({ id, width, height, colors }: {
         </RadialGradient>
         <RadialGradient
           id={`${id}c`} gradientUnits="userSpaceOnUse"
-          cx={0} cy={height} rx={width * BOTTOM_LINE_RX} ry={BOTTOM_LINE_HEIGHT} fx={0} fy={height}
+          cx={0} cy={ellipseCy(height, width * BOTTOM_LINE_RX, BOTTOM_LINE_HEIGHT)}
+          rx={width * BOTTOM_LINE_RX} ry={BOTTOM_LINE_HEIGHT} fx={0} fy={height}
         >
           <Stop offset="0" stopColor={ui.heroGlow} stopOpacity={ui.heroGlowOpacity} />
           {/* A medio camino ya ha bajado bastante: se apaga suave, sin borde */}
@@ -99,7 +107,8 @@ const HeroGlowLayers = ({ id, width, height, colors }: {
         </RadialGradient>
         <RadialGradient
           id={`${id}b`} gradientUnits="userSpaceOnUse"
-          cx={0} cy={height} rx={width * 0.9} ry={height * 0.7} fx={0} fy={height}
+          cx={0} cy={ellipseCy(height, width * 0.9, height * 0.7)}
+          rx={width * 0.9} ry={height * 0.7} fx={0} fy={height}
         >
           <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.09} />
           <Stop offset="0.6" stopColor="#FFFFFF" stopOpacity={0} />
