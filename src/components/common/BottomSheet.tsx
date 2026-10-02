@@ -459,23 +459,29 @@ export interface SegmentOption<T extends string> {
 
 /** Control de dos o tres opciones (Gasto / Ingreso, Añadir / Sacar...) */
 export const SegmentedControl = <T extends string>({
-  options, value, onChange, style,
+  options, value, onChange, style, pill = false,
 }: {
   options: SegmentOption<T>[];
   value: T;
   onChange: (key: T) => void;
   style?: StyleProp<ViewStyle>;
+  /** Pastilla centrada, del ancho de sus opciones, en vez de ocupar todo el ancho */
+  pill?: boolean;
 }) => {
   const { colors: dc, ui } = useTheme();
   return (
-    <View style={[styles.segment, { backgroundColor: ui.fill2 }, style]}>
+    <View style={[styles.segment, pill && styles.segmentPill, { backgroundColor: ui.fill2 }, style]}>
       {options.map((o) => {
         const on = o.key === value;
         const color = on ? (o.activeColor ?? dc.textPrimary) : dc.textSecondary;
         return (
           <TouchableOpacity
             key={o.key}
-            style={[styles.segmentItem, on && [styles.segmentOn, { backgroundColor: ui.sheetRaised }]]}
+            style={[
+              styles.segmentItem,
+              pill && styles.segmentItemPill,
+              on && [styles.segmentOn, { backgroundColor: ui.sheetRaised }],
+            ]}
             onPress={() => onChange(o.key)}
             activeOpacity={0.8}
             accessibilityRole="tab"
@@ -568,6 +574,8 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center',
     paddingVertical: 9, borderRadius: 11,
   },
+  segmentPill: { alignSelf: 'center', borderRadius: 999 },
+  segmentItemPill: { flex: 0, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 999 },
   segmentOn: {
     elevation: 1, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },

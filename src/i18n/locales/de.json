@@ -508,7 +508,6 @@
     "addCategory": "Kategorie hinzufügen",
     "editCategory": "Kategorie bearbeiten",
     "type": "Typ",
-    "name": "Name",
     "namePlaceholder": "Z.B. Fitnessstudio, Netflix...",
     "icon": "Symbol",
     "deleteConfirm": "Diese Kategorie löschen?",

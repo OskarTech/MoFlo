@@ -509,7 +509,6 @@
   "addCategory": "Add category",
   "editCategory": "Edit category",
   "type": "Type",
-  "name": "Name",
   "namePlaceholder": "E.g. Gym, Netflix...",
   "icon": "Icon",
   "deleteConfirm": "Delete this category?",

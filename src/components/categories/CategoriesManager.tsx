@@ -39,9 +39,12 @@ type Editing =
   | { kind: 'create'; type: MovementType }
   | { kind: 'edit'; category: CategoryItem; type: MovementType; isBase: boolean };
 
-// Iconos en tres filas que se deslizan en horizontal
-const ICON_SIZE = 48;
-const ICON_GAP = 8;
+// Iconos y colores, cada uno en una fila que se desliza
+const ICON_SIZE = 38;
+const ICON_GAP = 6;
+const COLOR_RING = 36;
+const COLOR_DOT = 28;
+const COLOR_GAP = 4;
 
 // Lo guardado, solo si es válido: la posición de un color de la paleta o un color libre
 const validChoice = (value: unknown): CategoryColorChoice | null =>
@@ -68,13 +71,27 @@ const CategorySheet = ({
   const [draft, setDraft] = useState('#E8735A');
   const isSavingRef = useRef(false);
   const iconsRef = useRef<ScrollView>(null);
+  const colorsRef = useRef<ScrollView>(null);
+  // Ancho de "Automático", el primero de la fila de colores: cambia con el
+  // idioma. Los demás miden todos lo mismo
+  const autoWidth = useRef(110);
 
-  // La fila de iconos va en columnas de tres: se desplaza hasta la del elegido
+  // La fila de iconos se desplaza hasta el elegido
   const scrollToIcon = (name: string) => {
     const index = CATEGORY_ICONS.indexOf(name as IoniconName);
     if (index < 0) return;
     setTimeout(() => {
-      iconsRef.current?.scrollTo({ x: Math.max(0, Math.floor(index / 3) * (ICON_SIZE + ICON_GAP) - 40), animated: false });
+      iconsRef.current?.scrollTo({ x: Math.max(0, index * (ICON_SIZE + ICON_GAP) - 40), animated: false });
+    }, 50);
+  };
+
+  // Y la de colores, hasta el elegido: con la paleta entera en una fila, los
+  // últimos no se ven al abrir. El libre va detrás de los de la paleta
+  const scrollToColor = (target: CategoryColorChoice | null, paletteSize: number) => {
+    const slot = target === null ? null : typeof target === 'number' ? target % paletteSize : paletteSize;
+    const x = slot === null ? 0 : autoWidth.current + COLOR_GAP + slot * (COLOR_RING + COLOR_GAP);
+    setTimeout(() => {
+      colorsRef.current?.scrollTo({ x: Math.max(0, x - 40), animated: false });
     }, 50);
   };
 
@@ -82,27 +99,33 @@ const CategorySheet = ({
     if (!visible || !editing) return;
     isSavingRef.current = false;
     setPicking(false);
+    const paletteSize = (editing.type === 'income' ? palette.income : palette.expense).length;
     if (editing.kind === 'edit') {
       const c = editing.category;
+      const saved = validChoice(api.choices[categoryColorKey(c.id, editing.type)]);
       setName(editing.isBase ? t(`movements.categories.${c.id}`) : c.name);
       setIcon(c.icon);
       setType(editing.type);
-      setChoice(validChoice(api.choices[categoryColorKey(c.id, editing.type)]));
+      setChoice(saved);
       scrollToIcon(c.icon);
+      scrollToColor(saved, paletteSize);
     } else {
       setName('');
       setIcon('ellipsis-horizontal');
       setType(editing.type);
       setChoice(null);
       setTimeout(() => iconsRef.current?.scrollTo({ x: 0, animated: false }), 50);
+      scrollToColor(null, paletteSize);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir
   }, [visible, editing]);
 
-  // Al volver del selector de color la fila de iconos se vuelve a dibujar:
-  // otra vez con el elegido a la vista
+  // Al volver del selector de color las filas se vuelven a dibujar: otra vez
+  // con el icono y el color elegidos a la vista
   useEffect(() => {
-    if (visible && !picking) scrollToIcon(icon);
+    if (!visible || picking) return;
+    scrollToIcon(icon);
+    scrollToColor(choice, (type === 'income' ? palette.income : palette.expense).length);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al volver
   }, [picking]);
 
@@ -120,8 +143,12 @@ const CategorySheet = ({
   const handleTypeChange = (tp: MovementType) => {
     lightHaptic();
     setType(tp);
-    // Los colores de gasto y de ingreso son distintos
-    if (typeof choice === 'number') setChoice(null);
+    // Los colores de gasto y de ingreso son distintos: vuelve a Automático, el
+    // primero de la fila
+    if (typeof choice === 'number') {
+      setChoice(null);
+      colorsRef.current?.scrollTo({ x: 0, animated: true });
+    }
   };
 
   const openPicker = () => {
@@ -208,6 +235,7 @@ const CategorySheet = ({
 
       {editing.kind === 'create' && (
         <SegmentedControl
+          pill
           options={[
             { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
             { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
@@ -220,7 +248,7 @@ const CategorySheet = ({
 
       {!isBase && (
         <>
-          <SheetLabel>{t('categories.name')}</SheetLabel>
+          {/* Sin título encima: la vista previa ya enseña el nombre */}
           <FilledInput
             icon="create-outline"
             value={name}
@@ -236,37 +264,43 @@ const CategorySheet = ({
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             style={styles.bleed}
-            contentContainerStyle={styles.bleedContent}
+            contentContainerStyle={styles.iconsRow}
           >
-            <View style={styles.iconsGrid}>
-              {CATEGORY_ICONS.map((ic) => {
-                const on = ic === icon;
-                return (
-                  <TouchableOpacity
-                    key={ic}
-                    style={[styles.iconOption, { backgroundColor: on ? color : ui.field }]}
-                    onPress={() => setIcon(ic)}
-                    activeOpacity={0.75}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: on }}
-                  >
-                    <Icon name={outline(ic)} size={22} color={on ? '#FFFFFF' : dc.textSecondary} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {CATEGORY_ICONS.map((ic) => {
+              const on = ic === icon;
+              return (
+                <TouchableOpacity
+                  key={ic}
+                  style={[styles.iconOption, { backgroundColor: on ? color : ui.field }]}
+                  onPress={() => setIcon(ic)}
+                  activeOpacity={0.75}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Icon name={outline(ic)} size={19} color={on ? '#FFFFFF' : dc.textSecondary} />
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </>
       )}
 
       <SheetLabel>{t('categories.color')}</SheetLabel>
-      <View style={styles.colors}>
+      <ScrollView
+        ref={colorsRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.bleed}
+        contentContainerStyle={styles.colorsRow}
+      >
         <TouchableOpacity
           style={[
             styles.colorAuto,
             { borderColor: choice === null ? dc.textPrimary : ui.hair2 },
           ]}
           onPress={() => setChoice(null)}
+          onLayout={(e) => { autoWidth.current = e.nativeEvent.layout.width; }}
           activeOpacity={0.75}
           accessibilityRole="radio"
           accessibilityState={{ selected: choice === null }}
@@ -286,7 +320,7 @@ const CategorySheet = ({
               accessibilityState={{ selected: on }}
             >
               <View style={[styles.colorDot, { backgroundColor: c }]}>
-                {on && <Icon name="checkmark" size={16} color="#FFFFFF" />}
+                {on && <Icon name="checkmark" size={14} color="#FFFFFF" />}
               </View>
             </TouchableOpacity>
           );
@@ -301,18 +335,18 @@ const CategorySheet = ({
         >
           {isCustom ? (
             <View style={[styles.colorDot, { backgroundColor: choice as string }]}>
-              <Icon name="checkmark" size={16} color="#FFFFFF" />
+              <Icon name="checkmark" size={14} color="#FFFFFF" />
             </View>
           ) : (
             <View style={styles.colorDot}>
-              <RainbowSwatch size={30} />
+              <RainbowSwatch size={COLOR_DOT} />
               <View style={styles.rainbowIcon}>
-                <Icon name="add" size={18} color="#FFFFFF" />
+                <Icon name="add" size={16} color="#FFFFFF" />
               </View>
             </View>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </BottomSheet>
   );
 };
@@ -497,26 +531,28 @@ const styles = StyleSheet.create({
   rowName: { flex: 1, fontSize: 15, fontFamily: 'Poppins_500Medium' },
   empty: { fontSize: 13, fontFamily: 'Poppins_400Regular', paddingVertical: 8 },
 
-  preview: { alignItems: 'center', gap: 8, paddingBottom: 14 },
+  preview: { alignItems: 'center', gap: 8, paddingBottom: 16 },
   previewIcon: { width: 66, height: 66, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
   previewName: { fontSize: 18, fontFamily: 'Poppins_700Bold', maxWidth: '90%' },
-  segment: { marginBottom: 2 },
+  segment: { marginBottom: 18 },
   bleed: { marginHorizontal: -20 },
-  bleedContent: { paddingHorizontal: 20 },
-  iconsGrid: {
-    flexDirection: 'column', flexWrap: 'wrap', alignContent: 'flex-start',
-    height: ICON_SIZE * 3 + ICON_GAP * 2, gap: ICON_GAP,
-  },
-  iconOption: { width: ICON_SIZE, height: ICON_SIZE, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  colors: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  iconsRow: { paddingHorizontal: 20, gap: ICON_GAP },
+  iconOption: { width: ICON_SIZE, height: ICON_SIZE, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  colorsRow: { paddingHorizontal: 20, gap: COLOR_GAP, alignItems: 'center' },
   colorAuto: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    height: 40, paddingLeft: 6, paddingRight: 12, borderRadius: 20, borderWidth: 2,
+    height: COLOR_RING, paddingLeft: 5, paddingRight: 12, borderRadius: COLOR_RING / 2, borderWidth: 2,
   },
-  colorAutoDot: { width: 24, height: 24, borderRadius: 12 },
-  colorAutoText: { fontSize: 13, fontFamily: 'Poppins_600SemiBold' },
-  colorRing: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
-  colorDot: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  colorAutoDot: { width: 22, height: 22, borderRadius: 11 },
+  colorAutoText: { fontSize: 12.5, fontFamily: 'Poppins_600SemiBold' },
+  colorRing: {
+    width: COLOR_RING, height: COLOR_RING, borderRadius: COLOR_RING / 2, borderWidth: 2,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  colorDot: {
+    width: COLOR_DOT, height: COLOR_DOT, borderRadius: COLOR_DOT / 2,
+    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+  },
   rainbowIcon: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
 });
 

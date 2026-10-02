@@ -508,7 +508,6 @@
     "addCategory": "Aggiungi categoria",
     "editCategory": "Modifica categoria",
     "type": "Tipo",
-    "name": "Nome",
     "namePlaceholder": "Es. Palestra, Netflix...",
     "icon": "Icona",
     "deleteConfirm": "Eliminare questa categoria?",

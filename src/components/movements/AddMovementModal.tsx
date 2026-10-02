@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { TextInput } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -48,18 +48,6 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
   const [pickerKey, setPickerKey] = useState(0);
 
   const isSavingRef = useRef(false);
-  const amountRef = useRef<TextInput>(null);
-
-  // Añadiendo, el teclado numérico sale solo, listo para el importe. Editando,
-  // no: casi siempre se cambia otra cosa. Con un momento de espera, cuando la
-  // hoja ya está en pantalla: enfocando el campo mientras aparecía, iOS no la
-  // enseñaba hasta tener el teclado listo, y la primera vez tras abrir la app
-  // tardaba segundos en salir
-  useEffect(() => {
-    if (!visible || editingMovement) return;
-    const id = setTimeout(() => amountRef.current?.focus(), 250);
-    return () => clearTimeout(id);
-  }, [visible, editingMovement]);
 
   // El movimiento que se edita, el mismo mientras la ventana se cierra: quien
   // la abre lo quita en cuanto se pide cerrar, y la ventana pasaba a decir
@@ -228,6 +216,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       footer={<SheetButton label={saveLabel} onPress={handleSave} disabled={!isValid} />}
     >
       <SegmentedControl
+        pill
         options={[
           { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
           { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
@@ -237,10 +226,20 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
       />
 
       <AmountInput
-        ref={amountRef}
+        large
         value={amount}
         onChangeText={setAmount}
         currencySymbol={currencySymbol}
+      />
+
+      <SheetLabel style={styles.firstLabel}>{t('movements.category')}</SheetLabel>
+      <CategoryPicker
+        categories={chipCategories}
+        type={type}
+        selectedId={categoryId}
+        onSelect={setCategoryId}
+        onAdd={handleAddCategoryPress}
+        resetKey={pickerKey}
       />
 
       <FilledInput
@@ -249,16 +248,7 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
         onChangeText={setNote}
         placeholder={t('movements.descriptionPlaceholder')}
         maxLength={80}
-      />
-
-      <SheetLabel>{t('movements.category')}</SheetLabel>
-      <CategoryPicker
-        categories={chipCategories}
-        type={type}
-        selectedId={categoryId}
-        onSelect={setCategoryId}
-        onAdd={handleAddCategoryPress}
-        resetKey={pickerKey}
+        containerStyle={styles.note}
       />
 
       {/* Dentro de la hoja y no al lado: iOS no abre una ventana mientras hay
@@ -272,5 +262,11 @@ const AddMovementModal = ({ visible, onDismiss, initialType, editingMovement }: 
     </BottomSheet>
   );
 };
+
+const styles = StyleSheet.create({
+  // Justo debajo del importe, que ya deja aire
+  firstLabel: { marginTop: 0 },
+  note: { marginTop: 16 },
+});
 
 export default AddMovementModal;

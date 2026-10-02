@@ -221,6 +221,7 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
       footer={<SheetButton label={t('movements.save')} onPress={handleSave} disabled={!isValid} />}
     >
       <SegmentedControl
+        pill
         options={[
           { key: 'expense', label: t('movements.expense'), icon: 'arrow-up', activeColor: ui.expenseText },
           { key: 'income', label: t('movements.income'), icon: 'arrow-down', activeColor: ui.incomeText },
@@ -229,22 +230,10 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
         onChange={handleTypeChange}
       />
 
-      <AmountInput value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
+      <AmountInput large value={amount} onChangeText={setAmount} currencySymbol={currencySymbol} />
 
-      <FilledInput
-        icon="create-outline"
-        value={note}
-        onChangeText={setNote}
-        placeholder={t('movements.descriptionPlaceholder')}
-        maxLength={80}
-      />
-
-      <SheetLabel>{t('recurring.dayPickerLabel')}</SheetLabel>
+      <SheetLabel style={styles.firstLabel}>{t('recurring.dayPickerLabel')}</SheetLabel>
       <DayPicker value={recurringDay} onChange={setRecurringDay} resetKey={pickerKey} />
-      <View style={[styles.info, { backgroundColor: ui.fill }]}>
-        <Icon name="repeat" size={16} color={dc.textSecondary} />
-        <Text style={[styles.infoText, { color: dc.textSecondary }]}>{t('recurring.infoMessage')}</Text>
-      </View>
 
       <SheetLabel>{t('movements.category')}</SheetLabel>
       <CategoryPicker
@@ -255,6 +244,19 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
         onAdd={handleAddCategoryPress}
         resetKey={pickerKey}
       />
+
+      <FilledInput
+        icon="create-outline"
+        value={note}
+        onChangeText={setNote}
+        placeholder={t('movements.descriptionPlaceholder')}
+        maxLength={80}
+        containerStyle={styles.note}
+      />
+      <View style={styles.info}>
+        <Icon name="repeat" size={14} color={dc.textSecondary} style={styles.infoIcon} />
+        <Text style={[styles.infoText, { color: dc.textSecondary }]}>{t('recurring.infoMessage')}</Text>
+      </View>
 
       {/* Dentro de la hoja y no al lado: iOS no abre una ventana mientras hay
           otra abierta, salvo que vaya dentro de ella (ver AddMovementModal) */}
@@ -268,10 +270,13 @@ const AddRecurringModal = ({ visible, onDismiss, editingRecurring }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  info: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, marginTop: 10,
-  },
+  // Justo debajo del importe, que ya deja aire
+  firstLabel: { marginTop: 0 },
+  note: { marginTop: 16 },
+  // Aviso en pequeño debajo de la nota, sin recuadro
+  info: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10, paddingHorizontal: 2 },
+  // A la altura de la primera línea del texto
+  infoIcon: { marginTop: 1.5 },
   infoText: { flex: 1, fontSize: 12, fontFamily: 'Poppins_400Regular', lineHeight: 17 },
 });
 

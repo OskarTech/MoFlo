@@ -2,6 +2,7 @@ import React, { useState, forwardRef } from 'react';
 import { View, StyleSheet, TextInput, Text as RNText } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { symbolGoesBefore } from '../../utils/formatAmount';
+import { largeAmountSizes } from '../../utils/amountSize';
 
 interface Props {
   value: string;
@@ -11,9 +12,12 @@ interface Props {
   autoFocus?: boolean;
   /** Color de la cifra (por defecto, el del texto) */
   color?: string;
+  /** Cifra más grande, la de las ventanas de añadir movimiento y fijo */
+  large?: boolean;
 }
 
 const FONT_SIZE = 44;
+const SYMBOL_SIZE = 26;
 const SYMBOL_GAP = 10;
 
 /**
@@ -26,7 +30,7 @@ const SYMBOL_GAP = 10;
  * dígito: en ese instante la cifra no cabía y se veía cortada, parpadeando.
  */
 const AmountInput = forwardRef<TextInput, Props>(({
-  value, onChangeText, currencySymbol, placeholder = '0', autoFocus, color,
+  value, onChangeText, currencySymbol, placeholder = '0', autoFocus, color, large = false,
 }, ref) => {
   const { colors: dc, ui } = useTheme();
   // Para centrar la cifra junto con su símbolo, el campo deja a ese lado el
@@ -36,9 +40,21 @@ const AmountInput = forwardRef<TextInput, Props>(({
   const before = symbolGoesBefore(currencySymbol);
   const symbolGap = symbolWidth + SYMBOL_GAP;
 
+  const sizes = large
+    ? largeAmountSizes(value || placeholder, currencySymbol)
+    : { amount: FONT_SIZE, symbol: SYMBOL_SIZE };
+  const amountSize = {
+    fontSize: sizes.amount,
+    letterSpacing: large ? -1.6 * (sizes.amount / 56) : -1.2,
+  };
+
   const symbol = (
     <RNText
-      style={[styles.symbol, before ? styles.symbolBefore : styles.symbolAfter, { color: dc.textSecondary }]}
+      style={[
+        styles.symbol,
+        before ? styles.symbolBefore : styles.symbolAfter,
+        { fontSize: sizes.symbol, color: dc.textSecondary },
+      ]}
       onLayout={(e) => setSymbolWidth(e.nativeEvent.layout.width)}
     >
       {currencySymbol}
@@ -46,9 +62,9 @@ const AmountInput = forwardRef<TextInput, Props>(({
   );
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, large && styles.rowLarge]}>
       {before && symbol}
-      <RNText style={[styles.amount, styles.ghost]} numberOfLines={1}>
+      <RNText style={[styles.amount, amountSize, styles.ghost]} numberOfLines={1}>
         {value || placeholder}
       </RNText>
       {!before && symbol}
@@ -63,7 +79,7 @@ const AmountInput = forwardRef<TextInput, Props>(({
         autoFocus={autoFocus}
         maxLength={12}
         style={[
-          styles.amount, styles.input,
+          styles.amount, amountSize, styles.input,
           { color: color ?? dc.textPrimary },
           before ? { paddingLeft: symbolGap } : { paddingRight: symbolGap },
         ]}
@@ -78,10 +94,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 14, minHeight: 84,
   },
-  amount: { fontSize: FONT_SIZE, fontFamily: 'Poppins_700Bold', letterSpacing: -1.2 },
+  // Del mismo alto con cualquier tamaño de cifra: al bajar la letra en un
+  // importe largo, lo de debajo no se mueve. Sin relleno: la línea de Poppins
+  // ya deja mucho aire encima y debajo de las cifras, y con relleno quedaba un
+  // hueco grande hasta las categorías; el margen negativo recorta el de abajo
+  rowLarge: { paddingVertical: 0, minHeight: 86, marginTop: 6, marginBottom: -8 },
+  amount: { fontFamily: 'Poppins_700Bold' },
   ghost: { opacity: 0, flexShrink: 1 },
   input: { ...StyleSheet.absoluteFillObject, padding: 0, margin: 0, textAlign: 'center' },
-  symbol: { fontSize: 26, fontFamily: 'Poppins_600SemiBold', marginTop: 6 },
+  symbol: { fontFamily: 'Poppins_600SemiBold', marginTop: 6 },
   symbolAfter: { marginLeft: SYMBOL_GAP },
   symbolBefore: { marginRight: SYMBOL_GAP },
 });

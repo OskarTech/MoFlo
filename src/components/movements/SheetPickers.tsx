@@ -11,8 +11,12 @@ import StrikeText from '../common/StrikeText';
 
 export type CategoryChip = { id: string; name: string; icon: string; isCustom: boolean; deleted?: boolean };
 
-const TILE_W = 78;
-const TILE_GAP = 8;
+// Todas del mismo ancho: los nombres largos se cortan ("Supermer…")
+const TILE_W = 72;
+const TILE_GAP = 4;
+
+const DAY_SIZE = 36;
+const DAY_GAP = 6;
 
 /**
  * Categorías en una sola fila de cuadrados que se desliza: cada una con su
@@ -69,7 +73,7 @@ export const CategoryPicker = ({
             accessibilityState={{ selected: on }}
           >
             <View style={[styles.icon, { backgroundColor: withAlpha(color, 0.16) }]}>
-              <Icon name={`${c.icon}-outline` as any} size={20} color={color} />
+              <Icon name={`${c.icon}-outline` as any} size={16} color={color} />
             </View>
             <Text
               style={[styles.name, { color: dc.textPrimary }, on && styles.nameOn]}
@@ -84,7 +88,7 @@ export const CategoryPicker = ({
       })}
       <TouchableOpacity style={styles.tile} onPress={onAdd} activeOpacity={0.75} accessibilityRole="button">
         <View style={[styles.icon, styles.addIcon, { borderColor: ui.hair2 }]}>
-          <Icon name="add" size={22} color={dc.textSecondary} />
+          <Icon name="add" size={16} color={dc.textSecondary} />
         </View>
         <Text style={[styles.name, { color: dc.textSecondary }]} numberOfLines={1}>{t('categories.new')}</Text>
       </TouchableOpacity>
@@ -106,7 +110,7 @@ export const DayPicker = ({
   // Al abrir, el día elegido queda a la vista
   useEffect(() => {
     const id = setTimeout(() => {
-      scrollRef.current?.scrollTo({ x: Math.max(0, (value - 3) * 46), animated: false });
+      scrollRef.current?.scrollTo({ x: Math.max(0, (value - 3) * (DAY_SIZE + DAY_GAP)), animated: false });
     }, 50);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir
@@ -144,15 +148,15 @@ const styles = StyleSheet.create({
   bleed: { marginHorizontal: -20 },
   row: { paddingHorizontal: 20, gap: TILE_GAP },
   tile: {
-    width: TILE_W, alignItems: 'center', gap: 6,
-    paddingVertical: 10, paddingHorizontal: 4, borderRadius: 16,
-    borderWidth: 2, borderColor: 'transparent',
+    width: TILE_W, alignItems: 'center', gap: 5,
+    paddingTop: 8, paddingBottom: 7, paddingHorizontal: 3, borderRadius: 14,
+    borderWidth: 1.5, borderColor: 'transparent',
   },
-  icon: { width: 40, height: 40, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+  icon: { width: 30, height: 30, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   addIcon: { borderWidth: 1.5, borderStyle: 'dashed' },
-  name: { fontSize: 11.5, fontFamily: 'Poppins_500Medium', maxWidth: '100%' },
+  name: { fontSize: 11, fontFamily: 'Poppins_500Medium', maxWidth: '100%' },
   nameOn: { fontFamily: 'Poppins_600SemiBold' },
-  days: { paddingHorizontal: 20, gap: 6 },
-  day: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  dayText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
+  days: { paddingHorizontal: 20, gap: DAY_GAP },
+  day: { width: DAY_SIZE, height: DAY_SIZE, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  dayText: { fontSize: 13.5, fontFamily: 'Poppins_600SemiBold' },
 });
