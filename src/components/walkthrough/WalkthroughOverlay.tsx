@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Dimensions,
-  Modal, Animated, Easing,
+  Modal, Animated, Easing, Platform, LayoutChangeEvent,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,38 @@ const SPOTLIGHT_PADDING = 4;
 const SPOTLIGHT_RADIUS_DEFAULT = 14;
 const TOOLTIP_MARGIN = 16;
 const TOOLTIP_GAP = 16;
+
+/**
+ * Cada paso entra con un fundido. Se monta de nuevo en cada paso (key): en
+ * Android, poner la opacidad a 0 y animarla al cambiar de paso llegaba antes
+ * que el contenido nuevo, y el paso anterior volvía a salir un momento antes de
+ * saltar al nuevo (un parpadeo). Montado de nuevo, empieza en 0 con el paso nuevo.
+ */
+const StepFade = ({ children, onLayout }: {
+  children: React.ReactNode;
+  onLayout: (e: LayoutChangeEvent) => void;
+}) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFillObject, { opacity }]}
+      // Android: sin esto, durante el fundido la sombra de la tarjeta se veía
+      // a través de ella como un rectángulo gris
+      needsOffscreenAlphaCompositing={Platform.OS === 'android'}
+      onLayout={onLayout}
+    >
+      {children}
+    </Animated.View>
+  );
+};
 
 const WalkthroughOverlay = () => {
   const { t } = useTranslation();
@@ -30,7 +62,6 @@ const WalkthroughOverlay = () => {
   const prev = useWalkthroughStore(s => s.prev);
   const skip = useWalkthroughStore(s => s.skip);
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const step = WALKTHROUGH_STEPS[currentStep];
 
   // Tamaño real del área del Modal. En Android con gesture nav, el Modal
@@ -46,18 +77,6 @@ const WalkthroughOverlay = () => {
       navigation.navigate(targetTab === 'HuchaTab' ? 'HuchaTab' : targetTab);
     } catch {}
   }, [isActive, currentStep, step, navigation]);
-
-  useEffect(() => {
-    if (isActive) {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isActive, currentStep, fadeAnim]);
 
   // Todos los pasos señalan una vista medida en pantalla (useWalkthroughTarget):
   // las pestañas y el + los registra la barra de abajo, y la cuenta, su pastilla
@@ -111,8 +130,8 @@ const WalkthroughOverlay = () => {
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={skip}>
-      <Animated.View
-        style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}
+      <StepFade
+        key={currentStep}
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
           if (width !== overlaySize.w || height !== overlaySize.h) {
@@ -234,7 +253,7 @@ const WalkthroughOverlay = () => {
             </View>
           </View>
         </View>
-      </Animated.View>
+      </StepFade>
     </Modal>
   );
 };
