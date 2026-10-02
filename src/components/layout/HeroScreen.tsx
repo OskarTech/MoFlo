@@ -20,10 +20,19 @@ export const useTopInset = () => {
 const SHEET_OVERLAP = 26;
 
 // Brillo de arriba a la derecha: radios de su elipse (por el ancho y el alto de
-// la cabecera) y hasta dónde llega, en la escala del degradado
-const GLOW_RX = 1.3;
-const GLOW_RY = 0.85;
+// la cabecera) y hasta dónde llega, en la escala del degradado. Llega hasta
+// un tercio del alto, más o menos (antes, hasta la mitad)
+const GLOW_RX = 1.1;
+const GLOW_RY = 0.55;
 const GLOW_END = 0.58;
+
+// Línea de brillo a lo largo del borde de abajo, del color del de arriba: más
+// marcada a la izquierda y cada vez más suave hacia la derecha. Es una elipse
+// muy ancha y baja con el centro en la esquina de abajo a la izquierda: hacia
+// arriba se apaga en BOTTOM_LINE_HEIGHT puntos (fijo, para que sea una línea
+// también en las cabeceras altas) y en el borde derecho queda en un cuarto
+const BOTTOM_LINE_RX = 1.5;
+const BOTTOM_LINE_HEIGHT = 110;
 
 // Lo que puede asomar por encima de la cabecera al tirar hacia abajo
 const OVERSCROLL = 800;
@@ -36,7 +45,8 @@ const GLOW_BLEED = 2;
 
 /**
  * Fondo de la cabecera: el color de la tarjeta de balance con el brillo de
- * la paleta arriba a la derecha y otro blanco muy suave abajo a la
+ * la paleta arriba a la derecha, una línea de ese brillo a lo largo del borde
+ * de abajo (más marcada a la izquierda) y otro blanco muy suave abajo a la
  * izquierda. Se dibuja con react-native-svg, que ya estaba en la app.
  */
 export const HeroGlow = ({ width, height, colors }: {
@@ -79,6 +89,15 @@ const HeroGlowLayers = ({ id, width, height, colors }: {
           <Stop offset={GLOW_END} stopColor={ui.heroGlow} stopOpacity={0} />
         </RadialGradient>
         <RadialGradient
+          id={`${id}c`} gradientUnits="userSpaceOnUse"
+          cx={0} cy={height} rx={width * BOTTOM_LINE_RX} ry={BOTTOM_LINE_HEIGHT} fx={0} fy={height}
+        >
+          <Stop offset="0" stopColor={ui.heroGlow} stopOpacity={ui.heroGlowOpacity} />
+          {/* A medio camino ya ha bajado bastante: se apaga suave, sin borde */}
+          <Stop offset="0.5" stopColor={ui.heroGlow} stopOpacity={ui.heroGlowOpacity * 0.4} />
+          <Stop offset="1" stopColor={ui.heroGlow} stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient
           id={`${id}b`} gradientUnits="userSpaceOnUse"
           cx={0} cy={height} rx={width * 0.9} ry={height * 0.7} fx={0} fy={height}
         >
@@ -87,6 +106,7 @@ const HeroGlowLayers = ({ id, width, height, colors }: {
         </RadialGradient>
       </Defs>
       <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={ui.hero} />
+      <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={`url(#${id}c)`} />
       <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={`url(#${id}a)`} />
       <Rect x={0} y={0} width={width + GLOW_BLEED} height={height} fill={`url(#${id}b)`} />
     </>

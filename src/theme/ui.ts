@@ -4,6 +4,7 @@ interface BaseColors {
   primary: string;
   primaryLight: string;
   heroGlow?: string;
+  heroGlowOpacity?: number;
   background: string;
   surface: string;
   textPrimary: string;
@@ -26,7 +27,7 @@ export const getUiColors = (c: BaseColors, isDark: boolean) => {
   return {
     hero: c.balanceCard,
     heroGlow: c.heroGlow ?? c.primaryLight,
-    heroGlowOpacity: isDark ? 0.32 : 0.5,
+    heroGlowOpacity: c.heroGlowOpacity ?? (isDark ? 0.32 : 0.5),
     accent,
     accentSoft: withAlpha(accent, 0.15),
     onAccent: isDark ? c.background : '#FFFFFF',

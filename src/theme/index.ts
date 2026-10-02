@@ -72,6 +72,10 @@ interface PaletteEntry {
   // cabecera salía marrón o gris
   lightGlow?: string;
   darkGlow?: string;
+  // Intensidad de ese brillo, si no es la de siempre (0,5 en claro y 0,32 en
+  // oscuro): sobre algunos colores apenas se veía
+  lightGlowOpacity?: number;
+  darkGlowOpacity?: number;
 }
 
 export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
@@ -108,8 +112,12 @@ export const COLOR_PALETTES: Record<ColorPaletteId, PaletteEntry> = {
     darkTextPrimary: '#FFF6D0',
     darkTextSecondary: '#A89D82',
     darkPrimary: '#A6087F',
-    lightGlow: '#FFC94D',
-    darkGlow: '#FFC94D',
+    // Amarillo más vivo y más fuerte: mezclado con el magenta se quedaba en
+    // un salmón que apenas se veía
+    lightGlow: '#FFD93D',
+    darkGlow: '#FFD93D',
+    lightGlowOpacity: 0.8,
+    darkGlowOpacity: 0.6,
     income: '#10B981', expense: '#F5854A', savings: '#E6B905',
     darkSavings: '#FACD19',
   },
@@ -325,6 +333,7 @@ export const getDynamicColors = (isDark: boolean, paletteId: ColorPaletteId = 'g
     primaryLight: p.primaryLight,
     primaryDark: p.primaryDark,
     heroGlow: (isDark ? p.darkGlow : p.lightGlow) ?? p.primaryLight,
+    heroGlowOpacity: isDark ? p.darkGlowOpacity : p.lightGlowOpacity,
     background: isDark ? p.darkBg : p.lightBg,
     surface: isDark ? p.darkSurface : (p.lightSurface ?? '#FFFFFF'),
     textPrimary: isDark ? (p.darkTextPrimary ?? '#F9FAFB') : (p.lightTextPrimary ?? '#1F2937'),
