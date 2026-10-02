@@ -65,7 +65,7 @@ const ReminderCardBase = ({
       reminder.title,
       [
         { text: t('reminders.cancel'), style: 'cancel' },
-        { text: 'OK', style: 'destructive', onPress: () => onDelete(reminder.id) },
+        { text: t('movementsList.delete'), style: 'destructive', onPress: () => onDelete(reminder.id) },
       ]
     );
   };

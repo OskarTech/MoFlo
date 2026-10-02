@@ -159,7 +159,7 @@ const RecurringRowBase = ({
       item.note || item.description,
       [
         { text: t('movements.cancel'), style: 'cancel' },
-        { text: 'OK', style: 'destructive', onPress: () => onDelete(item.id) },
+        { text: t('movementsList.delete'), style: 'destructive', onPress: () => onDelete(item.id) },
       ],
     );
   };
