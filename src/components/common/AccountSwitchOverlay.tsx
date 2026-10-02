@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Animated, ActivityIndicator, BackHandler, useWindowDimensions } from 'react-native';
+import { StyleSheet, Animated, ActivityIndicator, BackHandler, Platform, useWindowDimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
+import { setNavigationBarStyle } from '../../hooks/useAndroidSystemBars';
 import { getDynamicColors } from '../../theme';
 import { getUiColors } from '../../theme/ui';
 import { HeroGlow } from '../layout/HeroScreen';
@@ -72,6 +73,17 @@ const Cover = ({ session }: { session: SwitchSession }) => {
   const text = palette ? palette.onHero : neutral.text;
   const soft = palette ? palette.onHeroSoft : neutral.soft;
   const message = t('accountSwitch.switching');
+
+  // Android: con la app en modo claro, la barra de navegación del sistema
+  // lleva un velo blanco y quedaba una franja blanca abajo. Mientras tapa, el
+  // velo va a juego con la pantalla de carga, como la barra de estado; al
+  // desvanecerse, vuelve el de la app
+  const coverIsDark = !!palette || isDark;
+  useEffect(() => {
+    if (Platform.OS !== 'android' || leaving) return;
+    setNavigationBarStyle(coverIsDark ? 'dark' : 'light');
+    return () => setNavigationBarStyle(isDark ? 'dark' : 'light');
+  }, [leaving, coverIsDark, isDark]);
 
   return (
     <Animated.View

@@ -13,6 +13,15 @@ const NavigationBar: typeof import('expo-navigation-bar') | null =
     : null;
 
 /**
+ * Android: el estilo de la barra de navegación ('dark': velo oscuro y botones
+ * claros). Para lo que tapa toda la app un momento, como la pantalla de carga
+ * al cambiar de cuenta
+ */
+export const setNavigationBarStyle = (style: 'light' | 'dark') => {
+  NavigationBar?.setStyle(style);
+};
+
+/**
  * Android: la barra de navegación del sistema sigue el modo de la app, no el
  * del móvil. Con navegación por botones Android pone un velo detrás de la
  * barra, claro u oscuro según el modo del móvil: con el móvil en claro y la
