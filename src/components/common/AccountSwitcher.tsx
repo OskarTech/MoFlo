@@ -69,9 +69,11 @@ const AccountSwitcher = () => {
       }))
     : [{ uri: photoURL, initial: initialOf(displayName || t('common.user')) }];
 
+  // En la individual, tu nombre; sin nombre (aún sin cargar o sin poner),
+  // "Cuenta individual"
   const label = isSharedMode
     ? (sharedAccount?.name ?? t('sharedAccount.switchToShared'))
-    : t('header.individualAccount');
+    : (displayName?.trim() || t('header.individualAccount'));
 
   const option = (
     selected: boolean, onPress: () => void, icon: IconName,
