@@ -545,20 +545,28 @@ const SettingsScreen = () => {
 
   // ── SHARED HANDLERS ───────────────────────────────────────────
 
-  const handleRenameAccount = async () => {
-    if (!newSharedName.trim() || !sharedAccount) return;
-    try {
-      await firestore()
-        .collection('sharedAccounts')
-        .doc(sharedAccount.id)
-        .update({ name: newSharedName.trim() });
-      useSharedAccountStore.setState({
-        sharedAccount: { ...sharedAccount, name: newSharedName.trim() },
-      });
-      setEditingSharedName(false);
-      Alert.alert('✅', t('sharedAccount.renameSuccess'));
-    } catch {
+  // Primero en la app y luego en Firestore, sin esperarlo: sin conexión, la
+  // ventana no se cerraba ni cambiaba el nombre hasta recuperarla. Firestore
+  // lo guarda y lo sube solo; si lo rechaza, vuelve el nombre de antes
+  const handleRenameAccount = () => {
+    const name = newSharedName.trim();
+    if (!name || !sharedAccount) return;
+    const previous = sharedAccount;
+    const failed = () => {
+      // Solo si sigue con el nombre que no se ha podido guardar
+      const now = useSharedAccountStore.getState().sharedAccount;
+      if (now?.id === previous.id && now.name === name) {
+        useSharedAccountStore.setState({ sharedAccount: { ...now, name: previous.name } });
+      }
       Alert.alert(t('common.error'), t('sharedAccount.renameError'));
+    };
+    useSharedAccountStore.setState({ sharedAccount: { ...previous, name } });
+    setEditingSharedName(false);
+    Alert.alert('✅', t('sharedAccount.renameSuccess'));
+    try {
+      firestore().collection('sharedAccounts').doc(previous.id).update({ name }).catch(failed);
+    } catch {
+      failed();
     }
   };
 

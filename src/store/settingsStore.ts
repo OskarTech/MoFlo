@@ -221,12 +221,14 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const updated = { ...current, ...newSettings };
     set(updated);
 
-    await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)),
-      saveSettingsToFirestore(updated).catch((e) =>
-        console.error('Firestore settings sync error:', e)
-      ),
-    ]);
+    // Sin esperar a Firestore: el cambio ya está en la app y en el móvil, y
+    // Firestore lo guarda y lo sube solo al volver la conexión. Esperándolo,
+    // sin internet la ventana del nombre no se cerraba y el idioma no cambiaba
+    // hasta recuperarla (lo mismo que pasaba con las huchas)
+    saveSettingsToFirestore(updated).catch((e) =>
+      console.error('Firestore settings sync error:', e)
+    );
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
     if (
       newSettings.displayName !== undefined &&
