@@ -151,7 +151,7 @@ const AccountSwitcher = () => {
           isSharedMode, handleSelectShared, 'people',
           sharedAccount?.name ?? t('sharedAccount.switchToShared'),
           sharedAccount
-            ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
+            ? t('sharedAccount.memberCount', { count: sharedAccount.members.length })
             : t('header.sharedAccountSubtitle'),
           !isPremium, sharedAccount?.photoURL,
         )}

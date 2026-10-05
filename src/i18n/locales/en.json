@@ -608,6 +608,8 @@
   "linkCopied": "Link copied!",
   "shareLink": "Share link",
   "members": "Members",
+  "memberCount_one": "{{count}} member",
+  "memberCount_other": "{{count}} members",
   "you": "(You)",
   "creator": "Creator",
   "formerMember": "Former member",

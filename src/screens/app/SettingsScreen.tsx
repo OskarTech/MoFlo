@@ -874,7 +874,7 @@ const SettingsScreen = () => {
             <View style={[styles.heroChip, { backgroundColor: ui.heroFill }]}>
               <Icon name="people-outline" size={12} color={ui.onHero} />
               <Text style={[styles.heroChipText, { color: ui.onHero }]}>
-                {sharedAccount?.members.length ?? 0} {t('sharedAccount.members').toLowerCase()}
+                {t('sharedAccount.memberCount', { count: sharedAccount?.members.length ?? 0 })}
               </Text>
             </View>
           </View>
@@ -1019,7 +1019,7 @@ const SettingsScreen = () => {
                   icon="people-outline"
                   label={sharedAccount?.name ?? t('sharedAccount.title')}
                   subtitle={sharedAccount
-                    ? `${sharedAccount.members.length} ${t('sharedAccount.members').toLowerCase()}`
+                    ? t('sharedAccount.memberCount', { count: sharedAccount.members.length })
                     : t('sharedAccount.noAccount')}
                   onPress={() => {
                     if (sharedAccount) {

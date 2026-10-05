@@ -607,6 +607,8 @@
     "linkCopied": "Lien copié !",
     "shareLink": "Partager le lien",
     "members": "Membres",
+    "memberCount_one": "{{count}} membre",
+    "memberCount_other": "{{count}} membres",
     "you": "(Vous)",
     "creator": "Créateur",
     "formerMember": "Ancien membre",
