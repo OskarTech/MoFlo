@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
+import { installPluralRules } from './pluralRules';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -12,6 +13,9 @@ import de from './locales/de.json';
 
 const rawTag = Localization.getLocales()[0]?.languageTag ?? 'en';
 const languageTag = rawTag.split('-')[0];
+
+// Plurales del polaco en iOS, que no trae Intl.PluralRules (ver pluralRules)
+installPluralRules();
 
 // eslint-disable-next-line import/no-named-as-default-member -- es el uso que documenta i18next
 i18n.use(initReactI18next).init({
