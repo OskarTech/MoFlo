@@ -90,6 +90,9 @@ const BottomSheet = ({
   // Principio del contenido que se desplaza, y alto de su hueco en la ventana
   const contentTopRef = useRef<View>(null);
   const bodyHeight = useRef(0);
+  // Alto del cuerpo cuando se dejó el hueco del teclado (overlap): mientras
+  // está el hueco, el cuerpo se queda con ese alto. 0, sin hueco
+  const lockedBodyHeight = useRef(0);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -169,6 +172,13 @@ const BottomSheet = ({
         Animated.timing(keyboardOffset, { toValue: -shift, duration, useNativeDriver: true }),
         Animated.timing(footerOffset, { toValue: -covered, duration, useNativeDriver: true }),
       ]).start();
+      // El hueco del final solo da recorrido para desplazarse: el cuerpo se
+      // queda con el alto que tenía. Si crecía con él, la ventana se hacía más
+      // alta, se volvía a colocar con el alto nuevo (onLayout) y dejaba un
+      // hueco mayor: las que no caben sobre el teclado (fijos, categorías)
+      // subían a tirones hasta ocupar casi toda la pantalla
+      if (covered === 0) lockedBodyHeight.current = 0;
+      else if (lockedBodyHeight.current === 0) lockedBodyHeight.current = bodyHeight.current;
       setOverlap(covered);
       if (covered > 0) setTimeout(() => revealFocusedInput(covered), duration + 40);
       // Al irse el teclado, el contenido vuelve a donde estaba, salvo que
@@ -248,6 +258,7 @@ const BottomSheet = ({
       imeRef.current = () => {};
       keyboardOffset.setValue(0);
       footerOffset.setValue(0);
+      lockedBodyHeight.current = 0;
       setOverlap(0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- screenH, maxHeight y scrollable no cambian con la ventana abierta
@@ -303,7 +314,11 @@ const BottomSheet = ({
         ref: scrollRef,
         keyboardShouldPersistTaps: dismissKeyboardOnTap ? 'handled' as const : 'always' as const,
         showsVerticalScrollIndicator: false,
-        style: styles.bodyScroll,
+        // Con el hueco del teclado, el alto de antes (ver place)
+        style: [
+          styles.bodyScroll,
+          overlap > 0 && lockedBodyHeight.current > 0 ? { height: lockedBodyHeight.current } : null,
+        ],
         contentContainerStyle: [styles.body, bodyStyle],
         onLayout: (e: LayoutChangeEvent) => { bodyHeight.current = e.nativeEvent.layout.height; },
         scrollEventThrottle: 32,
