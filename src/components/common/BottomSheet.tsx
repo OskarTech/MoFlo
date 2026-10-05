@@ -46,8 +46,13 @@ const CLOSE_DISTANCE = 90;
 // Hueco que queda arriba cuando el teclado hace subir la ventana
 const KEYBOARD_TOP_GAP = 12;
 
-// Aire entre el campo en el que se escribe y el botón, al traerlo a la vista
+// Aire entre el campo en el que se escribe y el botón (o el teclado, si la
+// ventana no tiene botón), al traerlo a la vista
 const REVEAL_GAP = 12;
+
+// Aire del pie: encima del botón y debajo de él, además de la barra de inicio
+const FOOTER_TOP = 12;
+const FOOTER_BOTTOM = 16;
 
 // Lo que tarda la ventana en seguir al teclado cuando el sistema no da duración
 const KEYBOARD_MS = 220;
@@ -100,6 +105,9 @@ const BottomSheet = ({
   onClosedRef.current = onClosed;
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  // Sin botón no hay pie: su aire va al final del cuerpo (ver abajo)
+  const hasFooterRef = useRef(!!footer);
+  hasFooterRef.current = !!footer;
   // Alto de la ventana, para saber cuánto puede subir
   const sheetHeight = useRef(0);
   // Del efecto del teclado: bajar la ventana si está subida, y recolocarla si
@@ -204,8 +212,13 @@ const BottomSheet = ({
       if (!input || !scroll || !sheet || !contentTop) return;
       contentTop.measureLayout(sheet, (_cx, top) => {
         input.measureLayout(sheet, (_x, y, _w, height) => {
-          // Desplazamiento con el que el campo queda justo encima del botón
-          const needed = y - top + height + REVEAL_GAP - (bodyHeight.current - covered);
+          // Lo que se ve del cuerpo: hasta el botón, que ha subido lo que tapa
+          // el teclado. Sin botón, hasta el teclado, que tapa también la franja
+          // de la barra de inicio (o la de navegación en Android): la ventana
+          // sube el alto del teclado sin contarla
+          const visibleBody = bodyHeight.current - covered - (hasFooterRef.current ? 0 : insets.bottom);
+          // Desplazamiento con el que el campo queda justo encima
+          const needed = y - top + height + REVEAL_GAP - visibleBody;
           if (needed > scrollY.current) {
             revealed = { from: revealed?.from ?? scrollY.current, to: needed };
             scroll.scrollTo({ y: needed, animated: true });
@@ -414,16 +427,26 @@ const BottomSheet = ({
           ) : null}
           {children}
           {overlap > 0 ? <View style={{ height: overlap }} /> : null}
+          {/* Sin botón, el aire del pie va al final del contenido, que así se
+              desplaza hasta el borde de la pantalla. Como pie vacío era una
+              franja del color de la ventana que cortaba la lista por abajo */}
+          {footer ? null : <View style={{ height: insets.bottom + FOOTER_TOP + FOOTER_BOTTOM }} />}
         </Body>
 
-        <Animated.View
-          style={[
-            styles.footer,
-            { paddingBottom: insets.bottom + 16, backgroundColor: ui.sheet, transform: [{ translateY: footerOffset }] },
-          ]}
-        >
-          {footer}
-        </Animated.View>
+        {footer ? (
+          <Animated.View
+            style={[
+              styles.footer,
+              {
+                paddingBottom: insets.bottom + FOOTER_BOTTOM,
+                backgroundColor: ui.sheet,
+                transform: [{ translateY: footerOffset }],
+              },
+            ]}
+          >
+            {footer}
+          </Animated.View>
+        ) : null}
       </Animated.View>
     </Modal>
   );
@@ -577,7 +600,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 20 },
   // Marca sin tamaño en el principio del contenido, fuera del flujo
   contentTop: { position: 'absolute', top: 0, left: 0, width: 0, height: 0 },
-  footer: { paddingHorizontal: 20, paddingTop: 12 },
+  footer: { paddingHorizontal: 20, paddingTop: FOOTER_TOP },
   button: {
     height: 52, borderRadius: 16, flexDirection: 'row', gap: 8,
     justifyContent: 'center', alignItems: 'center',
