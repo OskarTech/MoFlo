@@ -23,7 +23,7 @@ import {
 } from '../../utils/period';
 import StrikeText from '../../components/common/StrikeText';
 import { formatAmount, formatMoney } from '../../utils/formatAmount';
-import { withAlpha } from '../../utils/color';
+import { withAlpha, hexToHsv } from '../../utils/color';
 import SwipeNavigator from '../../components/common/SwipeNavigator';
 import { SegmentedControl } from '../../components/common/BottomSheet';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
@@ -295,7 +295,13 @@ const AnnualScreen = () => {
 
   // Color del ritmo, el de la pestaña. En gastos, ir por debajo del mes pasado
   // es lo bueno; en ingresos y huchas, ir por encima.
-  const rhythmColor = activeTab === 'income' ? ui.incomeText : activeTab === 'hucha' ? ui.savingsText : ui.accent;
+  // Gastos va con el color de la paleta, salvo que sea verdoso (de verde lima a
+  // verde azulado) y se confunda con el de ingresos: Verde, Tierra, Lima,
+  // Petróleo en claro y Aurora en oscuro. Ahí, con el rojo de la paleta
+  const accentHsv = hexToHsv(ui.accent);
+  const accentLikeIncome = accentHsv.s >= 0.15 && accentHsv.h >= 65 && accentHsv.h <= 195;
+  const expenseColor = accentLikeIncome ? ui.expenseText : ui.accent;
+  const rhythmColor = activeTab === 'income' ? ui.incomeText : activeTab === 'hucha' ? ui.savingsText : expenseColor;
   const rhythmGood = !!rhythm && rhythm.diff !== null
     && (activeTab === 'expense' ? rhythm.diff < 0 : rhythm.diff > 0);
 
