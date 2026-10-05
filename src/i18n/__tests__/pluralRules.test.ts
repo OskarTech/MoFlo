@@ -82,10 +82,22 @@ describe('installPluralRules', () => {
       '1 członek', '2 członków', '5 członków',
     ]);
     expect(tPl('export.memberCount', { count: 2 })).toBe('2 członków');
+    expect([1, 4, 5].map((count) => tPl('hucha.activeGoalCount', { count }))).toEqual([
+      '1 aktywny cel', '4 aktywne cele', '5 aktywnych celów',
+    ]);
+    expect([1, 3, 9].map((count) => tPl('resumen.categoryCount', { count }))).toEqual([
+      '1 kategoria', '3 kategorie', '9 kategorii',
+    ]);
 
     // Los demás idiomas, igual que antes: «one» solo con 1 (también el 0 en francés y portugués)
     expect([0, 1, 2].map((count) => i18n.getFixedT('es')('sharedAccount.memberCount', { count }))).toEqual([
       '0 miembros', '1 miembro', '2 miembros',
+    ]);
+    expect([1, 4].map((count) => i18n.getFixedT('es')('hucha.activeGoalCount', { count }))).toEqual([
+      '1 meta activa', '4 metas activas',
+    ]);
+    expect([1, 9].map((count) => i18n.getFixedT('es')('resumen.categoryCount', { count }))).toEqual([
+      '1 categoría', '9 categorías',
     ]);
     expect(i18n.getFixedT('fr')('sharedAccount.memberCount', { count: 0 })).toBe('0 membres');
     expect(i18n.getFixedT('pt')('sharedAccount.memberCount', { count: 0 })).toBe('0 membros');

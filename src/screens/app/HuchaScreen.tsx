@@ -135,7 +135,7 @@ const HuchaScreen = () => {
         title={t('hucha.title')}
         settings
         right={activeHuchas.length > 0
-          ? <HeroChip label={`${activeHuchas.length} ${t('hucha.activeGoals')}`} />
+          ? <HeroChip label={t('hucha.activeGoalCount', { count: activeHuchas.length })} />
           : undefined}
       />
       <View style={styles.heroBody}>

@@ -645,7 +645,7 @@ const AnnualScreen = () => {
               {formatMoney(total, currencySymbol)}
             </Text>
             <Text style={[styles.pieInfoSub, { color: dc.textSecondary }]}>
-              {breakdown.length} {t('resumen.categories')}
+              {t('resumen.categoryCount', { count: breakdown.length })}
             </Text>
           </View>
         </View>
