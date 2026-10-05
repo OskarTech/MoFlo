@@ -4,6 +4,8 @@ import { useSharedAccountStore } from '../store/sharedAccountStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
 import { useMovementStore } from '../store/movementStore';
+import { useMonthStartDay } from './useMonthStartDay';
+import { periodIndexOf } from '../utils/period';
 import { BASE_CATEGORIES } from '../constants/categories';
 import { makeCategoryColors, CategoryColors, buildExpenseOrder, choicesForPalette } from '../utils/categoryColors';
 import { MovementType } from '../types';
@@ -29,16 +31,17 @@ export const useCategoryColors = (): CategoryColorsWithIncome => {
   const sharedCustomCategories = useSharedCategoryStore((s) => s.sharedCustomCategories);
   const sharedChoices = useSharedCategoryStore((s) => s.sharedPaletteCategoryColors);
   const movements = useMovementStore((s) => s.movements);
+  // Este mes, desde el día en que empieza (Ajustes)
+  const monthStartDay = useMonthStartDay();
   const list = isSharedMode ? sharedCustomCategories : customCategories;
   const activeChoices = choicesForPalette(isSharedMode ? sharedChoices : choices, paletteId);
 
   const incomeRank = useMemo(() => {
-    const now = new Date();
+    const thisMonth = periodIndexOf(new Date(), monthStartDay);
     const totals = new Map<string, number>();
     movements.forEach((m) => {
       if (m.type !== 'income') return;
-      const d = new Date(m.date);
-      if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return;
+      if (periodIndexOf(new Date(m.date), monthStartDay) !== thisMonth) return;
       totals.set(m.category, (totals.get(m.category) ?? 0) + m.amount);
     });
     const rank = new Map<string, number>();
@@ -50,7 +53,7 @@ export const useCategoryColors = (): CategoryColorsWithIncome => {
       if (!rank.has(c.id)) rank.set(c.id, rank.size);
     });
     return rank;
-  }, [movements, list]);
+  }, [movements, list, monthStartDay]);
 
   return useMemo(() => {
     const colors = makeCategoryColors(categoryColors, list, activeChoices);

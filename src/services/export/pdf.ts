@@ -2,6 +2,7 @@ import {
   ExportInput, ExportSummary, CategoryRow, MonthRow,
   accountLabel, formatDay, formatMoney, monthLabel, periodLabel, sortedHuchaMovements, sortedMovements,
 } from './data';
+import { periodIndexOf } from '../../utils/period';
 
 // Informe PDF: HTML que el sistema imprime a PDF (expo-print). Imita lo que se
 // ve en la app: totales, meses, gastos por categoría con su color y los
@@ -113,8 +114,9 @@ export const buildReportHtml = (input: ExportInput, summary: ExportSummary, opti
   const incomeColors = new Map(summary.incomeByCategory.map((r) => [r.id, r.color]));
   const groups = new Map<string, typeof input.movements>();
   for (const m of sortedMovements(input.movements)) {
-    const d = new Date(m.date);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    // Los mismos meses que el resumen (summarize): empiezan el día de la cuenta
+    const index = periodIndexOf(new Date(m.date), input.monthStartDay);
+    const key = `${Math.floor(index / 12)}-${index % 12}`;
     groups.set(key, [...(groups.get(key) ?? []), m]);
   }
   const movements = input.movements.length

@@ -1,4 +1,5 @@
 import type { Hucha, HuchaMovement, Movement, MovementType, RecurringMovement } from '../../types';
+import { periodIndexOf } from '../../utils/period';
 
 // Todo lo que necesitan las tres exportaciones (CSV, Excel y PDF), ya resuelto
 // para la cuenta activa: aquí no se lee ningún store, así se puede probar.
@@ -28,6 +29,8 @@ export interface ExportInput {
   symbolBefore: boolean;
   dateFormat: ExportDateFormat;
   separators: { thousands: string; decimal: string };
+  /** Día en que empieza el mes de la cuenta (ver utils/period); sin él, el 1 */
+  monthStartDay?: number;
   exportedAt: Date;
   /** Color principal de la paleta activa */
   accent: string;
@@ -119,9 +122,12 @@ export const summarize = (input: ExportInput): ExportSummary => {
   for (const m of input.movements) {
     if (m.type === 'income') income += m.amount; else expense += m.amount;
 
-    const d = new Date(m.date);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const row = months.get(key) ?? { year: d.getFullYear(), month: d.getMonth(), income: 0, expense: 0, balance: 0, count: 0 };
+    // Por meses de la cuenta: empiezan el día elegido en Ajustes, como en la app
+    const index = periodIndexOf(new Date(m.date), input.monthStartDay);
+    const year = Math.floor(index / 12);
+    const month = index % 12;
+    const key = `${year}-${month}`;
+    const row = months.get(key) ?? { year, month, income: 0, expense: 0, balance: 0, count: 0 };
     if (m.type === 'income') row.income += m.amount; else row.expense += m.amount;
     row.count++;
     months.set(key, row);

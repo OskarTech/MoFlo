@@ -36,7 +36,7 @@ import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroTitleBar } from '../../components/layout/HeroBar';
 import { getTabBeforeSettings } from '../../navigation/navigationRef';
 import { SettingsSection, SettingsRow } from '../../components/settings/SettingsRows';
-import { OptionSheet, AppearanceSheet, FontSheet } from '../../components/settings/SettingsSheets';
+import { OptionSheet, AppearanceSheet, FontSheet, MonthStartSheet } from '../../components/settings/SettingsSheets';
 import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
 import { clearPushTokens } from '../../services/firebase/pushTokens.service';
@@ -54,6 +54,7 @@ import Constants from 'expo-constants';
 import { reloadAppAsync } from 'expo';
 import { lightHaptic, warningHaptic } from '../../utils/haptics';
 import { getMemberPhoto } from '../../utils/memberLabel';
+import { normalizeStartDay } from '../../utils/period';
 import Avatar from '../../components/common/Avatar';
 import {
   PHOTOS_AVAILABLE, pickPhoto, deletePhotos, userPhotoFolder, sharedPhotoFolder,
@@ -109,7 +110,7 @@ const SettingsScreen = () => {
 
   const {
     displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
-    photoURL, saveSettings, setProfilePhoto,
+    photoURL, monthStartDay, saveSettings, setProfilePhoto,
   } = useSettingsStore();
   const { isPremium, showModal, setShowModal, requirePremium } = usePremium();
   const premiumPrice = usePremiumPrice(!isPremium);
@@ -117,7 +118,7 @@ const SettingsScreen = () => {
     isSharedMode, sharedAccount, notificationsEnabled,
     setNotificationsEnabled, leaveSharedAccount, deleteSharedAccount,
     getInviteLink, sharedCurrencyCode, sharedColorPalette,
-    sharedDateFormat, saveSharedSettings,
+    sharedDateFormat, sharedMonthStartDay, saveSharedSettings,
     incomingRequests, approveJoinRequest, rejectJoinRequest,
     setSharedAccountPhoto,
   } = useSharedAccountStore();
@@ -147,6 +148,7 @@ const SettingsScreen = () => {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showDateFormatModal, setShowDateFormatModal] = useState(false);
+  const [showMonthStartSheet, setShowMonthStartSheet] = useState(false);
   const [showColorPaletteModal, setShowColorPaletteModal] = useState(false);
   const [showFontModal, setShowFontModal] = useState(false);
   // Elegir formato de exportación; 'beforeDelete': al terminar sigue con el borrado de la cuenta compartida
@@ -169,6 +171,7 @@ const SettingsScreen = () => {
   const [newSharedName, setNewSharedName] = useState(sharedAccount?.name ?? '');
   const [showSharedCurrencyModal, setShowSharedCurrencyModal] = useState(false);
   const [showSharedDateFormatModal, setShowSharedDateFormatModal] = useState(false);
+  const [showSharedMonthStartSheet, setShowSharedMonthStartSheet] = useState(false);
   const [showSharedColorPaletteModal, setShowSharedColorPaletteModal] = useState(false);
   const [showKickMemberModal, setShowKickMemberModal] = useState(false);
 
@@ -1051,6 +1054,12 @@ const SettingsScreen = () => {
                 label={t('settings.dateFormat')} value={selectedDateFormatLabel}
                 onPress={() => setShowDateFormatModal(true)}
               />
+              <SettingsRow
+                icon="calendar-clear-outline"
+                label={t('settings.monthStart')}
+                value={t('settings.monthStartValue', { day: normalizeStartDay(monthStartDay) })}
+                onPress={() => setShowMonthStartSheet(true)}
+              />
               {exportRow}
             </SettingsSection>
 
@@ -1182,6 +1191,12 @@ const SettingsScreen = () => {
                 icon="calendar-outline"
                 label={t('settings.dateFormat')} value={selectedSharedDateFormatLabel}
                 onPress={() => setShowSharedDateFormatModal(true)}
+              />
+              <SettingsRow
+                icon="calendar-clear-outline"
+                label={t('settings.monthStart')}
+                value={t('settings.monthStartValue', { day: normalizeStartDay(sharedMonthStartDay) })}
+                onPress={() => setShowSharedMonthStartSheet(true)}
               />
               <SettingsRow
                 icon="notifications-outline"
@@ -1350,6 +1365,12 @@ const SettingsScreen = () => {
         onSelect={code => saveSettings({ dateFormat: code as DateFormat })}
         onDismiss={() => setShowDateFormatModal(false)}
       />
+      <MonthStartSheet
+        visible={showMonthStartSheet}
+        selected={normalizeStartDay(monthStartDay)}
+        onSave={(day) => saveSettings({ monthStartDay: day })}
+        onDismiss={() => setShowMonthStartSheet(false)}
+      />
       <ExportDataModal
         visible={exportMode !== null}
         onClose={() => setExportMode(null)}
@@ -1443,6 +1464,12 @@ const SettingsScreen = () => {
         selected={sharedDateFormat}
         onSelect={code => sharedAccount && saveSharedSettings(sharedAccount.id, { dateFormat: code })}
         onDismiss={() => setShowSharedDateFormatModal(false)}
+      />
+      <MonthStartSheet
+        visible={showSharedMonthStartSheet}
+        selected={normalizeStartDay(sharedMonthStartDay)}
+        onSave={(day) => sharedAccount && saveSharedSettings(sharedAccount.id, { monthStartDay: day })}
+        onDismiss={() => setShowSharedMonthStartSheet(false)}
       />
       <ColorPaletteModal
         visible={showSharedColorPaletteModal}

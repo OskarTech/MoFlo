@@ -79,6 +79,23 @@ describe('resumen', () => {
     expect(s.incomeByCategory[0].color).toBe('#00AA00');
   });
 
+  it('con el mes empezando otro día, agrupa por esos meses, también en el PDF', () => {
+    // Empezando el 24: del 24 de septiembre al 23 de octubre es octubre
+    const data = input({
+      monthStartDay: 24,
+      movements: [
+        mov('a', 'expense', 10, 'food', new Date(2026, 9, 5, 12).toISOString(), { note: 'nota-a' }),
+        mov('b', 'expense', 20, 'food', new Date(2026, 9, 24, 12).toISOString(), { note: 'nota-b' }),
+        mov('c', 'income', 100, 'salary', new Date(2026, 8, 24, 9).toISOString(), { note: 'nota-c' }),
+      ],
+    });
+    const s = summarize(data);
+    expect(s.months.map((m) => [m.year, m.month, m.income, m.expense])).toEqual([[2026, 10, 0, 20], [2026, 9, 100, 10]]);
+    // Cada movimiento sale bajo su mes: con otra agrupación se quedaría fuera
+    const html = buildReportHtml(data, s, { pageMargin: '0' });
+    for (const note of ['nota-a', 'nota-b', 'nota-c']) expect(html).toContain(note);
+  });
+
   it('en compartida reparte por miembro y junta los recurrentes aparte, al final', () => {
     const s = summarize(input({ isShared: true }));
     expect(s.members.map((m) => [m.name, m.isFormer, m.isRecurring])).toEqual([

@@ -5,7 +5,8 @@ import Icon from '../common/Icon';
 import { useTranslation } from 'react-i18next';
 import * as Font from 'expo-font';
 import { useTheme } from '../../hooks/useTheme';
-import BottomSheet from '../common/BottomSheet';
+import BottomSheet, { SheetButton } from '../common/BottomSheet';
+import { DayPicker } from '../movements/SheetPickers';
 import { getDynamicColors, ColorPaletteId } from '../../theme';
 import { ThemeMode } from '../../store/settingsStore';
 import {
@@ -13,6 +14,8 @@ import {
 } from '../../theme/fonts';
 import { withAlpha } from '../../utils/color';
 import { formatMoney } from '../../utils/formatAmount';
+import { getDateLocale } from '../../utils/dateFormat';
+import { periodIndexOf, periodRange, formatPeriodRange } from '../../utils/period';
 
 /** Marca redonda de la opción elegida */
 const Check = ({ on }: { on: boolean }) => {
@@ -217,8 +220,62 @@ export const FontSheet = ({
   );
 };
 
+/**
+ * Día en que empieza el mes de la cuenta (ver utils/period): se elige en la
+ * fila de días, se ve cómo queda el mes y se guarda con el botón
+ */
+export const MonthStartSheet = ({
+  visible, selected, onSave, onDismiss,
+}: {
+  visible: boolean;
+  selected: number;
+  onSave: (day: number) => void;
+  onDismiss: () => void;
+}) => {
+  const { t, i18n } = useTranslation();
+  const { colors: dc } = useTheme();
+  const [day, setDay] = useState(selected);
+
+  // Al abrir, el que ya está elegido
+  useEffect(() => {
+    if (visible) setDay(selected);
+  }, [visible, selected]);
+
+  // El mes en curso con ese día: su nombre y sus fechas
+  const now = periodIndexOf(new Date(), day);
+  const nowRange = formatPeriodRange(periodRange(now, day), getDateLocale(i18n.language));
+
+  return (
+    <BottomSheet
+      visible={visible}
+      onClose={onDismiss}
+      title={t('settings.monthStartTitle')}
+      subtitle={t('settings.monthStartHint')}
+      footer={(
+        <SheetButton
+          label={t('settings.save')}
+          onPress={() => { onDismiss(); if (day !== selected) onSave(day); }}
+        />
+      )}
+    >
+      <DayPicker value={day} onChange={setDay} resetKey={visible} />
+      <Text style={[styles.monthStartText, { color: dc.textPrimary }]}>
+        {day === 1
+          ? t('settings.monthStartExplainFirst')
+          : t('settings.monthStartExplain', { start: day, end: day - 1 })}
+        {day >= 29 ? ` ${t('settings.monthStartShortMonths')}` : ''}
+      </Text>
+      <Text style={[styles.monthStartNow, { color: dc.textSecondary }]}>
+        {t('settings.monthStartNow', { month: t(`home.month_${now % 12}`), range: nowRange })}
+      </Text>
+    </BottomSheet>
+  );
+};
+
 const styles = StyleSheet.create({
   sheetBody: { paddingBottom: 8 },
+  monthStartText: { fontSize: 14, fontFamily: 'Poppins_500Medium', lineHeight: 20, marginTop: 16 },
+  monthStartNow: { fontSize: 13, fontFamily: 'Poppins_400Regular', lineHeight: 19, marginTop: 6, marginBottom: 4 },
   option: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, marginHorizontal: -4,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, TouchableOpacity,
 } from 'react-native';
@@ -15,7 +15,12 @@ import { useSharedCategoryStore } from '../../store/sharedCategoryStore';
 import { useSavingsStore } from '../../store/savingsStore';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryColors } from '../../hooks/useCategoryColors';
+import { useMonthStartDay } from '../../hooks/useMonthStartDay';
 import { MovementType } from '../../types';
+import { getDateLocale } from '../../utils/dateFormat';
+import {
+  periodIndexOf, periodRange, periodLength, dayOfPeriod, periodDay, formatPeriodRange,
+} from '../../utils/period';
 import StrikeText from '../../components/common/StrikeText';
 import { formatAmount, formatMoney } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
@@ -33,7 +38,8 @@ type SummaryTab = 'expense' | 'income' | 'hucha';
 const FLOW_BAR_H = 70;
 const STACK_BAR_H = 80;
 
-// Índice absoluto del mes (año * 12 + mes 0-11)
+// Índice absoluto del mes (año * 12 + mes 0-11). El de cada fecha sale de
+// periodIndexOf: el mes empieza el día elegido en Ajustes (ver utils/period)
 const monthIndexOf = (year: number, month1: number) => year * 12 + (month1 - 1);
 
 // ── DONUT CHART ──────────────────────────────────────────────────────────────
@@ -137,8 +143,18 @@ const AnnualScreen = () => {
 
   // Local period state — independent of HomeScreen
   const nowDate = new Date();
-  const [selectedMonth, setSelectedMonthLocal] = useState(nowDate.getMonth() + 1);
-  const [selectedYear, setSelectedYearLocal] = useState(nowDate.getFullYear());
+  // El mes de cada fecha empieza el día elegido en Ajustes; con el 1, el natural
+  const monthStartDay = useMonthStartDay();
+  const indexOfDate = useCallback(
+    (date: string | Date) => periodIndexOf(new Date(date), monthStartDay),
+    [monthStartDay],
+  );
+  // El mes en curso: su índice, su número (1-12) y su año
+  const currentIndex = periodIndexOf(nowDate, monthStartDay);
+  const currentMonth = (currentIndex % 12) + 1;
+  const currentYear = Math.floor(currentIndex / 12);
+  const [selectedMonth, setSelectedMonthLocal] = useState(currentMonth);
+  const [selectedYear, setSelectedYearLocal] = useState(currentYear);
   const [activeTab, setActiveTab] = useState<SummaryTab>('expense');
   // Resumen de todo el año
   const [yearMode, setYearMode] = useState(false);
@@ -157,11 +173,11 @@ const AnnualScreen = () => {
   const isFocused = useIsFocused();
   useEffect(() => {
     if (isFocused) return;
-    const now = new Date();
+    const now = periodIndexOf(new Date(), monthStartDay);
     setYearMode(false);
-    setSelectedMonthLocal(now.getMonth() + 1);
-    setSelectedYearLocal(now.getFullYear());
-  }, [isFocused]);
+    setSelectedMonthLocal((now % 12) + 1);
+    setSelectedYearLocal(Math.floor(now / 12));
+  }, [isFocused, monthStartDay]);
 
   const currencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
 
@@ -185,30 +201,22 @@ const AnnualScreen = () => {
 
   // ── LÍMITES DEL SELECTOR ──────────────────────────────────────────────────
   // Del primer mes con movimientos al mes actual
-  const currentIndex = monthIndexOf(nowDate.getFullYear(), nowDate.getMonth() + 1);
   const firstIndex = useMemo(() => {
     let first = currentIndex;
-    movements.forEach((m) => {
-      const d = new Date(m.date);
-      first = Math.min(first, monthIndexOf(d.getFullYear(), d.getMonth() + 1));
-    });
-    huchaMovements.forEach((m) => {
-      const d = new Date(m.date);
-      first = Math.min(first, monthIndexOf(d.getFullYear(), d.getMonth() + 1));
-    });
+    movements.forEach((m) => { first = Math.min(first, indexOfDate(m.date)); });
+    huchaMovements.forEach((m) => { first = Math.min(first, indexOfDate(m.date)); });
     return first;
-  }, [movements, huchaMovements, currentIndex]);
+  }, [movements, huchaMovements, currentIndex, indexOfDate]);
   const selectedIndex = monthIndexOf(selectedYear, selectedMonth);
   const firstYear = Math.floor(firstIndex / 12);
 
   // ── SELECTED MONTH DATA ────────────────────────────────────────────────────
   const monthMovements = useMemo(() =>
     movements.filter(m => {
-      const d = new Date(m.date);
-      if (d.getFullYear() !== selectedYear) return false;
-      return yearMode || d.getMonth() + 1 === selectedMonth;
+      const index = indexOfDate(m.date);
+      return yearMode ? Math.floor(index / 12) === selectedYear : index === selectedIndex;
     }),
-    [movements, selectedMonth, selectedYear, yearMode],
+    [movements, selectedIndex, selectedYear, yearMode, indexOfDate],
   );
 
   const totalIncome = useMemo(() =>
@@ -223,14 +231,12 @@ const AnnualScreen = () => {
 
   // ── PREVIOUS MONTH COMPARISON ─────────────────────────────────────────────
   const prevSelMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-  const prevSelYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
   const prevMonthMovements = useMemo(() =>
     movements.filter(m => {
-      const d = new Date(m.date);
-      if (yearMode) return d.getFullYear() === selectedYear - 1;
-      return d.getMonth() + 1 === prevSelMonth && d.getFullYear() === prevSelYear;
+      const index = indexOfDate(m.date);
+      return yearMode ? Math.floor(index / 12) === selectedYear - 1 : index === selectedIndex - 1;
     }),
-    [movements, prevSelMonth, prevSelYear, yearMode, selectedYear],
+    [movements, selectedIndex, yearMode, selectedYear, indexOfDate],
   );
   const prevBalance = useMemo(() => {
     if (prevMonthMovements.length === 0) return null;
@@ -247,38 +253,45 @@ const AnnualScreen = () => {
   // ingresos o lo aportado a huchas), frente al mes anterior ─────
   const rhythm = useMemo(() => {
     if (yearMode) return null;
-    const y = selectedYear;
-    const m = selectedMonth - 1;
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const isCurrent = y === nowDate.getFullYear() && m === nowDate.getMonth();
-    const lastDay = isCurrent ? nowDate.getDate() : daysInMonth;
-    const prevY = m === 0 ? y - 1 : y;
-    const prevM = m === 0 ? 11 : m - 1;
-    const prevDays = new Date(prevY, prevM + 1, 0).getDate();
+    // Los días del mes elegido y del anterior, desde el día en que empiezan
+    const range = periodRange(selectedIndex, monthStartDay);
+    const prevRange = periodRange(selectedIndex - 1, monthStartDay);
+    const daysInMonth = periodLength(range);
+    const isCurrent = selectedIndex === periodIndexOf(nowDate, monthStartDay);
+    const lastDay = isCurrent ? dayOfPeriod(nowDate, range) + 1 : daysInMonth;
+    const prevDays = periodLength(prevRange);
     // Cada apunte con su fecha y lo que suma: en huchas, lo metido menos lo sacado
     const entries = activeTab === 'hucha'
       ? huchaMovements.map((mv) => ({ date: mv.date, value: mv.type === 'deposit' ? mv.amount : -mv.amount }))
       : movements.filter((mv) => mv.type === activeTab).map((mv) => ({ date: mv.date, value: mv.amount }));
-    const cumulative = (yy: number, mm: number, upto: number) => {
+    const cumulative = (r: typeof range, upto: number) => {
       const daily = new Array(upto).fill(0);
       entries.forEach((e) => {
-        const d = new Date(e.date);
-        if (d.getFullYear() === yy && d.getMonth() === mm && d.getDate() <= upto) daily[d.getDate() - 1] += e.value;
+        const n = dayOfPeriod(new Date(e.date), r);
+        if (n >= 0 && n < upto) daily[n] += e.value;
       });
       let acc = 0;
       return daily.map((v) => (acc += v));
     };
-    const current = cumulative(y, m, lastDay);
-    const previousRaw = cumulative(prevY, prevM, prevDays);
+    const current = cumulative(range, lastDay);
+    const previousRaw = cumulative(prevRange, prevDays);
     // En huchas puede subir y bajar: se mira si hubo algo, no solo cómo acabó
     const previous = previousRaw.some((v) => v !== 0) ? previousRaw : null;
     if (!previous && current.every((v) => v === 0)) return null;
     // Se compara el mismo día de los dos meses (o el último del anterior, si es más corto)
     const compareDay = Math.min(lastDay, prevDays);
     const diff = previous ? current[compareDay - 1] - previous[compareDay - 1] : null;
-    return { current, previous, daysInMonth, compareDay, diff, prevMonth: prevM };
+    // El día del mes de cada punto: con el día 1, su posición; empezando otro
+    // día, la fecha (24, 25… 23), en el eje y en el «a día» de la comparación
+    const dayLabel = (n: number) => String(periodDay(range, n - 1).getDate());
+    return {
+      current, previous, daysInMonth, compareDay, diff,
+      compareDayLabel: dayLabel(compareDay),
+      dayLabel: monthStartDay === 1 ? undefined : dayLabel,
+      prevMonth: (selectedIndex - 1) % 12,
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render
-  }, [movements, huchaMovements, activeTab, selectedMonth, selectedYear, yearMode]);
+  }, [movements, huchaMovements, activeTab, selectedIndex, yearMode, monthStartDay]);
 
   // Color del ritmo, el de la pestaña. En gastos, ir por debajo del mes pasado
   // es lo bueno; en ingresos y huchas, ir por encima.
@@ -321,13 +334,10 @@ const AnnualScreen = () => {
   // ── MONTHLY FLOW (last 12 months) ─────────────────────────────────────────
   const flowData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
-      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (11 - i), 1);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      const mMovs = movements.filter(mv => {
-        const md = new Date(mv.date);
-        return md.getMonth() + 1 === m && md.getFullYear() === y;
-      });
+      const index = currentIndex - (11 - i);
+      const m = (index % 12) + 1;
+      const y = Math.floor(index / 12);
+      const mMovs = movements.filter(mv => indexOfDate(mv.date) === index);
       return {
         month: m, year: y,
         income: mMovs.filter(mv => mv.type === 'income').reduce((s, mv) => s + mv.amount, 0),
@@ -338,8 +348,8 @@ const AnnualScreen = () => {
     });
     // i18n.language: las etiquetas salen de t(), hay que recalcularlas al
     // cambiar de idioma
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
-  }, [movements, selectedMonth, selectedYear, yearMode, i18n.language]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shortMonth solo cambia con el idioma, que ya está en la lista
+  }, [movements, selectedMonth, selectedYear, yearMode, i18n.language, currentIndex, indexOfDate]);
 
   const flowMax = useMemo(() =>
     Math.max(1, ...flowData.map(d => Math.max(d.income, d.expense))),
@@ -347,37 +357,25 @@ const AnnualScreen = () => {
   );
 
   // ── HUCHAS DATA ────────────────────────────────────────────────────────────
-  const currentMonth = nowDate.getMonth() + 1;
-  const currentYear = nowDate.getFullYear();
-
+  // Este mes y este año son los del mes en curso (currentIndex, más arriba)
   const getHuchaThisMonth = (huchaId: string) =>
     huchaMovements
-      .filter(m => m.huchaId === huchaId)
-      .filter(m => {
-        const d = new Date(m.date);
-        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
-      })
+      .filter(m => m.huchaId === huchaId && indexOfDate(m.date) === currentIndex)
       .reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   const getHuchaThisYear = (huchaId: string) =>
     huchaMovements
-      .filter(m => m.huchaId === huchaId && new Date(m.date).getFullYear() === currentYear)
+      .filter(m => m.huchaId === huchaId && Math.floor(indexOfDate(m.date) / 12) === currentYear)
       .reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   const getHuchaStreak = (huchaId: string): number => {
     let streak = 0;
-    let mo = nowDate.getMonth();
-    let yr = nowDate.getFullYear();
     for (let i = 0; i < 24; i++) {
-      const hasDeposit = huchaMovements.some(m => {
-        if (m.huchaId !== huchaId || m.type !== 'deposit') return false;
-        const d = new Date(m.date);
-        return d.getMonth() === mo && d.getFullYear() === yr;
-      });
+      const index = currentIndex - i;
+      const hasDeposit = huchaMovements.some(m =>
+        m.huchaId === huchaId && m.type === 'deposit' && indexOfDate(m.date) === index);
       if (!hasDeposit) break;
       streak++;
-      mo--;
-      if (mo < 0) { mo = 11; yr--; }
     }
     return streak;
   };
@@ -385,23 +383,20 @@ const AnnualScreen = () => {
   // Stacked bar data: last 6 months
   const huchasFlowData = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (5 - i), 1);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
+      const index = currentIndex - (5 - i);
+      const m = (index % 12) + 1;
+      const y = Math.floor(index / 12);
       const net: Record<string, number> = {};
       huchaMovements
-        .filter(mv => {
-          const md = new Date(mv.date);
-          return md.getMonth() + 1 === m && md.getFullYear() === y;
-        })
+        .filter(mv => indexOfDate(mv.date) === index)
         .forEach(mv => {
           const delta = mv.type === 'deposit' ? mv.amount : -mv.amount;
           net[mv.huchaId] = (net[mv.huchaId] ?? 0) + delta;
         });
       return { month: m, year: y, label: shortMonth(m), net };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
-  }, [huchaMovements, i18n.language]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shortMonth solo cambia con el idioma, que ya está en la lista
+  }, [huchaMovements, i18n.language, currentIndex, indexOfDate]);
 
   const huchasBarMax = useMemo(() =>
     Math.max(1, ...huchasFlowData.map(d =>
@@ -432,11 +427,11 @@ const AnnualScreen = () => {
     const catMovs = movements.filter(m => m.type === type && m.category === category);
 
     const bars = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (5 - i), 1);
-      const mo = d.getMonth() + 1;
-      const yr = d.getFullYear();
+      const index = currentIndex - (5 - i);
+      const mo = (index % 12) + 1;
+      const yr = Math.floor(index / 12);
       const amt = catMovs
-        .filter(m => { const md = new Date(m.date); return md.getMonth() + 1 === mo && md.getFullYear() === yr; })
+        .filter(m => indexOfDate(m.date) === index)
         .reduce((s, m) => s + m.amount, 0);
       return { month: mo, year: yr, amt, label: shortMonth(mo) };
     });
@@ -444,9 +439,10 @@ const AnnualScreen = () => {
     const monthlyAvg = bars.reduce((s, b) => s + b.amt, 0) / 6;
     const barMax = Math.max(1, ...bars.map(b => b.amt));
 
+    // Por años de meses: empezando el mes otro día, el año también va de ese día
     const byYear: Record<number, number> = {};
     catMovs.forEach(m => {
-      const y = new Date(m.date).getFullYear();
+      const y = Math.floor(indexOfDate(m.date) / 12);
       byYear[y] = (byYear[y] ?? 0) + m.amount;
     });
     const total = catMovs.reduce((s, m) => s + m.amount, 0);
@@ -459,13 +455,13 @@ const AnnualScreen = () => {
 
   const incomeCategoryMonthlyData = useMemo(
     () => buildCategoryDetail('income', selectedIncomeCategory),
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
-    [selectedIncomeCategory, movements, i18n.language],
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- buildCategoryDetail depende de lo que ya está en la lista, y shortMonth solo del idioma
+    [selectedIncomeCategory, movements, i18n.language, currentIndex, indexOfDate],
   );
   const categoryMonthlyData = useMemo(
     () => buildCategoryDetail('expense', selectedCategory),
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nowDate es la fecha de este render y shortMonth solo cambia con el idioma, que ya está en la lista
-    [selectedCategory, movements, i18n.language],
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- buildCategoryDetail depende de lo que ya está en la lista, y shortMonth solo del idioma
+    [selectedCategory, movements, i18n.language, currentIndex, indexOfDate],
   );
 
   // ── NAVEGACIÓN ENTRE MESES ────────────────────────────────────────────────
@@ -497,6 +493,16 @@ const AnnualScreen = () => {
   const selectorLabel = yearMode
     ? String(selectedYear)
     : selectedYear === currentYear ? fullMonth(selectedMonth) : `${shortMonth(selectedMonth)} ${selectedYear}`;
+  // Si el mes no empieza el día 1, sus fechas a la vista; en el año, con los
+  // años, porque también empieza y acaba ese día (24 dic 2026 – 23 dic 2027)
+  const rangeLabel = monthStartDay === 1
+    ? null
+    : yearMode
+      ? formatPeriodRange({
+        start: periodRange(selectedYear * 12, monthStartDay).start,
+        end: periodRange(selectedYear * 12 + 11, monthStartDay).end,
+      }, getDateLocale(i18n.language), true)
+      : formatPeriodRange(periodRange(selectedIndex, monthStartDay), getDateLocale(i18n.language));
 
   const subTabLabel = (tab: SummaryTab) =>
     tab === 'expense' ? t('resumen.gastos')
@@ -530,7 +536,7 @@ const AnnualScreen = () => {
         <View style={styles.detailBarsRow}>
           {data.bars.map((bar, idx) => {
             const bh = Math.max(4, (bar.amt / data.barMax) * 60);
-            const isCurrent = bar.month === nowDate.getMonth() + 1 && bar.year === nowDate.getFullYear();
+            const isCurrent = bar.month === currentMonth && bar.year === currentYear;
             return (
               <View key={idx} style={styles.detailBarGroup}>
                 <Text style={[styles.detailBarVal, { color: dc.textSecondary }]} numberOfLines={1}>
@@ -857,6 +863,12 @@ const AnnualScreen = () => {
               </Text>
             </View>
           )}
+          {rangeLabel && (
+            <View style={styles.heroPill}>
+              <Icon name="calendar-outline" size={12} color={ui.onHero} />
+              <Text style={[styles.heroPillText, { color: ui.onHero }]}>{rangeLabel}</Text>
+            </View>
+          )}
         </View>
       </SwipeNavigator>
 
@@ -928,7 +940,7 @@ const AnnualScreen = () => {
                 <Text style={[styles.badgeText, { color: rhythmGood ? ui.incomeText : ui.expenseText }]}>
                   {t(rhythm.diff < 0 ? 'resumen.lessThanPrev' : 'resumen.moreThanPrev', {
                     amount: formatMoney(Math.abs(rhythm.diff), currencySymbol),
-                    day: rhythm.compareDay,
+                    day: rhythm.compareDayLabel,
                   })}
                 </Text>
               </View>
@@ -939,6 +951,7 @@ const AnnualScreen = () => {
               current={rhythm.current}
               previous={rhythm.previous}
               daysInMonth={rhythm.daysInMonth}
+              dayLabel={rhythm.dayLabel}
               color={rhythmColor}
             />
             <View style={styles.rhythmLegend}>

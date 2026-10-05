@@ -11,6 +11,7 @@ import { ColorPaletteId } from '../theme';
 import { CURRENCIES } from '../constants/currencies';
 import { refreshDailyNotificationLanguage } from '../services/notifications.service';
 import { deletePhotos, uploadPhoto, userPhotoFolder } from '../services/firebase/photo.service';
+import { normalizeStartDay } from '../utils/period';
 
 const syncDisplayNameToSharedAccounts = async (uid: string, displayName: string) => {
   const snapshot = await firestore()
@@ -88,6 +89,8 @@ interface SettingsStore {
   hapticsEnabled: boolean;
   // Enlace a la foto de perfil en Storage; null sin foto
   photoURL: string | null;
+  // Día en que empieza el mes de la cuenta individual (ver utils/period)
+  monthStartDay: number;
   isLoading: boolean;
 
   loadSettings: () => Promise<void>;
@@ -100,6 +103,7 @@ interface SettingsStore {
     dateFormat: DateFormat;
     colorPalette: ColorPaletteId;
     hapticsEnabled: boolean;
+    monthStartDay: number;
   }>) => Promise<void>;
   setProfilePhoto: (localUri: string | null) => Promise<void>;
   getCurrencySymbol: () => string;
@@ -116,6 +120,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   colorPalette: 'green',
   hapticsEnabled: true,
   photoURL: null,
+  monthStartDay: 1,
   isLoading: false,
 
   resetStore: () => set({
@@ -127,6 +132,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     dateFormat: 'DD/MM/YYYY',
     colorPalette: 'green',
     hapticsEnabled: true,
+    monthStartDay: 1,
   }),
 
   loadSettings: async () => {
@@ -163,6 +169,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             // Ajustes nuevos: las cuentas antiguas no los tienen guardados
             hapticsEnabled: firestoreSettings.hapticsEnabled ?? true,
             photoURL: firestoreSettings.photoURL ?? null,
+            monthStartDay: normalizeStartDay(firestoreSettings.monthStartDay),
           };
           set(typedSettings);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(typedSettings));
@@ -209,6 +216,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       dateFormat: get().dateFormat,
       colorPalette: get().colorPalette,
       hapticsEnabled: get().hapticsEnabled,
+      monthStartDay: get().monthStartDay,
     };
     const updated = { ...current, ...newSettings };
     set(updated);
@@ -279,9 +287,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     const {
       photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+      monthStartDay,
     } = get();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
       photoURL, displayName, currencyCode, language, themeMode, dateFormat, colorPalette, hapticsEnabled,
+      monthStartDay,
     })).catch(() => {});
     const uid = auth().currentUser?.uid;
     if (uid) {

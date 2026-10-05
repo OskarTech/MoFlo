@@ -97,6 +97,7 @@ interface UserSettings {
   colorPalette?: string;
   hapticsEnabled?: boolean;
   photoURL?: string | null;
+  monthStartDay?: number;
 }
 
 export const saveSettingsToFirestore = async (

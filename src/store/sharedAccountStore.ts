@@ -7,6 +7,7 @@ import { CURRENCIES, ColorPaletteId, useSettingsStore } from './settingsStore';
 import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
 import { deletePhotos, sharedPhotoFolder, uploadPhoto } from '../services/firebase/photo.service';
+import { normalizeStartDay } from '../utils/period';
 import i18n from '../i18n';
 
 // Los demás stores se cargan con require() al usarlos, no con import: reminderStore
@@ -103,6 +104,7 @@ export const readCachedSharedSettings = async (accountId: string) => {
   return {
     sharedCurrencyCode: (parsed.currencyCode ?? 'EUR') as string,
     sharedColorPalette: (parsed.colorPalette ?? 'navy') as ColorPaletteId,
+    sharedMonthStartDay: normalizeStartDay(parsed.monthStartDay),
   };
 };
 
@@ -122,6 +124,8 @@ interface SharedAccountStore {
   sharedCurrencyCode: string;
   sharedColorPalette: ColorPaletteId;
   sharedDateFormat: string;
+  // Día en que empieza el mes de la cuenta compartida (ver utils/period)
+  sharedMonthStartDay: number;
   isLoading: boolean;
   pendingJoinRequest: PendingJoinRequest | null;
   incomingRequests: JoinRequest[];
@@ -144,7 +148,9 @@ interface SharedAccountStore {
   resumeOwnRequestSubscription: () => Promise<void>;
   unsubscribeAll: () => void;
   loadSharedSettings: (accountId: string) => Promise<void>;
-  saveSharedSettings: (accountId: string, settings: { currencyCode?: string; colorPalette?: ColorPaletteId; dateFormat?: string }) => Promise<void>;
+  saveSharedSettings: (accountId: string, settings: {
+    currencyCode?: string; colorPalette?: ColorPaletteId; dateFormat?: string; monthStartDay?: number;
+  }) => Promise<void>;
   getSharedCurrencySymbol: () => string;
   resetStore: () => void;
 }
@@ -158,6 +164,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
   sharedCurrencyCode: 'EUR',
   sharedColorPalette: 'navy',
   sharedDateFormat: 'DD/MM/YYYY',
+  sharedMonthStartDay: 1,
   isLoading: false,
   pendingJoinRequest: null,
   incomingRequests: [],
@@ -175,6 +182,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       sharedCurrencyCode: 'EUR',
       sharedColorPalette: 'navy',
       sharedDateFormat: 'DD/MM/YYYY',
+      sharedMonthStartDay: 1,
       pendingJoinRequest: null,
       incomingRequests: [],
     });
@@ -804,6 +812,9 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       const doc = await firestore()
         .collection('sharedAccounts').doc(accountId).get();
       const settings = doc.data()?.sharedSettings;
+      // El inicio del mes, siempre el de esta cuenta: si no tiene (aún no se ha
+      // elegido), el 1, y no el de otra cuenta en la que se estuviera antes
+      set({ sharedMonthStartDay: normalizeStartDay(settings?.monthStartDay) });
       if (settings) {
         const update: Partial<{ sharedCurrencyCode: string; sharedColorPalette: ColorPaletteId; sharedDateFormat: string }> = {};
         if (settings.currencyCode) update.sharedCurrencyCode = settings.currencyCode;
@@ -825,10 +836,12 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       currencyCode: settings.currencyCode ?? get().sharedCurrencyCode,
       colorPalette: settings.colorPalette ?? get().sharedColorPalette,
       dateFormat: settings.dateFormat ?? get().sharedDateFormat,
+      monthStartDay: settings.monthStartDay ?? get().sharedMonthStartDay,
     };
     if (settings.currencyCode) set({ sharedCurrencyCode: settings.currencyCode });
     if (settings.colorPalette) set({ sharedColorPalette: settings.colorPalette });
     if (settings.dateFormat) set({ sharedDateFormat: settings.dateFormat });
+    if (settings.monthStartDay) set({ sharedMonthStartDay: settings.monthStartDay });
     await AsyncStorage.setItem(
       `@moflo_shared_settings_${accountId}`,
       JSON.stringify(current)

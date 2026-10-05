@@ -16,6 +16,8 @@ interface Props {
   previous: number[] | null;
   /** Días del mes elegido: el eje llega hasta aquí */
   daysInMonth: number;
+  /** Lo que pone el eje en cada día (1, el primero). Sin esto, su número: 1, 16, 31 */
+  dayLabel?: (day: number) => string;
   /** Etiqueta del último punto (p. ej. "hoy") */
   endLabel?: string;
   /** Color de la línea del mes (por defecto, el de acento) */
@@ -27,7 +29,7 @@ interface Props {
  * mes anterior de fondo en discontinua. Mismo eje para los dos: se ve de un
  * vistazo si se va por encima o por debajo.
  */
-const RhythmChart = ({ current, previous, daysInMonth, endLabel, color }: Props) => {
+const RhythmChart = ({ current, previous, daysInMonth, dayLabel, endLabel, color }: Props) => {
   const { colors: dc, ui } = useTheme();
   const id = useId().replace(/:/g, '');
   const [width, setWidth] = useState(0);
@@ -84,10 +86,10 @@ const RhythmChart = ({ current, previous, daysInMonth, endLabel, color }: Props)
       )}
       {/* Eje de días: el primero, el de en medio y el último */}
       <View style={styles.axis}>
-        <Text style={[styles.axisText, { color: dc.textSecondary }]}>1</Text>
-        <Text style={[styles.axisText, { color: dc.textSecondary }]}>{mid}</Text>
+        <Text style={[styles.axisText, { color: dc.textSecondary }]}>{dayLabel ? dayLabel(1) : 1}</Text>
+        <Text style={[styles.axisText, { color: dc.textSecondary }]}>{dayLabel ? dayLabel(mid) : mid}</Text>
         <Text style={[styles.axisText, { color: endLabel ? lineColor : dc.textSecondary }]}>
-          {endLabel ?? daysInMonth}
+          {endLabel ?? (dayLabel ? dayLabel(daysInMonth) : daysInMonth)}
         </Text>
       </View>
     </View>

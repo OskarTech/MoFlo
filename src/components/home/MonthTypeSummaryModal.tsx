@@ -16,13 +16,14 @@ import { formatMoney } from '../../utils/formatAmount';
 import { getMemberLabel } from '../../utils/memberLabel';
 import { withAlpha } from '../../utils/color';
 import { byMostRecent } from '../../utils/sortMovements';
+import { getDateLocale } from '../../utils/dateFormat';
+import { periodIndexOf, periodRange, formatPeriodRange } from '../../utils/period';
+import { useMonthStartDay } from '../../hooks/useMonthStartDay';
 import FloatingSummaryCard, { SummaryNav, SummaryOrigin } from './FloatingSummaryCard';
 
-// Índice absoluto del mes (año * 12 + mes): permite navegar entre meses sin líos de fechas
-const currentMonthIndex = () => {
-  const n = new Date();
-  return n.getFullYear() * 12 + n.getMonth();
-};
+// Índice absoluto del mes (año * 12 + mes): permite navegar entre meses sin
+// líos de fechas. El mes empieza el día elegido en Ajustes (ver utils/period)
+const currentMonthIndex = (startDay: number) => periodIndexOf(new Date(), startDay);
 
 interface CategoryGroup {
   category: string;
@@ -42,15 +43,8 @@ interface Props {
 
 // Fuera del componente: solo depende de los movimientos y el tipo que recibe.
 // index = año * 12 + mes (0-11)
-const movementsOfMonth = (movements: Movement[], type: MovementType, index: number) => {
-  const y = Math.floor(index / 12);
-  const m = index % 12;
-  return movements.filter(mov => {
-    if (mov.type !== type) return false;
-    const d = new Date(mov.date);
-    return d.getFullYear() === y && d.getMonth() === m;
-  });
-};
+const movementsOfMonth = (movements: Movement[], type: MovementType, index: number, startDay: number) =>
+  movements.filter(mov => mov.type === type && periodIndexOf(new Date(mov.date), startDay) === index);
 
 // Ingresos o gastos del mes en una tarjeta flotante que crece desde el importe
 // pulsado en la cabecera de Inicio (mismo estilo que el resumen del día)
@@ -59,23 +53,24 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
   const { colors: dc, ui } = useTheme();
   const cat = useCategoryInfo();
   const { movements } = useMovementStore();
-  const { getCurrencySymbol } = useSettingsStore();
+  const { getCurrencySymbol, language } = useSettingsStore();
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
+  const monthStartDay = useMonthStartDay();
 
   // 0 = este mes, -1 = mes anterior, ...
   const [monthOffset, setMonthOffset] = useState(0);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [baseIndex, setBaseIndex] = useState(currentMonthIndex);
+  const [baseIndex, setBaseIndex] = useState(() => currentMonthIndex(monthStartDay));
   const baseRef = useRef(baseIndex);
 
   useEffect(() => {
     if (!visible) return;
-    const current = currentMonthIndex();
+    const current = currentMonthIndex(monthStartDay);
     baseRef.current = current;
     setBaseIndex(current);
     setMonthOffset(0);
     setExpandedKey(null);
-  }, [visible]);
+  }, [visible, monthStartDay]);
 
   // Al volver a la app en un mes nuevo, "este mes" pasa a ser el nuevo
   // y si se estaba viendo un mes anterior se mantiene el mismo mes
@@ -83,7 +78,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
     if (!visible) return;
     const sub = AppState.addEventListener('change', state => {
       if (state !== 'active') return;
-      const current = currentMonthIndex();
+      const current = currentMonthIndex(monthStartDay);
       const prev = baseRef.current;
       if (current === prev) return;
       baseRef.current = current;
@@ -92,7 +87,7 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
       setExpandedKey(null);
     });
     return () => sub.remove();
-  }, [visible]);
+  }, [visible, monthStartDay]);
 
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
   const isIncome = type === 'income';
@@ -107,17 +102,17 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
   const prevMonthIdx = (selectedIndex - 1) % 12;
 
   const monthMovements = useMemo(() =>
-    movementsOfMonth(movements, type, selectedIndex)
+    movementsOfMonth(movements, type, selectedIndex, monthStartDay)
       .sort(byMostRecent),
-    [movements, type, selectedIndex],
+    [movements, type, selectedIndex, monthStartDay],
   );
   const total = monthMovements.reduce((s, m) => s + m.amount, 0);
 
   // Comparación con el mes anterior (solo si ese mes tiene movimientos)
   const prevTotal = useMemo(() => {
-    const prev = movementsOfMonth(movements, type, selectedIndex - 1);
+    const prev = movementsOfMonth(movements, type, selectedIndex - 1, monthStartDay);
     return prev.length === 0 ? null : prev.reduce((s, m) => s + m.amount, 0);
-  }, [movements, type, selectedIndex]);
+  }, [movements, type, selectedIndex, monthStartDay]);
   const diff = prevTotal === null ? null : total - prevTotal;
 
   const groups = useMemo((): CategoryGroup[] => {
@@ -155,7 +150,10 @@ const MonthTypeSummaryModal = ({ visible, type, origin, onDismiss, onSeeAll }: P
         <>
           <SummaryNav
             title={t(`home.month_${monthIdx}`)}
-            subtitle={String(year)}
+            // Si el mes no empieza el día 1, también sus fechas
+            subtitle={monthStartDay === 1
+              ? String(year)
+              : `${year} · ${formatPeriodRange(periodRange(selectedIndex, monthStartDay), getDateLocale(language))}`}
             onPrev={() => goToMonth(monthOffset - 1)}
             onNext={() => goToMonth(monthOffset + 1)}
             canNext={monthOffset < 0}

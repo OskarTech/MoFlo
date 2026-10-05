@@ -13,6 +13,7 @@ import { CATEGORY_COLORS } from '../theme/categoryColors';
 import { makeCategoryColors, choicesForPalette } from '../utils/categoryColors';
 import { getMemberLabel } from '../utils/memberLabel';
 import { getSeparators } from '../utils/formatAmount';
+import { normalizeStartDay } from '../utils/period';
 import { ExportDateFormat, ExportInput, fileBaseName, summarize } from './export/data';
 import { buildCsv } from './export/csv';
 import { buildXlsx } from './export/xlsx';
@@ -60,6 +61,7 @@ const collectInput = (): ExportInput => {
     symbolBefore: !!CURRENCIES.find((c) => c.code === currencyCode)?.symbolBefore,
     dateFormat: ((isShared ? shared.sharedDateFormat : settings.dateFormat) === 'MM/DD/YYYY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY') as ExportDateFormat,
     separators: getSeparators(),
+    monthStartDay: normalizeStartDay(isShared ? shared.sharedMonthStartDay : settings.monthStartDay),
     exportedAt: new Date(),
     accent: COLOR_PALETTES[palette].primary,
     movements: useMovementStore.getState().movements,

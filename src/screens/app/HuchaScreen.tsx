@@ -9,6 +9,8 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useMonthStartDay } from '../../hooks/useMonthStartDay';
+import { periodIndexOf } from '../../utils/period';
 import { Hucha } from '../../types';
 import { formatAmount as formatAmountLocalized, withCurrency } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
@@ -120,13 +122,11 @@ const HuchaScreen = () => {
     ? Math.min(Math.round((totalSaved / totalTarget) * 100), 100)
     : 0;
 
-  const now = new Date();
+  // Lo ahorrado este mes, contado desde el día en que empieza (Ajustes)
+  const monthStartDay = useMonthStartDay();
+  const thisMonth = periodIndexOf(new Date(), monthStartDay);
   const thisMonthNet = huchaMovements
-    .filter(m => {
-      const d = new Date(m.date);
-      return d.getMonth() === now.getMonth()
-        && d.getFullYear() === now.getFullYear();
-    })
+    .filter(m => periodIndexOf(new Date(m.date), monthStartDay) === thisMonth)
     .reduce((sum, m) => sum + (m.type === 'deposit' ? m.amount : -m.amount), 0);
 
   const hero = (

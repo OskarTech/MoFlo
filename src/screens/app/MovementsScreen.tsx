@@ -21,6 +21,9 @@ import AddMovementModal from '../../components/movements/AddMovementModal';
 import { formatAmount, formatMoney } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { groupByDay, dayLabel, dayTotalLabel } from '../../utils/groupByDay';
+import { getDateLocale } from '../../utils/dateFormat';
+import { periodIndexOf, periodRange, formatPeriodRange } from '../../utils/period';
+import { useMonthStartDay } from '../../hooks/useMonthStartDay';
 import SwipeableRow, { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import MovementItem from '../../components/common/MovementItem';
 import StrikeText from '../../components/common/StrikeText';
@@ -34,9 +37,6 @@ import { byMostRecent } from '../../utils/sortMovements';
 type FilterType = MovementType | 'hucha' | 'recurring';
 
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList) as unknown as typeof SectionList;
-
-// Índice absoluto del mes (año * 12 + mes): permite moverse entre meses sin líos de fechas
-const monthIndexOf = (d: Date) => d.getFullYear() * 12 + d.getMonth();
 
 const MovementRowBase = ({
   movement, onDelete, onEdit,
@@ -220,6 +220,10 @@ const MovementsScreen = () => {
   const language = useSettingsStore((s) => s.language);
   const { colors: dc, ui } = useTheme();
   const currencySymbol = isSharedMode ? sharedCurrencySymbol : personalCurrencySymbol;
+  // Índice del mes de cada fecha (año * 12 + mes): permite moverse entre meses
+  // sin líos de fechas. El mes empieza el día elegido en Ajustes (ver utils/period)
+  const monthStartDay = useMonthStartDay();
+  const monthIndexOf = useCallback((d: Date) => periodIndexOf(d, monthStartDay), [monthStartDay]);
   const recurringIncomeTotal = recurringMovements
     .filter((m) => m.type === 'income')
     .reduce((s, m) => s + m.amount, 0);
@@ -277,7 +281,7 @@ const MovementsScreen = () => {
     movements.forEach((m) => { first = Math.min(first, monthIndexOf(new Date(m.date))); });
     huchaMovements.forEach((m) => { first = Math.min(first, monthIndexOf(new Date(m.date))); });
     return first;
-  }, [movements, huchaMovements, currentMonth]);
+  }, [movements, huchaMovements, currentMonth, monthIndexOf]);
 
   const goToMonth = (index: number) => {
     closeOpenSwipeable();
@@ -301,7 +305,7 @@ const MovementsScreen = () => {
     () => movements
       .filter((m) => m.type === filter && monthIndexOf(new Date(m.date)) === selectedMonth)
       .sort(byMostRecent),
-    [movements, filter, selectedMonth],
+    [movements, filter, selectedMonth, monthIndexOf],
   );
 
   const filteredMovements = useMemo(() => {
@@ -327,7 +331,7 @@ const MovementsScreen = () => {
     () => huchaMovements
       .filter((m) => monthIndexOf(new Date(m.date)) === selectedMonth)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [huchaMovements, selectedMonth],
+    [huchaMovements, selectedMonth, monthIndexOf],
   );
 
   // El buscador en las huchas: por lo que se ve en la fila (nombre de la hucha,
@@ -364,6 +368,11 @@ const MovementsScreen = () => {
     }));
   }, [filter, sortedRecurring, filteredHuchaMovements, filteredMovements, t, language, currencySymbol]);
 
+  // Si el mes no empieza el día 1, sus fechas junto al número de movimientos
+  const rangeSuffix = monthStartDay === 1
+    ? ''
+    : ` · ${formatPeriodRange(periodRange(selectedMonth, monthStartDay), getDateLocale(language))}`;
+
   // Resumen de la cabecera
   const summary = (() => {
     if (filter === 'recurring') {
@@ -375,14 +384,14 @@ const MovementsScreen = () => {
     if (filter === 'hucha') {
       const net = monthHuchaMovements.reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
       return {
-        label: t('home.movementCount', { count: monthHuchaMovements.length }),
+        label: t('home.movementCount', { count: monthHuchaMovements.length }) + rangeSuffix,
         value: formatMoney(Math.abs(net), currencySymbol, { sign: net > 0 ? '+' : net < 0 ? '-' : '' }),
       };
     }
     const total = monthMovements.reduce((s, m) => s + m.amount, 0);
     const sign = total === 0 ? '' : filter === 'income' ? '+' : '-';
     return {
-      label: t('home.movementCount', { count: monthMovements.length }),
+      label: t('home.movementCount', { count: monthMovements.length }) + rangeSuffix,
       value: formatMoney(total, currencySymbol, { sign }),
     };
   })();

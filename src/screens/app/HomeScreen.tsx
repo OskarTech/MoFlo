@@ -16,6 +16,8 @@ import {
 } from '../../utils/formatAmount';
 import { withAlpha } from '../../utils/color';
 import { getDateLocale } from '../../utils/dateFormat';
+import { periodIndexOf, periodRange, formatPeriodRange } from '../../utils/period';
+import { useMonthStartDay } from '../../hooks/useMonthStartDay';
 import { successHaptic, lightHaptic } from '../../utils/haptics';
 import { byMostRecent } from '../../utils/sortMovements';
 import { HeroScrollScreen } from '../../components/layout/HeroScreen';
@@ -51,10 +53,12 @@ const pressWithOrigin = (
 
 /** Cabecera de color de Inicio: balance del mes, barra de lo gastado, y lo que entra y sale */
 const BalanceHero = ({
-  balance, month, currencySymbol, totalIncome, totalExpense, hidden, onToggleHidden,
+  balance, month, rangeLabel, currencySymbol, totalIncome, totalExpense, hidden, onToggleHidden,
   onPressIncome, onPressExpense, onPressDaily,
 }: {
   balance: number; month: number; currencySymbol: string;
+  /** Del primer al último día del mes, si no empieza el día 1 */
+  rangeLabel?: string;
   totalIncome: number; totalExpense: number;
   hidden: boolean; onToggleHidden: () => void;
   onPressIncome: (origin: DailySummaryOrigin | null) => void;
@@ -168,6 +172,7 @@ const BalanceHero = ({
       </View>
       <Text style={[styles.trackCaption, { color: ui.onHeroSoft }]} numberOfLines={1}>
         {totalIncome > 0 ? `${spentPct}% ${t('home.ofIncomeSpent')}` : t('resumen.noIncome')}
+        {rangeLabel ? ` · ${rangeLabel}` : ''}
       </Text>
 
       <View style={styles.statsRow}>
@@ -218,8 +223,7 @@ const HomeScreen = () => {
   const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
 
   const {
-    movements, getMonthlySummary, getMovementsForSelectedMonth,
-    loadData, loadSharedData, setShowMovementModal,
+    movements, loadData, loadSharedData, setShowMovementModal,
   } = useMovementStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -240,8 +244,22 @@ const HomeScreen = () => {
       setRefreshing(false);
     }
   };
-  const summary = getMonthlySummary();
-  const monthMovements = getMovementsForSelectedMonth();
+  // El mes en curso de la cuenta: del día en que empieza (Ajustes > Inicio del
+  // mes) al anterior del mes siguiente; con el día 1, el mes natural
+  const monthStartDay = useMonthStartDay();
+  const periodIndex = periodIndexOf(new Date(), monthStartDay);
+  const monthMovements = useMemo(
+    () => movements.filter((m) => periodIndexOf(new Date(m.date), monthStartDay) === periodIndex),
+    [movements, monthStartDay, periodIndex],
+  );
+  const summary = useMemo(() => {
+    const totalIncome = monthMovements.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+    const totalExpense = monthMovements.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+    return { totalIncome, totalExpense, balance: totalIncome - totalExpense, month: (periodIndex % 12) + 1 };
+  }, [monthMovements, periodIndex]);
+  const rangeLabel = monthStartDay === 1
+    ? undefined
+    : formatPeriodRange(periodRange(periodIndex, monthStartDay), getDateLocale(language));
   const currencySymbol = isSharedMode ? getSharedCurrencySymbol() : getCurrencySymbol();
 
   const recentMovements = useMemo(() =>
@@ -307,6 +325,7 @@ const HomeScreen = () => {
       <BalanceHero
         balance={summary.balance}
         month={summary.month}
+        rangeLabel={rangeLabel}
         currencySymbol={currencySymbol}
         totalIncome={summary.totalIncome}
         totalExpense={summary.totalExpense}
