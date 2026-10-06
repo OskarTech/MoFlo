@@ -11,9 +11,11 @@ import {
   addRecurringToFirestore,
   deleteRecurringFromFirestore,
   fetchRecurringFromFirestore,
+  hasMovementsInFirestore,
 } from '../services/firebase/firestore.service';
 import { enqueue, processQueue } from '../services/syncQueue.service';
 import { SHARED_CACHE, sharedCacheKey, readSharedCache } from './sharedCache';
+import { PERSONAL, isFullCheckDue, markFullCheck, mergeRecent, recentSince } from './cloudCheck';
 
 const STORAGE_KEYS = {
   MOVEMENTS: '@moflo_movements',
@@ -35,12 +37,16 @@ interface MovementStore {
   selectedYear: number;
   selectedAnnualYear: number;
   sharedAccountId: string | null;
+  /** De qué cuenta son los movimientos cargados (ver cloudCheck) */
+  movementsOf: string | null;
   showRecurringModal: boolean;
   showMovementModal: boolean;
   activeHistorialFilter: string;
 
-  loadData: () => Promise<void>;
-  loadSharedData: (accountId: string) => Promise<void>;
+  /** fullCheck: bajar de la nube el historial entero aunque no toque (ver cloudCheck) */
+  loadData: (options?: { fullCheck?: boolean }) => Promise<void>;
+  loadSharedData: (accountId: string, options?: { fullCheck?: boolean }) => Promise<void>;
+  mergeSharedRecent: (accountId: string, recent: Movement[], since: string, fromServer: boolean) => void;
   saveMovements: (movements: Movement[]) => Promise<void>;
   saveRecurring: (recurring: RecurringMovement[]) => Promise<void>;
 
@@ -78,6 +84,8 @@ const getSharedRecurringCol = (accountId: string) =>
 const stripUndefined = <T extends Record<string, any>>(obj: T): T =>
   Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
 
+const byDate = (a: Movement, b: Movement) => new Date(b.date).getTime() - new Date(a.date).getTime();
+
 // Meses hacia atrás que se recuperan como máximo si no se abrió la app
 const MAX_RECURRING_CATCH_UP_MONTHS = 12;
 
@@ -89,6 +97,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   selectedYear: now.getFullYear(),
   selectedAnnualYear: now.getFullYear(),
   sharedAccountId: null,
+  movementsOf: null,
   showRecurringModal: false,
   showMovementModal: false,
   activeHistorialFilter: 'income',
@@ -101,6 +110,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     selectedYear: new Date().getFullYear(),
     selectedAnnualYear: new Date().getFullYear(),
     sharedAccountId: null,
+    movementsOf: null,
     showRecurringModal: false,
     showMovementModal: false,
   }),
@@ -111,43 +121,70 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   setActiveHistorialFilter: (filter) => set({ activeHistorialFilter: filter }),
 
   // ── CARGAR DATOS INDIVIDUALES ──────────────────────────────────
-  loadData: async () => {
+  // Los movimientos, de la copia del móvil: de la nube se bajan enteros solo
+  // de vez en cuando o si se pide (ver cloudCheck). Los fijos, siempre: son
+  // pocos, y uno viejo en el móvil podría volver a generar sus movimientos
+  loadData: async ({ fullCheck = false } = {}) => {
     set({ isLoading: true });
     try {
       const [movementsRaw, recurringRaw] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.MOVEMENTS),
         AsyncStorage.getItem(STORAGE_KEYS.RECURRING),
       ]);
+      const localRecurring: RecurringMovement[] = recurringRaw ? JSON.parse(recurringRaw) : [];
       set({
         movements: movementsRaw ? JSON.parse(movementsRaw) : [],
-        recurringMovements: recurringRaw ? JSON.parse(recurringRaw) : [],
+        recurringMovements: localRecurring,
         sharedAccountId: null,
+        movementsOf: PERSONAL,
       });
 
       await processQueue();
 
+      const uid = auth().currentUser?.uid;
       const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        const [firestoreMovements, firestoreRecurring] = await Promise.all([
-          fetchMovementsFromFirestore(),
-          fetchRecurringFromFirestore(),
-        ]);
+      if (!uid || !netState.isConnected) return;
 
-        if (firestoreMovements.length > 0 || firestoreRecurring.length > 0) {
-          // Si entretanto se ha pasado a la compartida, solo se guarda la copia:
-          // en pantalla pisaría los movimientos de la otra cuenta
-          if (get().sharedAccountId === null) {
-            set({
-              movements: firestoreMovements,
-              recurringMovements: firestoreRecurring,
-            });
+      const full = fullCheck || movementsRaw == null || await isFullCheckDue('movements', uid);
+      const [cloudMovements, cloudRecurring] = await Promise.all([
+        full ? fetchMovementsFromFirestore() : Promise.resolve(null),
+        fetchRecurringFromFirestore(),
+      ]);
+      // Si entretanto se ha pasado a la compartida, solo se guarda la copia:
+      // en pantalla pisaría los movimientos de la otra cuenta
+      const onScreen = () => get().sharedAccountId === null && get().movementsOf === PERSONAL;
+
+      if (cloudMovements) {
+        // Solo con la respuesta del servidor: la de la caché de Firestore
+        // puede estar incompleta
+        if (!cloudMovements.fromServer || !cloudRecurring.fromServer) return;
+        // Con la nube vacía no se borra nada del móvil
+        if (cloudMovements.docs.length > 0 || cloudRecurring.docs.length > 0) {
+          if (onScreen()) {
+            set({ movements: cloudMovements.docs, recurringMovements: cloudRecurring.docs });
           }
           await Promise.all([
-            AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(firestoreMovements)),
-            AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(firestoreRecurring)),
+            AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(cloudMovements.docs)),
+            AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(cloudRecurring.docs)),
           ]);
+        } else if (movementsRaw == null) {
+          // Sin nada en ningún sitio: la copia, vacía. Sin ella, cada inicio
+          // volvería a bajarlo todo
+          await AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, '[]');
         }
+        await markFullCheck('movements', uid);
+        return;
       }
+
+      if (!cloudRecurring.fromServer) return;
+      // Ningún fijo en la nube y alguno en el móvil: se quitan si la cuenta
+      // tiene movimientos en la nube. Con la nube vacía, nada (como arriba)
+      const keep = cloudRecurring.docs.length === 0
+        && localRecurring.length > 0
+        && (await hasMovementsInFirestore()) !== true;
+      if (keep) return;
+      if (onScreen()) set({ recurringMovements: cloudRecurring.docs });
+      await AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(cloudRecurring.docs));
     } catch (e) {
       console.error('Error loading data:', e);
     } finally {
@@ -156,47 +193,79 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   },
 
   // ── CARGAR DATOS COMPARTIDOS ───────────────────────────────────
-  loadSharedData: async (accountId) => {
+  // De la nube, lo apuntado en los últimos 30 días (lo mismo que escucha
+  // subscribeToSharedMovements); el historial entero, de vez en cuando o si se
+  // pide (ver cloudCheck). Los fijos, siempre
+  loadSharedData: async (accountId, { fullCheck = false } = {}) => {
     set({ isLoading: true, sharedAccountId: accountId });
     try {
       const cachedMovements = await readSharedCache(SHARED_CACHE.MOVEMENTS, accountId);
       const cachedRecurring = await readSharedCache(SHARED_CACHE.RECURRING, accountId);
+      const localMovements: Movement[] = cachedMovements ? JSON.parse(cachedMovements) : [];
       // Sin copia de esta cuenta, vacío: si no, seguían los de la cuenta de antes
       set({
-        movements: cachedMovements ? JSON.parse(cachedMovements) : [],
+        movements: localMovements,
         recurringMovements: cachedRecurring ? JSON.parse(cachedRecurring) : [],
+        movementsOf: accountId,
       });
 
       await processQueue();
 
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
+        const full = fullCheck || cachedMovements == null || await isFullCheckDue('movements', accountId);
+        const since = recentSince();
+        const movementsCol = getSharedMovementsCol(accountId);
         const [movementsSnap, recurringSnap] = await Promise.all([
-          getSharedMovementsCol(accountId).get(),
+          (full ? movementsCol : movementsCol.where('createdAt', '>=', since)).get(),
           getSharedRecurringCol(accountId).get(),
         ]);
-
-        const movements = movementsSnap.docs
-          .map(d => d.data() as Movement)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const fromServer = !movementsSnap.metadata.fromCache;
+        const incoming = movementsSnap.docs.map(d => d.data() as Movement);
         const recurring = recurringSnap.docs
           .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
 
         // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
-        if (get().sharedAccountId === accountId) {
-          set({ movements: [...movements], recurringMovements: [...recurring] });
+        const onScreen = () => get().sharedAccountId === accountId && get().movementsOf === accountId;
+        let movements: Movement[] | null = null;
+        if (!full) {
+          // Sobre lo que hay en pantalla, que ya puede traer cambios de la escucha
+          movements = mergeRecent(onScreen() ? get().movements : localMovements, incoming, since, fromServer);
+        } else if (fromServer) {
+          // Entero solo con la respuesta del servidor (ver loadData)
+          movements = incoming;
+        }
+        movements?.sort(byDate);
+
+        if (onScreen()) {
+          set(movements ? { movements, recurringMovements: recurring } : { recurringMovements: recurring });
         }
         await Promise.all([
-          AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements)),
+          movements
+            ? AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements))
+            : null,
           AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.RECURRING, accountId), JSON.stringify(recurring)),
         ]);
+        if (full && fromServer) await markFullCheck('movements', accountId);
       }
     } catch (e) {
       console.error('Error loading shared data:', e);
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  // Lo que trae la escucha de la cuenta compartida: lo apuntado en los
+  // últimos 30 días, junto con el resto de la copia
+  mergeSharedRecent: (accountId, recent, since, fromServer) => {
+    // Aún con los movimientos de la cuenta anterior (se está entrando en
+    // esta): lo trae su carga, que viene detrás
+    if (get().sharedAccountId !== accountId || get().movementsOf !== accountId) return;
+    const movements = mergeRecent(get().movements, recent, since, fromServer).sort(byDate);
+    set({ movements });
+    AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements))
+      .catch(() => {});
   },
 
   // ── GUARDAR EN ASYNCSTORAGE ────────────────────────────────────

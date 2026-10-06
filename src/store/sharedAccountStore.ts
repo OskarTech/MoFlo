@@ -8,6 +8,7 @@ import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
 import { deletePhotos, sharedPhotoFolder, uploadPhoto } from '../services/firebase/photo.service';
 import { normalizeStartDay } from '../utils/period';
+import { recentSince } from './cloudCheck';
 import i18n from '../i18n';
 
 // Los demás stores se cargan con require() al usarlos, no con import: reminderStore
@@ -225,16 +226,19 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
 
     const { useMovementStore } = require('./movementStore');
 
+    // Solo lo apuntado en los últimos 30 días: escuchar la colección entera
+    // la leía toda cada vez que se entraba en la cuenta. Lo anterior lo trae
+    // la comprobación entera de vez en cuando (ver cloudCheck)
+    const since = recentSince();
     const movementsSub = firestore()
       .collection('sharedAccounts').doc(accountId)
       .collection('movements')
+      .where('createdAt', '>=', since)
       .onSnapshot((snap) => {
         // Se cambió de cuenta mientras llegaba el snapshot
         if (subscribedMovementsAccountId !== accountId) return;
-        const movements = snap.docs
-          .map(d => d.data() as Movement)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        useMovementStore.setState({ movements: [...movements] });
+        const recent = snap.docs.map(d => d.data() as Movement);
+        useMovementStore.getState().mergeSharedRecent(accountId, recent, since, !snap.metadata.fromCache);
       }, (e) => {
         reportError(e, 'listener de movimientos compartidos');
         // Firestore cierra el listener tras un error: hay que dejar que la

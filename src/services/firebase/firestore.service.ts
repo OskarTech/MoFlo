@@ -39,10 +39,24 @@ export const deleteMovementFromFirestore = async (
   await col.doc(id).delete();
 };
 
-export const fetchMovementsFromFirestore = async (): Promise<Movement[]> => {
+// fromServer: si es false, la respuesta es de la caché de Firestore (sin
+// conexión con el servidor) y puede estar incompleta
+export interface CloudList<T> {
+  docs: T[];
+  fromServer: boolean;
+}
+
+export const fetchMovementsFromFirestore = async (): Promise<CloudList<Movement>> => {
   const { movements: col } = getUserCollections();
   const snapshot = await col.get();
-  return snapshot.docs.map((doc) => doc.data() as Movement);
+  return { docs: snapshot.docs.map((doc) => doc.data() as Movement), fromServer: !snapshot.metadata.fromCache };
+};
+
+/** Si hay al menos un movimiento en la nube; null si no se ha podido saber */
+export const hasMovementsInFirestore = async (): Promise<boolean | null> => {
+  const { movements: col } = getUserCollections();
+  const snapshot = await col.limit(1).get();
+  return snapshot.metadata.fromCache ? null : !snapshot.empty;
 };
 
 export const syncMovementsToFirestore = async (
@@ -80,10 +94,10 @@ export const deleteRecurringFromFirestore = async (
   await col.doc(id).delete();
 };
 
-export const fetchRecurringFromFirestore = async (): Promise<RecurringMovement[]> => {
+export const fetchRecurringFromFirestore = async (): Promise<CloudList<RecurringMovement>> => {
   const { recurring: col } = getUserCollections();
   const snapshot = await col.get();
-  return snapshot.docs.map((doc) => doc.data() as RecurringMovement);
+  return { docs: snapshot.docs.map((doc) => doc.data() as RecurringMovement), fromServer: !snapshot.metadata.fromCache };
 };
 
 // ── SETTINGS ───────────────────────────────────────────────────

@@ -39,8 +39,10 @@ import { SettingsSection, SettingsRow } from '../../components/settings/Settings
 import { OptionSheet, AppearanceSheet, FontSheet, MonthStartSheet } from '../../components/settings/SettingsSheets';
 import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
+import { checkCloudCopy } from '../../store/checkCloudCopy';
+import { useCloudCheckStore, lastFullCheck, selectLastFullCheck, removeCloudChecks } from '../../store/cloudCheck';
 import { clearPushTokens } from '../../services/firebase/pushTokens.service';
-import { clearQueueForUser, clearPersonalQueueForUser } from '../../services/syncQueue.service';
+import { clearQueueForUser, clearPersonalQueueForUser, hasUnsyncedChanges } from '../../services/syncQueue.service';
 import { revokeAppleToken } from '../../services/firebase/appleAuth';
 import { reportError } from '../../services/crashReporting';
 import { resetPurchasesUser } from '../../services/revenuecat';
@@ -52,7 +54,7 @@ import {
 } from '../../services/notifications.service';
 import Constants from 'expo-constants';
 import { reloadAppAsync } from 'expo';
-import { lightHaptic, warningHaptic } from '../../utils/haptics';
+import { lightHaptic, successHaptic, warningHaptic } from '../../utils/haptics';
 import { getMemberPhoto } from '../../utils/memberLabel';
 import { normalizeStartDay } from '../../utils/period';
 import Avatar from '../../components/common/Avatar';
@@ -127,6 +129,14 @@ const SettingsScreen = () => {
   const user = auth().currentUser;
   const uid = user?.uid;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+
+  // Copia en la nube de la cuenta activa: cuándo se comprobó entera por última vez
+  const cloudScope = isSharedMode && sharedAccount ? sharedAccount.id : uid ?? null;
+  const cloudCheckedAt = useCloudCheckStore((s) => (cloudScope ? selectLastFullCheck(s.checkedAt, cloudScope) : null));
+  const [checkingCloud, setCheckingCloud] = useState(false);
+  useEffect(() => {
+    if (cloudScope) lastFullCheck(cloudScope).catch(() => {});
+  }, [cloudScope]);
 
   // Individual state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -422,6 +432,7 @@ const SettingsScreen = () => {
       ]);
       // Las copias de cada cuenta compartida van con su id en la clave
       await removeSharedCaches().catch(() => {});
+      await removeCloudChecks().catch(() => {});
 
       useMovementStore.getState().resetStore();
       useSettingsStore.getState().resetStore();
@@ -538,7 +549,25 @@ const SettingsScreen = () => {
       t('settings.logoutConfirm'),
       [
         { text: t('settings.cancel'), style: 'cancel' },
-        { text: t('settings.logout'), style: 'destructive', onPress: logout },
+        { text: t('settings.logout'), style: 'destructive', onPress: confirmLogout },
+      ]
+    );
+  };
+
+  // Antes se intenta subir lo pendiente, y solo si queda algo (sin conexión)
+  // se avisa: lo normal es que ya esté todo en la nube
+  const confirmLogout = async () => {
+    if (!(await hasUnsyncedChanges())) {
+      logout();
+      return;
+    }
+    warningHaptic();
+    Alert.alert(
+      t('settings.logoutPendingTitle'),
+      t('settings.logoutPendingMessage'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        { text: t('settings.logoutAnyway'), style: 'destructive', onPress: logout },
       ]
     );
   };
@@ -719,6 +748,27 @@ const SettingsScreen = () => {
     } catch {}
   };
 
+  // Lo cambiado se sube solo; esto baja de la nube el historial entero de la
+  // cuenta activa, como cada 14 días (ver cloudCheck)
+  const handleCheckCloudCopy = async () => {
+    if (checkingCloud) return;
+    lightHaptic();
+    setCheckingCloud(true);
+    try {
+      const result = await checkCloudCopy();
+      if (result === 'done') {
+        successHaptic();
+      } else {
+        Alert.alert(
+          t('settings.cloudCopy'),
+          t(result === 'offline' ? 'settings.cloudCopyOffline' : 'settings.cloudCopyError'),
+        );
+      }
+    } finally {
+      setCheckingCloud(false);
+    }
+  };
+
   // Se exportan los datos de la cuenta activa (compartida o individual). En la
   // individual es una función premium; en la compartida, no
   const handleExportData = () => {
@@ -892,6 +942,30 @@ const SettingsScreen = () => {
         ? `⭐ ${t('premium.badge')}`
         : t(isSharedMode ? 'sharedAccount.exportSubtitle' : 'settings.individualExportSubtitle')}
       onPress={handleExportData}
+    />
+  );
+
+  const cloudCopySubtitle = (() => {
+    if (cloudCheckedAt == null) return t('settings.cloudCopyAuto');
+    const dayOf = (ms: number) => {
+      const d = new Date(ms);
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    };
+    // Redondeado: con el cambio de hora un día dura 23 o 25 horas
+    const days = Math.max(0, Math.round((dayOf(Date.now()) - dayOf(cloudCheckedAt)) / 86400000));
+    return days === 0
+      ? t('settings.cloudCopyCheckedToday')
+      : t('settings.cloudCopyCheckedDaysAgo', { count: days });
+  })();
+
+  // Copia en la nube: la de la cuenta activa, en sus preferencias como exportar
+  const cloudCopyRow = (
+    <SettingsRow
+      icon="cloud-check-duotone"
+      label={t('settings.cloudCopy')}
+      subtitle={cloudCopySubtitle}
+      value={t(checkingCloud ? 'settings.cloudCopyChecking' : 'settings.cloudCopyCheck')}
+      onPress={handleCheckCloudCopy}
     />
   );
 
@@ -1069,6 +1143,7 @@ const SettingsScreen = () => {
                 onPress={() => setShowMonthStartSheet(true)}
               />
               {exportRow}
+              {cloudCopyRow}
             </SettingsSection>
 
             {appSection}
@@ -1213,6 +1288,7 @@ const SettingsScreen = () => {
                 right={<Switch {...switchProps(notificationsEnabled)} onValueChange={setNotificationsEnabled} />}
               />
               {exportRow}
+              {cloudCopyRow}
             </SettingsSection>
 
             {appSection}

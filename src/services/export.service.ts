@@ -8,6 +8,7 @@ import { useMovementStore } from '../store/movementStore';
 import { useSavingsStore } from '../store/savingsStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { useSharedCategoryStore } from '../store/sharedCategoryStore';
+import { checkCloudCopy } from '../store/checkCloudCopy';
 import { COLOR_PALETTES, ColorPaletteId } from '../theme';
 import { CATEGORY_COLORS } from '../theme/categoryColors';
 import { makeCategoryColors, choicesForPalette } from '../utils/categoryColors';
@@ -101,8 +102,19 @@ const writeCacheFile = (name: string, content: string | Uint8Array) => {
   return file.uri;
 };
 
+// Antes de exportar, la copia del móvil se comprueba entera con la nube: al
+// abrir la app solo se baja lo reciente (ver cloudCheck) y el fichero tiene
+// que salir completo. Si ya se hizo hace poco, no se repite. Sin conexión, o
+// si tarda, se exporta lo que hay en el móvil
+const CHECK_FRESH_MS = 10 * 60 * 1000;
+const CHECK_WAIT_MS = 10000;
+
 /** Genera el fichero de la cuenta activa en la caché, listo para compartir */
 export const prepareExport = async (format: ExportFormat): Promise<PreparedExport> => {
+  await Promise.race([
+    checkCloudCopy({ unlessCheckedWithinMs: CHECK_FRESH_MS }).catch(() => {}),
+    new Promise<void>((resolve) => setTimeout(resolve, CHECK_WAIT_MS)),
+  ]);
   const input = collectInput();
   const name = fileBaseName(input);
 

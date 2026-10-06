@@ -181,6 +181,7 @@ const EXTRA = [
   'piggy-bank-duotone', 'piggy-bank-fill',
   'clock-counter-clockwise-duotone', 'clock-counter-clockwise-fill',
   'coins-duotone',
+  'cloud-check-duotone',
 ];
 
 module.exports = { IONICON_TO_PHOSPHOR, LINE_ICONS, EXTRA };

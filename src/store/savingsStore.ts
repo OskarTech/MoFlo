@@ -13,6 +13,7 @@ import {
   ContributionCandidate,
 } from '../utils/automaticContributions';
 import { SHARED_CACHE, sharedCacheKey, readSharedCache } from './sharedCache';
+import { PERSONAL, isFullCheckDue, markFullCheck, mergeRecent, recentSince } from './cloudCheck';
 
 const STORAGE_KEY = '@moflo_huchas';
 const MOV_STORAGE_KEY = '@moflo_hucha_movements';
@@ -23,6 +24,10 @@ const huchasKeyFor = (accountId: string | null) =>
   accountId ? sharedCacheKey(SHARED_CACHE.HUCHAS, accountId) : STORAGE_KEY;
 const movKeyFor = (accountId: string | null) =>
   accountId ? sharedCacheKey(SHARED_CACHE.HUCHA_MOVEMENTS, accountId) : MOV_STORAGE_KEY;
+
+// Del más reciente al más antiguo, como los pide a Firestore
+const sortByCreated = (list: HuchaMovement[]) =>
+  list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
 
 let unsubscribeShared: (() => void) | null = null;
 let unsubscribeSharedMovements: (() => void) | null = null;
@@ -63,6 +68,8 @@ const computeNextContributionDate = (recurringDay: number, from: Date = new Date
 interface SavingsStore {
   huchas: Hucha[];
   huchaMovements: HuchaMovement[];
+  /** De qué cuenta son los movimientos de huchas cargados (ver cloudCheck) */
+  huchaMovementsOf: string | null;
   isLoading: boolean;
   sharedAccountId: string | null;
   showCreateModal: boolean;
@@ -70,7 +77,9 @@ interface SavingsStore {
 
   loadHuchas: () => Promise<void>;
   loadSharedHuchas: (accountId: string) => Promise<void>;
-  loadHuchaMovements: (accountId?: string | null) => Promise<void>;
+  /** fullCheck: bajar de la nube el historial entero aunque no toque (ver cloudCheck) */
+  loadHuchaMovements: (accountId?: string | null, options?: { fullCheck?: boolean }) => Promise<void>;
+  dropOrphanHuchaMovements: (owner: string, huchas: Hucha[]) => void;
   createHucha: (data: Omit<Hucha, 'id' | 'createdAt'> & { currentAmount?: number }) => Promise<void>;
   updateHucha: (id: string, data: Partial<Hucha>) => Promise<void>;
   addToHucha: (huchaId: string, amount: number, type?: HuchaMovementType) => Promise<void>;
@@ -96,6 +105,7 @@ interface SavingsStore {
 export const useSavingsStore = create<SavingsStore>((set, get) => ({
   huchas: [],
   huchaMovements: [],
+  huchaMovementsOf: null,
   isLoading: false,
   sharedAccountId: null,
   showCreateModal: false,
@@ -122,30 +132,68 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     return total;
   },
 
-  loadHuchaMovements: async (accountId) => {
+  // De la nube, como los movimientos (ver cloudCheck): en la individual, el
+  // historial entero de vez en cuando; en la compartida, además, lo apuntado
+  // en los últimos 30 días cada vez
+  loadHuchaMovements: async (accountId, { fullCheck = false } = {}) => {
     const resolvedId = accountId !== undefined ? accountId : get().sharedAccountId;
     const key = movKeyFor(resolvedId);
+    const owner = resolvedId ?? PERSONAL;
     try {
       const cached = resolvedId
         ? await readSharedCache(SHARED_CACHE.HUCHA_MOVEMENTS, resolvedId)
         : await AsyncStorage.getItem(key);
+      const local: HuchaMovement[] = cached ? JSON.parse(cached) : [];
       // Sin copia de esa cuenta, vacío: si no, seguían los de la cuenta de antes
-      set({ huchaMovements: cached ? JSON.parse(cached) : [] });
+      set({ huchaMovements: local, huchaMovementsOf: owner });
 
       const uid = auth().currentUser?.uid;
       if (!uid) return;
 
+      const scope = resolvedId ?? uid;
+      const full = fullCheck || cached == null || await isFullCheckDue('huchaMovements', scope);
+      if (!full && !resolvedId) return;
+
+      const since = recentSince();
       const col = resolvedId
         ? getSharedMovementsCol(resolvedId)
         : getUserMovementsCol();
-      const snap = await col.orderBy('createdAt', 'desc').get();
-      const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
+      const snap = await (full ? col : col.where('createdAt', '>=', since))
+        .orderBy('createdAt', 'desc')
+        .get();
+      const fromServer = !snap.metadata.fromCache;
+      const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
+      // Entero, solo con la respuesta del servidor: la de la caché de
+      // Firestore puede estar incompleta
+      if (full && !fromServer) return;
+
       // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
-      if (get().sharedAccountId === resolvedId) set({ huchaMovements: movements });
+      const onScreen = () => get().sharedAccountId === resolvedId && get().huchaMovementsOf === owner;
+      const movements = full
+        ? incoming
+        : sortByCreated(mergeRecent(onScreen() ? get().huchaMovements : local, incoming, since, fromServer));
+      if (onScreen()) set({ huchaMovements: movements });
       await AsyncStorage.setItem(key, JSON.stringify(movements));
+      if (full) await markFullCheck('huchaMovements', scope);
     } catch (e) {
       console.error('Error loading hucha movements:', e);
     }
+  },
+
+  // Las aportaciones de huchas que ya no existen, borradas desde otro móvil o
+  // por otro miembro. Antes se iban solas, porque en cada inicio se bajaban
+  // todas; ahora lo antiguo solo se baja de vez en cuando (ver cloudCheck).
+  // Solo con la lista de huchas del servidor, que está completa, y sobre la
+  // copia de esa misma cuenta
+  dropOrphanHuchaMovements: (owner, huchas) => {
+    const { huchaMovements, huchaMovementsOf, sharedAccountId } = get();
+    const accountId = owner === PERSONAL ? null : owner;
+    if (huchaMovementsOf !== owner || sharedAccountId !== accountId) return;
+    const ids = new Set(huchas.map((h) => h.id));
+    const kept = huchaMovements.filter((m) => typeof m.huchaId !== 'string' || ids.has(m.huchaId));
+    if (kept.length === huchaMovements.length) return;
+    set({ huchaMovements: kept });
+    AsyncStorage.setItem(movKeyFor(accountId), JSON.stringify(kept)).catch(() => {});
   },
 
   loadHuchas: async () => {
@@ -164,6 +212,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       if (get().sharedAccountId === null) set({ huchas });
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(huchas));
       await get().loadHuchaMovements(null);
+      if (!snap.metadata.fromCache) get().dropOrphanHuchaMovements(PERSONAL, huchas);
     } catch (e) {
       console.error('Error loading huchas:', e);
     } finally {
@@ -184,6 +233,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
       if (get().sharedAccountId === accountId) set({ huchas });
       await AsyncStorage.setItem(huchasKeyFor(accountId), JSON.stringify(huchas));
       await get().loadHuchaMovements(accountId);
+      if (!snap.metadata.fromCache) get().dropOrphanHuchaMovements(accountId, huchas);
     } catch (e) {
       console.error('Error loading shared huchas:', e);
     } finally {
@@ -600,6 +650,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
         const huchas = snap.docs.map(d => ({ id: d.id, ...d.data() } as Hucha));
         set({ huchas });
         AsyncStorage.setItem(huchasKeyFor(accountId), JSON.stringify(huchas));
+        if (!snap.metadata.fromCache) get().dropOrphanHuchaMovements(accountId, huchas);
       }, (e) => {
         reportError(e, 'listener de huchas compartidas');
         // Firestore cierra el listener tras un error: permitir resuscribirse
@@ -623,11 +674,18 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     if (unsubscribeSharedMovements) { unsubscribeSharedMovements(); unsubscribeSharedMovements = null; }
     subscribedHuchaMovementsAccountId = accountId;
 
+    // Solo lo apuntado en los últimos 30 días, como los movimientos (ver
+    // cloudCheck). Se junta con la copia de esta misma cuenta: al entrar en
+    // ella, un momento siguen los de la anterior, y esos los trae su carga
+    const since = recentSince();
     const sub = getSharedMovementsCol(accountId)
+      .where('createdAt', '>=', since)
       .orderBy('createdAt', 'desc')
       .onSnapshot((snap) => {
         if (subscribedHuchaMovementsAccountId !== accountId) return;
-        const movements = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
+        if (get().sharedAccountId !== accountId || get().huchaMovementsOf !== accountId) return;
+        const recent = snap.docs.map(d => ({ id: d.id, ...d.data() } as HuchaMovement));
+        const movements = sortByCreated(mergeRecent(get().huchaMovements, recent, since, !snap.metadata.fromCache));
         set({ huchaMovements: movements });
         AsyncStorage.setItem(movKeyFor(accountId), JSON.stringify(movements));
       }, (e) => {
@@ -653,6 +711,7 @@ export const useSavingsStore = create<SavingsStore>((set, get) => ({
     set({
       huchas: [],
       huchaMovements: [],
+      huchaMovementsOf: null,
       isLoading: false,
       sharedAccountId: null,
       showCreateModal: false,

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import {
   addMovementToFirestore,
   deleteMovementFromFirestore,
@@ -220,8 +221,32 @@ export const pendingCountForCurrentUser = async (): Promise<number> => {
   const uid = auth().currentUser?.uid;
   if (!uid) return 0;
   const queue = await loadQueue();
-  // Sin uid: cola anterior a esta versión, que solo puede ser del usuario activo
-  return queue.filter((op) => !op.uid || op.uid === uid).length;
+  const now = Date.now();
+  // Sin uid: cola anterior a esta versión, que solo puede ser del usuario activo.
+  // Las caducadas no cuentan: ya no se van a subir
+  return queue.filter((op) => {
+    const queuedAt = op.queuedAt ? new Date(op.queuedAt).getTime() : NaN;
+    const expired = Number.isFinite(queuedAt) && now - queuedAt > MAX_AGE_MS;
+    return (!op.uid || op.uid === uid) && !expired;
+  }).length;
+};
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Si al usuario activo le queda algo por subir a la nube después de
+ * intentarlo: lo de esta cola y lo que Firestore guarda para subir él solo
+ * (lo que se cambia con mala conexión, como el nombre o los ajustes). Con
+ * conexión, se sube en un momento y no queda nada.
+ */
+export const hasUnsyncedChanges = async (): Promise<boolean> => {
+  await Promise.race([processQueue().catch(() => {}), wait(5000)]);
+  if ((await pendingCountForCurrentUser()) > 0) return true;
+  const uploaded = await Promise.race([
+    firestore().waitForPendingWrites().then(() => true, () => true),
+    wait(2000).then(() => false),
+  ]);
+  return !uploaded;
 };
 
 /**

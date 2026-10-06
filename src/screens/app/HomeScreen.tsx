@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMovementStore } from '../../store/movementStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
+import { checkCloudCopy } from '../../store/checkCloudCopy';
 import { useTheme } from '../../hooks/useTheme';
 import { useCategoryInfo } from '../../hooks/useCategoryInfo';
 import { MovementType } from '../../types';
@@ -220,23 +221,19 @@ const HomeScreen = () => {
   }, [wtIsActive, wtCurrentStep]);
 
   const { getCurrencySymbol, language } = useSettingsStore();
-  const { isSharedMode, getSharedCurrencySymbol, sharedAccount } = useSharedAccountStore();
+  const { isSharedMode, getSharedCurrencySymbol } = useSharedAccountStore();
 
   const {
-    movements, loadData, loadSharedData, setShowMovementModal,
+    movements, setShowMovementModal,
   } = useMovementStore();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fuerza una recarga desde Firestore. Respeta el modo activo: en cuenta
-  // compartida recarga la cuenta, en individual los datos propios.
+  // Baja de la nube el historial entero de la cuenta activa (al abrir la app
+  // solo se baja lo reciente, ver cloudCheck)
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      if (isSharedMode && sharedAccount) {
-        await loadSharedData(sharedAccount.id);
-      } else {
-        await loadData();
-      }
+      await checkCloudCopy();
       successHaptic();
     } catch (e) {
       console.error('Error refreshing home:', e);
