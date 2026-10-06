@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoFlo",
     "slug": "moflo",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "scheme": "moflo",
     "orientation": "portrait",
     "icon": "./assets/icon/ios-light.png",
@@ -19,7 +19,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "bundleIdentifier": "com.oskartech.moflo",
-      "buildNumber": "204",
+      "buildNumber": "205",
       "icon": {
         "light": "./assets/icon/ios-light.png",
         "dark": "./assets/icon/ios-dark.png",
@@ -38,7 +38,7 @@
         "backgroundColor": "#166534"
       },
       "package": "com.oskartech.moflo",
-      "versionCode": 204,
+      "versionCode": 205,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.INTERNET",
