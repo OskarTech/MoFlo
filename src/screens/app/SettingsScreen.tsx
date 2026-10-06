@@ -335,7 +335,7 @@ const SettingsScreen = () => {
                 // documentos no podía borrar sus datos
                 await deleteSubcollections(
                   firestore().collection('users').doc(uid),
-                  ['movements', 'recurring', 'huchas', 'huchaMovements'],
+                  ['movements', 'recurring', 'huchas', 'huchaMovements', 'deletedMovements', 'deletedHuchaMovements'],
                 );
               }
               Alert.alert('✅', t('settings.deleteDataSuccess'));
@@ -368,6 +368,7 @@ const SettingsScreen = () => {
           await deleteSubcollections(accountRef, [
             'movements', 'recurring', 'categories', 'savings',
             'huchas', 'huchaMovements', 'reminders', 'joinRequests',
+            'deletedMovements', 'deletedHuchaMovements',
           ]);
           // La foto de la cuenta, antes que el documento: Storage mira en él
           // quién es miembro
@@ -394,6 +395,7 @@ const SettingsScreen = () => {
       const userRef = firestore().collection('users').doc(uid);
       await deleteSubcollections(userRef, [
         'movements', 'recurring', 'categories', 'savings', 'huchas', 'huchaMovements',
+        'deletedMovements', 'deletedHuchaMovements',
       ]);
       // Su foto de perfil también es un dato suyo: se va con la cuenta
       await deletePhotos(userPhotoFolder(uid)).catch((e) =>

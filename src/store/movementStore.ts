@@ -12,10 +12,16 @@ import {
   deleteRecurringFromFirestore,
   fetchRecurringFromFirestore,
   hasMovementsInFirestore,
+  addSharedMovementToFirestore,
+  deleteSharedMovementFromFirestore,
 } from '../services/firebase/firestore.service';
+import { cloudCollection, fetchCloudChanges, fromCloud } from '../services/firebase/cloudSync';
 import { enqueue, processQueue } from '../services/syncQueue.service';
 import { SHARED_CACHE, sharedCacheKey, readSharedCache } from './sharedCache';
-import { PERSONAL, isFullCheckDue, markFullCheck, mergeRecent, recentSince } from './cloudCheck';
+import {
+  PERSONAL, advanceMarks, advanceMarksAfterFullRead, graveyardOf, isFullCheckDue, markFullCheck, mergeChanges,
+  withoutBuried,
+} from './cloudCheck';
 
 const STORAGE_KEYS = {
   MOVEMENTS: '@moflo_movements',
@@ -46,7 +52,10 @@ interface MovementStore {
   /** fullCheck: bajar de la nube el historial entero aunque no toque (ver cloudCheck) */
   loadData: (options?: { fullCheck?: boolean }) => Promise<void>;
   loadSharedData: (accountId: string, options?: { fullCheck?: boolean }) => Promise<void>;
-  mergeSharedRecent: (accountId: string, recent: Movement[], since: string, fromServer: boolean) => void;
+  /** Lo que trae la escucha de la compartida: lo cambiado y lo borrado. true si se ha juntado y guardado */
+  applySharedChanges: (
+    accountId: string, changed: Movement[], deleted: { id: string; updatedAt?: number }[],
+  ) => Promise<boolean>;
   saveMovements: (movements: Movement[]) => Promise<void>;
   saveRecurring: (recurring: RecurringMovement[]) => Promise<void>;
 
@@ -74,9 +83,6 @@ interface MovementStore {
 }
 
 const now = new Date();
-
-const getSharedMovementsCol = (accountId: string) =>
-  firestore().collection('sharedAccounts').doc(accountId).collection('movements');
 
 const getSharedRecurringCol = (accountId: string) =>
   firestore().collection('sharedAccounts').doc(accountId).collection('recurring');
@@ -121,9 +127,10 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   setActiveHistorialFilter: (filter) => set({ activeHistorialFilter: filter }),
 
   // ── CARGAR DATOS INDIVIDUALES ──────────────────────────────────
-  // Los movimientos, de la copia del móvil: de la nube se bajan enteros solo
-  // de vez en cuando o si se pide (ver cloudCheck). Los fijos, siempre: son
-  // pocos, y uno viejo en el móvil podría volver a generar sus movimientos
+  // Los movimientos, de la copia del móvil, con lo que haya cambiado en la
+  // nube desde la última vez (otro móvil); enteros, de vez en cuando o si se
+  // pide (ver cloudCheck). Los fijos, siempre: son pocos, y uno viejo en el
+  // móvil podría volver a generar sus movimientos
   loadData: async ({ fullCheck = false } = {}) => {
     set({ isLoading: true });
     try {
@@ -146,8 +153,9 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       if (!uid || !netState.isConnected) return;
 
       const full = fullCheck || movementsRaw == null || await isFullCheckDue('movements', uid);
-      const [cloudMovements, cloudRecurring] = await Promise.all([
+      const [cloudMovements, changes, cloudRecurring] = await Promise.all([
         full ? fetchMovementsFromFirestore() : Promise.resolve(null),
+        full ? Promise.resolve(null) : fetchCloudChanges<Movement>(null, 'movements', uid),
         fetchRecurringFromFirestore(),
       ]);
       // Si entretanto se ha pasado a la compartida, solo se guarda la copia:
@@ -160,13 +168,15 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         if (!cloudMovements.fromServer || !cloudRecurring.fromServer) return;
         // Con la nube vacía no se borra nada del móvil
         if (cloudMovements.docs.length > 0 || cloudRecurring.docs.length > 0) {
+          const movements = withoutBuried(cloudMovements.docs, graveyardOf('movements', uid));
           if (onScreen()) {
-            set({ movements: cloudMovements.docs, recurringMovements: cloudRecurring.docs });
+            set({ movements, recurringMovements: cloudRecurring.docs });
           }
           await Promise.all([
-            AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(cloudMovements.docs)),
+            AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements)),
             AsyncStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(cloudRecurring.docs)),
           ]);
+          await advanceMarksAfterFullRead('movements', uid, movements);
         } else if (movementsRaw == null) {
           // Sin nada en ningún sitio: la copia, vacía. Sin ella, cada inicio
           // volvería a bajarlo todo
@@ -174,6 +184,21 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         }
         await markFullCheck('movements', uid);
         return;
+      }
+
+      // Lo cambiado desde la última vez, sobre la copia. Solo con la respuesta
+      // del servidor: la de la caché de Firestore puede estar incompleta
+      if (changes?.fromServer && (changes.changed.length > 0 || changes.deleted.length > 0)) {
+        const base: Movement[] = onScreen()
+          ? get().movements
+          : JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.MOVEMENTS)) ?? '[]');
+        const merged = mergeChanges(base, changes.changed, changes.deleted, graveyardOf('movements', uid));
+        if (merged !== base) {
+          const movements = merged.sort(byDate);
+          if (onScreen()) set({ movements });
+          await AsyncStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
+        }
+        await advanceMarks('movements', uid, changes.changed, changes.deleted);
       }
 
       if (!cloudRecurring.fromServer) return;
@@ -193,7 +218,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
   },
 
   // ── CARGAR DATOS COMPARTIDOS ───────────────────────────────────
-  // De la nube, lo apuntado en los últimos 30 días (lo mismo que escucha
+  // De la nube, lo cambiado desde la última vez (después lo trae en directo
   // subscribeToSharedMovements); el historial entero, de vez en cuando o si se
   // pide (ver cloudCheck). Los fijos, siempre
   loadSharedData: async (accountId, { fullCheck = false } = {}) => {
@@ -214,27 +239,29 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         const full = fullCheck || cachedMovements == null || await isFullCheckDue('movements', accountId);
-        const since = recentSince();
-        const movementsCol = getSharedMovementsCol(accountId);
-        const [movementsSnap, recurringSnap] = await Promise.all([
-          (full ? movementsCol : movementsCol.where('createdAt', '>=', since)).get(),
+        const [fullSnap, changes, recurringSnap] = await Promise.all([
+          full ? cloudCollection(accountId, 'movements').get() : Promise.resolve(null),
+          full ? Promise.resolve(null) : fetchCloudChanges<Movement>(accountId, 'movements', accountId),
           getSharedRecurringCol(accountId).get(),
         ]);
-        const fromServer = !movementsSnap.metadata.fromCache;
-        const incoming = movementsSnap.docs.map(d => d.data() as Movement);
         const recurring = recurringSnap.docs
           .map(d => d.data() as RecurringMovement)
           .sort((a, b) => a.recurringDay - b.recurringDay);
 
         // Si entretanto se ha cambiado de cuenta, solo se guarda la copia
         const onScreen = () => get().sharedAccountId === accountId && get().movementsOf === accountId;
+        // Solo con la respuesta del servidor: la de la caché de Firestore puede
+        // estar incompleta
         let movements: Movement[] | null = null;
-        if (!full) {
+        if (fullSnap && !fullSnap.metadata.fromCache) {
+          movements = withoutBuried(fullSnap.docs.map(d => fromCloud<Movement>(d)), graveyardOf('movements', accountId));
+        } else if (changes?.fromServer && (changes.changed.length > 0 || changes.deleted.length > 0)) {
           // Sobre lo que hay en pantalla, que ya puede traer cambios de la escucha
-          movements = mergeRecent(onScreen() ? get().movements : localMovements, incoming, since, fromServer);
-        } else if (fromServer) {
-          // Entero solo con la respuesta del servidor (ver loadData)
-          movements = incoming;
+          const base: Movement[] = onScreen()
+            ? get().movements
+            : JSON.parse((await readSharedCache(SHARED_CACHE.MOVEMENTS, accountId)) ?? '[]');
+          const merged = mergeChanges(base, changes.changed, changes.deleted, graveyardOf('movements', accountId));
+          if (merged !== base) movements = merged;
         }
         movements?.sort(byDate);
 
@@ -247,7 +274,12 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
             : null,
           AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.RECURRING, accountId), JSON.stringify(recurring)),
         ]);
-        if (full && fromServer) await markFullCheck('movements', accountId);
+        if (movements && fullSnap) {
+          await advanceMarksAfterFullRead('movements', accountId, movements);
+          await markFullCheck('movements', accountId);
+        } else if (changes?.fromServer) {
+          await advanceMarks('movements', accountId, changes.changed, changes.deleted);
+        }
       }
     } catch (e) {
       console.error('Error loading shared data:', e);
@@ -256,16 +288,19 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
     }
   },
 
-  // Lo que trae la escucha de la cuenta compartida: lo apuntado en los
-  // últimos 30 días, junto con el resto de la copia
-  mergeSharedRecent: (accountId, recent, since, fromServer) => {
+  // Lo que trae la escucha de la cuenta compartida, junto con la copia. Quien
+  // la llama sube la marca cuando ya está guardada
+  applySharedChanges: async (accountId, changed, deleted) => {
     // Aún con los movimientos de la cuenta anterior (se está entrando en
     // esta): lo trae su carga, que viene detrás
-    if (get().sharedAccountId !== accountId || get().movementsOf !== accountId) return;
-    const movements = mergeRecent(get().movements, recent, since, fromServer).sort(byDate);
+    if (get().sharedAccountId !== accountId || get().movementsOf !== accountId) return false;
+    const current = get().movements;
+    const merged = mergeChanges(current, changed, deleted, graveyardOf('movements', accountId));
+    if (merged === current) return true;
+    const movements = merged.sort(byDate);
     set({ movements });
-    AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements))
-      .catch(() => {});
+    await AsyncStorage.setItem(sharedCacheKey(SHARED_CACHE.MOVEMENTS, accountId), JSON.stringify(movements));
+    return true;
   },
 
   // ── GUARDAR EN ASYNCSTORAGE ────────────────────────────────────
@@ -295,9 +330,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         try {
-          await getSharedMovementsCol(sharedAccountId)
-            .doc(movement.id)
-            .set(sharedMovement);
+          await addSharedMovementToFirestore(sharedAccountId, sharedMovement);
         } catch {
           await enqueue({
             type: 'ADD_SHARED_MOVEMENT',
@@ -340,7 +373,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         try {
-          await getSharedMovementsCol(sharedAccountId).doc(id).delete();
+          await deleteSharedMovementFromFirestore(sharedAccountId, id);
         } catch {
           await enqueue({
             type: 'DELETE_SHARED_MOVEMENT',
@@ -397,7 +430,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
       const netState = await NetInfo.fetch();
       if (netState.isConnected) {
         try {
-          await getSharedMovementsCol(sharedAccountId).doc(id).set(sharedMovement);
+          await addSharedMovementToFirestore(sharedAccountId, sharedMovement);
         } catch {
           await enqueue({
             type: 'ADD_SHARED_MOVEMENT',
@@ -641,9 +674,7 @@ export const useMovementStore = create<MovementStore>((set, get) => ({
         const uid = auth().currentUser?.uid ?? '';
         for (const m of newMovements) {
           try {
-            await getSharedMovementsCol(sharedAccountId)
-              .doc(m.id)
-              .set(stripUndefined({ ...m, addedBy: uid }));
+            await addSharedMovementToFirestore(sharedAccountId, { ...m, addedBy: uid });
           } catch (e) {
             console.error('Error saving shared recurring movement:', e);
           }

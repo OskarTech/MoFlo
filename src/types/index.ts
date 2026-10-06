@@ -37,6 +37,8 @@ export interface Movement {
   note?: string;
   createdAt: string;
   addedBy?: string;
+  // Hora del servidor de su último cambio, en ms (ver cloudCheck). La pone la nube
+  updatedAt?: number;
 }
 
 // Estructura de un movimiento recurrente
@@ -84,6 +86,8 @@ export interface HuchaMovement {
   date: string;
   createdAt: string;
   addedBy?: string;
+  // Hora del servidor de su último cambio, en ms (ver cloudCheck). La pone la nube
+  updatedAt?: number;
 }
 
 // Resumen mensual calculado

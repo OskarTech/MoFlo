@@ -16,6 +16,27 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/sharedAccounts/$(accountId)).data.members;
     }
 
+    // Movimientos y movimientos de huchas: la hora del servidor de su último
+    // cambio (updatedAt), con la que cada móvil pide solo lo que ha cambiado
+    // desde la última vez. Si viene, no puede ser futura: con una fecha
+    // adelantada, los demás dejarían de recibir cambios. Una pasada sí vale:
+    // la 2.0.4 y anteriores no la ponen, pero al editar devuelven la que
+    // traían (aunque otro miembro lo haya cambiado después), y tienen que
+    // poder seguir guardando
+    function updatedAtOk() {
+      let t = request.resource.data.get('updatedAt', null);
+      return !(t is timestamp) || t <= request.time;
+    }
+
+    // Apunte de un borrado (deletedMovements, deletedHuchaMovements), para que
+    // los demás móviles quiten ese documento sin bajarlo todo: la hora del
+    // servidor y cuándo lo borra Firestore solo (TTL, ver firestore.indexes.json)
+    function deletionOk() {
+      return request.resource.data.keys().hasOnly(['updatedAt', 'expireAt'])
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.expireAt is timestamp;
+    }
+
     // ── Doc público de versión de la app ──
     match /config/appVersion {
       allow read: if true;
@@ -27,7 +48,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
 
       match /movements/{movementId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && updatedAtOk();
+      }
+      match /deletedMovements/{movementId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && deletionOk();
       }
       match /recurring/{recurringId} {
         allow read, write: if isOwner(userId);
@@ -42,7 +68,12 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
       match /huchaMovements/{movementId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && updatedAtOk();
+      }
+      match /deletedHuchaMovements/{movementId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && deletionOk();
       }
       match /devices/{deviceId} {
         allow read, write: if isOwner(userId);
@@ -158,7 +189,12 @@ service cloud.firestore {
         && request.auth.uid == resource.data.createdBy;
 
       match /movements/{movementId} {
-        allow read, write: if isMember(accountId);
+        allow read, delete: if isMember(accountId);
+        allow create, update: if isMember(accountId) && updatedAtOk();
+      }
+      match /deletedMovements/{movementId} {
+        allow read, delete: if isMember(accountId);
+        allow create, update: if isMember(accountId) && deletionOk();
       }
       match /recurring/{recurringId} {
         allow read, write: if isMember(accountId);
@@ -173,7 +209,12 @@ service cloud.firestore {
         allow read, write: if isMember(accountId);
       }
       match /huchaMovements/{movementId} {
-        allow read, write: if isMember(accountId);
+        allow read, delete: if isMember(accountId);
+        allow create, update: if isMember(accountId) && updatedAtOk();
+      }
+      match /deletedHuchaMovements/{movementId} {
+        allow read, delete: if isMember(accountId);
+        allow create, update: if isMember(accountId) && deletionOk();
       }
 
       // NUEVO: recordatorios compartidos entre miembros

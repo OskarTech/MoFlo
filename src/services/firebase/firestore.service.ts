@@ -2,6 +2,7 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { Movement, RecurringMovement } from '../../types';
 import { getDeviceLanguage } from '../../i18n';
+import { deleteFromCloud, forCloud, fromCloud } from './cloudSync';
 
 // ── HELPERS ────────────────────────────────────────────────────
 
@@ -22,21 +23,19 @@ const getUserCollections = () => {
 
 // ── MOVIMIENTOS ────────────────────────────────────────────────
 
+// Con la hora del servidor (ver cloudCheck)
 export const addMovementToFirestore = async (
   movement: Movement
 ): Promise<void> => {
   const { movements: col } = getUserCollections();
-  const sanitized = Object.fromEntries(
-    Object.entries(movement).filter(([_, v]) => v !== undefined)
-  );
-  await col.doc(movement.id).set(sanitized);
+  await col.doc(movement.id).set(forCloud(movement));
 };
 
+// Con el apunte del borrado, para que lo vean los demás móviles (ver cloudCheck)
 export const deleteMovementFromFirestore = async (
   id: string
 ): Promise<void> => {
-  const { movements: col } = getUserCollections();
-  await col.doc(id).delete();
+  await deleteFromCloud(null, 'movements', id);
 };
 
 // fromServer: si es false, la respuesta es de la caché de Firestore (sin
@@ -49,7 +48,7 @@ export interface CloudList<T> {
 export const fetchMovementsFromFirestore = async (): Promise<CloudList<Movement>> => {
   const { movements: col } = getUserCollections();
   const snapshot = await col.get();
-  return { docs: snapshot.docs.map((doc) => doc.data() as Movement), fromServer: !snapshot.metadata.fromCache };
+  return { docs: snapshot.docs.map((doc) => fromCloud<Movement>(doc)), fromServer: !snapshot.metadata.fromCache };
 };
 
 /** Si hay al menos un movimiento en la nube; null si no se ha podido saber */
@@ -65,11 +64,7 @@ export const syncMovementsToFirestore = async (
   const { movements: col } = getUserCollections();
   const batch = firestore().batch();
   movements.forEach((m) => {
-    const sanitized = Object.fromEntries(
-      Object.entries(m).filter(([_, v]) => v !== undefined)
-    );
-    const ref = col.doc(m.id);
-    batch.set(ref, sanitized);
+    batch.set(col.doc(m.id), forCloud(m));
   });
   await batch.commit();
 };
@@ -140,17 +135,14 @@ export const addSharedMovementToFirestore = async (
   accountId: string,
   movement: Movement & { addedBy: string }
 ): Promise<void> => {
-  const sanitized = Object.fromEntries(
-    Object.entries(movement).filter(([_, v]) => v !== undefined)
-  );
-  await sharedMovementsCol(accountId).doc(movement.id).set(sanitized);
+  await sharedMovementsCol(accountId).doc(movement.id).set(forCloud(movement));
 };
 
 export const deleteSharedMovementFromFirestore = async (
   accountId: string,
   id: string
 ): Promise<void> => {
-  await sharedMovementsCol(accountId).doc(id).delete();
+  await deleteFromCloud(accountId, 'movements', id);
 };
 
 export const addSharedRecurringToFirestore = async (

@@ -8,7 +8,8 @@ import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
 import { deletePhotos, sharedPhotoFolder, uploadPhoto } from '../services/firebase/photo.service';
 import { normalizeStartDay } from '../utils/period';
-import { recentSince } from './cloudCheck';
+import { RELISTEN_AFTER_MS } from './cloudCheck';
+import { listenToCloudChanges } from '../services/firebase/cloudSync';
 import { createAccountWithInviteCode, deleteInviteCode, ensureInviteCode, findAccountByInviteCode } from './inviteCodes';
 import i18n from '../i18n';
 
@@ -34,6 +35,8 @@ let incomingRequestsUnsubscribe: (() => void) | null = null;
 // Cuenta que están escuchando ahora mismo movementsUnsubscribe y recurringUnsubscribe.
 // Sirve para no cancelar y recrear los listeners cuando ya apuntan a la cuenta correcta.
 let subscribedMovementsAccountId: string | null = null;
+// Desde cuándo escuchan (ver RELISTEN_AFTER_MS)
+let movementsListenedSince = 0;
 
 const stopMovementListeners = () => {
   if (movementsUnsubscribe) { movementsUnsubscribe(); movementsUnsubscribe = null; }
@@ -172,37 +175,38 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     const { useReminderStore } = require('./reminderStore');
     useReminderStore.getState().subscribeToSharedReminders(accountId);
 
-    // Ya se está escuchando esta misma cuenta: no hay nada que rehacer.
-    // Antes se cancelaban y recreaban los dos listeners cada vez que la app
-    // volvía a primer plano o se recuperaba la conexión, y cada listener nuevo
-    // vuelve a leer la colección entera de Firestore. Los listeners siguen
-    // vivos en segundo plano y se reconectan solos, así que renovarlos no
-    // aportaba datos más frescos, solo lecturas de más.
+    // Ya se está escuchando esta misma cuenta: no hay nada que rehacer, salvo
+    // que lleve horas (ver RELISTEN_AFTER_MS). Antes se cancelaban y recreaban
+    // los listeners cada vez que la app volvía a primer plano o se recuperaba
+    // la conexión, y cada listener nuevo volvía a leer lo que escucha. Los
+    // listeners siguen vivos en segundo plano y se reconectan solos, así que
+    // renovarlos no aportaba datos más frescos, solo lecturas de más.
     if (
       subscribedMovementsAccountId === accountId
       && movementsUnsubscribe
       && recurringUnsubscribe
+      && Date.now() - movementsListenedSince < RELISTEN_AFTER_MS
     ) return;
 
     stopMovementListeners();
     subscribedMovementsAccountId = accountId;
+    movementsListenedSince = Date.now();
 
     const { useMovementStore } = require('./movementStore');
 
-    // Solo lo apuntado en los últimos 30 días: escuchar la colección entera
-    // la leía toda cada vez que se entraba en la cuenta. Lo anterior lo trae
-    // la comprobación entera de vez en cuando (ver cloudCheck)
-    const since = recentSince();
-    const movementsSub = firestore()
-      .collection('sharedAccounts').doc(accountId)
-      .collection('movements')
-      .where('createdAt', '>=', since)
-      .onSnapshot((snap) => {
+    // Solo lo cambiado y lo borrado desde la última vez (ver cloudCheck):
+    // escuchar la colección entera la leía toda cada vez que se entraba en la
+    // cuenta
+    const movementsSub = listenToCloudChanges<Movement>(
+      accountId,
+      'movements',
+      (changed, deleted) => (
         // Se cambió de cuenta mientras llegaba el snapshot
-        if (subscribedMovementsAccountId !== accountId) return;
-        const recent = snap.docs.map(d => d.data() as Movement);
-        useMovementStore.getState().mergeSharedRecent(accountId, recent, since, !snap.metadata.fromCache);
-      }, (e) => {
+        subscribedMovementsAccountId === accountId
+          ? useMovementStore.getState().applySharedChanges(accountId, changed, deleted)
+          : Promise.resolve(false)
+      ),
+      (e) => {
         reportError(e, 'listener de movimientos compartidos');
         // Firestore cierra el listener tras un error: hay que dejar que la
         // próxima llamada vuelva a suscribirse en lugar de darlo por vivo
@@ -210,7 +214,8 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
           movementsUnsubscribe = null;
           subscribedMovementsAccountId = null;
         }
-      });
+      },
+    );
     movementsUnsubscribe = movementsSub;
 
     const recurringSub = firestore()
@@ -660,6 +665,7 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     await deleteSubcollections(ref, [
       'movements', 'recurring', 'categories', 'huchas',
       'huchaMovements', 'savings', 'joinRequests', 'reminders',
+      'deletedMovements', 'deletedHuchaMovements',
     ]);
 
     // La foto de la cuenta, antes que el documento: Storage mira en él quién es
