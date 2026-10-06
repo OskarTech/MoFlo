@@ -27,6 +27,7 @@ import { useCategoryStore } from '../../store/categoryStore';
 import { useSharedAccountStore } from '../../store/sharedAccountStore';
 import { switchToShared, switchToIndividual } from '../../store/accountSwitch';
 import { removeSharedCaches } from '../../store/sharedCache';
+import { deleteInviteCode } from '../../store/inviteCodes';
 import { useReminderStore } from '../../store/reminderStore';
 import { useWalkthroughStore } from '../../store/walkthroughStore';
 import PremiumModal from '../../components/common/PremiumModal';
@@ -373,6 +374,8 @@ const SettingsScreen = () => {
           await deletePhotos(sharedPhotoFolder(accountId)).catch((e) =>
             reportError(e, 'deleteAccount: foto de la cuenta compartida')
           );
+          // Su código de invitación, también antes que la cuenta (ver inviteCodes)
+          await deleteInviteCode(sa);
           await accountRef.delete();
         } else {
           // Solo se quita a uno mismo, sin reescribir la lista con la copia local.

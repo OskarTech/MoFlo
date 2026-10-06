@@ -11,6 +11,8 @@ export const SHARED_CACHE = {
   RECURRING: '@moflo_shared_recurring',
   HUCHAS: '@moflo_shared_huchas',
   HUCHA_MOVEMENTS: '@moflo_shared_hucha_movements',
+  // Que el código de invitación de la cuenta ya está en inviteCodes
+  INVITE_CODE: '@moflo_shared_invite_code',
 };
 
 export const sharedCacheKey = (base: string, accountId: string) => `${base}_${accountId}`;

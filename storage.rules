@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Subir: solo fotos JPEG de menos de 1 MB (la app las sube de unos 50 KB).
+    // Borrar (no hay archivo nuevo) se permite a quien puede escribir
+    function isPhotoOrDelete() {
+      return request.resource == null
+        || (request.resource.contentType == 'image/jpeg'
+            && request.resource.size < 1024 * 1024);
+    }
+
+    function isMember(accountId) {
+      return isSignedIn()
+        && request.auth.uid in firestore.get(/databases/(default)/documents/sharedAccounts/$(accountId)).data.members;
+    }
+
+    // Foto de perfil: solo la maneja su dueño. Los demás la ven por su enlace,
+    // que lleva un token propio y no pasa por estas reglas
+    match /users/{userId}/{fileName} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId && isPhotoOrDelete();
+    }
+
+    // Foto de la cuenta compartida: la cambia cualquier miembro
+    match /sharedAccounts/{accountId}/{fileName} {
+      allow read: if isMember(accountId);
+      allow write: if isMember(accountId) && isPhotoOrDelete();
+    }
+
+    // Todo lo demás queda cerrado (Storage lo niega si nada coincide)
+  }
+}

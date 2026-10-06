@@ -9,6 +9,7 @@ import { deleteSubcollections } from '../services/firebase/batchDelete';
 import { deletePhotos, sharedPhotoFolder, uploadPhoto } from '../services/firebase/photo.service';
 import { normalizeStartDay } from '../utils/period';
 import { recentSince } from './cloudCheck';
+import { createAccountWithInviteCode, deleteInviteCode, ensureInviteCode, findAccountByInviteCode } from './inviteCodes';
 import i18n from '../i18n';
 
 // Los demás stores se cargan con require() al usarlos, no con import: reminderStore
@@ -19,44 +20,6 @@ const STORAGE_KEY = '@moflo_shared_account';
 const ACTIVE_KEY = '@moflo_active_account';
 const NOTIF_KEY = '@moflo_shared_notif';
 const PENDING_REQUEST_KEY = '@moflo_pending_join_request';
-
-const generateInviteCode = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return Array.from({ length: 6 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join('');
-};
-
-const INVITE_CODE_ATTEMPTS = 5;
-
-/**
- * Código de invitación que no esté ya en uso.
- *
- * Son 6 caracteres, unos 2.176 millones de combinaciones, así que una colisión
- * es improbabilísima. Pero si ocurriera, joinSharedAccount busca con limit(1) y
- * podría devolver la cuenta equivocada: alguien acabaría pidiendo entrar en la
- * cuenta de un desconocido.
- *
- * Si la consulta falla, por ejemplo sin conexión, se usa el código tal cual: no
- * poder crear la cuenta es mucho peor que arriesgarse a una colisión que no va
- * a pasar.
- */
-const generateUniqueInviteCode = async (): Promise<string> => {
-  for (let attempt = 0; attempt < INVITE_CODE_ATTEMPTS; attempt++) {
-    const code = generateInviteCode();
-    try {
-      const snap = await firestore()
-        .collection('sharedAccounts')
-        .where('inviteCode', '==', code)
-        .limit(1)
-        .get();
-      if (snap.empty) return code;
-    } catch {
-      return code;
-    }
-  }
-  return generateInviteCode();
-};
 
 export const generateInviteLink = (code: string, name: string): string => {
   const encoded = encodeURIComponent(name);
@@ -308,6 +271,11 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
         set({ sharedAccount: account });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(account));
 
+        // Las cuentas que crea la 2.0.4 o anteriores no guardan su código en
+        // inviteCodes: lo guarda el primer miembro que la abre con esta
+        // versión. Sin esperar: no retrasa el arranque
+        ensureInviteCode(account).catch((e) => reportError(e, 'ensureInviteCode'));
+
         // Si ya tenías foto al entrar en la cuenta, todavía no está en ella.
         // Solo se añade si falta: con una foto guardada aquí más antigua que la
         // de la cuenta (cambiada desde otro móvil) se pisaría la nueva. Los
@@ -434,23 +402,19 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
       || i18n.t('common.user');
     if (!uid) return;
 
-    const inviteCode = await generateUniqueInviteCode();
     const accountId = `shared_${uid}_${Date.now()}`;
+    const createdAt = new Date().toISOString();
 
-    const newAccount: SharedAccount = {
+    // Con su código de invitación en inviteCodes (ver inviteCodes)
+    const newAccount = await createAccountWithInviteCode((inviteCode): SharedAccount => ({
       id: accountId,
       name,
       createdBy: uid,
       members: [uid],
       memberNames: { [uid]: displayName },
       inviteCode,
-      createdAt: new Date().toISOString(),
-    };
-
-    await firestore()
-      .collection('sharedAccounts')
-      .doc(accountId)
-      .set(newAccount);
+      createdAt,
+    }));
 
     set({ sharedAccount: newAccount });
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAccount));
@@ -484,29 +448,9 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     if (get().pendingJoinRequest) return 'has_pending';
 
     try {
-      const snap = await firestore()
-        .collection('sharedAccounts')
-        .where('inviteCode', '==', code.toUpperCase().trim())
-        // Dos y no uno: así se detecta si otra cuenta tiene el mismo código
-        .limit(2)
-        .get();
-
-      if (snap.empty) return 'invalid';
-
-      // Las reglas dejan leer los códigos de todas las cuentas y no impiden
-      // repetirlos, así que alguien podría crear una copia de una cuenta con su
-      // mismo código. Con limit(1) la solicitud acabaría en la cuenta cuyo id
-      // ordene primero, que puede ser la copia. Ante la duda no se envía nada.
-      if (snap.size > 1) {
-        reportError(
-          new Error(`Código de invitación repetido en: ${snap.docs.map(d => d.id).join(', ')}`),
-          'joinSharedAccount',
-        );
-        return 'invalid';
-      }
-
-      const accountDoc = snap.docs[0];
-      const account = { id: accountDoc.id, ...accountDoc.data() } as SharedAccount;
+      // En inviteCodes: las cuentas ya no se pueden recorrer (ver inviteCodes)
+      const account = await findAccountByInviteCode(code.toUpperCase().trim());
+      if (!account) return 'invalid';
 
       if (account.members.includes(uid)) return 'already_member';
 
@@ -723,6 +667,9 @@ export const useSharedAccountStore = create<SharedAccountStore>((set, get) => ({
     await deletePhotos(sharedPhotoFolder(sharedAccount.id)).catch((e) =>
       reportError(e, 'deleteSharedAccount: foto de la cuenta')
     );
+
+    // Su código de invitación, también antes: las reglas miran en la cuenta quién la creó
+    await deleteInviteCode(sharedAccount);
 
     await ref.delete();
 

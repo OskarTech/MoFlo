@@ -1,0 +1,238 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funciones auxiliares ──
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isMember(accountId) {
+      return isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/sharedAccounts/$(accountId)).data.members;
+    }
+
+    // ── Doc público de versión de la app ──
+    match /config/appVersion {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Cuenta individual ──
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /movements/{movementId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /recurring/{recurringId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /categories/{categoryId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /savings/{savingId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /huchas/{huchaId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /huchaMovements/{movementId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /devices/{deviceId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ── Cuenta compartida ──
+    match /sharedAccounts/{accountId} {
+
+      // Quién entra y quién sale en esta escritura concreta
+      function addedMembers() {
+        return request.resource.data.members.removeAll(resource.data.members);
+      }
+      function removedMembers() {
+        return resource.data.members.removeAll(request.resource.data.members);
+      }
+
+      // get() con valor por defecto: una cuenta antigua a la que le falte el
+      // campo no se queda bloqueada para siempre
+      function creatorUid() {
+        return resource.data.get('createdBy', null);
+      }
+      function isCreator() {
+        return isSignedIn() && request.auth.uid == creatorUid();
+      }
+
+      // Solo se puede añadir a alguien que haya pedido entrar por su cuenta.
+      // El documento de solicitud únicamente lo puede crear esa misma persona,
+      // así que esto es lo que ata la lista de miembros al código de invitación.
+      // approveJoinRequest borra la solicitud en el mismo lote, pero las reglas
+      // se evalúan contra el estado anterior al lote, así que aquí todavía existe.
+      function hasJoinRequest(uid) {
+        return exists(/databases/$(database)/documents/sharedAccounts/$(accountId)/joinRequests/$(uid));
+      }
+
+      // Fotos de los miembros (memberPhotos): cada uno pone, cambia o quita
+      // solo la suya. Al expulsar a alguien o salir, se puede quitar la de
+      // quien se va, nada más. Las escrituras que no tocan fotos (y las de
+      // versiones antiguas de la app) no cambian nada aquí y pasan.
+      function photosChangeOk() {
+        let changes = request.resource.data.get('memberPhotos', {})
+          .diff(resource.data.get('memberPhotos', {}));
+        return changes.addedKeys().hasOnly([request.auth.uid])
+          && changes.changedKeys().hasOnly([request.auth.uid])
+          && changes.removedKeys().hasOnly(removedMembers().concat([request.auth.uid]));
+      }
+
+      // Solo enlaces a fotos de nuestro Storage. Con una dirección cualquiera,
+      // quien la pusiera sabría desde dónde se conecta cada miembro que la ve.
+      function isOurPhoto(url) {
+        return url == null
+          || (url is string
+              && url.matches('https://firebasestorage[.]googleapis[.]com/v0/b/moflo-a1bb5[.]firebasestorage[.]app/o/.*'));
+      }
+
+      // Leer: una cuenta por su id, cualquiera con sesión. Quien tiene el
+      // código la encuentra en inviteCodes, y a quien han expulsado le hace
+      // falta para ver que ya no está. Listar, solo las cuentas en las que
+      // eres miembro: nadie puede recorrerlas todas ni ver sus códigos.
+      // Hasta el 6 de octubre de 2026 cualquiera con sesión podía listarlas
+      // todas. La 2.0.4 y anteriores buscaban así el código de invitación:
+      // desde entonces no pueden unirse a una cuenta (todo lo demás, sí)
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.auth.uid in resource.data.members;
+
+      // Solo puedes crear tu propia cuenta y empezando tú solo dentro.
+      // Antes bastaba con estar autenticado, así que cualquiera podía crear una
+      // cuenta metiendo el uid de otra persona en members: la víctima se la
+      // encontraba en su app como si fuera suya.
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.members == [request.auth.uid];
+
+      // Antes cualquier miembro podía escribir cualquier campo. Eso permitía
+      // ponerse a uno mismo en createdBy y acto seguido borrar la cuenta entera,
+      // o expulsar al creador.
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.members
+        // El creador y el código de invitación no cambian nunca
+        && request.resource.data.get('createdBy', null) == creatorUid()
+        && request.resource.data.get('inviteCode', null) == resource.data.get('inviteCode', null)
+        // Fotos: la de la cuenta la cambia cualquier miembro; la de cada
+        // miembro, solo él. Siempre enlaces a nuestro Storage
+        && photosChangeOk()
+        && isOurPhoto(request.resource.data.get('photoURL', null))
+        && isOurPhoto(request.resource.data.get('memberPhotos', {}).get(request.auth.uid, null))
+        && (
+          // a) Nadie entra ni sale: renombrar, ajustes compartidos,
+          //    categorías ocultas, sincronizar tu nombre o tu foto
+          (addedMembers().size() == 0 && removedMembers().size() == 0)
+
+          // b) El creador aprueba a una persona que ha solicitado entrar
+          || (isCreator()
+              && removedMembers().size() == 0
+              && addedMembers().size() == 1
+              && hasJoinRequest(addedMembers()[0]))
+
+          // c) El creador expulsa a un miembro, nunca a sí mismo
+          || (isCreator()
+              && addedMembers().size() == 0
+              && removedMembers().size() == 1
+              && removedMembers()[0] != creatorUid())
+
+          // d) Un miembro se va por su cuenta. El creador no puede irse,
+          //    dejaría la cuenta sin nadie que la administre; para eso borra.
+          || (addedMembers().size() == 0
+              && removedMembers().size() == 1
+              && removedMembers()[0] == request.auth.uid
+              && request.auth.uid != creatorUid())
+        );
+
+      allow delete: if isSignedIn()
+        && request.auth.uid == resource.data.createdBy;
+
+      match /movements/{movementId} {
+        allow read, write: if isMember(accountId);
+      }
+      match /recurring/{recurringId} {
+        allow read, write: if isMember(accountId);
+      }
+      match /categories/{categoryId} {
+        allow read, write: if isMember(accountId);
+      }
+      match /savings/{savingId} {
+        allow read, write: if isMember(accountId);
+      }
+      match /huchas/{huchaId} {
+        allow read, write: if isMember(accountId);
+      }
+      match /huchaMovements/{movementId} {
+        allow read, write: if isMember(accountId);
+      }
+
+      // NUEVO: recordatorios compartidos entre miembros
+      match /reminders/{reminderId} {
+        allow read, update, delete: if isMember(accountId);
+        allow create: if isMember(accountId)
+          && request.resource.data.createdBy == request.auth.uid;
+      }
+
+      match /joinRequests/{requesterUid} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == requesterUid
+          || isMember(accountId)
+        );
+
+        allow create: if isSignedIn()
+          && request.auth.uid == requesterUid
+          && request.resource.data.uid == requesterUid
+          && request.resource.data.status == 'pending';
+
+        allow update: if isMember(accountId);
+
+        allow delete: if isSignedIn() && (
+          request.auth.uid == requesterUid
+          || isMember(accountId)
+        );
+      }
+    }
+
+    // ── Códigos de invitación (desde la 2.0.5) ──
+    // Para unirse a una cuenta compartida, la app busca aquí el código. Se
+    // puede leer un código concreto, pero no listarlos: no se pueden recorrer.
+    // Cada código apunta a su cuenta. Solo lo guarda un miembro de esa cuenta y
+    // con el código que tiene la cuenta, y no se puede sobrescribir: no puede
+    // haber dos cuentas con el mismo código ni un código que lleve a otra.
+    // getAfter: la app crea la cuenta y su código en el mismo lote.
+    match /inviteCodes/{code} {
+      function accountAfter(accountId) {
+        return getAfter(/databases/$(database)/documents/sharedAccounts/$(accountId)).data;
+      }
+
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['accountId', 'createdAt'])
+        && request.resource.data.accountId is string
+        && accountAfter(request.resource.data.accountId).get('inviteCode', null) == code
+        && request.auth.uid in accountAfter(request.resource.data.accountId).members;
+
+      allow update: if false;
+
+      // Al borrar la cuenta lo borra su creador, antes que la cuenta
+      allow delete: if isSignedIn()
+        && get(/databases/$(database)/documents/sharedAccounts/$(resource.data.accountId)).data.get('createdBy', null) == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
