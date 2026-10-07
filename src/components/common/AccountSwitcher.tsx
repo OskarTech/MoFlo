@@ -15,6 +15,11 @@ import BottomSheet from './BottomSheet';
 import PremiumModal from './PremiumModal';
 import Avatar from './Avatar';
 import { getMemberPhoto } from '../../utils/memberLabel';
+import { BUSINESS_ENABLED } from '../../business/featureFlag';
+import { useBusinessStore } from '../../business/store/businessStore';
+import { switchToBusiness } from '../../business/store/switch';
+import { templateInfo } from '../../business/templates';
+import CreateBusinessModal from '../../business/ui/CreateBusinessModal';
 
 const initialOf = (name?: string) => (name?.trim()?.charAt(0) || '?').toUpperCase();
 
@@ -34,6 +39,10 @@ const AccountSwitcher = () => {
 
   const [showSheet, setShowSheet] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  // La cuenta de empresa (ver business/featureFlag)
+  const business = useBusinessStore((s) => s.business);
+  const businessRequest = useBusinessStore((s) => s.pendingRequest);
+  const [showCreateBusiness, setShowCreateBusiness] = useState(false);
 
   // Con la pantalla de carga: al quitarla ya está la cuenta entera
   const handleSelectIndividual = () => {
@@ -56,6 +65,16 @@ const AccountSwitcher = () => {
     } else {
       setTimeout(() => navigation.navigate('Settings', { screen: 'SharedAccount' }), 300);
     }
+  };
+
+  // A la empresa; sin ella, a crearla o a unirse a una con su código
+  const handleSelectBusiness = () => {
+    setShowSheet(false);
+    if (business) {
+      switchToBusiness().catch((e) => reportError(e, 'abrir la cuenta de empresa'));
+      return;
+    }
+    setTimeout(() => setShowCreateBusiness(true), 300);
   };
 
   // En la compartida, su foto; sin ella, hasta dos miembros (foto o inicial).
@@ -155,7 +174,21 @@ const AccountSwitcher = () => {
             : t('header.sharedAccountSubtitle'),
           !isPremium, sharedAccount?.photoURL,
         )}
+        {BUSINESS_ENABLED && option(
+          false, handleSelectBusiness, (business ? templateInfo(business.template).icon : 'business') as IconName,
+          business?.name ?? t('business.title'),
+          business
+            ? t('business.partnerCount', { count: business.members.length })
+            : businessRequest?.status === 'pending'
+              ? t('business.join.pendingShort', { name: businessRequest.businessName })
+              : t('business.selectorSubtitle'),
+          !business && !isPremium && !businessRequest,
+        )}
       </BottomSheet>
+
+      {BUSINESS_ENABLED && (
+        <CreateBusinessModal visible={showCreateBusiness} onClose={() => setShowCreateBusiness(false)} />
+      )}
 
       <PremiumModal
         visible={showPremiumModal}

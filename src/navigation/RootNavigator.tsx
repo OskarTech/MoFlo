@@ -20,6 +20,10 @@ import { useReminderStore } from '../store/reminderStore';
 import { processQueue } from '../services/syncQueue.service';
 import { setupPushTokens } from '../services/firebase/pushTokens.service';
 import { reportError, setCrashUser } from '../services/crashReporting';
+import { BUSINESS_ENABLED } from '../business/featureFlag';
+import { useBusinessModeStore } from '../business/store/modeStore';
+import { useBusinessStore } from '../business/store/businessStore';
+import BusinessNavigator from '../business/navigation/BusinessNavigator';
 
 // Se sigue exportando desde aquí para no cambiar a quien ya lo importa (App.tsx)
 export { navigationRef };
@@ -28,6 +32,8 @@ const RootNavigator = () => {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [loading, setLoading] = useState(true);
   const { colors: dc } = useTheme();
+  // Si se está en la cuenta de empresa: sus pantallas en lugar de las de la app
+  const businessActive = useBusinessModeStore((s) => s.active);
   useAndroidSystemBars();
 
   const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
@@ -70,6 +76,12 @@ const RootNavigator = () => {
       await useSavingsStore.getState().loadHuchas();
       await applyRecurringMovements();
       await useSavingsStore.getState().applyAutomaticContributions();
+    }
+
+    // La cuenta de empresa (solo con ella activada, ver business/featureFlag):
+    // su copia del móvil y, por detrás, la nube. Nunca para el arranque
+    if (BUSINESS_ENABLED) {
+      await useBusinessStore.getState().init().catch((e) => reportError(e, 'empresa: arranque'));
     }
   };
 
@@ -151,7 +163,9 @@ const RootNavigator = () => {
 
   return (
     <NavigationContainer ref={navigationRef}>
-      {user ? <AppNavigator /> : <AuthNavigator />}
+      {user
+        ? (BUSINESS_ENABLED && businessActive ? <BusinessNavigator /> : <AppNavigator />)
+        : <AuthNavigator />}
     </NavigationContainer>
   );
 };

@@ -16,6 +16,7 @@
 // Nombre de Ionicons sin "-outline" → nombre de Phosphor
 const IONICON_TO_PHOSPHOR = {
   'add': 'plus',
+  'add-circle': 'plus-circle',
   'airplane': 'airplane-tilt',
   'alert-circle': 'warning-circle',
   'american-football': 'football',
@@ -129,6 +130,7 @@ const IONICON_TO_PHOSPHOR = {
   'pricetags': 'tag',
   'pulse': 'pulse',
   'radio': 'radio',
+  'remove': 'minus',
   'reader': 'article',
   'receipt': 'receipt',
   'repeat': 'repeat',
@@ -170,7 +172,7 @@ const IONICON_TO_PHOSPHOR = {
 // Iconos de trazo: ni el relleno (una caja con el dibujo recortado) ni los dos
 // tonos (con un fondo decorativo) les sientan bien. Van con el trazo normal
 const LINE_ICONS = new Set([
-  'add', 'arrow-back', 'arrow-down', 'arrow-forward', 'arrow-up', 'checkmark',
+  'add', 'arrow-back', 'arrow-down', 'arrow-forward', 'arrow-up', 'checkmark', 'remove',
   'chevron-back', 'chevron-down', 'chevron-forward', 'chevron-up', 'close',
   'ellipsis-horizontal', 'infinite', 'menu', 'repeat', 'search',
   'trending-down', 'trending-up',

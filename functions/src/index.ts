@@ -3,6 +3,7 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, DocumentReference } from 'firebase-admin/firestore';
 import { getMessaging, MulticastMessage, SendResponse } from 'firebase-admin/messaging';
+import { businessFunctions } from './business';
 
 initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10 });
@@ -501,3 +502,12 @@ export const onSharedAccountUpdated = onDocumentUpdated(
     ));
   },
 );
+
+// ── Cuenta de empresa (ver business.ts) ──────────────────────────
+// Sus avisos usan el mismo envío y los mismos textos de reserva que los de
+// la cuenta compartida
+const business = businessFunctions({ sendToUser, someone: SOMEONE, formatAmount });
+export const onBusinessDayWritten = business.onBusinessDayWritten;
+export const onBusinessJoinRequestCreated = business.onBusinessJoinRequestCreated;
+export const onBusinessJoinRequestUpdated = business.onBusinessJoinRequestUpdated;
+export const onBusinessUpdated = business.onBusinessUpdated;

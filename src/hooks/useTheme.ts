@@ -5,6 +5,7 @@ import { CATEGORY_COLORS } from '../theme/categoryColors';
 import { getUiColors } from '../theme/ui';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSharedAccountStore } from '../store/sharedAccountStore';
+import { useBusinessModeStore } from '../business/store/modeStore';
 
 export const useTheme = () => {
   const colorScheme = useColorScheme();
@@ -15,6 +16,8 @@ export const useTheme = () => {
   const colorPalette = useSettingsStore((s) => s.colorPalette);
   const isSharedMode = useSharedAccountStore((s) => s.isSharedMode);
   const sharedColorPalette = useSharedAccountStore((s) => s.sharedColorPalette);
+  // En la cuenta de empresa, su paleta (ver business/store/modeStore)
+  const businessPalette = useBusinessModeStore((s) => (s.active ? s.paletteId : null));
 
   const isDark =
     themeMode === 'dark'
@@ -23,7 +26,8 @@ export const useTheme = () => {
       ? false
       : colorScheme === 'dark';
 
-  const effectivePalette = resolvePaletteId(isSharedMode ? sharedColorPalette : colorPalette, isSharedMode);
+  const effectivePalette = businessPalette
+    ?? resolvePaletteId(isSharedMode ? sharedColorPalette : colorPalette, isSharedMode);
 
   // El objeto se reutiliza mientras no cambien tema ni paleta: sin esto cada
   // fila de cada lista construía uno nuevo en cada render

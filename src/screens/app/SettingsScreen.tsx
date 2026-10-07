@@ -42,6 +42,7 @@ import i18n from '../../i18n';
 import { logout } from '../../services/firebase/auth.service';
 import { checkCloudCopy } from '../../store/checkCloudCopy';
 import { useCloudCheckStore, lastFullCheck, selectLastFullCheck, removeCloudChecks } from '../../store/cloudCheck';
+import { removeBusinessOnAccountDeletion } from '../../business/cleanup';
 import { clearPushTokens } from '../../services/firebase/pushTokens.service';
 import { clearQueueForUser, clearPersonalQueueForUser, hasUnsyncedChanges } from '../../services/syncQueue.service';
 import { revokeAppleToken } from '../../services/firebase/appleAuth';
@@ -391,6 +392,10 @@ const SettingsScreen = () => {
             });
         }
       }
+
+      // La cuenta de empresa, como la compartida: la que creaste se borra
+      // entera; de la de otro, sales. Nunca para el borrado
+      await removeBusinessOnAccountDeletion(uid);
 
       const userRef = firestore().collection('users').doc(uid);
       await deleteSubcollections(userRef, [

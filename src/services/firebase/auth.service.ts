@@ -13,6 +13,7 @@ import { useSavingsStore } from '../../store/savingsStore';
 import { useReminderStore } from '../../store/reminderStore';
 import { removeSharedCaches } from '../../store/sharedCache';
 import { removeCloudChecks } from '../../store/cloudCheck';
+import { resetBusinessOnSignOut } from '../../business/cleanup';
 import { clearPushTokens } from './pushTokens.service';
 import { processQueue } from '../syncQueue.service';
 import { resetPurchasesUser } from '../revenuecat';
@@ -86,6 +87,8 @@ export const logout = async () => {
   useSharedAccountStore.getState().resetStore();
   useSavingsStore.getState().resetStore();
   useReminderStore.getState().resetStore();
+  // La cuenta de empresa: deja de escucharla y quita su copia del móvil
+  await resetBusinessOnSignOut();
 
   // 3.b Suelta también el usuario de RevenueCat. Sin esto el SDK se queda con
   // el App User ID del anterior, y quien entre después en este móvil hereda su

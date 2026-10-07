@@ -46,7 +46,10 @@ export const useTabBarOffset = () => {
 // Lo que debe dejar libre abajo una pantalla para que la barra no tape su final
 export const useTabBarSpace = () => TAB_BAR_HEIGHT + useTabBarOffset() + 24;
 
-const TABS: Record<string, { label: string; icon: IconName; iconOn: IconName; target?: string }> = {
+/** Una pestaña: su texto (clave de i18n), sus iconos y su objetivo en el tutorial */
+export interface TabDef { label: string; icon: IconName; iconOn: IconName; target?: string }
+
+const TABS: Record<string, TabDef> = {
   HomeTab: { label: 'tabs.home', icon: 'home-outline', iconOn: 'home' },
   HistorialTab: { label: 'tabs.historial', icon: 'clock-counter-clockwise-duotone', iconOn: 'clock-counter-clockwise-fill', target: 'recurring' },
   AnnualTab: { label: 'tabs.annual', icon: 'bar-chart-outline', iconOn: 'bar-chart', target: 'annual_tab' },
@@ -54,11 +57,10 @@ const TABS: Record<string, { label: string; icon: IconName; iconOn: IconName; ta
 };
 
 const TabButton = ({
-  routeName, focused, onPress,
-}: { routeName: string; focused: boolean; onPress: () => void }) => {
+  routeName, tab, focused, onPress,
+}: { routeName: string; tab: TabDef; focused: boolean; onPress: () => void }) => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
-  const tab = TABS[routeName];
   const targetRef = useWalkthroughTarget(tab.target ?? `tab_${routeName}`);
   const color = focused ? ui.accent : dc.textPrimary;
   return (
@@ -83,10 +85,11 @@ const TabButton = ({
  * aparte, el botón + (su acción depende de la pantalla, ver AppNavigator).
  * Las pestañas ocultas (Ajustes, Recordatorios) no salen y, mientras se está
  * en ellas, ninguna aparece marcada. Con el teclado abierto se esconde.
+ * `tabs`, las de otro navegador (la cuenta de empresa); sin él, las de la app.
  */
 const GlassTabBar = ({
-  state, navigation, onFabPress,
-}: BottomTabBarProps & { onFabPress: () => void }) => {
+  state, navigation, onFabPress, tabs = TABS,
+}: BottomTabBarProps & { onFabPress: () => void; tabs?: Record<string, TabDef> }) => {
   const { t } = useTranslation();
   const { colors: dc, ui, isDark } = useTheme();
   const bottom = useTabBarOffset();
@@ -146,10 +149,11 @@ const GlassTabBar = ({
               }]}
             />
           )}
-          {state.routes.filter((r) => TABS[r.name]).map((route) => (
+          {state.routes.filter((r) => tabs[r.name]).map((route) => (
             <TabButton
               key={route.key}
               routeName={route.name}
+              tab={tabs[route.name]}
               focused={route.key === focusedKey}
               onPress={() => handlePress(route.key, route.name)}
             />
