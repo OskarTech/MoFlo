@@ -69,7 +69,13 @@ const BizSettingsScreen = () => {
         onPress: () => {
           warningHaptic();
           leaveBusinessMode('individual', { before: () => store().leaveBusiness() })
-            .catch((e) => reportError(e, 'empresa: salir'));
+            .catch((e) => {
+              if ((e as { code?: string })?.code === 'offline') {
+                Alert.alert(t('business.settings.offlineTitle'), t('business.settings.offlineLeave'));
+                return;
+              }
+              reportError(e, 'empresa: salir');
+            });
         },
       },
     ]);
@@ -90,7 +96,13 @@ const BizSettingsScreen = () => {
               onPress: () => {
                 warningHaptic();
                 leaveBusinessMode('individual', { before: () => store().deleteBusiness() })
-                  .catch((e) => reportError(e, 'empresa: borrar'));
+                  .catch((e) => {
+                    if ((e as { code?: string })?.code === 'offline') {
+                      Alert.alert(t('business.settings.offlineTitle'), t('business.settings.offlineDelete'));
+                      return;
+                    }
+                    reportError(e, 'empresa: borrar');
+                  });
               },
             },
           ]);

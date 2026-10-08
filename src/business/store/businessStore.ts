@@ -3,9 +3,9 @@ import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firest
 import auth from '@react-native-firebase/auth';
 import i18n from '../../i18n';
 import { reportError } from '../../services/crashReporting';
-import { deleteSubcollections } from '../../services/firebase/batchDelete';
+import { deleteRefsInChunks } from '../../services/firebase/batchDelete';
 import { fromCloud } from '../../services/firebase/cloudSync';
-import { mergeChanges, RELISTEN_AFTER_MS } from '../../store/cloudCheck';
+import { RELISTEN_AFTER_MS } from '../../store/cloudCheck';
 import { useSettingsStore } from '../../store/settingsStore';
 import { BUSINESS_ENABLED } from '../featureFlag';
 import {
@@ -24,7 +24,7 @@ import {
   BizCollection, BUSINESS_SUBCOLLECTIONS, bizCol, businessCodeRef, businessRef, businessesCol,
   catalogRef, configRef, deepClean, deleteField, deletionRecord, serverNow, stamped,
 } from '../cloud/refs';
-import { advanceBizMarks, Deletion, fetchBizChanges, listenBizChanges } from '../cloud/sync';
+import { advanceBizMarks, Deletion, fetchBizChanges, listenBizChanges, mergeBizChanges } from '../cloud/sync';
 import {
   dayDateOf, expenseDateOf, ORDER_DAYS_KEPT, pruneOrderDays, readActive, readCurrentId, readOrderDays,
   readPart, readPending, readYears, removeBusinessCache, writeActive, writeCurrentId, writeOrderDays,
@@ -195,6 +195,40 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | 'timeout'>
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 };
 
+// Lo que se espera a la red en lo que no puede quedarse a medias en la cola de
+// Firestore (cerrar un día de pedidos, salir de la empresa, borrarla)
+const ONLINE_WAIT_MS = 10000;
+
+/**
+ * El documento tal y como está en el servidor, o null sin conexión. Una
+ * lectura no se queda en ninguna cola: sirve para saber si hay red antes de
+ * escribir algo que, sin ella, se subiría más tarde
+ */
+const fromServer = async (ref: FirebaseFirestoreTypes.DocumentReference) => {
+  const snap = await withTimeout(ref.get({ source: 'server' }), ONLINE_WAIT_MS).catch(() => null);
+  return snap && snap !== 'timeout' ? snap : null;
+};
+
+const offlineError = () => Object.assign(new Error('offline'), { code: 'offline' });
+
+/**
+ * Si la red se corta justo después de guardarse algo, Firestore lo vuelve a
+ * mandar y las reglas lo niegan porque ya está hecho (ya no eres socio, ya no
+ * existe la empresa). Se mira en el servidor: si ya no se puede leer, o lo
+ * leído dice que está hecho, lo está
+ */
+const alreadyDone = async (
+  ref: FirebaseFirestoreTypes.DocumentReference,
+  done: (snap: FirebaseFirestoreTypes.DocumentSnapshot) => boolean,
+): Promise<boolean> => {
+  try {
+    const snap = await withTimeout(ref.get({ source: 'server' }), ONLINE_WAIT_MS);
+    return snap !== 'timeout' && done(snap);
+  } catch (e) {
+    return (e as { code?: string })?.code === 'firestore/permission-denied';
+  }
+};
+
 /** El día de hoy del negocio */
 export const todayDayId = (config: Pick<BusinessConfig, 'dayCutoffHour'> | null | undefined): string =>
   businessDayOf(new Date(), config?.dayCutoffHour ?? 0);
@@ -264,16 +298,18 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     ids.map(dateOf).filter((d): d is string => !!d).map(yearOfDay);
 
   /**
-   * Junta en la copia lo que llega de la nube. Devuelve false si ya no es la
-   * empresa de la copia (se ha salido mientras llegaba)
+   * Junta en la copia lo que llega de la nube (fromServer: del servidor, no
+   * de la caché de Firestore; ver mergeBizChanges). Devuelve false si ya no
+   * es la empresa de la copia (se ha salido mientras llegaba)
    */
   const mergeFromCloud = async (
     businessId: string, collection: BizCollection, changed: { id: string; updatedAt?: number }[], deleted: Deletion[],
+    fromServer: boolean,
   ): Promise<boolean> => {
     if (get().business?.id !== businessId) return false;
     if (collection === 'orders') {
       const local = Object.values(get().orders);
-      const merged = mergeChanges(local, changed as Order[], deleted);
+      const merged = mergeBizChanges(local, changed as Order[], deleted, fromServer);
       if (merged === local) return true;
       const record = Object.fromEntries(merged.map((o) => [o.id, o]));
       set({ orders: record });
@@ -282,7 +318,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     }
     if (collection === 'recurring') {
       const local = Object.values(get().recurring);
-      const merged = mergeChanges(local, changed as BusinessRecurring[], deleted);
+      const merged = mergeBizChanges(local, changed as BusinessRecurring[], deleted, fromServer);
       if (merged === local) return true;
       const record = Object.fromEntries(merged.map((r) => [r.id, r]));
       set({ recurring: record });
@@ -302,7 +338,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     await ensureYearLoaded(businessId, touched);
     if (get().business?.id !== businessId) return false;
     const local = Object.values(get()[kind] as Record<string, { id: string; updatedAt?: number }>);
-    const merged = mergeChanges(local, changed, deleted);
+    const merged = mergeBizChanges(local, changed, deleted, fromServer);
     if (merged === local) return true;
     const record = Object.fromEntries(merged.map((item) => [item.id, item]));
     set({ [kind]: record } as Partial<BusinessStore>);
@@ -483,7 +519,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     for (const collection of collections) {
       streamUnsubs.push(listenBizChanges(
         businessId, collection,
-        (changed, deleted) => mergeFromCloud(businessId, collection, changed, deleted),
+        (changed, deleted, fromServer) => mergeFromCloud(businessId, collection, changed, deleted, fromServer),
         (e) => {
           reportError(e, `empresa: escucha de ${collection}`);
           // Firestore la cierra tras un error: la siguiente vuelta la rehace
@@ -519,6 +555,20 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
   };
 
   const adoptBusiness = async (business: Business) => {
+    const previous = get().business;
+    if (previous && previous.id !== business.id) {
+      // Otra empresa que la de la copia (con la app cerrada, te sacaron de
+      // aquella y entraste en esta desde otro móvil): nada de la anterior
+      // pasa a esta. Lo de esta se baja entero después
+      stopAll();
+      expensesFromServer = false;
+      changesCursor = null;
+      set({
+        config: null, catalog: null, days: {}, orders: {}, expenses: {}, recurring: {},
+        loadedYears: [], incomingRequests: [],
+      });
+      await removeBusinessCache(previous.id);
+    }
     set({ business });
     await writePart.doc(business.id, business);
     await writeCurrentId(business.id);
@@ -531,9 +581,58 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     const changes = await fetchBizChanges<{ id: string; updatedAt?: number }>(
       businessId, collection, collection === 'orders' ? ordersWindow : undefined,
     );
-    const merged = await mergeFromCloud(businessId, collection, changes.changed, changes.deleted);
-    if (merged) await advanceBizMarks(businessId, collection, changes);
+    const merged = await mergeFromCloud(businessId, collection, changes.changed, changes.deleted, changes.fromServer);
+    // Las marcas, solo con la respuesta del servidor (como en las otras
+    // cuentas): la caché de Firestore puede no tener algo anterior a lo que tiene
+    if (merged && changes.fromServer) await advanceBizMarks(businessId, collection, changes);
     return changes.fromServer;
+  };
+
+  /**
+   * Lo apuntado en este móvil que la nube no ha confirmado (sin hora del
+   * servidor) cuando ya no queda nada en la cola de Firestore: la nube lo ha
+   * rechazado. Pasa si la app se cerró con un pedido sin subir y, mientras,
+   * otro socio cerró el día; en la misma sesión ya lo deshace cloudWrite. Se
+   * mira en el servidor: lo que no está se quita y se avisa, y lo que está
+   * distinto se queda como está allí
+   */
+  const settleUnconfirmed = async (businessId: string) => {
+    const unconfirmed = () => Object.values(get().orders).filter((o) => o.updatedAt == null);
+    if (!unconfirmed().length) return;
+    await firestore().waitForPendingWrites();
+    // Lo que sí se ha subido llega por la escucha un momento después
+    await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+    if (get().business?.id !== businessId) return;
+    const pending = unconfirmed();
+    if (!pending.length) return;
+    const snaps = await Promise.all(pending.map((o) => bizCol(businessId, 'orders').doc(o.id).get({ source: 'server' })
+      .catch(() => null)));
+    if (get().business?.id !== businessId) return;
+    const orders = { ...get().orders };
+    const days = new Set<string>();
+    let rejected = false;
+    pending.forEach((mine, i) => {
+      const snap = snaps[i];
+      const current = orders[mine.id];
+      // Sin conexión, o ya confirmado por la escucha mientras tanto
+      if (!snap || !current || current.updatedAt != null) return;
+      if (!snap.exists()) {
+        delete orders[mine.id];
+        rejected = true;
+      } else {
+        const server = fromCloud<Order>(snap);
+        if (server.status !== mine.status || server.total !== mine.total) rejected = true;
+        orders[mine.id] = server;
+      }
+      days.add(mine.day);
+    });
+    if (!days.size) return;
+    set({ orders });
+    await writeOrderDays(businessId, orders, days);
+    if (rejected) {
+      const { notifyRejected } = require('./notices');
+      notifyRejected('order');
+    }
   };
 
   /**
@@ -655,11 +754,17 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         .then(() => {
           const current = get().business;
           if (get().active && current) {
+            // También si no se ha podido comprobar (sin conexión): la escucha
+            // sigue sola cuando vuelve la red y ve si te han sacado
+            listenDoc(current.id);
             listenConfigAndCatalog(current.id);
-            return get().sync().then(() => {
-              startStreams(current.id);
-              return get().applyRecurring();
-            });
+            return get().sync()
+              .catch((e) => reportError(e, 'empresa: bajar lo cambiado'))
+              .then(() => {
+                startStreams(current.id);
+                settleUnconfirmed(current.id).catch((e) => reportError(e, 'empresa: lo no confirmado'));
+                return get().applyRecurring();
+              });
           }
           return undefined;
         })
@@ -708,6 +813,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         reportError(e, 'empresa: bajar lo cambiado');
       }
       startStreams(business.id);
+      settleUnconfirmed(business.id).catch((e) => reportError(e, 'empresa: lo no confirmado'));
       get().applyRecurring().catch((e) => reportError(e, 'empresa: fijos'));
     },
 
@@ -888,8 +994,15 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       const uid = uidNow();
       const business = get().business;
       if (!uid || !business || business.createdBy === uid) return;
+      // Con conexión: sin ella se quedaría en la cola y la app, a medias
+      if (!(await fromServer(businessRef(business.id)))) throw offlineError();
       // Tu nombre se queda: lo que apuntaste sigue firmado
-      await businessRef(business.id).update({ members: firestore.FieldValue.arrayRemove(uid) });
+      await businessRef(business.id).update({ members: firestore.FieldValue.arrayRemove(uid) }).catch(async (e) => {
+        if (isPermissionDenied(e) && await alreadyDone(
+          businessRef(business.id), (snap) => !(snap.data()?.members as string[] | undefined)?.includes(uid),
+        )) return;
+        throw e;
+      });
       stopAll();
       set({ ...EMPTY_STATE, active: get().active, pendingRequest: get().pendingRequest });
       await writeCurrentId(null);
@@ -900,14 +1013,26 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       const uid = uidNow();
       const business = get().business;
       if (!uid || !business || business.createdBy !== uid) return;
-      stopAll();
       const ref = businessRef(business.id);
-      // En lotes (ver batchDelete). El documento de la empresa, al final: si
-      // algo falla antes, sigue en pie y se puede reintentar
-      await deleteSubcollections(ref, BUSINESS_SUBCOLLECTIONS);
+      // Con conexión: sin ella se borraría solo lo que hay en el móvil y el
+      // resto se quedaría en la nube
+      if (!(await fromServer(ref))) throw offlineError();
+      // Lo de dentro, leído del servidor y en lotes (ver batchDelete). El
+      // documento de la empresa, al final: si algo falla antes, sigue en pie,
+      // con sus escuchas, y se puede reintentar
+      const refs: FirebaseFirestoreTypes.DocumentReference[] = [];
+      for (const name of BUSINESS_SUBCOLLECTIONS) {
+        const snap = await ref.collection(name).get({ source: 'server' });
+        snap.docs.forEach((doc) => refs.push(doc.ref));
+      }
+      await deleteRefsInChunks(refs);
       // Su código, antes: las reglas miran en ella quién la creó
       await deleteBusinessCode(business);
-      await ref.delete();
+      stopAll();
+      await ref.delete().catch(async (e) => {
+        if (isPermissionDenied(e) && await alreadyDone(ref, (snap) => !snap.exists())) return;
+        throw e;
+      });
       set({ ...EMPTY_STATE, active: get().active, pendingRequest: get().pendingRequest });
       await writeCurrentId(null);
       await removeBusinessCache(business.id);
@@ -1046,7 +1171,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       try {
         const snap = await bizCol(business.id, 'orders').where('day', '==', dayId).get();
         const orders = snap.docs.map((d) => fromCloud<Order>(d));
-        await mergeFromCloud(business.id, 'orders', orders, []);
+        await mergeFromCloud(business.id, 'orders', orders, [], !snap.metadata.fromCache);
         return Object.values(get().orders).filter((o) => o.day === dayId);
       } catch (e) {
         reportError(e, 'empresa: pedidos de un día');
@@ -1140,15 +1265,36 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         return 'ok';
       }
 
-      // 1. «Cerrando»: hace falta conexión, para que no entre ningún pedido después
+      // 0. Hace falta conexión, y se comprueba antes de apuntar nada: un
+      //    «cerrando» que se quedase en la cola de Firestore se subiría al
+      //    volver la red y la nube rechazaría lo que se apuntase mientras. Lo
+      //    pendiente de este móvil (sus pedidos), subido antes
+      const flushed = await withTimeout(firestore().waitForPendingWrites(), ONLINE_WAIT_MS).catch(() => 'error' as const);
+      if (flushed === 'timeout') return 'offline';
+      if (flushed === 'error') return 'error';
+      const current = await fromServer(ref);
+      if (!current) return 'offline';
+      if (current.data()?.status === 'closed') {
+        // Ya lo ha cerrado otro socio
+        await mergeFromCloud(business.id, 'days', [fromCloud<BusinessDay>(current)], [], true);
+        return 'ok';
+      }
+
+      // 1. «Cerrando»: desde aquí las reglas no dejan añadir pedidos al día
       const marked = await withTimeout(
         ref.set({ id: dayId, status: 'closing', updatedAt: serverNow() }, { merge: true }).then(() => 'ok' as const),
-        10000,
+        ONLINE_WAIT_MS,
       ).catch((e) => {
         reportError(e, 'empresa: cerrar día (1)');
         return 'error' as const;
       });
-      if (marked !== 'ok') return marked === 'timeout' ? 'offline' : 'error';
+      if (marked === 'timeout') {
+        // La red se ha ido justo ahora: el «cerrando» se subirá al volver.
+        // Mientras, aquí ya no se apuntan pedidos (la nube los rechazaría)
+        putLocal.day({ ...(get().days[dayId] ?? { id: dayId, entries: {} }), id: dayId, status: 'closing', updatedAt: undefined });
+        return 'offline';
+      }
+      if (marked !== 'ok') return 'error';
 
       try {
         // 2. Los pedidos del día, del servidor
@@ -1179,15 +1325,17 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
           by: uid,
           at: now,
         });
-        await ref.update({
+        // Si la red se va justo ahora, se queda en la cola y se sube al volver:
+        // el día ya está «cerrando» y no le entra nada más, así que el resumen vale
+        await withTimeout(ref.update({
           status: 'closed',
           closedBy: uid,
           closedAt: now,
           ordersSummary: deepClean(summary),
           'entries.close': entry,
           updatedAt: serverNow(),
-        });
-        await mergeFromCloud(business.id, 'orders', orders, []);
+        }), ONLINE_WAIT_MS);
+        await mergeFromCloud(business.id, 'orders', orders, [], true);
         const day: BusinessDay = {
           ...(get().days[dayId] ?? { id: dayId, entries: {} }),
           id: dayId,

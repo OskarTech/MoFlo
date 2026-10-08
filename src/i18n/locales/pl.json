@@ -1130,6 +1130,9 @@
       "deleteBody": "„{{name}}” zostanie usunięta ze wszystkimi wpisami, dla wszystkich wspólników.",
       "deleteConfirmTitle": "Tego nie da się cofnąć",
       "deleteConfirmBody": "Na pewno? Usunięte zostaną dni, zamówienia, wydatki i historia.",
+      "offlineTitle": "Brak połączenia",
+      "offlineLeave": "Do opuszczenia firmy potrzebne jest połączenie. Spróbuj ponownie, gdy wróci.",
+      "offlineDelete": "Do usunięcia firmy potrzebne jest połączenie: wtedy usuwa się też wszystko, co ma w chmurze. Spróbuj ponownie, gdy wróci.",
       "legal": "MoFlo nie wystawia paragonów ani faktur: służy do pilnowania twoich liczb. Klientom nadal wydawaj paragon z kasy lub terminala."
     },
     "catalog": {

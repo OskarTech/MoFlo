@@ -1087,6 +1087,9 @@
       "deleteBody": "«{{name}}» verrà eliminata con tutto ciò che è stato inserito, per tutti i soci.",
       "deleteConfirmTitle": "Non si può annullare",
       "deleteConfirmBody": "Sicuro? Vengono eliminati giornate, ordini, spese e storico.",
+      "offlineTitle": "Nessuna connessione",
+      "offlineLeave": "Per uscire dall'azienda serve la connessione. Riprova quando torna.",
+      "offlineDelete": "Per eliminare l'azienda serve la connessione: così si elimina anche tutto ciò che ha nel cloud. Riprova quando torna.",
       "legal": "MoFlo non emette scontrini né fatture: serve per tenere sotto controllo i tuoi numeri. Ai tuoi clienti continua a dare lo scontrino della tua cassa o del tuo POS."
     },
     "catalog": {

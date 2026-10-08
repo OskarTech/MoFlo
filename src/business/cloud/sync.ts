@@ -81,6 +81,45 @@ export const fetchBizChanges = async <T extends { id: string }>(
   };
 };
 
+// Igual con las claves en cualquier orden (las de Firestore no lo guardan)
+const stableJson = (value: unknown): string => JSON.stringify(value, (_key, v) => (
+  v && typeof v === 'object' && !Array.isArray(v)
+    ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, (v as Record<string, unknown>)[k]]))
+    : v
+));
+
+/**
+ * La copia del móvil con lo que llega de la nube, como mergeChanges
+ * (cloudCheck), y además lo que llega del servidor gana a igual hora. Al
+ * subir un cambio de un campo (una caja, el cierre), Firestore enseña primero
+ * el documento con lo de este móvil y la hora nueva, y un momento después el
+ * del servidor, con lo que otro socio guardó a la vez y la misma hora: sin
+ * esto, la caja del otro no se veía hasta el siguiente cambio del día
+ */
+export const mergeBizChanges = <T extends { id: string; updatedAt?: number }>(
+  local: T[], changed: T[], deleted: Deletion[], fromServer: boolean,
+): T[] => {
+  const byId = new Map(local.map((doc) => [doc.id, doc]));
+  let touched = false;
+  for (const doc of changed) {
+    const mine = byId.get(doc.id);
+    const newer = !mine || mine.updatedAt == null || doc.updatedAt == null || doc.updatedAt > mine.updatedAt
+      || (fromServer && doc.updatedAt === mine.updatedAt && stableJson(doc) !== stableJson(mine));
+    if (newer) {
+      byId.set(doc.id, doc);
+      touched = true;
+    }
+  }
+  for (const gone of deleted) {
+    const mine = byId.get(gone.id);
+    if (mine && (mine.updatedAt == null || gone.updatedAt == null || mine.updatedAt < gone.updatedAt)) {
+      byId.delete(gone.id);
+      touched = true;
+    }
+  }
+  return touched ? [...byId.values()] : local;
+};
+
 /** Tras guardar lo bajado: las marcas suben a lo más reciente que ha llegado */
 export const advanceBizMarks = async (
   businessId: string, collection: BizCollection, changes: BizChanges<{ id: string; updatedAt?: number }>,
@@ -97,12 +136,13 @@ export const advanceBizMarks = async (
  * Escucha en directo lo cambiado de una colección desde la marca, como
  * listenToCloudChanges en la compartida: de cada aviso solo lo que cambia, y
  * la marca sube con los avisos del servidor una vez guardado lo anterior.
- * apply lo junta con la copia, la guarda y dice si lo ha hecho
+ * apply lo junta con la copia (fromServer: si el aviso es del servidor), la
+ * guarda y dice si lo ha hecho
  */
 export const listenBizChanges = <T extends { id: string; updatedAt?: number }>(
   businessId: string,
   collection: BizCollection,
-  apply: (changed: T[], deleted: Deletion[]) => Promise<boolean>,
+  apply: (changed: T[], deleted: Deletion[], fromServer: boolean) => Promise<boolean>,
   onError: (e: unknown) => void,
   /** Sin marca, la misma ventana que fetchBizChanges: no la colección entera */
   initial?: (col: FirebaseFirestoreTypes.CollectionReference) => Query,
@@ -116,14 +156,14 @@ export const listenBizChanges = <T extends { id: string; updatedAt?: number }>(
 
   const listen = <D extends Deletion>(
     query: Query, stream: BizStream, parse: (doc: Snapshot) => D,
-    merge: (list: D[]) => Promise<boolean>, fail: (e: unknown) => void,
+    merge: (list: D[], fromServer: boolean) => Promise<boolean>, fail: (e: unknown) => void,
   ) => {
     let previous: Promise<unknown> = Promise.resolve();
     return query.onSnapshot((snap) => {
       const changed = snap.docChanges().filter((c) => c.type !== 'removed').map((c) => parse(c.doc));
       const seen = snap.metadata.fromCache ? null : snap.docs.map(parse);
       previous = previous
-        .then(() => (changed.length ? merge(changed) : Promise.resolve(true)))
+        .then(() => (changed.length ? merge(changed, !snap.metadata.fromCache) : Promise.resolve(true)))
         .then((merged) => (merged && seen ? advanceBizMark(stream, businessId, latestUpdate(seen)) : undefined))
         .catch((e) => reportError(e, `empresa: escucha de ${stream}`));
     }, fail);
@@ -139,7 +179,7 @@ export const listenBizChanges = <T extends { id: string; updatedAt?: number }>(
       const col = bizCol(businessId, collection);
       stops.push(listen(
         mark == null && initial ? initial(col) : changesQuery(col, mark), collection,
-        (doc) => fromCloud<T>(doc), (list) => apply(list, []),
+        (doc) => fromCloud<T>(doc), (list, fromServer) => apply(list, [], fromServer),
         (e) => {
           stopAll();
           onError(e);
@@ -149,7 +189,7 @@ export const listenBizChanges = <T extends { id: string; updatedAt?: number }>(
       if (deletedCol && deletedStream) {
         stops.push(listen(
           changesQuery(deletedCol, deletedMark), deletedStream,
-          deletionFromCloud, (list) => apply([], list),
+          deletionFromCloud, (list, fromServer) => apply([], list, fromServer),
           (e) => reportError(e, `empresa: escucha de ${deletedStream}`),
         ));
       }

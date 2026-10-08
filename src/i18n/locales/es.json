@@ -1088,6 +1088,9 @@
       "deleteBody": "Se borrará «{{name}}» con todo lo apuntado, para todos los socios.",
       "deleteConfirmTitle": "No se puede deshacer",
       "deleteConfirmBody": "¿Seguro? Se borran los días, los pedidos, los gastos y el historial.",
+      "offlineTitle": "Sin conexión",
+      "offlineLeave": "Para salir de la empresa hace falta conexión. Inténtalo cuando vuelva.",
+      "offlineDelete": "Para borrar la empresa hace falta conexión: así se borra también todo lo que tiene en la nube. Inténtalo cuando vuelva.",
       "legal": "MoFlo no da tickets ni facturas: es para llevar tus números. A tus clientes sigue dándoles el ticket de tu caja o de tu TPV."
     },
     "catalog": {

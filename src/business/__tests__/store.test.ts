@@ -4,13 +4,16 @@ import { useBusinessStore } from '../store/businessStore';
 import { useBusinessModeStore } from '../store/modeStore';
 import { notifyRejected } from '../store/notices';
 import { recurringExpenseId } from '../logic/recurring';
-import { OrderLine } from '../types';
+import { readBizMark } from '../cloud/sync';
+import { Order, OrderLine } from '../types';
 
 // Firestore falsa en memoria, que hace de servidor (como la de cloudLoading):
 // guarda lo escrito con la hora del servidor, entiende los campos con punto
 // (entries.close), set con merge (junta los mapas), arrayUnion/arrayRemove,
 // where (==, >=, array-contains), orderBy y limit, y avisa a las escuchas.
-// rules hace de reglas: devuelve false para rechazar una escritura
+// rules hace de reglas: devuelve false para rechazar una escritura. Con
+// offline, lo escrito espera en una cola (como la de Firestore) hasta
+// goOnline, lo que se pide al servidor falla y lo leído viene «de la caché»
 type MockData = Record<string, unknown>;
 type MockOp = { path: string; id: string; kind: 'set' | 'update' | 'delete'; data?: MockData; merge?: boolean };
 type MockFilter = { field: string; op: string; value: unknown };
@@ -20,6 +23,16 @@ const mockDb = {
   listeners: [] as { run: () => void }[],
   rules: null as null | ((op: MockOp, docs: Record<string, Record<string, MockData>>) => boolean),
   autoId: 0,
+  offline: false,
+  queue: [] as { ops: MockOp[]; resolve: () => void; reject: (e: unknown) => void }[],
+  waiters: [] as (() => void)[],
+  // Vuelve la conexión: sube la cola en orden (las reglas pueden rechazar algo)
+  goOnline: async () => {
+    mockDb.offline = false;
+    const { apply } = jest.requireMock('@react-native-firebase/firestore').default as { apply: (ops: MockOp[]) => Promise<void> };
+    for (const item of mockDb.queue.splice(0)) await apply(item.ops).then(item.resolve, item.reject);
+    mockDb.waiters.splice(0).forEach((done) => done());
+  },
 };
 const mockAuth = { uid: 'u1' };
 const mockNotices: string[] = [];
@@ -91,7 +104,7 @@ jest.mock('@react-native-firebase/firestore', () => {
     }
     return out;
   };
-  const commit = async (ops: MockOp[]) => {
+  const apply = async (ops: MockOp[]) => {
     if (mockDb.rules && ops.some((op) => !mockDb.rules!(op, mockDb.docs))) {
       throw Object.assign(new Error('denied'), { code: 'firestore/permission-denied' });
     }
@@ -107,6 +120,10 @@ jest.mock('@react-native-firebase/firestore', () => {
     }
     mockDb.listeners.forEach((l) => l.run());
   };
+  const commit = (ops: MockOp[]): Promise<void> => (mockDb.offline
+    ? new Promise((resolve, reject) => { mockDb.queue.push({ ops, resolve, reject }); })
+    : apply(ops));
+  const unavailable = () => Object.assign(new Error('offline'), { code: 'firestore/unavailable' });
   const matches = (data: MockData, { field, op, value: v }: MockFilter) => {
     const x = data[field];
     if (op === '==') return x === v;
@@ -116,7 +133,7 @@ jest.mock('@react-native-firebase/firestore', () => {
   };
   const snapOf = (path: string, id: string) => {
     const data = mockDb.docs[path]?.[id];
-    return { id, exists: () => !!data, data: () => (data ? { ...data } : undefined), metadata: { fromCache: false }, ref: docRef(path, id) };
+    return { id, exists: () => !!data, data: () => (data ? { ...data } : undefined), metadata: { fromCache: mockDb.offline }, ref: docRef(path, id) };
   };
   const docRef = (path: string, id?: string): unknown => {
     const docId = id ?? `auto${++mockDb.autoId}`;
@@ -124,7 +141,10 @@ jest.mock('@react-native-firebase/firestore', () => {
       id: docId,
       path: `${path}/${docId}`,
       collection: (name: string) => query(`${path}/${docId}/${name}`),
-      get: async () => snapOf(path, docId),
+      get: async (opts?: { source?: string }) => {
+        if (mockDb.offline && opts?.source === 'server') throw unavailable();
+        return snapOf(path, docId);
+      },
       set: (data: MockData, opts?: { merge?: boolean }) => commit([{ path, id: docId, kind: 'set', data, merge: opts?.merge }]),
       update: (data: MockData) => commit([{ path, id: docId, kind: 'update', data }]),
       delete: () => commit([{ path, id: docId, kind: 'delete' }]),
@@ -147,7 +167,7 @@ jest.mock('@react-native-firebase/firestore', () => {
       return {
         empty: docs.length === 0,
         docs: docs.map(([id, data]) => ({ id, data: () => ({ ...data }), ref: docRef(path, id) })),
-        metadata: { fromCache: false },
+        metadata: { fromCache: mockDb.offline },
       };
     };
     return {
@@ -155,7 +175,10 @@ jest.mock('@react-native-firebase/firestore', () => {
       orderBy: (field: string, dir = 'asc') => query(path, filters, [field, dir], limit),
       limit: (n: number) => query(path, filters, order, n),
       startAfter: () => query(path, filters, order, limit),
-      get: async () => run(),
+      get: async (opts?: { source?: string }) => {
+        if (mockDb.offline && opts?.source === 'server') throw unavailable();
+        return run();
+      },
       onSnapshot: (onNext: (snap: unknown) => void) => {
         let seen = new Map<string, string>();
         const listener = {
@@ -181,6 +204,9 @@ jest.mock('@react-native-firebase/firestore', () => {
   };
   const instance = {
     collection: (name: string) => query(name),
+    waitForPendingWrites: () => (mockDb.queue.length
+      ? new Promise<void>((resolve) => { mockDb.waiters.push(resolve); })
+      : Promise.resolve()),
     batch: () => {
       const ops: MockOp[] = [];
       return {
@@ -193,7 +219,7 @@ jest.mock('@react-native-firebase/firestore', () => {
   };
   return {
     __esModule: true,
-    default: Object.assign(() => instance, { FieldValue, Timestamp, FieldPath: { documentId: () => '__id__' } }),
+    default: Object.assign(() => instance, { FieldValue, Timestamp, FieldPath: { documentId: () => '__id__' }, apply }),
   };
 });
 jest.mock('@react-native-firebase/auth', () => ({
@@ -247,6 +273,9 @@ beforeEach(async () => {
   mockDb.clock = Date.now();
   mockDb.listeners = [];
   mockDb.rules = null;
+  mockDb.offline = false;
+  mockDb.queue = [];
+  mockDb.waiters = [];
   mockAuth.uid = 'u1';
   mockNotices.length = 0;
   (notifyRejected as jest.Mock).mockClear();
@@ -504,5 +533,150 @@ describe('socios', () => {
     store().reset();
     expect(await store().requestJoin('ZZZZZZ')).toBe('invalid');
     expect(await store().requestJoin('a/b')).toBe('invalid');
+  });
+});
+
+describe('sin conexión', () => {
+  const today = () => jest.requireActual('../store/businessStore').businessToday() as string;
+  // Las reglas: pedidos solo en un día abierto
+  const ordersNeedOpenDay = (businessId: string) => (op: MockOp, all: Record<string, Record<string, MockData>>) => {
+    if (!op.path.endsWith('/orders') || op.kind === 'delete') return true;
+    const day = (op.data?.day ?? all[op.path]?.[op.id]?.day) as string;
+    return (all[`businesses/${businessId}/days`]?.[day]?.status ?? 'open') === 'open';
+  };
+
+  it('cerrar un día de pedidos sin conexión no deja nada a medias: sigue abierto y lo de después se guarda', async () => {
+    const business = await createPizzeria();
+    mockDb.rules = ordersNeedOpenDay(business.id);
+    mockDb.offline = true;
+    expect(await store().closeDay(today(), {})).toBe('offline');
+    expect(mockDb.queue).toHaveLength(0);
+    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' })).toBe('ok');
+    await mockDb.goOnline();
+    await flush();
+    expect(docs(`businesses/${business.id}/days`)[today()]).toBeUndefined();
+    expect(Object.keys(docs(`businesses/${business.id}/orders`))).toHaveLength(1);
+    expect(mockNotices).toEqual([]);
+  });
+
+  it('al cerrar, primero suben los pedidos de este móvil que esperaban en la cola', async () => {
+    const business = await createPizzeria();
+    mockDb.rules = ordersNeedOpenDay(business.id);
+    mockDb.offline = true;
+    await store().saveOrder({ lines: [pizzaLine('s_family')], channelId: 'card' });
+    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    // Vuelve la red, y la cola aún no ha subido
+    mockDb.offline = false;
+    const closing = store().closeDay(today(), {});
+    await flush();
+    expect(docs(`businesses/${business.id}/days`)[today()]).toBeUndefined();
+    await mockDb.goOnline();
+    expect(await closing).toBe('ok');
+    await flush();
+    expect(docs(`businesses/${business.id}/days`)[today()]).toMatchObject({ status: 'closed', ordersSummary: { count: 2, total: 24 } });
+    expect(mockNotices).toEqual([]);
+  });
+
+  it('un pedido que la nube rechazó con la app cerrada se quita al abrirla, y se avisa', async () => {
+    const business = await createPizzeria();
+    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    await flush();
+    const saved = Object.values(store().orders)[0];
+    expect(saved.updatedAt).toBeDefined();
+    // De la sesión anterior: uno que la nube no tiene (lo rechazó: otro socio
+    // cerró el día) y otro que sí subió, sin la confirmación aún en el móvil
+    const lost: Order = { ...saved, id: 'perdido', total: 99, updatedAt: undefined };
+    useBusinessStore.setState({ orders: { perdido: lost, [saved.id]: { ...saved, updatedAt: undefined } } });
+    await store().deactivate();
+    await store().activate();
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    await flush();
+    expect(store().orders.perdido).toBeUndefined();
+    expect(store().orders[saved.id]?.updatedAt).toBeDefined();
+    expect(mockNotices).toEqual(['order']);
+    const copy = JSON.parse((await AsyncStorage.getItem(`@moflo_biz_${business.id}_orders_${saved.day}`)) ?? '{}');
+    expect(Object.keys(copy)).toEqual([saved.id]);
+  });
+
+  it('si con la app cerrada te cambiaron de empresa, al abrirla no pasa nada de la anterior a la nueva', async () => {
+    const x = await createPizzeria();
+    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    await flush();
+    // La app se cierra con la copia de X; desde otro móvil, fuera de X y dentro de Y
+    store().reset();
+    await firestore().collection('businesses').doc(x.id).update({ members: ['u9'] });
+    await firestore().collection('businesses').doc('y1').set({
+      id: 'y1', name: 'Bar Y', createdBy: 'u2', members: ['u2', 'u1'], memberNames: {}, inviteCode: 'YYYYYY',
+      createdAt: '', template: 'bar', currencyCode: 'EUR',
+    });
+    await store().init();
+    await flush();
+    await flush();
+    expect(store().business?.id).toBe('y1');
+    expect(store().orders).toEqual({});
+    expect((await AsyncStorage.getAllKeys()).filter((k) => k.includes(x.id))).toEqual([]);
+  });
+
+  it('si la app arranca sin conexión, sigue escuchando la empresa y ve sus cambios al volver la red', async () => {
+    const business = await createPizzeria();
+    store().reset();
+    mockDb.offline = true;
+    await store().init();
+    await flush();
+    await mockDb.goOnline();
+    await firestore().collection('businesses').doc(business.id).update({ name: 'Pizzería Nueva' });
+    await flush();
+    expect(store().business?.name).toBe('Pizzería Nueva');
+  });
+
+  it('lo que llega de la caché de Firestore no sube las marcas', async () => {
+    const business = await createPizzeria();
+    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    await flush();
+    const before = await readBizMark('orders', business.id);
+    expect(before).not.toBeNull();
+    // Fuera de la empresa (sin escuchas), otro socio apunta un pedido
+    await store().deactivate();
+    await firestore().collection('businesses').doc(business.id).collection('orders').doc('deOtro').set({
+      id: 'deOtro', day: today(), at: '', lines: [], total: 5, channelId: 'cash', channelName: 'Efectivo',
+      status: 'ok', by: 'u2', updatedAt: firestore.FieldValue.serverTimestamp(),
+    });
+    mockDb.offline = true;
+    await store().sync();
+    expect(await readBizMark('orders', business.id)).toBe(before);
+    await mockDb.goOnline();
+    await store().sync();
+    expect(await readBizMark('orders', business.id)).toBeGreaterThan(before!);
+  });
+
+  it('borrar la empresa sin conexión avisa y no borra nada; con conexión, todo, también lo que no está en el móvil', async () => {
+    const business = await createPizzeria();
+    await firestore().collection('businesses').doc(business.id).collection('orders').doc('deOtro').set({
+      id: 'deOtro', day: '2026-01-02', total: 5, status: 'ok', updatedAt: firestore.FieldValue.serverTimestamp(),
+    });
+    mockDb.offline = true;
+    await expect(store().deleteBusiness()).rejects.toMatchObject({ code: 'offline' });
+    expect(mockDb.queue).toHaveLength(0);
+    expect(docs('businesses')[business.id]).toBeDefined();
+    mockDb.offline = false;
+    await store().deleteBusiness();
+    expect(docs('businesses')[business.id]).toBeUndefined();
+    expect(docs('businessInviteCodes')[business.inviteCode]).toBeUndefined();
+    for (const name of ['config', 'catalog', 'orders']) expect(docs(`businesses/${business.id}/${name}`)).toEqual({});
+  });
+
+  it('salir de la empresa sin conexión avisa y no deja nada en la cola', async () => {
+    const business = await createPizzeria();
+    await firestore().collection('businesses').doc(business.id).update({ members: ['u1', 'u2'] });
+    mockAuth.uid = 'u2';
+    store().reset();
+    await store().refreshMembership();
+    await flush();
+    mockDb.offline = true;
+    await expect(store().leaveBusiness()).rejects.toMatchObject({ code: 'offline' });
+    expect(mockDb.queue).toHaveLength(0);
+    await mockDb.goOnline();
+    await store().leaveBusiness();
+    expect(docs('businesses')[business.id].members).toEqual(['u1']);
   });
 });

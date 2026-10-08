@@ -1087,6 +1087,9 @@
       "deleteBody": "« {{name}} » sera supprimée avec tout ce qui a été saisi, pour tous les associés.",
       "deleteConfirmTitle": "C'est irréversible",
       "deleteConfirmBody": "Êtes-vous sûr ? Les journées, les commandes, les dépenses et l'historique seront supprimés.",
+      "offlineTitle": "Pas de connexion",
+      "offlineLeave": "Il faut une connexion pour quitter l'entreprise. Réessayez quand elle sera revenue.",
+      "offlineDelete": "Il faut une connexion pour supprimer l'entreprise : ainsi, tout ce qu'elle a dans le cloud est supprimé aussi. Réessayez quand elle sera revenue.",
       "legal": "MoFlo n'émet ni tickets ni factures : il sert à suivre vos chiffres. Continuez à donner à vos clients le ticket de votre caisse ou de votre TPE."
     },
     "catalog": {

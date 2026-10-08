@@ -1088,6 +1088,9 @@
       "deleteBody": "\"{{name}}\" will be deleted with everything entered, for all partners.",
       "deleteConfirmTitle": "This can't be undone",
       "deleteConfirmBody": "Are you sure? Days, orders, expenses and history are deleted.",
+      "offlineTitle": "No connection",
+      "offlineLeave": "Leaving the business needs a connection. Try again when you're back online.",
+      "offlineDelete": "Deleting the business needs a connection, so that everything it has in the cloud is deleted too. Try again when you're back online.",
       "legal": "MoFlo doesn't issue receipts or invoices: it's for keeping track of your numbers. Keep giving your customers the receipt from your till or card terminal."
     },
     "catalog": {

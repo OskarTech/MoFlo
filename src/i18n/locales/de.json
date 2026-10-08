@@ -1087,6 +1087,9 @@
       "deleteBody": "„{{name}}“ wird mit allem Erfassten gelöscht, für alle Partner.",
       "deleteConfirmTitle": "Das lässt sich nicht rückgängig machen",
       "deleteConfirmBody": "Bist du sicher? Tage, Bestellungen, Ausgaben und Verlauf werden gelöscht.",
+      "offlineTitle": "Keine Verbindung",
+      "offlineLeave": "Zum Verlassen des Unternehmens braucht es eine Verbindung. Versuch es noch einmal, wenn sie wieder da ist.",
+      "offlineDelete": "Zum Löschen des Unternehmens braucht es eine Verbindung: So wird auch alles gelöscht, was es in der Cloud hat. Versuch es noch einmal, wenn sie wieder da ist.",
       "legal": "MoFlo stellt weder Bons noch Rechnungen aus: Es ist dafür da, deine Zahlen im Blick zu behalten. Gib deinen Kunden weiterhin den Bon deiner Kasse oder deines Kartenterminals."
     },
     "catalog": {

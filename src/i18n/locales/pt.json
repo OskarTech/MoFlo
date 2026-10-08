@@ -1087,6 +1087,9 @@
       "deleteBody": "\"{{name}}\" vai ser eliminada com tudo o que foi registado, para todos os sócios.",
       "deleteConfirmTitle": "Não se pode desfazer",
       "deleteConfirmBody": "Tem a certeza? Eliminam-se os dias, os pedidos, as despesas e o histórico.",
+      "offlineTitle": "Sem ligação",
+      "offlineLeave": "Para sair da empresa é preciso ligação. Tente de novo quando voltar.",
+      "offlineDelete": "Para eliminar a empresa é preciso ligação: assim elimina-se também tudo o que tem na nuvem. Tente de novo quando voltar.",
       "legal": "O MoFlo não emite talões nem faturas: serve para acompanhar os seus números. Continue a dar aos seus clientes o talão da sua caixa ou do seu terminal."
     },
     "catalog": {
