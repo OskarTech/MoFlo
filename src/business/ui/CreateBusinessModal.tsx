@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Modal, TouchableOpacity, Platform, KeyboardAvoidingView, Alert,
+  View, StyleSheet, Modal, TouchableOpacity, Platform, Alert, Keyboard, LayoutAnimation, TextInput,
 } from 'react-native';
+import { create } from 'zustand';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,9 +19,10 @@ import { successHaptic, warningHaptic } from '../../utils/haptics';
 import { withAlpha } from '../../utils/color';
 import { useBusinessStore } from '../store/businessStore';
 import { switchToBusiness } from '../store/switch';
-import { channelChoices, TEMPLATES, templateInfo, TemplateChannel } from '../templates';
+import { channelChoices, CREATABLE_TEMPLATES, templateInfo, TemplateChannel } from '../templates';
 import { BusinessMode, SalesMethod, TemplateId } from '../types';
 import { Chip, ChipRow, Note, PillButton } from './kit';
+import { ImeHeightView } from '../../../modules/ime-height';
 
 type Step = 'choose' | 'name' | 'mode' | 'details' | 'join';
 
@@ -36,10 +38,91 @@ const CreateBusinessModal = ({ visible, onClose }: { visible: boolean; onClose: 
   </Modal>
 );
 
+const useCreateBusinessStore = create<{ visible: boolean }>(() => ({ visible: false }));
+
+/** Abre el asistente, que se dibuja en la raíz de la app (CreateBusinessHost) */
+export const openCreateBusiness = () => useCreateBusinessStore.setState({ visible: true });
+
+/**
+ * El asistente, en la raíz de la app (RootNavigator), fuera de cualquier
+ * lista: los toques de una ventana pasan también por las listas que la
+ * contienen. Dentro de la cabecera de Inicio, con el teclado abierto, el
+ * primer toque (Siguiente, añadir un empleado) se lo quedaba la lista de
+ * Inicio, que solo cerraba el teclado, y había que tocar otra vez
+ */
+export const CreateBusinessHost = () => {
+  const visible = useCreateBusinessStore((s) => s.visible);
+  return <CreateBusinessModal visible={visible} onClose={() => useCreateBusinessStore.setState({ visible: false })} />;
+};
+
+// Aire entre el botón y el teclado, como en las ventanas (BottomSheet)
+const KEYBOARD_GAP = 16;
+// Android: espera antes de bajar el pie al ocultarse el teclado (como en BottomSheet)
+const ANDROID_HIDE_WAIT = 120;
+
+/**
+ * Lo que tapa el teclado por abajo, para subir el pie como en las ventanas
+ * (BottomSheet): el botón queda a 16 pt de él. En iOS el teclado tapa también
+ * la franja de la barra de inicio. En Android su alto llega sin la barra de
+ * navegación, que va debajo, y se le suma; sus cambios de alto con el teclado
+ * abierto llegan por ImeHeightView, desde la propia ventana
+ */
+const useKeyboardCover = () => {
+  const insets = useSafeAreaInsets();
+  const [height, setHeight] = useState(0);
+  const heightRef = useRef(0);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ios = Platform.OS === 'ios';
+
+  const apply = (next: number, duration?: number) => {
+    if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
+    if (next === heightRef.current) return;
+    if (ios) {
+      // Como KeyboardAvoidingView: a la vez que el teclado
+      const ms = duration && duration > 10 ? duration : 220;
+      LayoutAnimation.configureNext({ duration: ms, update: { duration: ms, type: LayoutAnimation.Types.keyboard } });
+    }
+    heightRef.current = next;
+    setHeight(next);
+  };
+  const lowerSoon = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => { hideTimer.current = null; apply(0); }, ANDROID_HIDE_WAIT);
+  };
+
+  useEffect(() => {
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => apply(e.endCoordinates.height, e.duration));
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (e) => {
+      if (ios) apply(0, e.duration);
+      else lowerSoon();
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez, con la ventana abierta
+  }, []);
+
+  return {
+    cover: height > 0 ? height + (ios ? 0 : insets.bottom) : 0,
+    // Android: el alto nuevo con el teclado ya abierto (ver ImeHeightView)
+    onIme: (next: number) => {
+      if (next > 0) { if (heightRef.current > 0) apply(next); } else if (heightRef.current > 0) lowerSoon();
+    },
+    // Android avisa tarde de que el teclado se ha ido con una ventana encima:
+    // si tras un toque no queda ningún campo activo, ya no está (como BottomSheet)
+    onTouchEnd: ios ? undefined : () => {
+      setTimeout(() => { if (!TextInput.State.currentlyFocusedInput()) apply(0); }, 250);
+    },
+  };
+};
+
 const Wizard = ({ onClose, visible }: { onClose: () => void; visible: boolean }) => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardCover();
   const isPremium = usePremiumStore((s) => s.isPremium);
   const pending = useBusinessStore((s) => s.pendingRequest);
   const [step, setStep] = useState<Step>('choose');
@@ -227,7 +310,7 @@ const Wizard = ({ onClose, visible }: { onClose: () => void; visible: boolean })
         <FilledInput value={name} onChangeText={setName} placeholder={t('business.create.namePlaceholder')} maxLength={60} />
         <SheetLabel>{t('business.create.template')}</SheetLabel>
         <View style={styles.grid}>
-          {TEMPLATES.map((tpl) => {
+          {CREATABLE_TEMPLATES.map((tpl) => {
             const on = tpl.id === template;
             return (
               <TouchableOpacity
@@ -345,8 +428,12 @@ const Wizard = ({ onClose, visible }: { onClose: () => void; visible: boolean })
   }
 
   return (
-    <View style={[styles.flex, { backgroundColor: ui.sheet }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.flex, { backgroundColor: ui.sheet }]} onTouchEnd={keyboard.onTouchEnd}>
+      {ImeHeightView ? (
+        <ImeHeightView style={styles.imeProbe} pointerEvents="none" onImeChange={(e) => keyboard.onIme(e.nativeEvent.height)} />
+      ) : null}
+      {/* Con el teclado, todo sube lo que tapa y el botón queda a 16 pt de él */}
+      <View style={[styles.flex, { paddingBottom: keyboard.cover }]}>
         <HeroScrollScreen
           hero={(
             <HeroTitleBar
@@ -360,11 +447,20 @@ const Wizard = ({ onClose, visible }: { onClose: () => void; visible: boolean })
           <View style={styles.pad}>{body}</View>
         </HeroScrollScreen>
         {footer ? (
-          <View style={[styles.footer, { paddingBottom: Math.max(16, insets.bottom + 8), backgroundColor: ui.sheet, borderTopColor: ui.hair }]}>
+          <View
+            style={[
+              styles.footer,
+              {
+                paddingBottom: keyboard.cover > 0 ? KEYBOARD_GAP : Math.max(16, insets.bottom + 8),
+                backgroundColor: ui.sheet,
+                borderTopColor: ui.hair,
+              },
+            ]}
+          >
             {footer}
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
       <PremiumModal visible={showPremium} onDismiss={() => setShowPremium(false)} onPurchase={() => setShowPremium(false)} />
     </View>
   );
@@ -372,6 +468,7 @@ const Wizard = ({ onClose, visible }: { onClose: () => void; visible: boolean })
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  imeProbe: { position: 'absolute', width: 0, height: 0 },
   pad: { paddingHorizontal: 20, paddingBottom: 40 },
   intro: { fontSize: 14, fontFamily: 'Poppins_400Regular', lineHeight: 20, marginBottom: 14 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 16, marginBottom: 10 },

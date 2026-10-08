@@ -117,153 +117,157 @@ const BizSettingsScreen = () => {
   const paletteId = resolveBusinessPalette(business.colorPalette);
 
   return (
-    <HeroScrollScreen hero={<HeroTitleBar title={t('business.settings.title')} onBack={() => navigation.goBack()} />}>
-      <View style={styles.pad}>
-        <SettingsGroup>
-          <SettingsRow
-            icon="business"
-            label={business.name}
-            subtitle={t(`business.tpl.name.${business.template}`)}
-            onPress={() => { setNameInput(business.name); setRenaming(true); }}
-            last
-          />
-        </SettingsGroup>
+    <>
+      <HeroScrollScreen hero={<HeroTitleBar title={t('business.settings.title')} onBack={() => navigation.goBack()} />}>
+        <View style={styles.pad}>
+          <SettingsGroup>
+            <SettingsRow
+              icon="business"
+              label={business.name}
+              subtitle={t(`business.tpl.name.${business.template}`)}
+              onPress={() => { setNameInput(business.name); setRenaming(true); }}
+              last
+            />
+          </SettingsGroup>
 
-        <SettingsGroup title={t('business.settings.howYouWork')}>
-          <View style={styles.block}>
-            <SegmentedControl
-              options={[
-                { key: 'simple', label: t('business.mode.simple') },
-                { key: 'expert', label: t('business.mode.expert') },
-              ]}
-              value={config.mode}
-              onChange={setMode}
-            />
-            <Note
-              text={config.mode === 'simple' ? t('business.mode.simpleHint') : t('business.mode.expertHint')}
-              style={styles.gapTop}
-            />
-            {config.mode === 'expert' && (
+          <SettingsGroup title={t('business.settings.howYouWork')}>
+            <View style={styles.block}>
               <SegmentedControl
                 options={[
-                  { key: 'tills', label: t('business.mode.tills') },
-                  { key: 'orders', label: t('business.mode.orders') },
+                  { key: 'simple', label: t('business.mode.simple') },
+                  { key: 'expert', label: t('business.mode.expert') },
                 ]}
-                value={config.salesMethod}
-                onChange={setMethod}
+                value={config.mode}
+                onChange={setMode}
+              />
+              <Note
+                text={config.mode === 'simple' ? t('business.mode.simpleHint') : t('business.mode.expertHint')}
                 style={styles.gapTop}
               />
-            )}
-          </View>
-          <View style={styles.block}>
-            <SettingsRow icon="calendar-outline" label={t('business.settings.openDays')} subtitle={t('business.settings.openDaysHint')} last />
-            <ChipRow style={styles.days}>
-              {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                <Chip key={d} label={weekdayLetter(d, i18n.language)} selected={(config.openDays ?? []).includes(d)} onPress={() => toggleDay(d)} />
-              ))}
-            </ChipRow>
-          </View>
-          <View style={styles.block}>
-            <SettingsRow icon="time-outline" label={t('business.settings.dayEnds')} subtitle={t('business.settings.dayEndsHint')} last />
-            <ChipRow style={styles.days}>
-              {[0, 2, 3, 4, 5, 6].map((h) => (
-                <Chip
-                  key={h}
-                  label={h === 0 ? t('business.settings.midnight') : `${String(h).padStart(2, '0')}:00`}
-                  selected={(config.dayCutoffHour ?? 0) === h}
-                  onPress={() => store().updateConfig({ dayCutoffHour: h })}
+              {config.mode === 'expert' && (
+                <SegmentedControl
+                  options={[
+                    { key: 'tills', label: t('business.mode.tills') },
+                    { key: 'orders', label: t('business.mode.orders') },
+                  ]}
+                  value={config.salesMethod}
+                  onChange={setMethod}
+                  style={styles.gapTop}
                 />
-              ))}
-            </ChipRow>
-          </View>
-        </SettingsGroup>
+              )}
+            </View>
+            <View style={styles.block}>
+              <SettingsRow icon="calendar-outline" label={t('business.settings.openDays')} subtitle={t('business.settings.openDaysHint')} last />
+              <ChipRow style={styles.days}>
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                  <Chip key={d} label={weekdayLetter(d, i18n.language)} selected={(config.openDays ?? []).includes(d)} onPress={() => toggleDay(d)} />
+                ))}
+              </ChipRow>
+            </View>
+            <View style={styles.block}>
+              <SettingsRow icon="time-outline" label={t('business.settings.dayEnds')} subtitle={t('business.settings.dayEndsHint')} last />
+              <ChipRow style={styles.days}>
+                {[0, 2, 3, 4, 5, 6].map((h) => (
+                  <Chip
+                    key={h}
+                    label={h === 0 ? t('business.settings.midnight') : `${String(h).padStart(2, '0')}:00`}
+                    selected={(config.dayCutoffHour ?? 0) === h}
+                    onPress={() => store().updateConfig({ dayCutoffHour: h })}
+                  />
+                ))}
+              </ChipRow>
+            </View>
+          </SettingsGroup>
 
-        <SettingsGroup title={t('business.settings.yours')}>
-          {usesOrders(config) && (
-            <SettingsRow
-              icon="restaurant-outline"
-              label={t('business.catalog.title')}
-              value={String(orderedItems(catalog?.products).length)}
-              onPress={() => navigation.navigate('BizCatalog')}
-            />
-          )}
-          {listRow('channels', 'card-outline')}
-          {listRow('workers', 'people-outline')}
-          {listRow('suppliers', 'cart-outline')}
-          {listRow('expenseTypes', 'pricetag-outline')}
-          {usesTills(config) && listRow('tills', 'cash-outline')}
-          {usesTills(config) && listRow('sections', 'grid-outline')}
-          {listRow('shifts', 'time-outline', true)}
-        </SettingsGroup>
+          <SettingsGroup title={t('business.settings.yours')}>
+            {usesOrders(config) && (
+              <SettingsRow
+                icon="restaurant-outline"
+                label={t('business.catalog.title')}
+                value={String(orderedItems(catalog?.products).length)}
+                onPress={() => navigation.navigate('BizCatalog')}
+              />
+            )}
+            {listRow('channels', 'card-outline')}
+            {listRow('workers', 'people-outline')}
+            {listRow('suppliers', 'cart-outline')}
+            {listRow('expenseTypes', 'pricetag-outline')}
+            {usesTills(config) && listRow('tills', 'cash-outline')}
+            {usesTills(config) && listRow('sections', 'grid-outline')}
+            {listRow('shifts', 'time-outline', true)}
+          </SettingsGroup>
 
-        <SettingsGroup title={t('business.settings.options')}>
-          <SettingsRow
-            icon="cash-outline"
-            label={t('business.settings.cashCount')}
-            subtitle={t('business.settings.cashCountHint')}
-            right={<SettingsSwitch value={config.cashCount} onChange={(v) => store().updateConfig({ cashCount: v })} label={t('business.settings.cashCount')} />}
-          />
-          {config.cashCount && (
+          <SettingsGroup title={t('business.settings.options')}>
             <SettingsRow
               icon="cash-outline"
-              label={t('business.settings.float')}
-              right={<AmountBox value={config.floatAmount} onChange={(v) => store().updateConfig({ floatAmount: v ?? 0 })} width={96} accessibilityLabel={t('business.settings.float')} />}
+              label={t('business.settings.cashCount')}
+              subtitle={t('business.settings.cashCountHint')}
+              right={<SettingsSwitch value={config.cashCount} onChange={(v) => store().updateConfig({ cashCount: v })} label={t('business.settings.cashCount')} />}
             />
-          )}
-          <SettingsRow
-            icon="calendar-outline"
-            label={t('business.settings.spreadFixed')}
-            subtitle={t('business.settings.spreadFixedHint')}
-            right={<SettingsSwitch value={config.spreadFixed} onChange={(v) => store().updateConfig({ spreadFixed: v })} label={t('business.settings.spreadFixed')} />}
-          />
-          <SettingsRow
-            icon="notifications-outline"
-            label={t('business.settings.notifyOnClose')}
-            subtitle={t('business.settings.notifyOnCloseHint')}
-            right={<SettingsSwitch value={config.notifyOnClose} onChange={(v) => store().updateConfig({ notifyOnClose: v })} label={t('business.settings.notifyOnClose')} />}
-          />
-          <SettingsRow
-            icon="cash-outline"
-            label={t('settings.currency')}
-            value={symbol}
-            onPress={() => setShowCurrency(true)}
-          />
-          <SettingsRow
-            icon="color-palette-outline"
-            label={t('settings.colorPalette')}
-            value={t(`settings.palette${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`)}
-            onPress={() => setShowPalette(true)}
-            last
-          />
-        </SettingsGroup>
+            {config.cashCount && (
+              <SettingsRow
+                icon="cash-outline"
+                label={t('business.settings.float')}
+                right={<AmountBox value={config.floatAmount} onChange={(v) => store().updateConfig({ floatAmount: v ?? 0 })} width={96} accessibilityLabel={t('business.settings.float')} />}
+              />
+            )}
+            <SettingsRow
+              icon="calendar-outline"
+              label={t('business.settings.spreadFixed')}
+              subtitle={t('business.settings.spreadFixedHint')}
+              right={<SettingsSwitch value={config.spreadFixed} onChange={(v) => store().updateConfig({ spreadFixed: v })} label={t('business.settings.spreadFixed')} />}
+            />
+            <SettingsRow
+              icon="notifications-outline"
+              label={t('business.settings.notifyOnClose')}
+              subtitle={t('business.settings.notifyOnCloseHint')}
+              right={<SettingsSwitch value={config.notifyOnClose} onChange={(v) => store().updateConfig({ notifyOnClose: v })} label={t('business.settings.notifyOnClose')} />}
+            />
+            <SettingsRow
+              icon="cash-outline"
+              label={t('settings.currency')}
+              value={symbol}
+              onPress={() => setShowCurrency(true)}
+            />
+            <SettingsRow
+              icon="color-palette-outline"
+              label={t('settings.colorPalette')}
+              value={t(`settings.palette${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`)}
+              onPress={() => setShowPalette(true)}
+              last
+            />
+          </SettingsGroup>
 
-        <SettingsGroup title={t('business.settings.partners')}>
-          <SettingsRow
-            icon="people-outline"
-            label={t('business.members.title')}
-            value={t('business.members.countOf', { count: business.members.length, max: MAX_BUSINESS_MEMBERS })}
-            onPress={() => navigation.navigate('BizMembers')}
-          />
-          <SettingsRow
-            icon="time-outline"
-            label={t('business.history.title')}
-            subtitle={t('business.history.hint')}
-            onPress={() => navigation.navigate('BizHistory')}
-            last
-          />
-        </SettingsGroup>
+          <SettingsGroup title={t('business.settings.partners')}>
+            <SettingsRow
+              icon="people-outline"
+              label={t('business.members.title')}
+              value={t('business.members.countOf', { count: business.members.length, max: MAX_BUSINESS_MEMBERS })}
+              onPress={() => navigation.navigate('BizMembers')}
+            />
+            <SettingsRow
+              icon="time-outline"
+              label={t('business.history.title')}
+              subtitle={t('business.history.hint')}
+              onPress={() => navigation.navigate('BizHistory')}
+              last
+            />
+          </SettingsGroup>
 
-        <SettingsGroup>
-          {creator ? (
-            <SettingsRow icon="trash-outline" label={t('business.settings.delete')} subtitle={t('business.settings.deleteHint')} onPress={remove} danger last />
-          ) : (
-            <SettingsRow icon="exit-outline" label={t('business.settings.leave')} onPress={leave} danger last />
-          )}
-        </SettingsGroup>
+          <SettingsGroup>
+            {creator ? (
+              <SettingsRow icon="trash-outline" label={t('business.settings.delete')} subtitle={t('business.settings.deleteHint')} onPress={remove} danger last />
+            ) : (
+              <SettingsRow icon="exit-outline" label={t('business.settings.leave')} onPress={leave} danger last />
+            )}
+          </SettingsGroup>
 
-        <Note icon="shield-checkmark-outline" text={t('business.settings.legal')} style={styles.legal} />
-      </View>
+          <Note icon="shield-checkmark-outline" text={t('business.settings.legal')} style={styles.legal} />
+        </View>
+      </HeroScrollScreen>
 
+      {/* Las ventanas, fuera de la lista: dentro, con el teclado abierto, el
+          primer toque se lo quedaba la lista (lo cerraba) y «Guardar» pedía dos */}
       <BottomSheet
         visible={renaming}
         onClose={() => setRenaming(false)}
@@ -300,7 +304,7 @@ const BizSettingsScreen = () => {
         onDismiss={() => setShowPalette(false)}
         currencySymbol={symbol}
       />
-    </HeroScrollScreen>
+    </>
   );
 };
 

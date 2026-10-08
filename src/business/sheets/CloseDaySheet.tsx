@@ -117,8 +117,9 @@ const CloseDaySheet = ({ visible, dayId, onClose }: { visible: boolean; dayId: s
             <Text style={[styles.totalLabel, { color: dc.textSecondary }]}>{t('business.close.sold')}</Text>
             <Text style={[styles.totalValue, { color: dc.textPrimary }]}>{money(total)}</Text>
           </View>
-          <SheetButton label={t('business.close.button')} icon="lock-closed" loading={closing} onPress={close} />
+          {/* La nota, encima: debajo dejaba el botón más lejos del teclado que en las demás ventanas */}
           <Text style={[styles.footNote, { color: dc.textSecondary }]}>{t('business.close.footNote')}</Text>
+          <SheetButton label={t('business.close.button')} icon="lock-closed" loading={closing} onPress={close} />
         </View>
       )}
     >
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
   totalLabel: { fontSize: 13.5, fontFamily: 'Poppins_600SemiBold' },
   totalValue: { fontSize: 24, fontFamily: 'Poppins_700Bold', letterSpacing: -0.5 },
-  footNote: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', textAlign: 'center', marginTop: 8 },
+  footNote: { fontSize: 11.5, fontFamily: 'Poppins_400Regular', marginTop: -4, marginBottom: 10 },
   manualRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   manualAmount: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
   manualForm: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },

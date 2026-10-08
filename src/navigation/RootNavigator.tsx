@@ -24,6 +24,7 @@ import { BUSINESS_ENABLED } from '../business/featureFlag';
 import { useBusinessModeStore } from '../business/store/modeStore';
 import { useBusinessStore } from '../business/store/businessStore';
 import BusinessNavigator from '../business/navigation/BusinessNavigator';
+import { CreateBusinessHost } from '../business/ui/CreateBusinessModal';
 
 // Se sigue exportando desde aquí para no cambiar a quien ya lo importa (App.tsx)
 export { navigationRef };
@@ -166,6 +167,8 @@ const RootNavigator = () => {
       {user
         ? (BUSINESS_ENABLED && businessActive ? <BusinessNavigator /> : <AppNavigator />)
         : <AuthNavigator />}
+      {/* El asistente de la empresa, aquí y no en la cabecera de Inicio (ver CreateBusinessHost) */}
+      {BUSINESS_ENABLED && user ? <CreateBusinessHost /> : null}
     </NavigationContainer>
   );
 };

@@ -19,7 +19,7 @@ import { BUSINESS_ENABLED } from '../../business/featureFlag';
 import { useBusinessStore } from '../../business/store/businessStore';
 import { switchToBusiness } from '../../business/store/switch';
 import { templateInfo } from '../../business/templates';
-import CreateBusinessModal from '../../business/ui/CreateBusinessModal';
+import { openCreateBusiness } from '../../business/ui/CreateBusinessModal';
 
 const initialOf = (name?: string) => (name?.trim()?.charAt(0) || '?').toUpperCase();
 
@@ -42,7 +42,6 @@ const AccountSwitcher = () => {
   // La cuenta de empresa (ver business/featureFlag)
   const business = useBusinessStore((s) => s.business);
   const businessRequest = useBusinessStore((s) => s.pendingRequest);
-  const [showCreateBusiness, setShowCreateBusiness] = useState(false);
 
   // Con la pantalla de carga: al quitarla ya está la cuenta entera
   const handleSelectIndividual = () => {
@@ -74,7 +73,8 @@ const AccountSwitcher = () => {
       switchToBusiness().catch((e) => reportError(e, 'abrir la cuenta de empresa'));
       return;
     }
-    setTimeout(() => setShowCreateBusiness(true), 300);
+    // Se dibuja en la raíz de la app, fuera de la lista de Inicio (ver CreateBusinessHost)
+    setTimeout(openCreateBusiness, 300);
   };
 
   // En la compartida, su foto; sin ella, hasta dos miembros (foto o inicial).
@@ -185,10 +185,6 @@ const AccountSwitcher = () => {
           !business && !isPremium && !businessRequest,
         )}
       </BottomSheet>
-
-      {BUSINESS_ENABLED && (
-        <CreateBusinessModal visible={showCreateBusiness} onClose={() => setShowCreateBusiness(false)} />
-      )}
 
       <PremiumModal
         visible={showPremiumModal}

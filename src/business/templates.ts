@@ -59,6 +59,13 @@ export const TEMPLATES: TemplateInfo[] = [
 
 export const templateInfo = (id: TemplateId): TemplateInfo => TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[TEMPLATES.length - 1];
 
+/**
+ * Las que se pueden elegir al crear una empresa. De momento, solo pizzería y
+ * supermercado: las demás mezclaban cosas que no eran suyas (los extras de la
+ * carta en una peluquería). Siguen aquí para las empresas ya creadas con ellas
+ */
+export const CREATABLE_TEMPLATES = TEMPLATES.filter((t) => t.id === 'pizzeria' || t.id === 'shop');
+
 const t = (key: string, options?: Record<string, unknown>) => i18n.t(`business.tpl.${key}`, options);
 
 /** Las plataformas de reparto y el pago al momento del país del idioma (Glovo, Bizum…) */
