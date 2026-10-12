@@ -231,6 +231,8 @@ jest.mock('../../store/settingsStore', () => ({
   useSettingsStore: { getState: () => ({ displayName: mockAuth.uid === 'u1' ? 'Luis' : 'Ana' }) },
 }));
 jest.mock('../store/notices', () => ({ notifyRejected: jest.fn((what: string) => { mockNotices.push(what); }) }));
+// En la app está oculta (ver featureFlag); aquí se prueba igual
+jest.mock('../featureFlag', () => ({ BUSINESS_ENABLED: true }));
 // Los textos de verdad, en español, con lo mínimo de i18next (claves, {{n}} y plurales)
 jest.mock('../../i18n', () => {
   const es = jest.requireActual('../../i18n/locales/es.json');
