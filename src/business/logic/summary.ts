@@ -1,10 +1,9 @@
-import {
-  BusinessConfig, BusinessDay, BusinessExpense, BusinessRecurring, DayStatus, Order, OrdersSummary,
-} from '../types';
+import { BusinessConfig, BusinessDay, BusinessExpense, BusinessRecurring, DayStatus } from '../types';
+import { expenseRole } from '../templates';
 import { cents, dayIdsOfMonth, monthKeyOfDay, monthKey, sumOf, weekdayOfDay } from './basics';
-import { dayFigures, entryCashDiff, entryTotal, usesOrders } from './days';
-import { mergeSummaries } from './orders';
+import { dayFigures } from './days';
 import { existingRecurringKeys, pendingRecurringOfMonth } from './recurring';
+import { taxEstimate, TaxEstimate } from './taxes';
 
 export interface DayRow {
   id: string;
@@ -14,6 +13,8 @@ export interface DayRow {
   /** Aún no ha llegado */
   future: boolean;
   status: DayStatus | null;
+  /** Lo ha cerrado la caja */
+  fromPos: boolean;
   sales: number;
   /** Los gastos de ese día (sin los fijos, si se reparten) */
   spent: number;
@@ -22,21 +23,12 @@ export interface DayRow {
   /** Lo vendido menos lo gastado: beneficio (positivo) o pérdida */
   result: number;
   hasData: boolean;
-  provisional: boolean;
 }
 
 export interface Named {
   key: string;
   name: string;
   amount: number;
-}
-
-export interface WorkerRow {
-  key: string;
-  name: string;
-  sales: number;
-  tickets: number;
-  cashDiff: number | null;
 }
 
 export interface MonthSummary {
@@ -51,17 +43,21 @@ export interface MonthSummary {
   profit: number;
   /** Contando también los fijos que faltan */
   forecastProfit: number;
+  /** Sin IVA y con el impuesto de sociedades estimado (ver taxes.ts) */
+  taxes: TaxEstimate;
   days: DayRow[];
   byChannel: Named[];
   manual: Named[];
   byType: (Named & { icon: string })[];
   bySupplier: (Named & { count: number })[];
-  byWorker: WorkerRow[];
-  bySection: Named[];
+  /** Lo gastado en materia prima y bebidas, y en personal */
+  foodCost: number;
+  staffCost: number;
   tickets: number;
   avgTicket: number | null;
   cashDiff: number | null;
-  orders: OrdersSummary | null;
+  /** Repartos con factura que quedaron sin cobrar al cerrar (no es venta) */
+  pendingSales: number;
   daysWithSales: number;
 }
 
@@ -72,7 +68,6 @@ export interface MonthInput {
   todayId: string;
   config: BusinessConfig;
   days: Record<string, BusinessDay>;
-  orders: readonly Order[];
   expenses: readonly BusinessExpense[];
   recurring: readonly BusinessRecurring[];
 }
@@ -88,16 +83,10 @@ const sorted = <T extends { amount: number }>(record: Record<string, T>): T[] =>
 
 /** El resumen de un mes: lo vendido y lo gastado, día a día y por cada cosa */
 export const monthSummary = ({
-  year, month0, todayId, config, days, orders, expenses, recurring,
+  year, month0, todayId, config, days, expenses, recurring,
 }: MonthInput): MonthSummary => {
   const month = monthKey(year, month0);
   const dayIds = dayIdsOfMonth(year, month0);
-
-  const ordersByDay: Record<string, Order[]> = {};
-  for (const order of orders) {
-    if (monthKeyOfDay(order.day) !== month) continue;
-    (ordersByDay[order.day] ??= []).push(order);
-  }
 
   const monthExpenses = expenses.filter((e) => monthKeyOfDay(e.date) === month);
   const pending = pendingRecurringOfMonth(recurring, existingRecurringKeys(expenses), year, month0);
@@ -116,20 +105,17 @@ export const monthSummary = ({
 
   const channels: Record<string, Named> = {};
   const manual: Record<string, Named> = {};
-  const workers: Record<string, WorkerRow> = {};
-  const sections: Record<string, Named> = {};
-  const summaries: OrdersSummary[] = [];
   let tickets = 0;
   let ticketSales = 0;
   let cashDiff: number | null = null;
+  let pendingSales = 0;
   let daysWithSales = 0;
-  const orderMode = usesOrders(config);
 
   const rows: DayRow[] = dayIds.map((id) => {
     const weekday = weekdayOfDay(id);
     const open = openDays.has(weekday);
     const day = days[id];
-    const figures = dayFigures(day, ordersByDay[id] ?? [], config);
+    const figures = dayFigures(day, config);
     const spent = spentByDay[id] ?? 0;
     const fixedShare = spread && open ? cents(fixedTotal / openCount) : 0;
 
@@ -137,39 +123,9 @@ export const monthSummary = ({
     for (const [cid, amount] of Object.entries(figures.byChannel)) add(channels, cid, figures.channelNames[cid] ?? cid, amount);
     for (const [name, amount] of Object.entries(figures.manual)) add(manual, name.toLocaleLowerCase(), name, amount);
     if (figures.cashDiff != null) cashDiff = cents((cashDiff ?? 0) + figures.cashDiff);
-    if (figures.ordersSummary) summaries.push(figures.ordersSummary);
-    if (orderMode) {
-      tickets += figures.tickets;
-      ticketSales = cents(ticketSales + (figures.ordersSummary?.total ?? 0));
-    }
-
-    // Por empleado y por sección: de lo apuntado en cada caja o turno
-    if (!figures.provisional) {
-      for (const entry of Object.values(day?.entries ?? {})) {
-        if (entry.fromOrders) continue;
-        const total = entryTotal(entry);
-        if (!orderMode && entry.tickets) {
-          tickets += entry.tickets;
-          ticketSales = cents(ticketSales + total);
-        }
-        const workerName = (entry.workerId && config.workers?.[entry.workerId]?.name) || entry.workerName;
-        if (workerName) {
-          const key = entry.workerId ?? `name|${workerName.toLocaleLowerCase()}`;
-          const prev = workers[key] ?? { key, name: workerName, sales: 0, tickets: 0, cashDiff: null };
-          const diff = entryCashDiff(entry, config);
-          workers[key] = {
-            ...prev,
-            name: workerName,
-            sales: cents(prev.sales + total),
-            tickets: prev.tickets + (entry.tickets ?? 0),
-            cashDiff: diff == null ? prev.cashDiff : cents((prev.cashDiff ?? 0) + diff),
-          };
-        }
-        for (const [sid, amount] of Object.entries(entry.sections ?? {})) {
-          add(sections, sid, config.sections?.[sid]?.name ?? entry.sectionNames?.[sid] ?? sid, amount);
-        }
-      }
-    }
+    tickets += figures.tickets;
+    ticketSales = cents(ticketSales + figures.ticketSales);
+    pendingSales = cents(pendingSales + figures.pending);
 
     return {
       id,
@@ -177,12 +133,12 @@ export const monthSummary = ({
       open,
       future: id > todayId,
       status: day?.status ?? null,
+      fromPos: figures.fromPos,
       sales: figures.sales,
       spent,
       fixedShare,
       result: cents(figures.sales - spent - fixedShare),
       hasData: figures.hasData || spent > 0,
-      provisional: figures.provisional,
     };
   });
 
@@ -220,17 +176,18 @@ export const monthSummary = ({
     pendingFixed,
     profit,
     forecastProfit: cents(profit - pendingFixed),
+    taxes: taxEstimate(dayIds.map((id) => days[id]), monthExpenses, config),
     days: rows,
     byChannel: sorted(channels),
     manual: sorted(manual),
     byType: sorted(byType),
     bySupplier: sorted(bySupplier),
-    byWorker: Object.values(workers).sort((a, b) => b.sales - a.sales),
-    bySection: sorted(sections),
+    foodCost: sumOf(monthExpenses.filter((e) => expenseRole(e.typeId, config) === 'food'), (e) => e.amount),
+    staffCost: sumOf(monthExpenses.filter((e) => expenseRole(e.typeId, config) === 'staff'), (e) => e.amount),
     tickets,
     avgTicket: tickets > 0 ? cents(ticketSales / tickets) : null,
     cashDiff,
-    orders: summaries.length ? mergeSummaries(summaries) : null,
+    pendingSales,
     daysWithSales,
   };
 };

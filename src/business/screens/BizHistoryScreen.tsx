@@ -7,20 +7,19 @@ import { HeroScrollScreen } from '../../components/layout/HeroScreen';
 import { HeroTitleBar } from '../../components/layout/HeroBar';
 import { reportError } from '../../services/crashReporting';
 import { useBusinessStore } from '../store/businessStore';
-import { entryTotal } from '../logic/days';
-import { describeOrder } from '../logic/orders';
-import { BusinessChange, DayEntry, OrderLine } from '../types';
+import { entryTotal, isPosEntry } from '../logic/days';
+import { BusinessChange, DayEntry, POS_ACTOR } from '../types';
 import { EmptyNote, ListRow, Note, PillButton, useMoney } from '../ui/kit';
-import { dayTitle, longDay, timeOf } from '../ui/format';
+import { dayTitle, timeOf } from '../ui/format';
 
 const ICONS: Record<string, string> = {
-  void: 'close-circle-outline', edit: 'create-outline', delete: 'trash-outline', reopen: 'lock-open', close: 'lock-closed',
+  edit: 'create-outline', delete: 'trash-outline',
 };
 
 /**
- * El historial de cambios: quién anuló un pedido, cambió un cierre o un
- * gasto, o reabrió un día, cuándo, y qué había antes. Solo se añade: nada
- * desaparece sin dejar rastro
+ * El historial de cambios: quién cambió o borró una venta a mano, un gasto o
+ * un fijo, cuándo y qué había antes; y cuándo la caja volvió a mandar un
+ * cierre con otros números. Solo se añade: nada desaparece sin dejar rastro
  */
 const BizHistoryScreen = () => {
   const { t, i18n } = useTranslation();
@@ -46,30 +45,22 @@ const BizHistoryScreen = () => {
   useEffect(() => { load(false); }, [load]);
 
   const describe = (c: BusinessChange, tt: TFunction) => {
-    const name = c.byName || tt('sharedAccount.someone');
+    const name = c.by === POS_ACTOR ? tt('business.pos.who') : c.byName || tt('sharedAccount.someone');
     const before = (c.before ?? {}) as Record<string, unknown>;
     const day = c.day ? dayTitle(c.day, tt, i18n.language) : null;
     switch (`${c.kind}.${c.action}`) {
-      case 'order.void':
-        return {
-          title: tt('business.history.orderVoid', { name }),
-          detail: [money(Number(before.total ?? 0)), describeOrder((before.lines as OrderLine[]) ?? [])].join(' · '),
-        };
-      case 'order.edit':
-        return {
-          title: tt('business.history.orderEdit', { name }),
-          detail: tt('business.history.before', {
-            what: [money(Number(before.total ?? 0)), describeOrder((before.lines as OrderLine[]) ?? [])].join(' · '),
-          }),
-        };
       case 'entry.edit':
       case 'entry.delete':
+        if (isPosEntry({ id: c.targetId })) {
+          return {
+            title: tt('business.history.posEdit'),
+            detail: [day, tt('business.history.before', { what: money(entryTotal(before as unknown as DayEntry)) })].filter(Boolean).join(' · '),
+          };
+        }
         return {
           title: tt(c.action === 'edit' ? 'business.history.entryEdit' : 'business.history.entryDelete', { name }),
           detail: [day, tt('business.history.before', { what: money(entryTotal(before as unknown as DayEntry)) })].filter(Boolean).join(' · '),
         };
-      case 'day.reopen':
-        return { title: tt('business.history.dayReopen', { name }), detail: c.day ? longDay(c.day, i18n.language) : '' };
       case 'expense.edit':
       case 'expense.delete':
         return {

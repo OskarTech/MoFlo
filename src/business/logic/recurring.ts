@@ -38,6 +38,7 @@ export const expenseFromRecurring = (
   id: recurringExpenseId(recurring.id, month),
   date,
   amount: recurring.amount,
+  ...(typeof recurring.vat === 'number' ? { vat: recurring.vat } : {}),
   name: recurring.name,
   typeId: recurring.typeId,
   typeName: recurring.typeName,

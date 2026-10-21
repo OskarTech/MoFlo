@@ -1,24 +1,26 @@
 import type { ColorPaletteId } from '../theme';
 
 /**
- * La cuenta de empresa: los números de un negocio pequeño para control propio
- * (sin facturas ni Verifactu). Va en su propia colección, `businesses/{id}`,
- * aparte de la cuenta individual y la compartida (ver firestore.rules).
+ * La cuenta de empresa: los números de una pizzería para control propio (sin
+ * facturas: los tickets los hace su caja). Va en su propia colección,
+ * `businesses/{id}`, aparte de la cuenta individual y la compartida (ver
+ * firestore.rules), y solo la ven las cuentas de la lista (ver access.ts).
  *
- * Lo que se cambia por partes (formas de cobro, carta, cajas de un día) va en
- * mapas por id: cada cambio toca solo su campo, así dos socios no se pisan,
- * tampoco sin conexión.
+ * Lo vendido cada día llega solo de la caja de la pizzería (la entrada `pos`,
+ * que escribe el servidor) y se puede apuntar a mano. Lo que se cambia por
+ * partes (formas de cobro, entradas de un día) va en mapas por id: cada cambio
+ * toca solo su campo, así dos socios no se pisan, tampoco sin conexión.
  */
 
-/** Sencillo: el total del día. Experto: por caja o pedido a pedido */
-export type BusinessMode = 'simple' | 'expert';
-/** Cómo se apuntan las ventas en Experto */
-export type SalesMethod = 'tills' | 'orders';
-
-export type TemplateId = 'pizzeria' | 'bar' | 'restaurant' | 'shop' | 'services' | 'blank';
+/** Solo pizzería: se guarda en la empresa por si algún día hay otras */
+export type TemplateId = 'pizzeria';
 
 /** Socios: 5 como mucho (también en las reglas) */
 export const MAX_BUSINESS_MEMBERS = 5;
+
+/** La entrada del día que manda la caja (y quien la firma): solo la escribe el servidor */
+export const POS_ENTRY_ID = 'pos';
+export const POS_ACTOR = 'pos';
 
 export interface Business {
   id: string;
@@ -45,8 +47,10 @@ export type ChannelKind = 'cash' | 'card' | 'other';
 
 export interface Channel extends ConfigItem {
   kind: ChannelKind;
-  /** Lo que se queda la plataforma (Glovo, el banco del TPV…), en %. Se apunta sola como gasto al cerrar */
+  /** Lo que se queda el banco o la plataforma (el datáfono, Stripe), en %. Se apunta sola como gasto */
   commissionPct?: number;
+  /** Lo fijo por cada cobro (Stripe: 0,25 €). Solo cuenta si la caja dice cuántos cobros hubo */
+  commissionFixed?: number;
 }
 
 export interface Worker extends ConfigItem {
@@ -58,117 +62,59 @@ export interface Supplier extends ConfigItem {
   typeId?: string;
 }
 
+/**
+ * Para qué cuenta un tipo de gasto: materia prima o personal (sus % sobre lo
+ * vendido), o un pago de impuestos que el beneficio real ya calcula aparte
+ * (el IVA, el impuesto de sociedades). none: un gasto sin más
+ */
+export type ExpenseRole = 'none' | 'food' | 'staff' | 'vat' | 'corporateTax';
+
 export interface ExpenseType extends ConfigItem {
   icon: string;
+  /** El IVA que suele llevar (0, 4, 10 o 21), para el beneficio real */
+  vatRate?: number;
+  /** Sin él, el de su id en la plantilla (ver templates.ts) */
+  role?: ExpenseRole;
 }
 
-export type ConfigListKind = 'channels' | 'workers' | 'suppliers' | 'expenseTypes' | 'sections' | 'tills' | 'shifts';
+export type ConfigListKind = 'channels' | 'workers' | 'suppliers' | 'expenseTypes';
 
 export interface BusinessConfig {
-  mode: BusinessMode;
-  salesMethod: SalesMethod;
   channels: Record<string, Channel>;
   workers: Record<string, Worker>;
   suppliers: Record<string, Supplier>;
   expenseTypes: Record<string, ExpenseType>;
-  /** Secciones del ticket Z (fruta, carnicería…) */
-  sections: Record<string, ConfigItem>;
-  tills: Record<string, ConfigItem>;
-  shifts: Record<string, ConfigItem>;
   /** Días que abre (0 domingo … 6 sábado): entre ellos se reparten los fijos */
   openDays: number[];
-  /** Lo apuntado antes de esta hora cuenta para el día anterior (un bar que cierra a las 2) */
+  /** Lo apuntado antes de esta hora cuenta para el día anterior (cerrar a la 1) */
   dayCutoffHour: number;
   /** Arqueo: fondo de caja y efectivo contado, para ver el descuadre */
   cashCount: boolean;
-  /** Fondo de caja que se propone */
+  /** Fondo de caja que se propone al apuntar a mano */
   floatAmount: number;
   /** Repartir los fijos entre los días que abre, en el día a día */
   spreadFixed: boolean;
-  /** Aviso a los demás socios al cerrar el día */
+  /** Aviso a los socios al cerrar el día */
   notifyOnClose: boolean;
-}
-
-// ── La carta ─────────────────────────────────────────────────────
-
-export interface ProductSize {
-  name: string;
-  price: number;
-  order: number;
-  archived?: boolean;
-}
-
-export interface Product extends ConfigItem {
-  categoryId: string;
-  /** Precio sin tamaños */
-  price?: number;
-  /** Con tamaños (mediana, familiar…), cada uno con su precio */
-  sizes?: Record<string, ProductSize>;
-}
-
-/** Ingrediente extra o complemento con su precio. Sin categorías, vale para todo */
-export interface CatalogExtra extends ConfigItem {
-  price: number;
-  categoryIds?: string[];
-}
-
-export interface Catalog {
-  categories: Record<string, ConfigItem>;
-  products: Record<string, Product>;
-  extras: Record<string, CatalogExtra>;
-}
-
-// ── Los pedidos ──────────────────────────────────────────────────
-
-/** Un extra de una línea, con su precio por unidad de ese momento */
-export interface OrderExtra {
-  extraId?: string | null;
-  name: string;
-  price: number;
-}
-
-/**
- * Una línea de un pedido. Lleva la copia del nombre, el tamaño y el precio de
- * ese momento: si mañana cambia la carta, lo vendido no cambia. Los resúmenes
- * agrupan por los ids, así que renombrar un producto no parte sus ventas.
- */
-export interface OrderLine {
-  key: string;
-  productId?: string | null;
-  categoryId?: string | null;
-  name: string;
-  sizeId?: string | null;
-  sizeName?: string | null;
-  unitPrice: number;
-  qty: number;
-  extras?: OrderExtra[];
-}
-
-export type OrderStatus = 'ok' | 'void';
-
-export interface Order {
-  id: string;
-  /** Día del negocio (AAAA-MM-DD) */
-  day: string;
-  /** Cuándo se apuntó (ISO) */
-  at: string;
-  lines: OrderLine[];
-  total: number;
-  channelId: string;
-  channelName: string;
-  /** Los pedidos no se borran: se anulan, y queda quién y cuándo */
-  status: OrderStatus;
-  voidedBy?: string | null;
-  voidedAt?: string | null;
-  by: string;
-  note?: string;
-  /** Hora del servidor de su último cambio, en ms */
-  updatedAt?: number;
+  /** El IVA (modelo 303): si está, el beneficio real va sin IVA */
+  vatEnabled?: boolean;
+  /** El IVA de lo apuntado a mano, en % (lo de la caja trae el suyo) */
+  salesVatRate?: number;
+  /** IVA aparte en los gastos: se escribe la base y el IVA de cada factura (ver BusinessExpense.vat) */
+  expenseVatSplit?: boolean;
+  /** El impuesto de sociedades (modelos 200 y 202): si está, se estima sobre el beneficio */
+  corporateTaxEnabled?: boolean;
+  corporateTaxRate?: number;
+  /** Hasta dónde se quiere que lleguen la materia prima y el personal, en % de lo vendido */
+  foodCostTarget?: number;
+  staffCostTarget?: number;
+  /** Los bloques del Resumen, en su orden, iguales para todos los socios. Sin él, los de partida (ver summaryLayout.ts) */
+  summaryBlocks?: string[];
 }
 
 // ── Los días ─────────────────────────────────────────────────────
 
-export type DayStatus = 'open' | 'closing' | 'closed';
+export type DayStatus = 'open' | 'closed';
 
 export interface ManualAmount {
   id: string;
@@ -176,56 +122,40 @@ export interface ManualAmount {
   amount: number;
 }
 
+/** El IVA de lo vendido con un tipo: la base y la cuota */
+export interface VatLine {
+  rate: number;
+  base: number;
+  vat: number;
+}
+
 /**
- * Lo apuntado de una caja, un turno o el día entero: lo cobrado por cada
- * forma de cobro, con la copia de sus nombres
+ * Lo vendido de un día: lo de la caja (id `pos`) o lo apuntado a mano. Lo
+ * cobrado por cada forma de cobro, con la copia de sus nombres
  */
 export interface DayEntry {
   id: string;
-  workerId?: string | null;
-  workerName?: string | null;
-  tillId?: string | null;
-  tillName?: string | null;
-  shiftId?: string | null;
-  shiftName?: string | null;
   amounts: Record<string, number>;
   channelNames: Record<string, string>;
   /** Lo que no es de ninguna forma de cobro, escrito a mano */
   manual?: ManualAmount[];
+  /** Tickets (ventas) del día: da el ticket medio */
   tickets?: number | null;
-  sections?: Record<string, number>;
-  sectionNames?: Record<string, string>;
   /** Arqueo: fondo de caja y efectivo contado */
   float?: number | null;
   counted?: number | null;
-  /** El cierre de un día de pedidos: se rellena con ellos */
-  fromOrders?: boolean;
   note?: string;
   by: string;
   at: string;
-}
-
-export interface SoldItem {
-  name: string;
-  qty: number;
-  amount: number;
-  categoryId?: string | null;
-}
-
-/** Lo vendido en los pedidos de un día, guardado al cerrarlo */
-export interface OrdersSummary {
-  count: number;
-  voided: number;
-  total: number;
-  byChannel: Record<string, number>;
-  channelNames: Record<string, string>;
-  /** Por producto y tamaño */
-  items: Record<string, SoldItem>;
-  extras: Record<string, SoldItem>;
-  /** Unidades de cada tamaño, por su nombre */
-  sizes: Record<string, number>;
-  /** Pedidos por hora (0-23) */
-  hours: Record<string, number>;
+  // ── Solo en la de la caja ──
+  /** Cuántos cobros hubo por forma de cobro (para la comisión fija) */
+  counts?: Record<string, number>;
+  /** Repartos con factura aún sin cobrar al cerrar: no es venta */
+  pending?: number;
+  /** El IVA de lo vendido, por tipo */
+  vat?: VatLine[];
+  /** Cuándo cerró la caja, en ms: un cierre más antiguo no reemplaza a este */
+  closedAtMs?: number;
 }
 
 export interface BusinessDay {
@@ -233,11 +163,9 @@ export interface BusinessDay {
   id: string;
   status: DayStatus;
   entries: Record<string, DayEntry>;
-  ordersSummary?: OrdersSummary | null;
+  /** Quién lo cerró: un socio o la caja (POS_ACTOR) */
   closedBy?: string | null;
   closedAt?: string | null;
-  reopenedBy?: string | null;
-  reopenedAt?: string | null;
   updatedAt?: number;
 }
 
@@ -247,7 +175,10 @@ export interface BusinessExpense {
   id: string;
   /** AAAA-MM-DD */
   date: string;
+  /** Lo pagado, con el IVA */
   amount: number;
+  /** El IVA de la factura, si se escribió aparte (va dentro de amount). Sin él, sale del tipo */
+  vat?: number | null;
   /** El concepto («Alquiler», «Factura 2381»); sin él se enseña el proveedor o el tipo */
   name?: string;
   typeId: string;
@@ -268,6 +199,8 @@ export interface BusinessRecurring {
   id: string;
   name: string;
   amount: number;
+  /** El IVA, si se escribió aparte: pasa a cada gasto que sale del fijo */
+  vat?: number | null;
   typeId: string;
   typeName: string;
   supplierId?: string | null;
@@ -286,8 +219,8 @@ export interface BusinessRecurring {
 
 // ── Historial ────────────────────────────────────────────────────
 
-export type ChangeKind = 'order' | 'day' | 'entry' | 'expense' | 'recurring';
-export type ChangeAction = 'void' | 'edit' | 'delete' | 'reopen' | 'close';
+export type ChangeKind = 'day' | 'entry' | 'expense' | 'recurring';
+export type ChangeAction = 'edit' | 'delete';
 
 /** Una línea del historial de cambios: solo se añaden, nunca se tocan */
 export interface BusinessChange {
@@ -299,6 +232,7 @@ export interface BusinessChange {
   day?: string | null;
   /** Lo que había antes */
   before?: Record<string, unknown> | null;
+  /** Un socio o la caja (POS_ACTOR) */
   by: string;
   byName: string;
   at: string;

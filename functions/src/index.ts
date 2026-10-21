@@ -506,7 +506,10 @@ export const onSharedAccountUpdated = onDocumentUpdated(
 // ── Cuenta de empresa (ver business.ts) ──────────────────────────
 // Sus avisos usan el mismo envío y los mismos textos de reserva que los de
 // la cuenta compartida
-const business = businessFunctions({ sendToUser, someone: SOMEONE, formatAmount });
+const business = businessFunctions({
+  sendToUser, someone: SOMEONE, formatAmount, langOf: async (uid) => (await getUserPrefs(uid)).lang,
+});
+export const businessPosClose = business.businessPosClose;
 export const onBusinessDayWritten = business.onBusinessDayWritten;
 export const onBusinessJoinRequestCreated = business.onBusinessJoinRequestCreated;
 export const onBusinessJoinRequestUpdated = business.onBusinessJoinRequestUpdated;

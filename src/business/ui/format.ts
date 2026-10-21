@@ -41,6 +41,14 @@ export const weekdayLetter = (weekday: number, language: string | undefined): st
   return capitalize(date.toLocaleDateString(getDateLocale(language), { weekday: 'short' })).replace('.', '');
 };
 
+/** La letra del día de la semana (L M X J V S D en español) */
+export const weekdayNarrow = (weekday: number, language: string | undefined): string =>
+  capitalize(new Date(2024, 0, 7 + weekday).toLocaleDateString(getDateLocale(language), { weekday: 'narrow' }));
+
+/** «Lunes» */
+export const weekdayName = (weekday: number, language: string | undefined): string =>
+  capitalize(new Date(2024, 0, 7 + weekday).toLocaleDateString(getDateLocale(language), { weekday: 'long' }));
+
 /** «miércoles, 7 oct»: la fecha entera, en minúscula para ir detrás de otro texto */
 export const longDay = (dayId: string, language: string | undefined): string =>
   dateOfDayId(dayId).toLocaleDateString(getDateLocale(language), { weekday: 'long', day: 'numeric', month: 'short' });

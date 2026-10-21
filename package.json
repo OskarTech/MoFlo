@@ -15,7 +15,7 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "roots": ["<rootDir>/src"],
+    "roots": ["<rootDir>/src", "<rootDir>/functions/src"],
     "globalSetup": "<rootDir>/jest.global-setup.js"
   },
   "dependencies": {

@@ -21,6 +21,7 @@ import { processQueue } from '../services/syncQueue.service';
 import { setupPushTokens } from '../services/firebase/pushTokens.service';
 import { reportError, setCrashUser } from '../services/crashReporting';
 import { BUSINESS_ENABLED } from '../business/featureFlag';
+import { loadBusinessAccess, useBusinessAccess } from '../business/access';
 import { useBusinessModeStore } from '../business/store/modeStore';
 import { useBusinessStore } from '../business/store/businessStore';
 import BusinessNavigator from '../business/navigation/BusinessNavigator';
@@ -35,6 +36,8 @@ const RootNavigator = () => {
   const { colors: dc } = useTheme();
   // Si se está en la cuenta de empresa: sus pantallas en lugar de las de la app
   const businessActive = useBusinessModeStore((s) => s.active);
+  // Y solo para las cuentas de su lista (ver business/access)
+  const businessAllowed = useBusinessAccess((s) => s.allowed);
   useAndroidSystemBars();
 
   const { loadData, loadSharedData, applyRecurringMovements, setSharedAccountId } = useMovementStore();
@@ -79,10 +82,18 @@ const RootNavigator = () => {
       await useSavingsStore.getState().applyAutomaticContributions();
     }
 
-    // La cuenta de empresa (solo con ella activada, ver business/featureFlag):
-    // su copia del móvil y, por detrás, la nube. Nunca para el arranque
-    if (BUSINESS_ENABLED) {
-      await useBusinessStore.getState().init().catch((e) => reportError(e, 'empresa: arranque'));
+    // La cuenta de empresa, solo para las cuentas de su lista (ver
+    // business/access): su copia del móvil y, por detrás, la nube. Nunca para
+    // el arranque. Si el servidor dice otra cosa que lo guardado (se le acaba
+    // de dar o de quitar el acceso), se entra o se sale en el momento
+    const uid = auth().currentUser?.uid;
+    if (BUSINESS_ENABLED && uid) {
+      const allowed = await loadBusinessAccess(uid, (now) => {
+        const business = useBusinessStore.getState();
+        if (now) business.init().catch((e) => reportError(e, 'empresa: arranque'));
+        else business.deactivate().then(() => business.reset()).catch((e) => reportError(e, 'empresa: sin acceso'));
+      });
+      if (allowed) await useBusinessStore.getState().init().catch((e) => reportError(e, 'empresa: arranque'));
     }
   };
 
@@ -165,10 +176,10 @@ const RootNavigator = () => {
   return (
     <NavigationContainer ref={navigationRef}>
       {user
-        ? (BUSINESS_ENABLED && businessActive ? <BusinessNavigator /> : <AppNavigator />)
+        ? (BUSINESS_ENABLED && businessAllowed && businessActive ? <BusinessNavigator /> : <AppNavigator />)
         : <AuthNavigator />}
       {/* El asistente de la empresa, aquí y no en la cabecera de Inicio (ver CreateBusinessHost) */}
-      {BUSINESS_ENABLED && user ? <CreateBusinessHost /> : null}
+      {BUSINESS_ENABLED && businessAllowed && user ? <CreateBusinessHost /> : null}
     </NavigationContainer>
   );
 };

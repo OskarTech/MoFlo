@@ -2,10 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import { useBusinessStore } from '../store/businessStore';
 import { useBusinessModeStore } from '../store/modeStore';
-import { notifyRejected } from '../store/notices';
 import { recurringExpenseId } from '../logic/recurring';
 import { readBizMark } from '../cloud/sync';
-import { Order, OrderLine } from '../types';
 
 // Firestore falsa en memoria, que hace de servidor (como la de cloudLoading):
 // guarda lo escrito con la hora del servidor, entiende los campos con punto
@@ -35,7 +33,6 @@ const mockDb = {
   },
 };
 const mockAuth = { uid: 'u1' };
-const mockNotices: string[] = [];
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
@@ -230,9 +227,8 @@ jest.mock('../../services/crashReporting', () => ({ reportError: jest.fn() }));
 jest.mock('../../store/settingsStore', () => ({
   useSettingsStore: { getState: () => ({ displayName: mockAuth.uid === 'u1' ? 'Luis' : 'Ana' }) },
 }));
-jest.mock('../store/notices', () => ({ notifyRejected: jest.fn((what: string) => { mockNotices.push(what); }) }));
-// En la app está oculta (ver featureFlag); aquí se prueba igual
-jest.mock('../featureFlag', () => ({ BUSINESS_ENABLED: true }));
+// En la app solo la ven las cuentas de la lista (ver access); aquí, todas
+jest.mock('../access', () => ({ businessAllowed: () => true }));
 // Los textos de verdad, en español, con lo mínimo de i18next (claves, {{n}} y plurales)
 jest.mock('../../i18n', () => {
   const es = jest.requireActual('../../i18n/locales/es.json');
@@ -251,22 +247,28 @@ const store = () => useBusinessStore.getState();
 const docs = (path: string) => mockDb.docs[path] ?? {};
 
 const createPizzeria = async () => {
-  const business = await store().createBusiness({
-    name: 'Pizzería Napoli', template: 'pizzeria', mode: 'expert', salesMethod: 'orders',
-    channels: ['cash', 'card', 'platform0'], workers: ['Ana', 'Marta'], currencyCode: 'EUR',
-  });
+  const business = await store().createBusiness({ name: 'Pizzería Vesuvio', currencyCode: 'EUR' });
   await store().activate();
   await flush();
   return business;
 };
 
-const pizzaLine = (sizeId: 's_medium' | 's_family', qty = 1, extras: OrderLine['extras'] = []): OrderLine => {
-  const product = store().catalog!.products.p_bbq;
-  const size = product.sizes![sizeId];
-  return {
-    key: `${sizeId}${qty}`, productId: 'p_bbq', categoryId: product.categoryId, name: product.name,
-    sizeId, sizeName: size.name, unitPrice: size.price, qty, extras,
-  };
+const today = () => jest.requireActual('../store/businessStore').businessToday() as string;
+const comId = (day: string, channel: string) => `com_${day.replace(/-/g, '')}_${channel}`;
+
+/** Lo que escribe el servidor al llegar el cierre de la caja (ver functions/src/business.ts) */
+const posCloses = async (businessId: string, day: string, amounts: Record<string, number>, counts?: Record<string, number>) => {
+  await firestore().collection('businesses').doc(businessId).collection('days').doc(day).set({
+    id: day, status: 'closed', closedBy: 'pos', closedAt: new Date().toISOString(),
+    entries: {
+      pos: {
+        id: 'pos', amounts, channelNames: {}, tickets: 37, pending: 0, vat: [], closedAtMs: Date.now(),
+        by: 'pos', at: new Date().toISOString(), ...(counts ? { counts } : {}),
+      },
+    },
+    updatedAt: firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  await flush();
 };
 
 beforeEach(async () => {
@@ -279,25 +281,24 @@ beforeEach(async () => {
   mockDb.queue = [];
   mockDb.waiters = [];
   mockAuth.uid = 'u1';
-  mockNotices.length = 0;
-  (notifyRejected as jest.Mock).mockClear();
   store().reset();
 });
 
 describe('crear la empresa', () => {
-  it('guarda la empresa, su código, la configuración de la plantilla y su carta', async () => {
+  it('guarda la empresa, su código y la configuración de una pizzería', async () => {
     const business = await createPizzeria();
     expect(docs('businesses')[business.id]).toMatchObject({
-      name: 'Pizzería Napoli', createdBy: 'u1', members: ['u1'], memberNames: { u1: 'Luis' }, template: 'pizzeria',
+      name: 'Pizzería Vesuvio', createdBy: 'u1', members: ['u1'], memberNames: { u1: 'Luis' }, template: 'pizzeria',
     });
-    expect(docs('businessInviteCodes')[business.inviteCode]).toMatchObject({ businessId: business.id, name: 'Pizzería Napoli' });
-    const config = docs(`businesses/${business.id}/config`).main;
-    expect(Object.values(config.channels as Record<string, { name: string }>).map((c) => c.name)).toEqual(['Efectivo', 'Tarjeta', 'Glovo']);
-    expect((config.channels as Record<string, { commissionPct?: number }>).platform0.commissionPct).toBe(30);
-    expect(Object.values(config.workers as Record<string, { name: string }>).map((w) => w.name)).toEqual(['Ana', 'Marta']);
-    const catalog = docs(`businesses/${business.id}/catalog`).main as { products: Record<string, { name: string; sizes?: Record<string, { price: number }> }> };
-    expect(catalog.products.p_bbq.name).toBe('Barbacoa');
-    expect(catalog.products.p_bbq.sizes?.s_family.price).toBe(14.5);
+    expect(docs('businessInviteCodes')[business.inviteCode]).toMatchObject({ businessId: business.id, name: 'Pizzería Vesuvio' });
+    const config = docs(`businesses/${business.id}/config`).main as {
+      channels: Record<string, { name: string }>; expenseTypes: Record<string, { name: string; vatRate: number }>;
+    };
+    expect(Object.entries(config.channels).map(([id, c]) => [id, c.name])).toEqual([['cash', 'Efectivo'], ['card', 'Tarjeta'], ['online', 'Online']]);
+    expect(config.expenseTypes.ingredients).toMatchObject({ name: 'Materia prima', vatRate: 10 });
+    expect(config.expenseTypes.vat.name).toBe('IVA (modelo 303)');
+    expect(config).toMatchObject({ salesVatRate: 10, corporateTaxRate: 15 });
+    expect(docs(`businesses/${business.id}/catalog`)).toEqual({});
     // Y se está en ella, con su paleta
     expect(useBusinessModeStore.getState()).toEqual({ active: true, paletteId: 'charcoal' });
   });
@@ -305,162 +306,98 @@ describe('crear la empresa', () => {
   it('no deja crear otra si ya estás en una', async () => {
     await createPizzeria();
     store().reset();
-    await expect(store().createBusiness({
-      name: 'Otra', template: 'blank', mode: 'simple', salesMethod: 'tills', channels: ['cash'], workers: [], currencyCode: 'EUR',
-    })).rejects.toThrow('already_in_business');
+    await expect(store().createBusiness({ name: 'Otra', currencyCode: 'EUR' })).rejects.toThrow('already_in_business');
   });
 });
 
-describe('pedidos', () => {
-  it('guarda la copia del precio: cambiar la carta no cambia lo vendido', async () => {
+describe('ventas a mano', () => {
+  it('apuntar un día sin cerrar lo cierra; cada venta va en su campo y dos socios no se pisan', async () => {
     const business = await createPizzeria();
-    const result = await store().saveOrder({
-      lines: [pizzaLine('s_family', 2, [{ extraId: 'x_cheese', name: 'Extra de queso', price: 1 }])],
-      channelId: 'card',
-    });
-    expect(result).toBe('ok');
+    expect(await store().saveEntry(today(), { amounts: { cash: 300, card: 200 }, channelNames: {} })).toBe('ok');
     await flush();
-    const [orderId, order] = Object.entries(docs(`businesses/${business.id}/orders`))[0];
-    expect(order).toMatchObject({ total: 31, channelName: 'Tarjeta', status: 'ok', by: 'u1' });
-    expect((order.lines as OrderLine[])[0]).toMatchObject({ name: 'Barbacoa', sizeName: 'Familiar', unitPrice: 14.5, qty: 2 });
-
-    await store().saveCatalogItem('products', 'p_bbq', {
-      ...store().catalog!.products.p_bbq,
-      sizes: { ...store().catalog!.products.p_bbq.sizes, s_family: { name: 'Familiar', price: 16, order: 2 } },
-    });
-    await flush();
-    expect(docs(`businesses/${business.id}/catalog`).main).toMatchObject({ products: { p_bbq: { sizes: { s_family: { price: 16 } } } } });
-    expect(docs(`businesses/${business.id}/orders`)[orderId].total).toBe(31);
-    expect(store().orders[orderId].lines[0].unitPrice).toBe(14.5);
-  });
-
-  it('anular deja el pedido tachado y una línea en el historial con lo que era', async () => {
-    const business = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
-    await flush();
-    const orderId = Object.keys(store().orders)[0];
-    expect(await store().voidOrder(orderId)).toBe('ok');
-    await flush();
-    expect(docs(`businesses/${business.id}/orders`)[orderId]).toMatchObject({ status: 'void', voidedBy: 'u1' });
-    const changes = Object.values(docs(`businesses/${business.id}/changes`));
-    expect(changes).toHaveLength(1);
-    expect(changes[0]).toMatchObject({ kind: 'order', action: 'void', targetId: orderId, by: 'u1', byName: 'Luis', before: { total: 9.5 } });
-  });
-
-  it('con el día cerrado no deja apuntar; si la nube lo rechaza, se quita de la copia y se avisa', async () => {
-    const business = await createPizzeria();
-    const today = Object.keys(store().days)[0] ?? null;
-    expect(today).toBeNull();
-    // Las reglas: pedidos solo en un día abierto
-    mockDb.rules = (op, all) => {
-      if (!op.path.endsWith('/orders') || op.kind === 'delete') return true;
-      const day = (op.data?.day ?? all[op.path]?.[op.id]?.day) as string;
-      const status = all[`businesses/${business.id}/days`]?.[day]?.status ?? 'open';
-      return status === 'open';
+    const dayDoc = () => docs(`businesses/${business.id}/days`)[today()] as {
+      status: string; closedBy: string; entries: Record<string, { amounts: Record<string, number> }>;
     };
-    // Otro socio cierra el día en la nube, y este móvil aún no lo sabe
-    const { businessToday } = jest.requireActual('../store/businessStore');
-    await firestore().collection('businesses').doc(business.id).collection('days').doc(businessToday())
-      .set({ id: businessToday(), status: 'closed', updatedAt: firestore.FieldValue.serverTimestamp() });
-    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' })).toBe('ok');
+    expect(dayDoc()).toMatchObject({ status: 'closed', closedBy: 'u1' });
+    // Otro socio apunta otra a la vez, en su campo
+    await firestore().collection('businesses').doc(business.id).collection('days').doc(today())
+      .update({ 'entries.otra': { id: 'otra', amounts: { cash: 80 }, channelNames: {}, by: 'u2', at: '' }, updatedAt: firestore.FieldValue.serverTimestamp() });
     await flush();
-    expect(Object.keys(docs(`businesses/${business.id}/orders`))).toHaveLength(0);
-    expect(Object.keys(store().orders)).toHaveLength(0);
-    expect(mockNotices).toEqual(['order']);
-    // Y cuando el móvil ya sabe que está cerrado, ni lo intenta
-    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' })).toBe('dayClosed');
-  });
-});
-
-describe('cerrar el día de pedidos', () => {
-  it('baja los pedidos del servidor, guarda el resumen y lo confirmado, y apunta la comisión', async () => {
-    const business = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_family')], channelId: 'card' });
-    await store().saveOrder({ lines: [pizzaLine('s_medium', 2)], channelId: 'cash' });
+    // Y este móvil cambia la suya: la del otro socio se queda, y quien cerró el día también
+    const mine = Object.keys(store().days[today()].entries).find((id) => id !== 'otra')!;
+    await store().saveEntry(today(), { id: mine, amounts: { cash: 310 }, channelNames: {} });
     await flush();
-    const today = Object.values(store().orders)[0].day;
-
-    // Un pedido de otro socio que este móvil aún no tiene
-    await firestore().collection('businesses').doc(business.id).collection('orders').doc('deOtro').set({
-      id: 'deOtro', day: today, at: new Date().toISOString(), lines: [pizzaLine('s_medium')], total: 9.5,
-      channelId: 'cash', channelName: 'Efectivo', status: 'ok', by: 'u2', updatedAt: firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Lo de Glovo, a mano; y el cajón, con 2 € de menos
-    const result = await store().closeDay(today, { adjust: { platform0: 96 }, float: 100, counted: 126.5 });
-    expect(result).toBe('ok');
-    await flush();
-    const day = docs(`businesses/${business.id}/days`)[today] as {
-      status: string; entries: Record<string, { amounts: Record<string, number> }>; ordersSummary: { count: number; total: number };
-    };
-    expect(day.status).toBe('closed');
-    expect(day.ordersSummary).toMatchObject({ count: 3, total: 43 });
-    // Los pedidos dicen 28,50 en efectivo (con el del otro socio) y 14,50 con tarjeta
-    expect(day.entries.close.amounts).toEqual({ card: 14.5, cash: 28.5, platform0: 96 });
-    // El pedido del otro socio, también en este móvil
-    expect(store().orders.deOtro).toBeDefined();
-    // La comisión de Glovo (30 % de 96), como gasto
-    const commission = docs(`businesses/${business.id}/expenses`)[`com_${today.replace(/-/g, '')}_platform0`];
-    expect(commission).toMatchObject({ amount: 28.8, typeId: 'commissions', name: 'Comisión de Glovo' });
-    // Y ya no se puede apuntar en ese día
-    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' })).toBe('dayClosed');
-  });
-
-  it('reabrir deja rastro y vuelve a dejar apuntar; al cerrar otra vez, se rehace todo', async () => {
-    const business = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_family')], channelId: 'card' });
-    await flush();
-    const today = Object.values(store().orders)[0].day;
-    await store().closeDay(today, { adjust: { platform0: 50 } });
-    await flush();
-    await store().reopenDay(today);
-    await flush();
-    expect(docs(`businesses/${business.id}/days`)[today]).toMatchObject({ status: 'open', reopenedBy: 'u1' });
-    const reopen = Object.values(docs(`businesses/${business.id}/changes`)).find((c) => c.action === 'reopen');
-    expect(reopen).toMatchObject({ kind: 'day', targetId: today, before: { status: 'closed' } });
-
-    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'card' })).toBe('ok');
-    await flush();
-    // Sin Glovo esta vez: la comisión de antes se quita
-    await store().closeDay(today, {});
-    await flush();
-    const day = docs(`businesses/${business.id}/days`)[today] as { entries: { close: { amounts: Record<string, number> } } };
-    expect(day.entries.close.amounts).toEqual({ card: 24 });
-    expect(docs(`businesses/${business.id}/expenses`)[`com_${today.replace(/-/g, '')}_platform0`]).toBeUndefined();
-  });
-});
-
-describe('cajas (por caja y Sencillo)', () => {
-  it('cada caja va en su campo: dos socios no se pisan, y cerrar fija el día', async () => {
-    const business = await store().createBusiness({
-      name: 'Súper El Sol', template: 'shop', mode: 'expert', salesMethod: 'tills',
-      channels: ['cash', 'card'], workers: ['Ana', 'Luis'], currencyCode: 'EUR',
-    });
-    await store().activate();
-    await flush();
-    const today = jest.requireActual('../store/businessStore').businessToday();
-    await store().saveEntry(today, { workerId: 'w1', amounts: { cash: 1240.5, card: 2310.2 }, channelNames: {}, tickets: 212 });
-    await flush();
-    // Otro socio apunta su caja a la vez, en su campo
-    await firestore().collection('businesses').doc(business.id).collection('days').doc(today)
-      .update({ 'entries.otra': { id: 'otra', workerId: 'w2', amounts: { cash: 860 }, channelNames: {}, by: 'u2', at: '' }, updatedAt: firestore.FieldValue.serverTimestamp() });
-    await flush();
-    // Y este móvil cambia la suya: la del otro socio se queda
-    const mine = Object.keys(store().days[today].entries).find((id) => id !== 'otra')!;
-    await store().saveEntry(today, { id: mine, workerId: 'w1', amounts: { cash: 1250 }, channelNames: {}, tickets: 213 });
-    await flush();
-    const entries = (docs(`businesses/${business.id}/days`)[today] as { entries: Record<string, { amounts: Record<string, number> }> }).entries;
-    expect(Object.keys(entries).sort()).toEqual([mine, 'otra'].sort());
+    expect(Object.keys(dayDoc().entries).sort()).toEqual([mine, 'otra'].sort());
     // Al cambiarla se reescribe entera: la tarjeta que ya no está, no se queda
-    expect(entries[mine].amounts).toEqual({ cash: 1250 });
-    expect(entries.otra.amounts).toEqual({ cash: 860 });
+    expect(dayDoc().entries[mine].amounts).toEqual({ cash: 310 });
+    expect(dayDoc().closedBy).toBe('u1');
     const edit = Object.values(docs(`businesses/${business.id}/changes`)).find((c) => c.kind === 'entry');
-    expect(edit).toMatchObject({ action: 'edit', before: { amounts: { cash: 1240.5, card: 2310.2 } } });
+    expect(edit).toMatchObject({ action: 'edit', by: 'u1', before: { amounts: { cash: 300, card: 200 } } });
+  });
 
-    expect(await store().closeDay(today)).toBe('ok');
+  it('lo de la caja no se toca desde la app, y lo de a mano se suma a lo suyo', async () => {
+    const business = await createPizzeria();
+    await posCloses(business.id, today(), { cash: 450, card: 600, online: 184.5 });
+    expect(store().days[today()].entries.pos).toBeDefined();
+    expect(await store().saveEntry(today(), { id: 'pos', amounts: { cash: 1 }, channelNames: {} })).toBe('pos');
+    expect(await store().deleteEntry(today(), 'pos')).toBe('pos');
+    await store().saveEntry(today(), { amounts: { cash: 50 }, channelNames: {} });
     await flush();
-    expect(docs(`businesses/${business.id}/days`)[today]).toMatchObject({ status: 'closed', closedBy: 'u1' });
-    expect(await store().saveEntry(today, { amounts: { cash: 1 }, channelNames: {} })).toBe('dayClosed');
+    const day = docs(`businesses/${business.id}/days`)[today()] as { closedBy: string; entries: Record<string, { amounts: Record<string, number> }> };
+    // Sigue cerrado por la caja, con lo suyo intacto
+    expect(day.closedBy).toBe('pos');
+    expect(day.entries.pos.amounts).toEqual({ cash: 450, card: 600, online: 184.5 });
+    expect(Object.keys(day.entries)).toHaveLength(2);
+  });
+
+  it('las comisiones se rehacen con cada cambio de lo vendido, sobre todo lo del día', async () => {
+    const business = await createPizzeria();
+    await store().saveConfigItem('channels', 'card', { ...store().config!.channels.card, commissionPct: 0.5 });
+    await store().saveConfigItem('channels', 'online', { ...store().config!.channels.online, commissionPct: 1.5, commissionFixed: 0.25 });
+    await posCloses(business.id, today(), { cash: 450, card: 600, online: 184.5 }, { online: 12 });
+    // Una venta a mano con tarjeta: la comisión del día, con lo de la caja
+    await store().saveEntry(today(), { amounts: { card: 200 }, channelNames: {} });
+    await flush();
+    const expenses = () => docs(`businesses/${business.id}/expenses`);
+    expect(expenses()[comId(today(), 'card')]).toMatchObject({ amount: 4, typeId: 'commissions', name: 'Comisión de Tarjeta' });
+    // Online: el 1,5 % de 184,50 y 0,25 por cada uno de los 12 cobros
+    expect(expenses()[comId(today(), 'online')]).toMatchObject({ amount: 5.77 });
+    expect(expenses()[comId(today(), 'cash')]).toBeUndefined();
+    // Al borrarla, la de la tarjeta vuelve a ser solo la de la caja
+    const mine = Object.keys(store().days[today()].entries).find((id) => id !== 'pos')!;
+    await store().deleteEntry(today(), mine);
+    await flush();
+    expect(expenses()[comId(today(), 'card')].amount).toBe(3);
+  });
+
+  it('borrar lo único apuntado deja el día sin cerrar, y su comisión se quita con su apunte de borrado', async () => {
+    const business = await createPizzeria();
+    await store().saveConfigItem('channels', 'card', { ...store().config!.channels.card, commissionPct: 1 });
+    await store().saveEntry(today(), { amounts: { card: 100 }, channelNames: {} });
+    await flush();
+    const id = comId(today(), 'card');
+    expect(docs(`businesses/${business.id}/expenses`)[id].amount).toBe(1);
+    const mine = Object.keys(store().days[today()].entries)[0];
+    await store().deleteEntry(today(), mine);
+    await flush();
+    expect(docs(`businesses/${business.id}/days`)[today()]).toMatchObject({ status: 'open', closedBy: null, entries: {} });
+    expect(docs(`businesses/${business.id}/expenses`)[id]).toBeUndefined();
+    expect(docs(`businesses/${business.id}/deletedExpenses`)[id]).toBeDefined();
+    const deletion = Object.values(docs(`businesses/${business.id}/changes`)).find((c) => c.action === 'delete');
+    expect(deletion).toMatchObject({ kind: 'entry', before: { amounts: { card: 100 } } });
+  });
+});
+
+describe('listas de Ajustes', () => {
+  it('se añade, se archiva y lo que no se ha usado se borra', async () => {
+    const business = await createPizzeria();
+    const id = await store().saveConfigItem('expenseTypes', null, { name: 'Leña', icon: 'pricetag', order: 30, vatRate: 21 });
+    await flush();
+    expect(docs(`businesses/${business.id}/config`).main).toMatchObject({ expenseTypes: { [id]: { name: 'Leña', vatRate: 21 } } });
+    await store().deleteConfigItem('expenseTypes', id);
+    await flush();
+    expect((docs(`businesses/${business.id}/config`).main as { expenseTypes: Record<string, unknown> }).expenseTypes[id]).toBeUndefined();
+    expect(store().config!.expenseTypes[id]).toBeUndefined();
   });
 });
 
@@ -510,7 +447,7 @@ describe('socios', () => {
     store().reset();
     expect(await store().requestJoin(` ${business.inviteCode.toLowerCase()} `)).toBe('pending');
     expect(docs(`businesses/${business.id}/joinRequests`).u2).toMatchObject({ uid: 'u2', status: 'pending', displayName: 'Ana' });
-    expect(store().pendingRequest).toMatchObject({ businessId: business.id, businessName: 'Pizzería Napoli' });
+    expect(store().pendingRequest).toMatchObject({ businessId: business.id, businessName: 'Pizzería Vesuvio' });
     expect(await store().requestJoin('NOEXISTE')).toBe('has_pending');
 
     // Quien la creó la acepta
@@ -539,83 +476,22 @@ describe('socios', () => {
 });
 
 describe('sin conexión', () => {
-  const today = () => jest.requireActual('../store/businessStore').businessToday() as string;
-  // Las reglas: pedidos solo en un día abierto
-  const ordersNeedOpenDay = (businessId: string) => (op: MockOp, all: Record<string, Record<string, MockData>>) => {
-    if (!op.path.endsWith('/orders') || op.kind === 'delete') return true;
-    const day = (op.data?.day ?? all[op.path]?.[op.id]?.day) as string;
-    return (all[`businesses/${businessId}/days`]?.[day]?.status ?? 'open') === 'open';
-  };
-
-  it('cerrar un día de pedidos sin conexión no deja nada a medias: sigue abierto y lo de después se guarda', async () => {
-    const business = await createPizzeria();
-    mockDb.rules = ordersNeedOpenDay(business.id);
-    mockDb.offline = true;
-    expect(await store().closeDay(today(), {})).toBe('offline');
-    expect(mockDb.queue).toHaveLength(0);
-    expect(await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' })).toBe('ok');
-    await mockDb.goOnline();
-    await flush();
-    expect(docs(`businesses/${business.id}/days`)[today()]).toBeUndefined();
-    expect(Object.keys(docs(`businesses/${business.id}/orders`))).toHaveLength(1);
-    expect(mockNotices).toEqual([]);
-  });
-
-  it('al cerrar, primero suben los pedidos de este móvil que esperaban en la cola', async () => {
-    const business = await createPizzeria();
-    mockDb.rules = ordersNeedOpenDay(business.id);
-    mockDb.offline = true;
-    await store().saveOrder({ lines: [pizzaLine('s_family')], channelId: 'card' });
-    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
-    // Vuelve la red, y la cola aún no ha subido
-    mockDb.offline = false;
-    const closing = store().closeDay(today(), {});
-    await flush();
-    expect(docs(`businesses/${business.id}/days`)[today()]).toBeUndefined();
-    await mockDb.goOnline();
-    expect(await closing).toBe('ok');
-    await flush();
-    expect(docs(`businesses/${business.id}/days`)[today()]).toMatchObject({ status: 'closed', ordersSummary: { count: 2, total: 24 } });
-    expect(mockNotices).toEqual([]);
-  });
-
-  it('un pedido que la nube rechazó con la app cerrada se quita al abrirla, y se avisa', async () => {
-    const business = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
-    await flush();
-    const saved = Object.values(store().orders)[0];
-    expect(saved.updatedAt).toBeDefined();
-    // De la sesión anterior: uno que la nube no tiene (lo rechazó: otro socio
-    // cerró el día) y otro que sí subió, sin la confirmación aún en el móvil
-    const lost: Order = { ...saved, id: 'perdido', total: 99, updatedAt: undefined };
-    useBusinessStore.setState({ orders: { perdido: lost, [saved.id]: { ...saved, updatedAt: undefined } } });
-    await store().deactivate();
-    await store().activate();
-    await new Promise((resolve) => setTimeout(resolve, 2100));
-    await flush();
-    expect(store().orders.perdido).toBeUndefined();
-    expect(store().orders[saved.id]?.updatedAt).toBeDefined();
-    expect(mockNotices).toEqual(['order']);
-    const copy = JSON.parse((await AsyncStorage.getItem(`@moflo_biz_${business.id}_orders_${saved.day}`)) ?? '{}');
-    expect(Object.keys(copy)).toEqual([saved.id]);
-  });
-
   it('si con la app cerrada te cambiaron de empresa, al abrirla no pasa nada de la anterior a la nueva', async () => {
     const x = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    await store().saveEntry(today(), { amounts: { cash: 100 }, channelNames: {} });
     await flush();
     // La app se cierra con la copia de X; desde otro móvil, fuera de X y dentro de Y
     store().reset();
     await firestore().collection('businesses').doc(x.id).update({ members: ['u9'] });
     await firestore().collection('businesses').doc('y1').set({
-      id: 'y1', name: 'Bar Y', createdBy: 'u2', members: ['u2', 'u1'], memberNames: {}, inviteCode: 'YYYYYY',
-      createdAt: '', template: 'bar', currencyCode: 'EUR',
+      id: 'y1', name: 'Pizzería Y', createdBy: 'u2', members: ['u2', 'u1'], memberNames: {}, inviteCode: 'YYYYYY',
+      createdAt: '', template: 'pizzeria', currencyCode: 'EUR',
     });
     await store().init();
     await flush();
     await flush();
     expect(store().business?.id).toBe('y1');
-    expect(store().orders).toEqual({});
+    expect(store().days).toEqual({});
     expect((await AsyncStorage.getAllKeys()).filter((k) => k.includes(x.id))).toEqual([]);
   });
 
@@ -633,28 +509,27 @@ describe('sin conexión', () => {
 
   it('lo que llega de la caché de Firestore no sube las marcas', async () => {
     const business = await createPizzeria();
-    await store().saveOrder({ lines: [pizzaLine('s_medium')], channelId: 'cash' });
+    await store().saveEntry(today(), { amounts: { cash: 100 }, channelNames: {} });
     await flush();
-    const before = await readBizMark('orders', business.id);
+    const before = await readBizMark('days', business.id);
     expect(before).not.toBeNull();
-    // Fuera de la empresa (sin escuchas), otro socio apunta un pedido
+    // Fuera de la empresa (sin escuchas), llega el cierre de la caja de otro día
     await store().deactivate();
-    await firestore().collection('businesses').doc(business.id).collection('orders').doc('deOtro').set({
-      id: 'deOtro', day: today(), at: '', lines: [], total: 5, channelId: 'cash', channelName: 'Efectivo',
-      status: 'ok', by: 'u2', updatedAt: firestore.FieldValue.serverTimestamp(),
+    await firestore().collection('businesses').doc(business.id).collection('days').doc('2026-01-02').set({
+      id: '2026-01-02', status: 'closed', closedBy: 'pos', entries: {}, updatedAt: firestore.FieldValue.serverTimestamp(),
     });
     mockDb.offline = true;
     await store().sync();
-    expect(await readBizMark('orders', business.id)).toBe(before);
+    expect(await readBizMark('days', business.id)).toBe(before);
     await mockDb.goOnline();
     await store().sync();
-    expect(await readBizMark('orders', business.id)).toBeGreaterThan(before!);
+    expect(await readBizMark('days', business.id)).toBeGreaterThan(before!);
   });
 
   it('borrar la empresa sin conexión avisa y no borra nada; con conexión, todo, también lo que no está en el móvil', async () => {
     const business = await createPizzeria();
-    await firestore().collection('businesses').doc(business.id).collection('orders').doc('deOtro').set({
-      id: 'deOtro', day: '2026-01-02', total: 5, status: 'ok', updatedAt: firestore.FieldValue.serverTimestamp(),
+    await firestore().collection('businesses').doc(business.id).collection('days').doc('2026-01-02').set({
+      id: '2026-01-02', status: 'closed', entries: {}, updatedAt: firestore.FieldValue.serverTimestamp(),
     });
     mockDb.offline = true;
     await expect(store().deleteBusiness()).rejects.toMatchObject({ code: 'offline' });
@@ -664,7 +539,7 @@ describe('sin conexión', () => {
     await store().deleteBusiness();
     expect(docs('businesses')[business.id]).toBeUndefined();
     expect(docs('businessInviteCodes')[business.inviteCode]).toBeUndefined();
-    for (const name of ['config', 'catalog', 'orders']) expect(docs(`businesses/${business.id}/${name}`)).toEqual({});
+    for (const name of ['config', 'days']) expect(docs(`businesses/${business.id}/${name}`)).toEqual({});
   });
 
   it('salir de la empresa sin conexión avisa y no deja nada en la cola', async () => {

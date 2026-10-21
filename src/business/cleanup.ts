@@ -1,7 +1,7 @@
 import firestore from '@react-native-firebase/firestore';
 import { reportError } from '../services/crashReporting';
 import { deleteSubcollections } from '../services/firebase/batchDelete';
-import { BUSINESS_ENABLED } from './featureFlag';
+import { businessAllowed, resetBusinessAccess } from './access';
 import { BUSINESS_SUBCOLLECTIONS, businessesCol } from './cloud/refs';
 import { removeBusinessCaches } from './cloud/cache';
 import { deleteBusinessCode } from './cloud/codes';
@@ -16,6 +16,7 @@ import { useBusinessStore } from './store/businessStore';
 export const resetBusinessOnSignOut = async () => {
   try {
     useBusinessStore.getState().reset();
+    resetBusinessAccess();
     await removeBusinessCaches();
   } catch (e) {
     reportError(e, 'empresa: cerrar sesión');
@@ -27,7 +28,7 @@ export const resetBusinessOnSignOut = async () => {
  * borra entera; de la de otro, sales (y tu nombre se va con tu cuenta)
  */
 export const removeBusinessOnAccountDeletion = async (uid: string) => {
-  if (BUSINESS_ENABLED) {
+  if (businessAllowed()) {
     try {
       useBusinessStore.getState().reset();
       const snap = await businessesCol().where('members', 'array-contains', uid).get();

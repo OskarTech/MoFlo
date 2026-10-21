@@ -16,9 +16,10 @@ import PremiumModal from './PremiumModal';
 import Avatar from './Avatar';
 import { getMemberPhoto } from '../../utils/memberLabel';
 import { BUSINESS_ENABLED } from '../../business/featureFlag';
+import { useBusinessAccess } from '../../business/access';
 import { useBusinessStore } from '../../business/store/businessStore';
 import { switchToBusiness } from '../../business/store/switch';
-import { templateInfo } from '../../business/templates';
+import { BUSINESS_ICON } from '../../business/templates';
 import { openCreateBusiness } from '../../business/ui/CreateBusinessModal';
 
 const initialOf = (name?: string) => (name?.trim()?.charAt(0) || '?').toUpperCase();
@@ -39,7 +40,8 @@ const AccountSwitcher = () => {
 
   const [showSheet, setShowSheet] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  // La cuenta de empresa (ver business/featureFlag)
+  // La cuenta de empresa, solo para las cuentas de su lista (ver business/access)
+  const businessAllowed = useBusinessAccess((s) => s.allowed);
   const business = useBusinessStore((s) => s.business);
   const businessRequest = useBusinessStore((s) => s.pendingRequest);
 
@@ -174,15 +176,15 @@ const AccountSwitcher = () => {
             : t('header.sharedAccountSubtitle'),
           !isPremium, sharedAccount?.photoURL,
         )}
-        {BUSINESS_ENABLED && option(
-          false, handleSelectBusiness, (business ? templateInfo(business.template).icon : 'business') as IconName,
+        {BUSINESS_ENABLED && businessAllowed && option(
+          false, handleSelectBusiness, (business ? BUSINESS_ICON : 'business') as IconName,
           business?.name ?? t('business.title'),
           business
             ? t('business.partnerCount', { count: business.members.length })
             : businessRequest?.status === 'pending'
               ? t('business.join.pendingShort', { name: businessRequest.businessName })
               : t('business.selectorSubtitle'),
-          !business && !isPremium && !businessRequest,
+          false,
         )}
       </BottomSheet>
 

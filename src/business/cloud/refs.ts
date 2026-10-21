@@ -4,11 +4,10 @@ import { DELETION_TTL_MS } from '../../store/cloudCheck';
 /**
  * Dónde vive cada cosa de la empresa en Firestore (ver firestore.rules):
  *
+ *   businessAccess/{uid}       quién ve la empresa (ver access.ts)
  *   businesses/{id}            la empresa: nombre, socios (5 como mucho), creador
- *   ├─ config/main             formas de cobro, empleados, proveedores, cajas…
- *   ├─ catalog/main            la carta
- *   ├─ days/{AAAA-MM-DD}       el cierre de cada día
- *   ├─ orders/{id}             los pedidos (pedido a pedido)
+ *   ├─ config/main             formas de cobro, empleados, proveedores, tipos de gasto…
+ *   ├─ days/{AAAA-MM-DD}       lo vendido cada día: lo de la caja (pos) y lo de a mano
  *   ├─ expenses/{id}           los gastos
  *   ├─ recurring/{id}          los fijos
  *   ├─ changes/{id}            el historial de cambios (solo se añade)
@@ -22,23 +21,21 @@ type DocRef = FirebaseFirestoreTypes.DocumentReference;
 type ColRef = FirebaseFirestoreTypes.CollectionReference;
 
 /** Lo que se sincroniza por la hora del servidor de su último cambio */
-export type BizCollection = 'days' | 'orders' | 'expenses' | 'recurring';
+export type BizCollection = 'days' | 'expenses' | 'recurring';
 
-/** Dónde se apuntan los borrados (los pedidos y los días no se borran: se anulan y se reabren) */
+/** Dónde se apuntan los borrados (los días no se borran: se quitan sus entradas) */
 export const BIZ_DELETED: Partial<Record<BizCollection, string>> = {
   expenses: 'deletedExpenses',
   recurring: 'deletedRecurring',
 };
 
 export const BUSINESS_SUBCOLLECTIONS = [
-  'config', 'catalog', 'days', 'orders', 'expenses', 'recurring', 'changes',
-  'deletedExpenses', 'deletedRecurring', 'joinRequests',
+  'config', 'days', 'expenses', 'recurring', 'changes', 'deletedExpenses', 'deletedRecurring', 'joinRequests',
 ];
 
 export const businessesCol = (): ColRef => firestore().collection('businesses');
 export const businessRef = (businessId: string): DocRef => businessesCol().doc(businessId);
 export const configRef = (businessId: string): DocRef => businessRef(businessId).collection('config').doc('main');
-export const catalogRef = (businessId: string): DocRef => businessRef(businessId).collection('catalog').doc('main');
 export const bizCol = (businessId: string, name: BizCollection | 'changes' | 'joinRequests'): ColRef =>
   businessRef(businessId).collection(name);
 export const bizDeletedCol = (businessId: string, name: BizCollection): ColRef | null => {

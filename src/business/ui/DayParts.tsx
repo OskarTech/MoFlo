@@ -1,170 +1,103 @@
 import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useTheme } from '../../hooks/useTheme';
-import { successHaptic, warningHaptic } from '../../utils/haptics';
 import { useBusinessStore } from '../store/businessStore';
 import { useBizUiStore } from '../store/uiStore';
-import { entryCashDiff, entryTotal, usesOrders, usesTills } from '../logic/days';
-import { describeOrder } from '../logic/orders';
-import { BusinessDay, DayEntry, Order } from '../types';
+import { entryCashDiff, entryTotal, isPosEntry } from '../logic/days';
+import { BusinessDay, DayEntry, POS_ACTOR } from '../types';
 import { ListRow, PillButton, useMoney } from './kit';
 import { channelIcon, timeOf } from './format';
 
 /** Las piezas de un día que se ven en Hoy y en el detalle del día */
 
-const memberName = (uid: string | null | undefined) => {
+/** El nombre de quien firma algo: un socio o la caja */
+export const actorName = (uid: string | null | undefined, t: TFunction): string => {
+  if (uid === POS_ACTOR) return t('business.pos.who');
   const business = useBusinessStore.getState().business;
-  return uid ? business?.memberNames?.[uid] ?? '' : '';
+  return (uid && business?.memberNames?.[uid]) || t('sharedAccount.someone');
 };
 
-/** El estado del día y lo que se puede hacer con él: cerrarlo, terminar de cerrarlo o reabrirlo */
+/**
+ * Cómo va el día: cerrado por la caja (o a mano, por un socio), o aún sin
+ * nada, esperando a la caja. Siempre se puede apuntar algo a mano
+ */
 export const DayStatusCard = ({
-  dayId, day, sales, entriesCount, ordersCount,
+  dayId, day, isToday,
 }: {
   dayId: string;
   day: BusinessDay | undefined;
-  sales: number;
-  entriesCount: number;
-  ordersCount: number;
+  /** Hoy, la caja aún no ha cerrado: se la espera */
+  isToday: boolean;
 }) => {
   const { t } = useTranslation();
   const { colors: dc, ui } = useTheme();
-  const { money } = useMoney();
-  const config = useBusinessStore((s) => s.config);
   const open = useBizUiStore((s) => s.open);
-  const status = day?.status ?? 'open';
-  const orderMode = usesOrders(config);
-
-  const reopen = () => {
-    Alert.alert(t('business.day.reopenTitle'), t('business.day.reopenBody'), [
-      { text: t('settings.cancel'), style: 'cancel' },
-      {
-        text: t('business.day.reopen'),
-        onPress: async () => {
-          warningHaptic();
-          await useBusinessStore.getState().reopenDay(dayId);
-        },
-      },
-    ]);
-  };
-
-  const closeSimple = () => {
-    Alert.alert(
-      t('business.day.closeTitle'),
-      t('business.day.closeBody', { amount: money(sales), count: entriesCount }),
-      [
-        { text: t('settings.cancel'), style: 'cancel' },
-        {
-          text: t('business.day.close'),
-          onPress: async () => {
-            await useBusinessStore.getState().closeDay(dayId);
-            successHaptic();
-          },
-        },
-      ],
-    );
-  };
+  const hasData = Object.keys(day?.entries ?? {}).length > 0;
 
   let title: string;
   let subtitle: string;
-  let action: React.ReactNode = null;
-  if (status === 'closed') {
+  if (hasData && day?.status === 'closed') {
     title = t('business.day.closed');
-    const who = memberName(day?.closedBy);
-    subtitle = day?.closedAt
-      ? t('business.day.closedBy', { name: who || t('sharedAccount.someone'), time: timeOf(day.closedAt) })
+    subtitle = day.closedAt
+      ? (day.closedBy === POS_ACTOR
+        ? t('business.pos.closedAt', { time: timeOf(day.closedAt) })
+        : t('business.day.closedBy', { name: actorName(day.closedBy, t), time: timeOf(day.closedAt) }))
       : '';
-    action = <PillButton label={t('business.day.reopen')} icon="lock-open" tone="soft" onPress={reopen} />;
-  } else if (status === 'closing') {
-    title = t('business.day.closing');
-    subtitle = t('business.day.closingHint');
-    action = <PillButton label={t('business.day.finishClosing')} icon="lock-closed" onPress={() => open({ kind: 'close', dayId })} />;
-  } else if (orderMode) {
-    title = t('business.day.open');
-    subtitle = t('business.day.ordersSoFar', { count: ordersCount });
-    action = <PillButton label={t('business.day.close')} icon="lock-closed" onPress={() => open({ kind: 'close', dayId })} />;
-  } else if (entriesCount > 0) {
-    title = t('business.day.open');
-    subtitle = usesTills(config)
-      ? t('business.day.tillsSoFar', { count: entriesCount })
-      : t('business.day.entriesSoFar', { count: entriesCount });
-    action = <PillButton label={t('business.day.close')} icon="lock-closed" onPress={closeSimple} />;
+  } else if (hasData) {
+    title = t('business.day.openShort');
+    subtitle = '';
+  } else if (isToday) {
+    title = t('business.pos.waiting');
+    subtitle = t('business.pos.waitingHint');
   } else {
-    title = t('business.day.noClose');
-    subtitle = usesTills(config) ? t('business.day.noTillsHint') : t('business.day.noCloseHint');
-    action = (
-      <PillButton
-        label={usesTills(config) ? t('business.day.addTill') : t('business.day.addClose')}
-        icon="add"
-        onPress={() => open({ kind: 'entry', dayId })}
-      />
-    );
+    title = t('business.pos.missing');
+    subtitle = t('business.pos.missingHint');
   }
 
   return (
     <View style={[styles.card, { backgroundColor: ui.field }]}>
       <View style={styles.cardText}>
         <Text style={[styles.cardTitle, { color: dc.textPrimary }]} numberOfLines={1}>{title}</Text>
-        {subtitle ? <Text style={[styles.cardSub, { color: dc.textSecondary }]} numberOfLines={2}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={[styles.cardSub, { color: dc.textSecondary }]} numberOfLines={3}>{subtitle}</Text> : null}
       </View>
-      {action}
+      <PillButton
+        label={t('business.day.addManual')}
+        icon="add"
+        tone={hasData ? 'soft' : undefined}
+        onPress={() => open({ kind: 'entry', dayId })}
+      />
     </View>
   );
 };
 
-/** Una caja, un turno o el cierre del día */
-export const EntryRow = ({
-  entry, dayOpen, dayId,
-}: { entry: DayEntry; dayOpen: boolean; dayId: string }) => {
+/**
+ * Lo de la caja o lo apuntado a mano. Lo de la caja no se toca: el siguiente
+ * cierre que mande lo reemplazaría
+ */
+export const EntryRow = ({ entry, dayId }: { entry: DayEntry; dayId: string }) => {
   const { t } = useTranslation();
   const { money } = useMoney();
   const config = useBusinessStore((s) => s.config);
   const open = useBizUiStore((s) => s.open);
-  const workerName = (entry.workerId && config?.workers?.[entry.workerId]?.name) || entry.workerName;
-  const till = (entry.tillId && config?.tills?.[entry.tillId]?.name) || entry.tillName;
-  const shift = (entry.shiftId && config?.shifts?.[entry.shiftId]?.name) || entry.shiftName;
-  const title = entry.fromOrders
-    ? t('business.day.closeEntry')
-    : [workerName, till, shift].filter(Boolean).join(' · ') || t('business.day.wholeDay');
+  const pos = isPosEntry(entry);
   const parts: string[] = [];
+  if (!pos) parts.push(actorName(entry.by, t));
+  parts.push(timeOf(entry.at));
   if (entry.tickets) parts.push(t('business.day.tickets', { count: entry.tickets }));
   const diff = config ? entryCashDiff(entry, config) : null;
   if (diff != null) parts.push(Math.abs(diff) < 0.01 ? t('business.entry.balanced') : `${t('business.entry.diff')} ${money(diff)}`);
+  if (entry.note?.trim()) parts.push(entry.note.trim());
   const firstChannel = Object.keys(entry.amounts ?? {})[0];
   return (
     <ListRow
-      initial={workerName && !entry.fromOrders ? workerName.charAt(0).toUpperCase() : undefined}
-      icon={entry.fromOrders ? 'lock-closed' : channelIcon(firstChannel ? config?.channels?.[firstChannel]?.kind : 'cash')}
-      title={title}
-      subtitle={parts.join(' · ') || null}
+      icon={pos ? 'receipt' : channelIcon(firstChannel ? config?.channels?.[firstChannel]?.kind : 'cash')}
+      title={pos ? t('business.pos.entryTitle') : t('business.day.manualEntry')}
+      subtitle={parts.join(' · ')}
       right={money(entryTotal(entry))}
-      onPress={dayOpen && !entry.fromOrders ? () => open({ kind: 'entry', dayId, entryId: entry.id }) : undefined}
-    />
-  );
-};
-
-/** Un pedido: lo pedido, la hora, cómo pagó y quién lo apuntó. Anulado, tachado */
-export const OrderRow = ({ order, dayOpen }: { order: Order; dayOpen: boolean }) => {
-  const { t } = useTranslation();
-  const { money } = useMoney();
-  const open = useBizUiStore((s) => s.open);
-  const voided = order.status === 'void';
-  const subtitle = voided
-    ? t('business.order.voidedBy', {
-      name: memberName(order.voidedBy) || t('sharedAccount.someone'),
-      time: order.voidedAt ? timeOf(order.voidedAt) : '',
-    })
-    : [timeOf(order.at), order.note?.trim(), order.channelName, memberName(order.by)].filter(Boolean).join(' · ');
-  return (
-    <ListRow
-      icon="receipt-outline"
-      title={describeOrder(order.lines)}
-      subtitle={subtitle}
-      right={money(order.total)}
-      struck={voided}
-      onPress={dayOpen && !voided ? () => open({ kind: 'order', orderId: order.id }) : undefined}
+      onPress={pos ? undefined : () => open({ kind: 'entry', dayId, entryId: entry.id })}
     />
   );
 };

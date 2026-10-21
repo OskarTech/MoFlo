@@ -272,13 +272,28 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/sharedAccounts/$(resource.data.accountId)).data.get('createdBy', null) == request.auth.uid;
     }
 
+    // ── Quién ve la cuenta de empresa ──
+    // Un documento por cuenta, que se pone a mano desde la consola. Cada
+    // cuenta lee solo el suyo; nadie escribe desde la app
+    function hasBusinessAccess() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/businessAccess/$(request.auth.uid));
+    }
+
+    match /businessAccess/{uid} {
+      allow get: if isOwner(uid);
+      allow list, write: if false;
+    }
+
     // ── Cuenta de empresa ──
-    // Una empresa por persona (lo controla la app) y 5 socios como mucho
-    // (aquí). Solo la leen sus socios: quien pide entrar ve el nombre en su
-    // código (businessInviteCodes). Lo que se sincroniza lleva siempre la hora
-    // del servidor de la escritura: aquí no hay versiones antiguas de la app
-    // que proteger. Los pedidos de un día que se está cerrando o ya cerrado no
-    // se tocan, y el historial de cambios solo crece.
+    // Solo para las cuentas de la lista: sin ella no se crea una empresa, no
+    // se pide entrar ni se lee un código. Una empresa por persona (lo controla
+    // la app) y 5 socios como mucho (aquí). Solo la leen sus socios: quien
+    // pide entrar ve el nombre en su código (businessInviteCodes). Lo que se
+    // sincroniza lleva siempre la hora del servidor de la escritura: aquí no
+    // hay versiones antiguas de la app que proteger. La entrada de cada día
+    // que manda la caja (pos) solo la escribe el servidor, y el historial de
+    // cambios solo crece.
     match /businesses/{businessId} {
       function bizData() {
         return get(/databases/$(database)/documents/businesses/$(businessId)).data;
@@ -304,10 +319,10 @@ service cloud.firestore {
       function hasBizJoinRequest(uid) {
         return exists(/databases/$(database)/documents/businesses/$(businessId)/joinRequests/$(uid));
       }
-      // Un día en el que aún se pueden apuntar pedidos: sin cierre, o reabierto
-      function dayOpen(day) {
-        return !exists(/databases/$(database)/documents/businesses/$(businessId)/days/$(day))
-          || get(/databases/$(database)/documents/businesses/$(businessId)/days/$(day)).data.get('status', 'open') == 'open';
+      // La entrada que manda la caja: la app no la crea ni la cambia
+      function posUntouched() {
+        return request.resource.data.get('entries', {}).get('pos', null)
+          == resource.data.get('entries', {}).get('pos', null);
       }
       function validName() {
         return request.resource.data.name is string
@@ -318,7 +333,7 @@ service cloud.firestore {
       allow get, list: if isSignedIn() && request.auth.uid in resource.data.members;
 
       // Solo la tuya y empezando tú solo dentro
-      allow create: if isSignedIn()
+      allow create: if hasBusinessAccess()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.members == [request.auth.uid]
         && validName();
@@ -356,32 +371,21 @@ service cloud.firestore {
 
       allow delete: if isSignedIn() && request.auth.uid == resource.data.createdBy;
 
-      // La configuración y la carta: cualquier socio
+      // La configuración: cualquier socio
       match /config/{docId} {
         allow read, write: if isPartner();
       }
-      match /catalog/{docId} {
-        allow read, write: if isPartner();
-      }
 
-      // El cierre de cada día: su id es la fecha
+      // Lo vendido cada día: su id es la fecha. Lo de la caja (pos) lo
+      // escribe solo el servidor (functions/src/pos.ts), que no pasa por aquí
       match /days/{day} {
         allow read: if isPartner();
-        allow create, update: if isPartner() && stampedNow()
-          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
-        allow delete: if isBizCreator();
-      }
-
-      // Los pedidos: solo en un día abierto y sin cambiarlos de día. No se
-      // borran (se anulan), salvo al borrar la empresa entera
-      match /orders/{orderId} {
-        allow read: if isPartner();
         allow create: if isPartner() && stampedNow()
-          && request.resource.data.day is string
-          && dayOpen(request.resource.data.day);
+          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && !('pos' in request.resource.data.get('entries', {}));
         allow update: if isPartner() && stampedNow()
-          && request.resource.data.day == resource.data.day
-          && dayOpen(resource.data.day);
+          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && posUntouched();
         allow delete: if isBizCreator();
       }
 
@@ -416,7 +420,7 @@ service cloud.firestore {
 
       match /joinRequests/{requesterUid} {
         allow read: if isSignedIn() && (request.auth.uid == requesterUid || isPartner());
-        allow create: if isSignedIn()
+        allow create: if hasBusinessAccess()
           && request.auth.uid == requesterUid
           && request.resource.data.uid == requesterUid
           && request.resource.data.status == 'pending';
@@ -437,7 +441,7 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/businesses/$(id)).data;
       }
 
-      allow get: if isSignedIn();
+      allow get: if hasBusinessAccess();
       allow list: if false;
 
       allow create: if isSignedIn()

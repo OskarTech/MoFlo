@@ -8,12 +8,13 @@ import { useBusinessStore } from '../store/businessStore';
 import { useBizUiStore } from '../store/uiStore';
 import { orderedItems } from '../logic/basics';
 import { Channel, ConfigListKind, ExpenseType, Supplier, Worker } from '../types';
-import { AddLink, EmptyNote, ListRow, Note } from '../ui/kit';
+import { expenseRole } from '../templates';
+import { AddLink, EmptyNote, ListRow, Note, useMoney } from '../ui/kit';
 import { channelIcon } from '../ui/format';
 
 /**
- * Una lista de Empresa: formas de cobro, empleados, proveedores, tipos de
- * gasto, secciones, cajas o turnos. Lo archivado, al final y en gris
+ * Una lista de Ajustes: formas de cobro, empleados, proveedores o tipos de
+ * gasto. Lo archivado, al final y en gris
  */
 const BizListScreen = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const BizListScreen = () => {
   const list: ConfigListKind = route.params?.list ?? 'channels';
   const config = useBusinessStore((s) => s.config);
   const open = useBizUiStore((s) => s.open);
+  const { money } = useMoney();
 
   // El botón + de abajo añade a esta lista
   useEffect(() => {
@@ -44,8 +46,16 @@ const BizListScreen = () => {
       const parts = [
         kind.toLocaleLowerCase() === item.name.trim().toLocaleLowerCase() ? null : kind,
         c.commissionPct ? t('business.entry.commission', { pct: c.commissionPct }) : null,
+        c.commissionFixed ? t('business.lists.channels.fixedFeeShort', { amount: money(c.commissionFixed) }) : null,
       ].filter(Boolean);
       return parts.join(' · ') || null;
+    }
+    if (list === 'expenseTypes' && config) {
+      const role = expenseRole(item.id, config);
+      return [
+        t('business.lists.expenseTypes.vatShort', { pct: (item as unknown as ExpenseType).vatRate ?? 0 }),
+        role === 'none' ? null : t(`business.lists.expenseTypes.roles.${role}`),
+      ].filter(Boolean).join(' · ');
     }
     if (list === 'workers') return (item as unknown as Worker).role || null;
     if (list === 'suppliers') {

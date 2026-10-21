@@ -5,19 +5,19 @@ import { useTranslation } from 'react-i18next';
 import Icon from '../../components/common/Icon';
 import BottomSheet, { FilledInput, SheetButton, SheetLabel } from '../../components/common/BottomSheet';
 import { useTheme } from '../../hooks/useTheme';
-import { successHaptic, warningHaptic } from '../../utils/haptics';
+import { successHaptic } from '../../utils/haptics';
 import { businessToday, useBusinessStore } from '../store/businessStore';
 import { cents, newId, orderedItems, sumOf } from '../logic/basics';
-import { entryCashDiff, sectionsTotal, usesTills } from '../logic/days';
+import { entryCashDiff } from '../logic/days';
 import { ManualAmount } from '../types';
-import { AddLink, AmountBox, Chip, ChipRow, FieldRow, useMoney } from '../ui/kit';
+import { AddLink, AmountBox, FieldRow, useMoney } from '../ui/kit';
 import { channelIcon, dayTitle } from '../ui/format';
 
 /**
- * Lo cobrado en una caja, un turno o el día entero (Sencillo y por caja): lo
- * de cada forma de cobro, sumado fuera (con la calculadora o el ticket Z) y,
- * si se usan, los tickets, las secciones y el arqueo. Todo se puede escribir a
- * mano, también lo que no es de ninguna forma de cobro.
+ * Lo vendido a mano en un día: un día sin caja, o algo que no pasó por ella
+ * (un encargo, un evento). Lo de cada forma de cobro y, si hace falta, lo que
+ * no es de ninguna, escrito a mano; con arqueo si se usa. Si el día aún no
+ * estaba cerrado, guardarlo lo cierra
  */
 const EntrySheet = ({
   visible, dayId, entryId, onClose,
@@ -28,27 +28,14 @@ const EntrySheet = ({
   const config = useBusinessStore((s) => s.config);
   const day = useBusinessStore((s) => s.days[dayId]);
   const editing = entryId ? day?.entries?.[entryId] : undefined;
-
   const channels = useMemo(() => orderedItems(config?.channels), [config]);
-  const workers = useMemo(() => orderedItems(config?.workers), [config]);
-  const tills = useMemo(() => orderedItems(config?.tills), [config]);
-  const shifts = useMemo(() => orderedItems(config?.shifts), [config]);
-  const sections = useMemo(() => orderedItems(config?.sections), [config]);
-  const expert = usesTills(config);
-  const simpleOneShot = !expert && shifts.length === 0;
+  const closes = day?.status !== 'closed';
 
   const [amounts, setAmounts] = useState<Record<string, number | null>>({});
   const [manual, setManual] = useState<ManualAmount[]>([]);
   const [manualName, setManualName] = useState('');
   const [manualAmount, setManualAmount] = useState<number | null>(null);
   const [showManual, setShowManual] = useState(false);
-  const [workerId, setWorkerId] = useState<string | null>(null);
-  const [otherWorker, setOtherWorker] = useState('');
-  const [showOther, setShowOther] = useState(false);
-  const [tillId, setTillId] = useState<string | null>(null);
-  const [shiftId, setShiftId] = useState<string | null>(null);
-  const [tickets, setTickets] = useState<number | null>(null);
-  const [sectionAmounts, setSectionAmounts] = useState<Record<string, number | null>>({});
   const [float, setFloat] = useState<number | null>(null);
   const [counted, setCounted] = useState<number | null>(null);
   const [note, setNote] = useState('');
@@ -61,14 +48,6 @@ const EntrySheet = ({
     setManualName('');
     setManualAmount(null);
     setShowManual(false);
-    const knownWorker = e?.workerId && config?.workers?.[e.workerId] ? e.workerId : null;
-    setWorkerId(knownWorker);
-    setOtherWorker(!knownWorker && e?.workerName ? e.workerName : '');
-    setShowOther(!knownWorker && !!e?.workerName);
-    setTillId(e?.tillId ?? (tills.length === 1 ? tills[0].id : null));
-    setShiftId(e?.shiftId ?? null);
-    setTickets(e?.tickets ?? null);
-    setSectionAmounts(Object.fromEntries(sections.map((s) => [s.id, e?.sections?.[s.id] ?? null])));
     setFloat(e?.float ?? (config?.cashCount ? config.floatAmount : null));
     setCounted(e?.counted ?? null);
     setNote(e?.note ?? '');
@@ -78,7 +57,6 @@ const EntrySheet = ({
   const total = cents(
     sumOf(Object.values(amounts), (v) => v ?? 0) + sumOf(manual, (m) => m.amount),
   );
-  const sectionsSum = sectionsTotal({ sections: Object.fromEntries(Object.entries(sectionAmounts).map(([k, v]) => [k, v ?? 0])) });
   const cleanAmounts = Object.fromEntries(Object.entries(amounts).filter(([, v]) => (v ?? 0) > 0)) as Record<string, number>;
   const diff = config && counted != null
     ? entryCashDiff({ amounts: cleanAmounts, float: float ?? 0, counted }, config)
@@ -86,36 +64,15 @@ const EntrySheet = ({
 
   const save = async () => {
     if (!config) return;
-    const workerName = workerId ? config.workers[workerId]?.name : otherWorker.trim() || null;
-    const result = await useBusinessStore.getState().saveEntry(dayId, {
+    await useBusinessStore.getState().saveEntry(dayId, {
       id: editing?.id,
-      workerId: workerId ?? null,
-      workerName,
-      tillId: tillId ?? null,
-      tillName: tillId ? config.tills[tillId]?.name ?? null : null,
-      shiftId: shiftId ?? null,
-      shiftName: shiftId ? config.shifts[shiftId]?.name ?? null : null,
       amounts: cleanAmounts,
       channelNames: Object.fromEntries(Object.keys(cleanAmounts).map((id) => [id, config.channels[id]?.name ?? id])),
       manual: manual.length ? manual : undefined,
-      tickets: expert && tickets != null ? tickets : null,
-      sections: expert && sections.length
-        ? Object.fromEntries(Object.entries(sectionAmounts).filter(([, v]) => (v ?? 0) > 0)) as Record<string, number>
-        : undefined,
-      sectionNames: expert && sections.length
-        ? Object.fromEntries(sections.map((s) => [s.id, s.name]))
-        : undefined,
       float: config.cashCount && counted != null ? float ?? 0 : null,
       counted: config.cashCount ? counted : null,
       note: note.trim() || undefined,
     });
-    if (result === 'dayClosed') {
-      warningHaptic();
-      Alert.alert(t('business.day.closedTitle'), t('business.day.closedBody'));
-      return;
-    }
-    // En Sencillo, sin turnos, guardar es cerrar el día
-    if (simpleOneShot) await useBusinessStore.getState().closeDay(dayId);
     successHaptic();
     onClose();
   };
@@ -136,18 +93,16 @@ const EntrySheet = ({
   };
 
   const todayId = businessToday();
-  const title = simpleOneShot
-    ? (dayId === todayId
-      ? t('business.entry.closeToday')
-      : t('business.entry.closeOf', { day: dayTitle(dayId, t, i18n.language, todayId) }))
-    : editing ? t('business.entry.editTitle') : t('business.entry.newTitle');
+  const title = editing
+    ? t('business.entry.editTitle')
+    : t('business.entry.newTitle', { day: dayTitle(dayId, t, i18n.language, todayId) });
 
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
       title={title}
-      subtitle={simpleOneShot ? t('business.entry.simpleHint') : expert ? t('business.entry.tillHint') : undefined}
+      subtitle={t('business.entry.hint')}
       maxHeight={0.94}
       dismissKeyboardOnTap
       footer={(
@@ -157,7 +112,7 @@ const EntrySheet = ({
             <Text style={[styles.totalValue, { color: dc.textPrimary }]}>{money(total)}</Text>
           </View>
           <SheetButton
-            label={simpleOneShot ? t('business.entry.saveAndClose') : t('business.common.save')}
+            label={closes && !editing ? t('business.entry.saveAndClose') : t('business.common.save')}
             icon="checkmark"
             disabled={total <= 0 && !editing}
             onPress={save}
@@ -165,52 +120,7 @@ const EntrySheet = ({
         </View>
       )}
     >
-      {(workers.length > 0 || showOther) && (
-        <>
-          <SheetLabel style={styles.firstLabel}>{expert ? t('business.entry.who') : t('business.entry.whoCloses')}</SheetLabel>
-          <ChipRow>
-            {workers.map((w) => (
-              <Chip key={w.id} label={w.name} selected={w.id === workerId} onPress={() => { setWorkerId(w.id === workerId ? null : w.id); setShowOther(false); }} />
-            ))}
-            <Chip label={t('business.entry.otherPerson')} icon="add" selected={showOther} onPress={() => { setShowOther(!showOther); setWorkerId(null); }} />
-          </ChipRow>
-          {showOther && (
-            <FilledInput
-              value={otherWorker}
-              onChangeText={setOtherWorker}
-              placeholder={t('business.entry.otherPersonPlaceholder')}
-              containerStyle={styles.gapTop}
-              maxLength={40}
-            />
-          )}
-        </>
-      )}
-      {workers.length === 0 && !showOther && (
-        <AddLink label={t('business.entry.addWho')} onPress={() => setShowOther(true)} />
-      )}
-
-      {expert && tills.length > 0 && (
-        <>
-          <SheetLabel>{t('business.entry.till')}</SheetLabel>
-          <ChipRow>
-            {tills.map((c) => (
-              <Chip key={c.id} label={c.name} selected={c.id === tillId} onPress={() => setTillId(c.id === tillId ? null : c.id)} />
-            ))}
-          </ChipRow>
-        </>
-      )}
-      {shifts.length > 0 && (
-        <>
-          <SheetLabel>{t('business.entry.shift')}</SheetLabel>
-          <ChipRow>
-            {shifts.map((s) => (
-              <Chip key={s.id} label={s.name} selected={s.id === shiftId} onPress={() => setShiftId(s.id === shiftId ? null : s.id)} />
-            ))}
-          </ChipRow>
-        </>
-      )}
-
-      <SheetLabel>{expert ? t('business.entry.chargedZ') : t('business.entry.charged')}</SheetLabel>
+      <SheetLabel style={styles.firstLabel}>{t('business.entry.charged')}</SheetLabel>
       {channels.map((c) => (
         <FieldRow
           key={c.id}
@@ -275,44 +185,6 @@ const EntrySheet = ({
         <AddLink label={t('business.entry.addManual')} onPress={() => setShowManual(true)} />
       )}
 
-      {expert && (
-        <>
-          <SheetLabel>{t('business.entry.tickets')}</SheetLabel>
-          <FieldRow
-            icon="receipt-outline"
-            title={t('business.entry.ticketCount')}
-            subtitle={tickets && total > 0 ? t('business.entry.avgTicket', { amount: money(total / tickets) }) : null}
-            right={<AmountBox value={tickets} onChange={setTickets} integer accessibilityLabel={t('business.entry.ticketCount')} />}
-          />
-        </>
-      )}
-
-      {expert && sections.length > 0 && (
-        <>
-          <SheetLabel>{t('business.entry.sections')}</SheetLabel>
-          {sections.map((s) => (
-            <FieldRow
-              key={s.id}
-              title={s.name}
-              right={(
-                <AmountBox
-                  value={sectionAmounts[s.id] ?? null}
-                  onChange={(v) => setSectionAmounts((prev) => ({ ...prev, [s.id]: v }))}
-                  accessibilityLabel={s.name}
-                />
-              )}
-            />
-          ))}
-          {sectionsSum > 0 && (
-            <Text style={[styles.hint, { color: Math.abs(sectionsSum - total) < 0.01 ? ui.incomeText : dc.textSecondary }]}>
-              {Math.abs(sectionsSum - total) < 0.01
-                ? t('business.entry.sectionsMatch', { amount: money(sectionsSum) })
-                : t('business.entry.sectionsDiff', { amount: money(sectionsSum), diff: money(Math.abs(total - sectionsSum)) })}
-            </Text>
-          )}
-        </>
-      )}
-
       {config?.cashCount && (
         <>
           <SheetLabel>{t('business.entry.cashCount')}</SheetLabel>
@@ -357,7 +229,6 @@ const styles = StyleSheet.create({
   manualForm: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   addSmall: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   disabled: { opacity: 0.4 },
-  hint: { fontSize: 12.5, fontFamily: 'Poppins_500Medium', marginTop: 8 },
   diffBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 14, padding: 12, marginTop: 10 },
   diffLabel: { fontSize: 13.5, fontFamily: 'Poppins_600SemiBold' },
   diffValue: { fontSize: 17, fontFamily: 'Poppins_700Bold' },

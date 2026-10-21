@@ -17,7 +17,6 @@ export const useMonth = () => {
 
   const config = useBusinessStore((s) => s.config);
   const days = useBusinessStore((s) => s.days);
-  const orders = useBusinessStore((s) => s.orders);
   const expenses = useBusinessStore((s) => s.expenses);
   const recurring = useBusinessStore((s) => s.recurring);
 
@@ -28,9 +27,9 @@ export const useMonth = () => {
   const summary = useMemo(() => (config
     ? monthSummary({
       year, month0, todayId, config, days,
-      orders: Object.values(orders), expenses: Object.values(expenses), recurring: Object.values(recurring),
+      expenses: Object.values(expenses), recurring: Object.values(recurring),
     })
-    : null), [year, month0, todayId, config, days, orders, expenses, recurring]);
+    : null), [year, month0, todayId, config, days, expenses, recurring]);
 
   return {
     year,

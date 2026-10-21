@@ -6,17 +6,20 @@ import Icon from '../../components/common/Icon';
 import BottomSheet, { FilledInput, SheetButton, SheetLabel } from '../../components/common/BottomSheet';
 import AmountInput from '../../components/common/AmountInput';
 import { useTheme } from '../../hooks/useTheme';
-import { formatAmountForInput, parseAmountInput } from '../../utils/formatAmount';
 import { successHaptic, warningHaptic } from '../../utils/haptics';
 import { businessToday, useBusinessStore } from '../store/businessStore';
 import { dateOfDayId, dayIdOfDate, nextOrder, orderedItems, shiftDayId } from '../logic/basics';
+import { expenseTypesByUse } from '../logic/usage';
 import { AddLink, Chip, ChipRow, useMoney } from '../ui/kit';
+import { TypeOption, TypePicker } from '../ui/TypePicker';
+import { BaseCaption, openedVat, VatRow, vatFigures } from '../ui/VatFields';
 import { dayTitle } from '../ui/format';
 
 /**
  * Un gasto: el importe, el tipo (proveedores, alquiler…), de quién es la
  * factura si es de un proveedor, para quién si es una nómina, y el día. Un
- * proveedor nuevo se escribe aquí mismo y se guarda para la próxima.
+ * proveedor nuevo se escribe aquí mismo y se guarda para la próxima. Los
+ * tipos van como las categorías en la app: el más usado, el primero.
  */
 const ExpenseSheet = ({
   visible, expenseId, date, onClose,
@@ -32,6 +35,9 @@ const ExpenseSheet = ({
   const amountRef = useRef<TextInput>(null);
 
   const [amountText, setAmountText] = useState('');
+  const [vatValue, setVatValue] = useState<number | null>(null);
+  // El orden de los tipos se fija al abrir: no se mueven con la ventana abierta
+  const [typeOrder, setTypeOrder] = useState<string[]>([]);
   const [typeId, setTypeId] = useState('');
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [workerId, setWorkerId] = useState<string | null>(null);
@@ -43,8 +49,12 @@ const ExpenseSheet = ({
 
   useEffect(() => {
     if (!visible) return;
-    setAmountText(editing ? formatAmountForInput(editing.amount) : '');
-    setTypeId(editing?.typeId ?? (types.find((x) => x.id === 'suppliers') ?? types[0])?.id ?? '');
+    const opened = openedVat(config, editing);
+    setAmountText(opened.amountText);
+    setVatValue(opened.vat);
+    const sorted = expenseTypesByUse(types, Object.values(useBusinessStore.getState().expenses));
+    setTypeOrder(sorted.map((x) => x.id));
+    setTypeId(editing?.typeId ?? sorted[0]?.id ?? '');
     setSupplierId(editing?.supplierId ?? null);
     setWorkerId(editing?.workerId ?? null);
     setName(editing?.name ?? '');
@@ -55,10 +65,22 @@ const ExpenseSheet = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- al abrir
   }, [visible, expenseId]);
 
-  const amount = parseAmountInput(amountText);
-  const valid = Number.isFinite(amount) && amount > 0 && !!typeId;
+  const figures = vatFigures(config, typeId, amountText, vatValue, editing);
+  const valid = Number.isFinite(figures.typed) && figures.typed > 0 && !!typeId;
   const todayId = businessToday();
   const yesterdayId = shiftDayId(todayId, -1);
+
+  // Los tipos en el orden de uso. El del gasto, si ya no está en la lista
+  // (archivado), delante y atenuado, para que se vea cuál tiene
+  const typeOptions = useMemo((): TypeOption[] => {
+    const rank = new Map(typeOrder.map((id, i) => [id, i]));
+    const list: TypeOption[] = [...types].sort((a, b) => (rank.get(a.id) ?? types.length) - (rank.get(b.id) ?? types.length));
+    if (editing && !types.some((x) => x.id === editing.typeId)) {
+      const own = config?.expenseTypes[editing.typeId];
+      list.unshift({ id: editing.typeId, name: own?.name ?? editing.typeName, icon: own?.icon ?? 'pricetag', archived: true });
+    }
+    return list;
+  }, [types, typeOrder, editing, config]);
 
   const save = async () => {
     if (!valid || !config) return;
@@ -67,7 +89,8 @@ const ExpenseSheet = ({
     await useBusinessStore.getState().saveExpense({
       id: editing?.id,
       date: day,
-      amount,
+      amount: figures.amount,
+      vat: figures.vat,
       name: name.trim() || undefined,
       typeId,
       typeName: config.expenseTypes[typeId]?.name ?? typeId,
@@ -121,14 +144,12 @@ const ExpenseSheet = ({
     >
       <TouchableOpacity activeOpacity={1} onPress={() => amountRef.current?.focus()}>
         <AmountInput ref={amountRef} value={amountText} onChangeText={setAmountText} currencySymbol={symbol} large color={dc.textPrimary} />
+        {figures.split && <BaseCaption />}
       </TouchableOpacity>
+      {figures.split && <VatRow figures={figures} value={vatValue} onChange={setVatValue} />}
 
       <SheetLabel>{t('business.expense.type')}</SheetLabel>
-      <ChipRow>
-        {types.map((x) => (
-          <Chip key={x.id} label={x.name} icon={x.icon as never} selected={x.id === typeId} onPress={() => setTypeId(x.id)} />
-        ))}
-      </ChipRow>
+      <TypePicker types={typeOptions} selectedId={typeId} onSelect={setTypeId} resetKey={visible} />
 
       {isPayroll && workers.length > 0 ? (
         <>
@@ -152,7 +173,9 @@ const ExpenseSheet = ({
                   const next = sup.id === supplierId ? null : sup.id;
                   setSupplierId(next);
                   // Su tipo de gasto, si lo tiene
-                  if (next && sup.typeId && config?.expenseTypes[sup.typeId]) setTypeId(sup.typeId);
+                  if (next && sup.typeId && config?.expenseTypes[sup.typeId] && !config.expenseTypes[sup.typeId].archived) {
+                    setTypeId(sup.typeId);
+                  }
                 }}
               />
             ))}

@@ -17,7 +17,7 @@ import { reportError } from '../../services/crashReporting';
 import { beforeGap, splitAmountParts, symbolGoesBefore } from '../../utils/formatAmount';
 import { useBusinessStore } from '../store/businessStore';
 import { leaveBusinessMode } from '../store/switch';
-import { templateInfo } from '../templates';
+import { BUSINESS_ICON } from '../templates';
 
 const initialOf = (name?: string | null) => (name?.trim()?.charAt(0) || '?').toUpperCase();
 
@@ -35,7 +35,7 @@ export const BizSwitcher = () => {
   const photoURL = useSettingsStore((s) => s.photoURL);
   const [showSheet, setShowSheet] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
-  const icon = (business ? templateInfo(business.template).icon : 'business') as IconName;
+  const icon = (business ? BUSINESS_ICON : 'business') as IconName;
 
   const goIndividual = () => {
     setShowSheet(false);

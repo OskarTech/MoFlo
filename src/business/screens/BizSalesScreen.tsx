@@ -13,8 +13,8 @@ import { useMonth } from '../ui/useMonth';
 
 /**
  * Ventas: los días del mes, del más reciente al primero, con lo vendido, lo
- * gastado y el resultado de cada uno. Los días que se abre sin nada apuntado
- * salen en gris, para que no se olvide ningún cierre.
+ * gastado y el resultado de cada uno. Los días que se abre sin nada (la caja
+ * no ha mandado su cierre) salen en gris, para que no se escape ninguno.
  */
 const BizSalesScreen = () => {
   const { t, i18n } = useTranslation();
@@ -58,12 +58,12 @@ const BizSalesScreen = () => {
           <EmptyNote text={t('business.sales.empty')} />
         ) : rows.map((d) => {
           const status = d.status === 'closed'
-            ? t('business.day.closedShort')
-            : d.status === 'closing' ? t('business.day.closing') : d.hasData ? t('business.day.openShort') : t('business.day.nothing');
+            ? (d.fromPos ? t('business.pos.closedShort') : t('business.day.closedShort'))
+            : d.hasData ? t('business.day.openShort') : t('business.day.nothing');
           return (
             <ListRow
               key={d.id}
-              icon={d.status === 'closed' ? 'lock-closed' : d.hasData ? 'lock-open' : 'time-outline'}
+              icon={d.status === 'closed' ? (d.fromPos ? 'receipt' : 'lock-closed') : d.hasData ? 'lock-open' : 'time-outline'}
               color={d.status === 'closed' ? ui.accent : undefined}
               title={shortDay(d.id, i18n.language)}
               subtitle={[status, d.hasData ? t('business.sales.result', { amount: money(d.result) }) : null].filter(Boolean).join(' · ')}

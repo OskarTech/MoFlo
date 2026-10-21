@@ -7,28 +7,25 @@ import { deleteRefsInChunks } from '../../services/firebase/batchDelete';
 import { fromCloud } from '../../services/firebase/cloudSync';
 import { RELISTEN_AFTER_MS } from '../../store/cloudCheck';
 import { useSettingsStore } from '../../store/settingsStore';
-import { BUSINESS_ENABLED } from '../featureFlag';
+import { businessAllowed } from '../access';
 import {
   Business, BusinessChange, BusinessConfig, BusinessDay, BusinessExpense, BusinessJoinRequest,
-  BusinessRecurring, Catalog, ChangeAction, ChangeKind, ConfigItem, ConfigListKind, DayEntry,
-  ManualAmount, MAX_BUSINESS_MEMBERS, Order, OrderLine, PendingBusinessRequest, TemplateId,
+  BusinessRecurring, ChangeAction, ChangeKind, ConfigItem, ConfigListKind, DayEntry,
+  MAX_BUSINESS_MEMBERS, PendingBusinessRequest,
 } from '../types';
-import {
-  businessDayOf, cents, dayIdOfDate, monthKeyOfDay, newId, shiftDayId, yearOfDay,
-} from '../logic/basics';
-import { orderTotal, summarizeOrders } from '../logic/orders';
-import { usesOrders } from '../logic/days';
+import { businessDayOf, cents, dayIdOfDate, monthKeyOfDay, newId, shiftDayId, yearOfDay } from '../logic/basics';
+import { isPosEntry } from '../logic/days';
+import { commissionExpenseId, dayCommissions } from '../logic/commissions';
 import { dueRecurringExpenses, existingRecurringKeys } from '../logic/recurring';
-import { buildCatalog, buildConfig, COMMISSIONS_TYPE, CreateConfigInput } from '../templates';
+import { buildConfig, COMMISSIONS_TYPE } from '../templates';
 import {
   BizCollection, BUSINESS_SUBCOLLECTIONS, bizCol, businessCodeRef, businessRef, businessesCol,
-  catalogRef, configRef, deepClean, deleteField, deletionRecord, serverNow, stamped,
+  configRef, deepClean, deleteField, deletionRecord, serverNow, stamped,
 } from '../cloud/refs';
 import { advanceBizMarks, Deletion, fetchBizChanges, listenBizChanges, mergeBizChanges } from '../cloud/sync';
 import {
-  dayDateOf, expenseDateOf, ORDER_DAYS_KEPT, pruneOrderDays, readActive, readCurrentId, readOrderDays,
-  readPart, readPending, readYears, removeBusinessCache, writeActive, writeCurrentId, writeOrderDays,
-  writePart, writePending, writeYears,
+  dayDateOf, expenseDateOf, readActive, readCurrentId, readPart, readPending, readYears, removeBusinessCache,
+  writeActive, writeCurrentId, writePart, writePending, writeYears,
 } from '../cloud/cache';
 import { deleteBusinessCode, findBusinessByCode, generateUniqueBusinessCode } from '../cloud/codes';
 import { resolveBusinessPalette, useBusinessModeStore } from './modeStore';
@@ -37,45 +34,26 @@ import { resolveBusinessPalette, useBusinessModeStore } from './modeStore';
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 /**
- * La cuenta de empresa: la empresa de esta persona (una como mucho), su
- * configuración, su carta y sus días, pedidos, gastos y fijos.
+ * La cuenta de empresa: la pizzería de esta persona (una como mucho), su
+ * configuración y sus días, gastos y fijos.
  *
- * Lo que se apunta se ve al momento y se guarda en la copia del móvil; la
- * subida la hace Firestore, también sin conexión. Si la nube lo rechaza (un
- * pedido que llega con el día ya cerrado), se quita de la copia y se avisa.
+ * Lo vendido cada día llega solo de la caja (la entrada `pos`, que escribe el
+ * servidor) y se puede apuntar a mano. Lo que se apunta se ve al momento y se
+ * guarda en la copia del móvil; la subida la hace Firestore, también sin
+ * conexión. Si la nube lo rechaza, se quita de la copia.
  */
 
 export type JoinResult = 'pending' | 'invalid' | 'already_member' | 'already_in_business' | 'has_pending' | 'error';
-export type WriteResult = 'ok' | 'dayClosed' | 'empty';
-export type CloseResult = 'ok' | 'offline' | 'error';
+/** pos: la entrada de la caja, que no se toca desde la app */
+export type WriteResult = 'ok' | 'empty' | 'pos';
 
-export interface CreateBusinessInput extends CreateConfigInput {
+export interface CreateBusinessInput {
   name: string;
-  template: TemplateId;
   currencyCode: string;
-}
-
-export interface OrderInput {
-  id?: string;
-  lines: OrderLine[];
-  channelId: string;
-  note?: string;
 }
 
 export interface EntryInput extends Omit<DayEntry, 'id' | 'by' | 'at'> {
   id?: string;
-}
-
-/** Lo que se confirma al cerrar el día */
-export interface CloseInput {
-  /** Pedido a pedido: lo que se cambia sobre lo que dicen los pedidos, por forma de cobro */
-  adjust?: Record<string, number>;
-  manual?: ManualAmount[];
-  float?: number | null;
-  counted?: number | null;
-  workerId?: string | null;
-  workerName?: string | null;
-  note?: string;
 }
 
 export interface ExpenseInput extends Omit<BusinessExpense, 'id' | 'by' | 'createdAt'> {
@@ -91,9 +69,7 @@ interface BusinessStore {
   active: boolean;
   business: Business | null;
   config: BusinessConfig | null;
-  catalog: Catalog | null;
   days: Record<string, BusinessDay>;
-  orders: Record<string, Order>;
   expenses: Record<string, BusinessExpense>;
   recurring: Record<string, BusinessRecurring>;
   /** Años de días y gastos cargados de la copia */
@@ -126,15 +102,10 @@ interface BusinessStore {
 
   updateConfig: (fields: Partial<Omit<BusinessConfig, ConfigListKind>>) => Promise<void>;
   saveConfigItem: <K extends ConfigListKind>(kind: K, id: string | null, item: BusinessConfig[K][string]) => Promise<string>;
-  saveCatalogItem: <K extends keyof Catalog>(kind: K, id: string | null, item: Catalog[K][string]) => Promise<string>;
+  deleteConfigItem: (kind: ConfigListKind, id: string) => Promise<void>;
 
-  saveOrder: (input: OrderInput) => Promise<WriteResult>;
-  voidOrder: (id: string) => Promise<WriteResult>;
-  fetchDayOrders: (dayId: string) => Promise<Order[]>;
   saveEntry: (dayId: string, input: EntryInput) => Promise<WriteResult>;
   deleteEntry: (dayId: string, entryId: string) => Promise<WriteResult>;
-  closeDay: (dayId: string, input?: CloseInput) => Promise<CloseResult>;
-  reopenDay: (dayId: string) => Promise<void>;
 
   saveExpense: (input: ExpenseInput) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
@@ -150,7 +121,6 @@ interface BusinessStore {
 let docUnsub: (() => void) | null = null;
 let docFor: string | null = null;
 let configUnsub: (() => void) | null = null;
-let catalogUnsub: (() => void) | null = null;
 let requestsUnsub: (() => void) | null = null;
 let ownRequestUnsub: (() => void) | null = null;
 let streamUnsubs: (() => void)[] = [];
@@ -168,7 +138,6 @@ const stopStreams = () => {
   streamUnsubs = [];
   streamsFor = null;
   stop(configUnsub); configUnsub = null;
-  stop(catalogUnsub); catalogUnsub = null;
 };
 
 const stopAll = () => {
@@ -196,7 +165,7 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | 'timeout'>
 };
 
 // Lo que se espera a la red en lo que no puede quedarse a medias en la cola de
-// Firestore (cerrar un día de pedidos, salir de la empresa, borrarla)
+// Firestore (salir de la empresa, borrarla)
 const ONLINE_WAIT_MS = 10000;
 
 /**
@@ -237,9 +206,7 @@ const EMPTY_STATE = {
   active: false,
   business: null,
   config: null,
-  catalog: null,
   days: {},
-  orders: {},
   expenses: {},
   recurring: {},
   loadedYears: [] as number[],
@@ -252,31 +219,24 @@ const EMPTY_STATE = {
 export const useBusinessStore = create<BusinessStore>((set, get) => {
   // ── La copia del móvil ─────────────────────────────────────────
 
-  /** Carga de la copia lo de esta empresa: este año y el anterior, y los pedidos recientes */
+  /** Carga de la copia lo de esta empresa: este año y el anterior */
   const loadLocal = async (businessId: string) => {
     const thisYear = new Date().getFullYear();
     const years = [thisYear - 1, thisYear];
-    const todayId = todayDayId(get().config);
-    const orderDays = Array.from({ length: ORDER_DAYS_KEPT + 1 }, (_, i) => shiftDayId(todayId, -i));
-    const [config, catalog, recurring, days, expenses, orders] = await Promise.all([
+    const [config, recurring, days, expenses] = await Promise.all([
       readPart.config(businessId),
-      readPart.catalog(businessId),
       readPart.recurring(businessId),
       readYears<BusinessDay>(businessId, 'days', years),
       readYears<BusinessExpense>(businessId, 'expenses', years),
-      readOrderDays(businessId, orderDays),
     ]);
     if (get().business?.id !== businessId) return;
     set({
       config: get().config ?? config,
-      catalog: get().catalog ?? catalog,
       recurring: recurring ?? {},
       days,
       expenses,
-      orders,
       loadedYears: years,
     });
-    pruneOrderDays(businessId, shiftDayId(todayId, -ORDER_DAYS_KEPT));
   };
 
   const ensureYearLoaded = async (businessId: string, years: number[]) => {
@@ -307,15 +267,6 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     fromServer: boolean,
   ): Promise<boolean> => {
     if (get().business?.id !== businessId) return false;
-    if (collection === 'orders') {
-      const local = Object.values(get().orders);
-      const merged = mergeBizChanges(local, changed as Order[], deleted, fromServer);
-      if (merged === local) return true;
-      const record = Object.fromEntries(merged.map((o) => [o.id, o]));
-      set({ orders: record });
-      await writeOrderDays(businessId, record, (changed as Order[]).map((o) => o.day));
-      return true;
-    }
     if (collection === 'recurring') {
       const local = Object.values(get().recurring);
       const merged = mergeBizChanges(local, changed as BusinessRecurring[], deleted, fromServer);
@@ -352,22 +303,6 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
 
   /** Pone en la copia lo apuntado aquí (sin hora del servidor hasta que suba) */
   const putLocal = {
-    order: (order: Order | null, removeId?: string) => {
-      const business = get().business;
-      if (!business) return;
-      const orders = { ...get().orders };
-      const days = new Set<string>();
-      if (removeId && orders[removeId]) {
-        days.add(orders[removeId].day);
-        delete orders[removeId];
-      }
-      if (order) {
-        orders[order.id] = order;
-        days.add(order.day);
-      }
-      set({ orders });
-      writeOrderDays(business.id, orders, days);
-    },
     day: (day: BusinessDay) => {
       const business = get().business;
       if (!business) return;
@@ -404,13 +339,12 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
 
   /**
    * Una escritura en la nube. Sin conexión queda pendiente y la sube
-   * Firestore. Si la nube la rechaza, se deshace en la copia y se avisa
+   * Firestore. Si la nube la rechaza, se deshace en la copia
    */
-  const cloudWrite = (what: string, write: Promise<unknown>, undo?: () => void, onRejected?: (e: unknown) => void) => {
+  const cloudWrite = (what: string, write: Promise<unknown>, undo?: () => void) => {
     write.catch((e) => {
       reportError(e, `empresa: ${what}`);
       undo?.();
-      onRejected?.(e);
     });
   };
 
@@ -427,6 +361,47 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       serverAt: serverNow(),
     };
     bizCol(business.id, 'changes').doc().set(entry).catch((e) => reportError(e, 'empresa: historial'));
+  };
+
+  /**
+   * Las comisiones del día: lo que se quedan las formas de cobro que la
+   * tienen (el datáfono, Stripe), como gastos con un id fijo por día y forma
+   * de cobro. Se rehacen con cada cambio de lo vendido ese día. El servidor
+   * hace lo mismo al llegar el cierre de la caja (ver logic/commissions)
+   */
+  const saveCommissions = (dayId: string, day: BusinessDay) => {
+    const business = get().business;
+    const config = get().config;
+    const uid = uidNow();
+    if (!business || !config || !uid) return;
+    const amounts = dayCommissions(Object.values(day.entries ?? {}), config.channels ?? {});
+    const type = config.expenseTypes?.[COMMISSIONS_TYPE];
+    for (const [cid, amount] of Object.entries(amounts)) {
+      const channel = config.channels[cid];
+      const id = commissionExpenseId(dayId, cid);
+      const existing = get().expenses[id];
+      if (amount > 0) {
+        if (existing?.amount === amount) continue;
+        const expense: BusinessExpense = {
+          id,
+          date: dayId,
+          amount,
+          name: i18n.t('business.commissionOf', { name: channel?.name ?? cid }),
+          typeId: COMMISSIONS_TYPE,
+          typeName: type?.name ?? i18n.t('business.tpl.expenseTypes.commissions'),
+          by: uid,
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+        };
+        putLocal.expense(expense);
+        cloudWrite('comisión', bizCol(business.id, 'expenses').doc(id).set(stamped(expense)));
+      } else if (existing) {
+        putLocal.expense(null, id);
+        const batch = firestore().batch();
+        batch.delete(bizCol(business.id, 'expenses').doc(id));
+        batch.set(businessRef(business.id).collection('deletedExpenses').doc(id), deletionRecord());
+        cloudWrite('comisión', batch.commit());
+      }
+    }
   };
 
   // ── Escuchas de la empresa ─────────────────────────────────────
@@ -487,27 +462,15 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     });
   };
 
-  const listenConfigAndCatalog = (businessId: string) => {
-    if (!configUnsub) {
-      configUnsub = configRef(businessId).onSnapshot((doc) => {
-        if (!doc.exists() || get().business?.id !== businessId) return;
-        const { updatedAt: _u, ...config } = doc.data() as BusinessConfig & { updatedAt?: unknown };
-        set({ config: config as BusinessConfig });
-        writePart.config(businessId, config as BusinessConfig);
-      }, (e) => { reportError(e, 'empresa: escucha de la configuración'); configUnsub = null; });
-    }
-    if (!catalogUnsub) {
-      catalogUnsub = catalogRef(businessId).onSnapshot((doc) => {
-        if (!doc.exists() || get().business?.id !== businessId) return;
-        const { updatedAt: _u, ...catalog } = doc.data() as Catalog & { updatedAt?: unknown };
-        set({ catalog: catalog as Catalog });
-        writePart.catalog(businessId, catalog as Catalog);
-      }, (e) => { reportError(e, 'empresa: escucha de la carta'); catalogUnsub = null; });
-    }
+  const listenConfig = (businessId: string) => {
+    if (configUnsub) return;
+    configUnsub = configRef(businessId).onSnapshot((doc) => {
+      if (!doc.exists() || get().business?.id !== businessId) return;
+      const { updatedAt: _u, ...config } = doc.data() as BusinessConfig & { updatedAt?: unknown };
+      set({ config: config as BusinessConfig });
+      writePart.config(businessId, config as BusinessConfig);
+    }, (e) => { reportError(e, 'empresa: escucha de la configuración'); configUnsub = null; });
   };
-
-  const ordersWindow = (col: FirebaseFirestoreTypes.CollectionReference) =>
-    col.where('day', '>=', shiftDayId(todayDayId(get().config), -ORDER_DAYS_KEPT));
 
   const startStreams = (businessId: string) => {
     if (streamsFor === businessId && streamUnsubs.length && Date.now() - streamsSince < RELISTEN_AFTER_MS) return;
@@ -515,7 +478,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     streamUnsubs = [];
     streamsFor = businessId;
     streamsSince = Date.now();
-    const collections: BizCollection[] = ['days', 'orders', 'expenses', 'recurring'];
+    const collections: BizCollection[] = ['days', 'expenses', 'recurring'];
     for (const collection of collections) {
       streamUnsubs.push(listenBizChanges(
         businessId, collection,
@@ -525,7 +488,6 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
           // Firestore la cierra tras un error: la siguiente vuelta la rehace
           streamsSince = 0;
         },
-        collection === 'orders' ? ordersWindow : undefined,
       ));
     }
   };
@@ -563,10 +525,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       stopAll();
       expensesFromServer = false;
       changesCursor = null;
-      set({
-        config: null, catalog: null, days: {}, orders: {}, expenses: {}, recurring: {},
-        loadedYears: [], incomingRequests: [],
-      });
+      set({ config: null, days: {}, expenses: {}, recurring: {}, loadedYears: [], incomingRequests: [] });
       await removeBusinessCache(previous.id);
     }
     set({ business });
@@ -578,9 +537,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
   };
 
   const pull = async (businessId: string, collection: BizCollection): Promise<boolean> => {
-    const changes = await fetchBizChanges<{ id: string; updatedAt?: number }>(
-      businessId, collection, collection === 'orders' ? ordersWindow : undefined,
-    );
+    const changes = await fetchBizChanges<{ id: string; updatedAt?: number }>(businessId, collection);
     const merged = await mergeFromCloud(businessId, collection, changes.changed, changes.deleted, changes.fromServer);
     // Las marcas, solo con la respuesta del servidor (como en las otras
     // cuentas): la caché de Firestore puede no tener algo anterior a lo que tiene
@@ -589,71 +546,21 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
   };
 
   /**
-   * Lo apuntado en este móvil que la nube no ha confirmado (sin hora del
-   * servidor) cuando ya no queda nada en la cola de Firestore: la nube lo ha
-   * rechazado. Pasa si la app se cerró con un pedido sin subir y, mientras,
-   * otro socio cerró el día; en la misma sesión ya lo deshace cloudWrite. Se
-   * mira en el servidor: lo que no está se quita y se avisa, y lo que está
-   * distinto se queda como está allí
-   */
-  const settleUnconfirmed = async (businessId: string) => {
-    const unconfirmed = () => Object.values(get().orders).filter((o) => o.updatedAt == null);
-    if (!unconfirmed().length) return;
-    await firestore().waitForPendingWrites();
-    // Lo que sí se ha subido llega por la escucha un momento después
-    await new Promise<void>((resolve) => setTimeout(resolve, 2000));
-    if (get().business?.id !== businessId) return;
-    const pending = unconfirmed();
-    if (!pending.length) return;
-    const snaps = await Promise.all(pending.map((o) => bizCol(businessId, 'orders').doc(o.id).get({ source: 'server' })
-      .catch(() => null)));
-    if (get().business?.id !== businessId) return;
-    const orders = { ...get().orders };
-    const days = new Set<string>();
-    let rejected = false;
-    pending.forEach((mine, i) => {
-      const snap = snaps[i];
-      const current = orders[mine.id];
-      // Sin conexión, o ya confirmado por la escucha mientras tanto
-      if (!snap || !current || current.updatedAt != null) return;
-      if (!snap.exists()) {
-        delete orders[mine.id];
-        rejected = true;
-      } else {
-        const server = fromCloud<Order>(snap);
-        if (server.status !== mine.status || server.total !== mine.total) rejected = true;
-        orders[mine.id] = server;
-      }
-      days.add(mine.day);
-    });
-    if (!days.size) return;
-    set({ orders });
-    await writeOrderDays(businessId, orders, days);
-    if (rejected) {
-      const { notifyRejected } = require('./notices');
-      notifyRejected('order');
-    }
-  };
-
-  /**
    * Comprobación entera de lo reciente (al deslizar en Hoy): lo de este mes y
-   * el anterior, y los pedidos de las últimas semanas, tal y como están en el
-   * servidor. Quita de la copia lo que el servidor no tiene (lo que rechazó)
+   * el anterior, tal y como está en el servidor. Quita de la copia lo que el
+   * servidor no tiene (lo que rechazó)
    */
   const fullCheck = async (businessId: string) => {
     const todayId = todayDayId(get().config);
     const from = `${monthKeyOfDay(shiftDayId(`${monthKeyOfDay(todayId)}-01`, -1))}-01`;
-    const ordersFrom = shiftDayId(todayId, -ORDER_DAYS_KEPT);
-    const [daysSnap, expensesSnap, ordersSnap, recurringSnap] = await Promise.all([
+    const [daysSnap, expensesSnap, recurringSnap] = await Promise.all([
       bizCol(businessId, 'days').where(firestore.FieldPath.documentId(), '>=', from).get({ source: 'server' }),
       bizCol(businessId, 'expenses').where('date', '>=', from).get({ source: 'server' }),
-      bizCol(businessId, 'orders').where('day', '>=', ordersFrom).get({ source: 'server' }),
       bizCol(businessId, 'recurring').get({ source: 'server' }),
     ]);
     if (get().business?.id !== businessId) return;
     const days = daysSnap.docs.map((d) => fromCloud<BusinessDay>(d));
     const expenses = expensesSnap.docs.map((d) => fromCloud<BusinessExpense>(d));
-    const orders = ordersSnap.docs.map((d) => fromCloud<Order>(d));
     const recurring = recurringSnap.docs.map((d) => fromCloud<BusinessRecurring>(d));
 
     const keepOld = <T extends { id: string }>(record: Record<string, T>, inWindow: (item: T) => boolean) =>
@@ -663,65 +570,13 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       ...keepOld(get().expenses, (e) => e.date >= from),
       ...Object.fromEntries(expenses.map((e) => [e.id, e])),
     };
-    const orderRecord = {
-      ...keepOld(get().orders, (o) => o.day >= ordersFrom),
-      ...Object.fromEntries(orders.map((o) => [o.id, o])),
-    };
     const recurringRecord = Object.fromEntries(recurring.map((r) => [r.id, r]));
-    set({ days: dayRecord, expenses: expenseRecord, orders: orderRecord, recurring: recurringRecord });
+    set({ days: dayRecord, expenses: expenseRecord, recurring: recurringRecord });
     const years = [yearOfDay(from), yearOfDay(todayId)];
     await writeYears(businessId, 'days', dayRecord, years, dayDateOf);
     await writeYears(businessId, 'expenses', expenseRecord, years, expenseDateOf);
-    const orderDays = Array.from({ length: ORDER_DAYS_KEPT + 1 }, (_, i) => shiftDayId(todayId, -i));
-    await writeOrderDays(businessId, orderRecord, orderDays);
     await writePart.recurring(businessId, recurringRecord);
     expensesFromServer = true;
-  };
-
-  /**
-   * Las comisiones del día: lo que se quedan las formas de cobro que la
-   * tienen (Glovo, el banco del TPV), como gastos con un id fijo por día y
-   * forma de cobro. Al volver a cerrar, se rehacen con lo nuevo
-   */
-  const saveCommissions = (dayId: string, day: BusinessDay) => {
-    const business = get().business;
-    const config = get().config;
-    const uid = uidNow();
-    if (!business || !config || !uid) return;
-    const byChannel: Record<string, number> = {};
-    for (const entry of Object.values(day.entries ?? {})) {
-      for (const [cid, amount] of Object.entries(entry.amounts ?? {})) {
-        byChannel[cid] = cents((byChannel[cid] ?? 0) + amount);
-      }
-    }
-    const type = config.expenseTypes?.[COMMISSIONS_TYPE];
-    for (const [cid, channel] of Object.entries(config.channels ?? {})) {
-      const pct = channel.commissionPct ?? 0;
-      const id = `com_${dayId.replace(/-/g, '')}_${cid}`;
-      const amount = pct > 0 ? cents(((byChannel[cid] ?? 0) * pct) / 100) : 0;
-      const existing = get().expenses[id];
-      if (amount > 0) {
-        if (existing?.amount === amount) continue;
-        const expense: BusinessExpense = {
-          id,
-          date: dayId,
-          amount,
-          name: i18n.t('business.commissionOf', { name: channel.name }),
-          typeId: COMMISSIONS_TYPE,
-          typeName: type?.name ?? i18n.t('business.tpl.expenseTypes.commissions'),
-          by: uid,
-          createdAt: existing?.createdAt ?? new Date().toISOString(),
-        };
-        putLocal.expense(expense);
-        cloudWrite('comisión', bizCol(business.id, 'expenses').doc(id).set(stamped(expense)));
-      } else if (existing) {
-        putLocal.expense(null, id);
-        const batch = firestore().batch();
-        batch.delete(bizCol(business.id, 'expenses').doc(id));
-        batch.set(businessRef(business.id).collection('deletedExpenses').doc(id), deletionRecord());
-        cloudWrite('comisión', batch.commit());
-      }
-    }
   };
 
   return {
@@ -730,17 +585,15 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     // ── Arranque ─────────────────────────────────────────────────
 
     init: async () => {
-      if (!BUSINESS_ENABLED) return;
+      if (!businessAllowed()) return;
       const uid = uidNow();
       if (!uid) return;
       const [businessId, active, pending] = await Promise.all([readCurrentId(), readActive(), readPending()]);
       set({ pendingRequest: pending });
       if (businessId) {
-        const [business, config, catalog] = await Promise.all([
-          readPart.doc(businessId), readPart.config(businessId), readPart.catalog(businessId),
-        ]);
+        const [business, config] = await Promise.all([readPart.doc(businessId), readPart.config(businessId)]);
         if (business && business.members?.includes(uid)) {
-          set({ business, config, catalog });
+          set({ business, config });
           if (active) {
             set({ active: true });
             useBusinessModeStore.setState({ active: true, paletteId: resolveBusinessPalette(business.colorPalette) });
@@ -757,12 +610,11 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
             // También si no se ha podido comprobar (sin conexión): la escucha
             // sigue sola cuando vuelve la red y ve si te han sacado
             listenDoc(current.id);
-            listenConfigAndCatalog(current.id);
+            listenConfig(current.id);
             return get().sync()
               .catch((e) => reportError(e, 'empresa: bajar lo cambiado'))
               .then(() => {
                 startStreams(current.id);
-                settleUnconfirmed(current.id).catch((e) => reportError(e, 'empresa: lo no confirmado'));
                 return get().applyRecurring();
               });
           }
@@ -772,7 +624,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
     },
 
     refreshMembership: async () => {
-      if (!BUSINESS_ENABLED) return;
+      if (!businessAllowed()) return;
       const uid = uidNow();
       if (!uid) return;
       try {
@@ -804,16 +656,15 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       set({ active: true });
       useBusinessModeStore.setState({ active: true, paletteId: resolveBusinessPalette(business.colorPalette) });
       await writeActive(true);
-      if (!Object.keys(get().days).length && !Object.keys(get().orders).length) await loadLocal(business.id);
+      if (!Object.keys(get().days).length) await loadLocal(business.id);
       listenDoc(business.id);
-      listenConfigAndCatalog(business.id);
+      listenConfig(business.id);
       try {
         await get().sync();
       } catch (e) {
         reportError(e, 'empresa: bajar lo cambiado');
       }
       startStreams(business.id);
-      settleUnconfirmed(business.id).catch((e) => reportError(e, 'empresa: lo no confirmado'));
       get().applyRecurring().catch((e) => reportError(e, 'empresa: fijos'));
     },
 
@@ -832,7 +683,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         if (full) {
           await fullCheck(business.id);
         } else {
-          const results = await Promise.all((['days', 'orders', 'expenses', 'recurring'] as BizCollection[])
+          const results = await Promise.all((['days', 'expenses', 'recurring'] as BizCollection[])
             .map((c) => pull(business.id, c).then((fromServer) => [c, fromServer] as const)));
           expensesFromServer = results.some(([c, fromServer]) => c === 'expenses' && fromServer);
         }
@@ -848,7 +699,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       const business = get().business;
       if (!business || !get().active) return;
       listenDoc(business.id);
-      listenConfigAndCatalog(business.id);
+      listenConfig(business.id);
       startStreams(business.id);
     },
 
@@ -886,7 +737,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
           memberNames: { [uid]: myBusinessName() },
           inviteCode: await generateUniqueBusinessCode(),
           createdAt,
-          template: input.template,
+          template: 'pizzeria',
           currencyCode: input.currencyCode,
         };
         const batch = firestore().batch();
@@ -902,16 +753,11 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       }
       if (!business) throw new Error('create-failed');
 
-      const config = buildConfig(input);
-      const catalog = buildCatalog(input.template);
-      const batch = firestore().batch();
-      batch.set(configRef(id), stamped(config));
-      batch.set(catalogRef(id), stamped(catalog));
-      await batch.commit();
+      const config = buildConfig();
+      await configRef(id).set(stamped(config));
 
-      set({ config, catalog, days: {}, orders: {}, expenses: {}, recurring: {}, loadedYears: [] });
+      set({ config, days: {}, expenses: {}, recurring: {}, loadedYears: [] });
       await writePart.config(id, config);
-      await writePart.catalog(id, catalog);
       await adoptBusiness(business);
       return business;
     },
@@ -1054,7 +900,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       }
     },
 
-    // ── Configuración y carta ────────────────────────────────────
+    // ── Configuración ────────────────────────────────────────────
 
     updateConfig: async (fields) => {
       const business = get().business;
@@ -1081,135 +927,58 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       return itemId;
     },
 
-    saveCatalogItem: async (kind, id, item) => {
-      const business = get().business;
-      const catalog = get().catalog ?? { categories: {}, products: {}, extras: {} };
-      if (!business) return id ?? '';
-      const itemId = id ?? newId(kind === 'categories' ? 'c_' : kind === 'products' ? 'p_' : 'x_');
-      const clean = deepClean(item);
-      const updated = { ...catalog, [kind]: { ...catalog[kind], [itemId]: clean } } as Catalog;
-      set({ catalog: updated });
-      writePart.catalog(business.id, updated);
-      // Solo su campo, entero (con sus tamaños): lo demás de la carta se queda
-      cloudWrite('carta', catalogRef(business.id).update({ [`${kind}.${itemId}`]: clean, updatedAt: serverNow() }));
-      return itemId;
-    },
-
-    // ── Pedidos ──────────────────────────────────────────────────
-
-    saveOrder: async ({ id, lines, channelId, note }) => {
+    /** Quitar de la lista algo que no se ha usado nunca (lo usado se archiva) */
+    deleteConfigItem: async (kind, id) => {
       const business = get().business;
       const config = get().config;
-      const uid = uidNow();
-      if (!business || !config || !uid) return 'empty';
-      const clean = lines.filter((l) => l.qty > 0);
-      if (!clean.length) return 'empty';
-      const previous = id ? get().orders[id] : undefined;
-      const day = previous?.day ?? todayDayId(config);
-      const status = get().days[day]?.status ?? 'open';
-      if (status !== 'open') return 'dayClosed';
-      const order: Order = {
-        id: previous?.id ?? bizCol(business.id, 'orders').doc().id,
-        day,
-        at: previous?.at ?? new Date().toISOString(),
-        lines: clean,
-        total: orderTotal(clean),
-        channelId,
-        channelName: config.channels[channelId]?.name ?? channelId,
-        status: 'ok',
-        by: previous?.by ?? uid,
-        ...(note?.trim() ? { note: note.trim() } : {}),
-      };
-      putLocal.order(order);
-      cloudWrite(
-        'guardar pedido',
-        bizCol(business.id, 'orders').doc(order.id).set(stamped(order)),
-        () => putLocal.order(previous ?? null, previous ? undefined : order.id),
-        (e) => {
-          if (!isPermissionDenied(e)) return;
-          const { notifyRejected } = require('./notices');
-          notifyRejected('order');
-        },
-      );
-      if (previous) {
-        logChange('order', 'edit', order.id, day, {
-          lines: previous.lines, total: previous.total, channelName: previous.channelName,
-        });
-      }
-      return 'ok';
-    },
-
-    voidOrder: async (id) => {
-      const business = get().business;
-      const uid = uidNow();
-      const previous = get().orders[id];
-      if (!business || !uid || !previous) return 'empty';
-      if ((get().days[previous.day]?.status ?? 'open') !== 'open') return 'dayClosed';
-      const order: Order = { ...previous, status: 'void', voidedBy: uid, voidedAt: new Date().toISOString(), updatedAt: undefined };
-      putLocal.order(order);
-      cloudWrite(
-        'anular pedido',
-        bizCol(business.id, 'orders').doc(id).set(stamped(order)),
-        () => putLocal.order(previous),
-        (e) => {
-          if (!isPermissionDenied(e)) return;
-          const { notifyRejected } = require('./notices');
-          notifyRejected('order');
-        },
-      );
-      logChange('order', 'void', id, previous.day, {
-        lines: previous.lines, total: previous.total, channelName: previous.channelName,
-      });
-      return 'ok';
-    },
-
-    /** Los pedidos de un día antiguo, que ya no están en el móvil */
-    fetchDayOrders: async (dayId) => {
-      const business = get().business;
-      if (!business) return [];
-      const local = Object.values(get().orders).filter((o) => o.day === dayId);
-      try {
-        const snap = await bizCol(business.id, 'orders').where('day', '==', dayId).get();
-        const orders = snap.docs.map((d) => fromCloud<Order>(d));
-        await mergeFromCloud(business.id, 'orders', orders, [], !snap.metadata.fromCache);
-        return Object.values(get().orders).filter((o) => o.day === dayId);
-      } catch (e) {
-        reportError(e, 'empresa: pedidos de un día');
-        return local;
-      }
+      if (!business || !config?.[kind]?.[id]) return;
+      const { [id]: _removed, ...rest } = config[kind] as Record<string, unknown>;
+      const updated = { ...config, [kind]: rest } as BusinessConfig;
+      set({ config: updated });
+      writePart.config(business.id, updated);
+      cloudWrite('configuración', configRef(business.id).update({ [`${kind}.${id}`]: deleteField(), updatedAt: serverNow() }));
     },
 
     // ── Días ─────────────────────────────────────────────────────
 
+    /**
+     * Lo vendido a mano (un día sin caja, un encargo de fuera). Si el día aún
+     * no estaba cerrado, apuntarlo lo cierra (y avisa a los socios); si ya lo
+     * estaba (lo cerró la caja), se suma a lo suyo. La entrada de la caja no
+     * se toca desde aquí
+     */
     saveEntry: async (dayId, input) => {
       const business = get().business;
       const uid = uidNow();
       if (!business || !uid) return 'empty';
+      if (input.id && isPosEntry({ id: input.id })) return 'pos';
       const day = get().days[dayId];
-      if ((day?.status ?? 'open') !== 'open') return 'dayClosed';
       const previous = input.id ? day?.entries?.[input.id] : undefined;
+      const now = new Date().toISOString();
       const entry: DayEntry = deepClean({
         ...input,
         id: input.id ?? newId('e'),
         by: previous?.by ?? uid,
-        at: previous?.at ?? new Date().toISOString(),
+        at: previous?.at ?? now,
       });
+      const closing = day?.status !== 'closed';
+      const closeFields = closing ? { status: 'closed' as const, closedBy: uid, closedAt: now } : {};
       const updatedDay: BusinessDay = {
-        ...(day ?? { id: dayId, status: 'open', entries: {} }),
+        ...(day ?? { id: dayId, status: 'closed', entries: {} }),
+        ...closeFields,
         entries: { ...(day?.entries ?? {}), [entry.id]: entry },
         updatedAt: undefined,
       };
       putLocal.day(updatedDay);
       const ref = bizCol(business.id, 'days').doc(dayId);
-      // Si el día ya existe (o se cambia una caja que ya estaba), solo su
-      // campo y entero: lo de los demás socios se queda y no sobrevive nada
-      // de lo que se ha quitado. Si no, el día nuevo con ella (el estado no se
-      // toca: si ya estaba cerrado en la nube, sigue cerrado)
-      const write = previous || day?.updatedAt
-        ? ref.update({ [`entries.${entry.id}`]: entry, updatedAt: serverNow() })
-        : ref.set({ id: dayId, entries: { [entry.id]: entry }, updatedAt: serverNow() }, { merge: true });
-      cloudWrite('guardar caja', write, () => day && putLocal.day(day));
+      // Si el día ya existe, solo el campo de la entrada, entero: lo de los
+      // demás (la caja, otro socio) se queda. Si no, el día nuevo con ella
+      const write = day?.updatedAt
+        ? ref.update({ [`entries.${entry.id}`]: entry, ...closeFields, updatedAt: serverNow() })
+        : ref.set({ id: dayId, ...closeFields, entries: { [entry.id]: entry }, updatedAt: serverNow() }, { merge: true });
+      cloudWrite('guardar venta', write, () => (day ? putLocal.day(day) : undefined));
       if (previous) logChange('entry', 'edit', entry.id, dayId, previous);
+      saveCommissions(dayId, updatedDay);
       return 'ok';
     },
 
@@ -1218,159 +987,20 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
       const day = get().days[dayId];
       const previous = day?.entries?.[entryId];
       if (!business || !day || !previous) return 'empty';
-      if ((day.status ?? 'open') !== 'open') return 'dayClosed';
+      if (isPosEntry(previous)) return 'pos';
       const { [entryId]: _removed, ...entries } = day.entries;
-      putLocal.day({ ...day, entries, updatedAt: undefined });
+      // Sin nada apuntado, el día vuelve a estar sin cerrar
+      const reopen = Object.keys(entries).length === 0 ? { status: 'open' as const, closedBy: null, closedAt: null } : {};
+      const updatedDay: BusinessDay = { ...day, ...reopen, entries, updatedAt: undefined };
+      putLocal.day(updatedDay);
       cloudWrite(
-        'borrar caja',
-        bizCol(business.id, 'days').doc(dayId).update({ [`entries.${entryId}`]: deleteField(), updatedAt: serverNow() }),
+        'borrar venta',
+        bizCol(business.id, 'days').doc(dayId).update({ [`entries.${entryId}`]: deleteField(), ...reopen, updatedAt: serverNow() }),
         () => putLocal.day(day),
       );
       logChange('entry', 'delete', entryId, dayId, previous);
+      saveCommissions(dayId, updatedDay);
       return 'ok';
-    },
-
-    /**
-     * Cerrar el día. Pedido a pedido, en tres pasos: se marca «cerrando» (las
-     * reglas ya no dejan añadir pedidos), se bajan del servidor los pedidos
-     * del día y se guarda su resumen con lo confirmado. Así no se escapa un
-     * pedido que llegue a la vez. Si se corta entre medias, el día se queda
-     * «cerrando» y cualquier socio lo termina. Por caja o en Sencillo, un paso.
-     */
-    closeDay: async (dayId, input = {}) => {
-      const business = get().business;
-      const config = get().config;
-      const uid = uidNow();
-      if (!business || !config || !uid) return 'error';
-      const ref = bizCol(business.id, 'days').doc(dayId);
-      const now = new Date().toISOString();
-      const before = get().days[dayId];
-
-      if (!usesOrders(config)) {
-        const day: BusinessDay = {
-          ...(before ?? { id: dayId, entries: {} }),
-          id: dayId,
-          status: 'closed',
-          closedBy: uid,
-          closedAt: now,
-          updatedAt: undefined,
-        };
-        putLocal.day(day);
-        cloudWrite(
-          'cerrar día',
-          ref.set({ id: dayId, status: 'closed', closedBy: uid, closedAt: now, updatedAt: serverNow() }, { merge: true }),
-          () => before && putLocal.day(before),
-        );
-        saveCommissions(dayId, day);
-        return 'ok';
-      }
-
-      // 0. Hace falta conexión, y se comprueba antes de apuntar nada: un
-      //    «cerrando» que se quedase en la cola de Firestore se subiría al
-      //    volver la red y la nube rechazaría lo que se apuntase mientras. Lo
-      //    pendiente de este móvil (sus pedidos), subido antes
-      const flushed = await withTimeout(firestore().waitForPendingWrites(), ONLINE_WAIT_MS).catch(() => 'error' as const);
-      if (flushed === 'timeout') return 'offline';
-      if (flushed === 'error') return 'error';
-      const current = await fromServer(ref);
-      if (!current) return 'offline';
-      if (current.data()?.status === 'closed') {
-        // Ya lo ha cerrado otro socio
-        await mergeFromCloud(business.id, 'days', [fromCloud<BusinessDay>(current)], [], true);
-        return 'ok';
-      }
-
-      // 1. «Cerrando»: desde aquí las reglas no dejan añadir pedidos al día
-      const marked = await withTimeout(
-        ref.set({ id: dayId, status: 'closing', updatedAt: serverNow() }, { merge: true }).then(() => 'ok' as const),
-        ONLINE_WAIT_MS,
-      ).catch((e) => {
-        reportError(e, 'empresa: cerrar día (1)');
-        return 'error' as const;
-      });
-      if (marked === 'timeout') {
-        // La red se ha ido justo ahora: el «cerrando» se subirá al volver.
-        // Mientras, aquí ya no se apuntan pedidos (la nube los rechazaría)
-        putLocal.day({ ...(get().days[dayId] ?? { id: dayId, entries: {} }), id: dayId, status: 'closing', updatedAt: undefined });
-        return 'offline';
-      }
-      if (marked !== 'ok') return 'error';
-
-      try {
-        // 2. Los pedidos del día, del servidor
-        const snap = await bizCol(business.id, 'orders').where('day', '==', dayId).get({ source: 'server' });
-        const orders = snap.docs.map((d) => fromCloud<Order>(d));
-        const summary = summarizeOrders(orders);
-
-        // 3. El cierre: lo de los pedidos más lo que se cambió a mano
-        const amounts: Record<string, number> = {};
-        const channelIds = new Set([...Object.keys(summary.byChannel), ...Object.keys(input.adjust ?? {})]);
-        channelIds.forEach((cid) => {
-          const amount = cents((summary.byChannel[cid] ?? 0) + (input.adjust?.[cid] ?? 0));
-          if (amount > 0) amounts[cid] = amount;
-        });
-        const entry: DayEntry = deepClean({
-          id: 'close',
-          fromOrders: true,
-          amounts,
-          channelNames: Object.fromEntries([...channelIds].map((cid) => [
-            cid, config.channels[cid]?.name ?? summary.channelNames[cid] ?? cid,
-          ])),
-          manual: input.manual?.filter((m) => m.amount > 0),
-          float: input.float ?? null,
-          counted: input.counted ?? null,
-          workerId: input.workerId ?? null,
-          workerName: input.workerName ?? null,
-          note: input.note?.trim() || undefined,
-          by: uid,
-          at: now,
-        });
-        // Si la red se va justo ahora, se queda en la cola y se sube al volver:
-        // el día ya está «cerrando» y no le entra nada más, así que el resumen vale
-        await withTimeout(ref.update({
-          status: 'closed',
-          closedBy: uid,
-          closedAt: now,
-          ordersSummary: deepClean(summary),
-          'entries.close': entry,
-          updatedAt: serverNow(),
-        }), ONLINE_WAIT_MS);
-        await mergeFromCloud(business.id, 'orders', orders, [], true);
-        const day: BusinessDay = {
-          ...(get().days[dayId] ?? { id: dayId, entries: {} }),
-          id: dayId,
-          status: 'closed',
-          closedBy: uid,
-          closedAt: now,
-          ordersSummary: summary,
-          entries: { ...(get().days[dayId]?.entries ?? {}), close: entry },
-          updatedAt: undefined,
-        };
-        putLocal.day(day);
-        saveCommissions(dayId, day);
-        return 'ok';
-      } catch (e) {
-        reportError(e, 'empresa: cerrar día (2-3)');
-        putLocal.day({ ...(get().days[dayId] ?? { id: dayId, entries: {} }), id: dayId, status: 'closing', updatedAt: undefined });
-        return 'error';
-      }
-    },
-
-    reopenDay: async (dayId) => {
-      const business = get().business;
-      const uid = uidNow();
-      const day = get().days[dayId];
-      if (!business || !uid || !day) return;
-      const now = new Date().toISOString();
-      putLocal.day({ ...day, status: 'open', reopenedBy: uid, reopenedAt: now, updatedAt: undefined });
-      cloudWrite(
-        'reabrir día',
-        bizCol(business.id, 'days').doc(dayId).update({
-          status: 'open', reopenedBy: uid, reopenedAt: now, updatedAt: serverNow(),
-        }),
-        () => putLocal.day(day),
-      );
-      logChange('day', 'reopen', dayId, dayId, { status: day.status, closedBy: day.closedBy, closedAt: day.closedAt });
     },
 
     // ── Gastos y fijos ───────────────────────────────────────────
@@ -1384,6 +1014,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         ...input,
         id: input.id ?? bizCol(business.id, 'expenses').doc().id,
         amount: cents(input.amount),
+        vat: typeof input.vat === 'number' ? cents(input.vat) : undefined,
         by: previous?.by ?? uid,
         createdAt: previous?.createdAt ?? new Date().toISOString(),
         updatedAt: undefined,
@@ -1428,6 +1059,7 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
         ...input,
         id: input.id ?? bizCol(business.id, 'recurring').doc().id,
         amount: cents(input.amount),
+        vat: typeof input.vat === 'number' ? cents(input.vat) : undefined,
         day: Math.min(31, Math.max(1, Math.round(input.day))),
         by: previous?.by ?? uid,
         createdAt: previous?.createdAt ?? new Date().toISOString(),
@@ -1494,9 +1126,6 @@ export const useBusinessStore = create<BusinessStore>((set, get) => {
   };
 
 });
-
-/** Lo que hay que saber de un día para apuntar en él (abierto, cerrando o cerrado) */
-export const dayStatusOf = (dayId: string) => useBusinessStore.getState().days[dayId]?.status ?? 'open';
 
 export const businessIsCreator = (business: Business | null | undefined) =>
   !!business && business.createdBy === uidNow();

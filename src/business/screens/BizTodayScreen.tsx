@@ -9,17 +9,17 @@ import { successHaptic } from '../../utils/haptics';
 import { reportError } from '../../services/crashReporting';
 import { businessIsCreator, businessToday, useBusinessStore } from '../store/businessStore';
 import { useBizUiStore } from '../store/uiStore';
-import { dayFigures, usesOrders, usesTills } from '../logic/days';
+import { dayEntries, dayFigures } from '../logic/days';
 import { monthSummary } from '../logic/summary';
 import { cents, dateOfDayId } from '../logic/basics';
 import { useMoney, EmptyNote, ListRow, AddLink, StatTiles, Note } from '../ui/kit';
 import { BizHero, HeroStat } from '../ui/BizHeader';
-import { DayStatusCard, EntryRow, OrderRow } from '../ui/DayParts';
+import { DayStatusCard, EntryRow } from '../ui/DayParts';
 import { longDay } from '../ui/format';
 
 /**
- * Hoy, en la empresa: lo vendido, el estado del día (abierto, cerrando o
- * cerrado), los pedidos o las cajas, los gastos de hoy y cómo va el mes
+ * Hoy, en la empresa: lo vendido (llega de la caja al cerrar, o se apunta a
+ * mano), los gastos de hoy y cómo va el mes, también después de impuestos
  */
 const BizTodayScreen = () => {
   const { t, i18n } = useTranslation();
@@ -29,7 +29,6 @@ const BizTodayScreen = () => {
   const business = useBusinessStore((s) => s.business);
   const config = useBusinessStore((s) => s.config);
   const days = useBusinessStore((s) => s.days);
-  const orders = useBusinessStore((s) => s.orders);
   const expenses = useBusinessStore((s) => s.expenses);
   const recurring = useBusinessStore((s) => s.recurring);
   const incoming = useBusinessStore((s) => s.incomingRequests);
@@ -38,20 +37,8 @@ const BizTodayScreen = () => {
 
   const todayId = businessToday();
   const day = days[todayId];
-  const status = day?.status ?? 'open';
-  const dayOpen = status === 'open';
-  const orderMode = usesOrders(config);
-
-  const todayOrders = useMemo(
-    () => Object.values(orders).filter((o) => o.day === todayId).sort((a, b) => b.at.localeCompare(a.at)),
-    [orders, todayId],
-  );
-  const entries = useMemo(
-    () => Object.values(day?.entries ?? {}).filter((e) => !(orderMode && e.fromOrders && status !== 'closed'))
-      .sort((a, b) => a.at.localeCompare(b.at)),
-    [day, orderMode, status],
-  );
-  const figures = useMemo(() => (config ? dayFigures(day, todayOrders, config) : null), [config, day, todayOrders]);
+  const entries = useMemo(() => dayEntries(day), [day]);
+  const figures = useMemo(() => (config ? dayFigures(day, config) : null), [config, day]);
   const todayExpenses = useMemo(
     () => Object.values(expenses).filter((e) => e.date === todayId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [expenses, todayId],
@@ -62,9 +49,9 @@ const BizTodayScreen = () => {
     const d = dateOfDayId(todayId);
     return monthSummary({
       year: d.getFullYear(), month0: d.getMonth(), todayId, config, days,
-      orders: Object.values(orders), expenses: Object.values(expenses), recurring: Object.values(recurring),
+      expenses: Object.values(expenses), recurring: Object.values(recurring),
     });
-  }, [config, days, orders, expenses, recurring, todayId]);
+  }, [config, days, expenses, recurring, todayId]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -79,36 +66,20 @@ const BizTodayScreen = () => {
   };
 
   const sales = figures?.sales ?? 0;
-  const tickets = figures?.tickets ?? 0;
   // El resultado, como en Ventas: si los fijos se reparten, con la parte de hoy
   const todayRow = month?.days.find((d) => d.id === todayId) ?? null;
   const resultToday = todayRow ? todayRow.result : cents(sales - spentToday);
-  const stats: [React.ReactNode, React.ReactNode] = orderMode
-    ? [
-      <HeroStat key="a" icon="receipt-outline" label={t('business.today.orders')} value={String(tickets)} />,
-      <HeroStat key="b" icon="trending-up" label={t('business.today.avgOrder')} value={tickets ? money(sales / tickets) : '—'} end />,
-    ]
-    : usesTills(config)
-      ? [
-        <HeroStat key="a" icon="receipt-outline" label={t('business.today.tickets')} value={String(tickets)} />,
-        <HeroStat key="b" icon="trending-up" label={t('business.today.avgTicket')} value={tickets ? money(sales / tickets) : '—'} end />,
-      ]
-      : [
-        <HeroStat key="a" icon="arrow-up" label={t('business.today.spent')} value={money(spentToday)} />,
-        <HeroStat key="b" icon="trending-up" label={t('business.today.result')} value={money(resultToday)} end />,
-      ];
 
   const hero = (
     <BizHero
       label={`${t('home.today')} · ${longDay(todayId, i18n.language)}`}
       amount={sales}
       symbol={symbol}
-      caption={figures?.provisional && sales > 0
-        ? t('business.today.provisional')
-        : !orderMode && !usesTills(config) && todayRow && todayRow.fixedShare > 0
-          ? t('business.day.fixedShare', { amount: money(todayRow.fixedShare) })
-          : null}
-      stats={stats}
+      caption={todayRow && todayRow.fixedShare > 0 ? t('business.day.fixedShare', { amount: money(todayRow.fixedShare) }) : null}
+      stats={[
+        <HeroStat key="a" icon="arrow-up" label={t('business.today.spent')} value={money(spentToday)} />,
+        <HeroStat key="b" icon="trending-up" label={t('business.today.result')} value={money(resultToday)} end />,
+      ]}
     />
   );
 
@@ -134,47 +105,19 @@ const BizTodayScreen = () => {
             style={styles.banner}
           />
         )}
-        <DayStatusCard
-          dayId={todayId}
-          day={day}
-          sales={sales}
-          entriesCount={entries.length}
-          ordersCount={tickets}
-        />
+        <DayStatusCard dayId={todayId} day={day} isToday />
       </View>
 
-      {orderMode ? (
+      {entries.length > 0 && (
         <>
           <SectionHeader
-            title={t('business.today.ordersTitle')}
-            action={todayOrders.length > 8 ? t('home.seeAll') : undefined}
+            title={t('business.day.sold')}
+            action={t('business.day.details')}
             onAction={() => navigation.navigate('BizSales', { screen: 'BizDay', params: { dayId: todayId } })}
             style={styles.section}
           />
           <View style={styles.pad}>
-            {todayOrders.length === 0
-              ? <EmptyNote text={dayOpen ? t('business.today.noOrders') : t('business.today.noOrdersClosed')} />
-              : todayOrders.slice(0, 8).map((o) => <OrderRow key={o.id} order={o} dayOpen={dayOpen} />)}
-            {dayOpen && <AddLink label={t('business.today.newOrder')} onPress={() => open({ kind: 'order' })} />}
-          </View>
-        </>
-      ) : entries.length > 0 && (
-        <>
-          <SectionHeader title={usesTills(config) ? t('business.today.tillsTitle') : t('business.today.closeTitle')} style={styles.section} />
-          <View style={styles.pad}>
-            {entries.map((e) => <EntryRow key={e.id} entry={e} dayOpen={dayOpen} dayId={todayId} />)}
-            {dayOpen && (usesTills(config) || Object.keys(config.shifts ?? {}).length > 0) && (
-              <AddLink label={usesTills(config) ? t('business.day.addTill') : t('business.day.addShift')} onPress={() => open({ kind: 'entry', dayId: todayId })} />
-            )}
-          </View>
-        </>
-      )}
-
-      {orderMode && status === 'closed' && entries.length > 0 && (
-        <>
-          <SectionHeader title={t('business.today.closeTitle')} style={styles.section} />
-          <View style={styles.pad}>
-            {entries.map((e) => <EntryRow key={e.id} entry={e} dayOpen={false} dayId={todayId} />)}
+            {entries.map((e) => <EntryRow key={e.id} entry={e} dayId={todayId} />)}
           </View>
         </>
       )}
@@ -218,6 +161,16 @@ const BizTodayScreen = () => {
                 { value: money(month.expenses, { decimals: 0 }), label: t('business.summary.expenses') },
                 { value: money(month.profit, { decimals: 0 }), label: month.profit >= 0 ? t('business.summary.profit') : t('business.summary.loss') },
               ]}
+            />
+            <ListRow
+              icon="shield-checkmark"
+              color={month.taxes.realProfit >= 0 ? ui.incomeText : ui.expenseText}
+              title={t('business.taxes.realProfit')}
+              subtitle={t('business.taxes.realProfitShort')}
+              right={money(month.taxes.realProfit)}
+              rightColor={month.taxes.realProfit >= 0 ? ui.incomeText : ui.expenseText}
+              onPress={() => navigation.navigate('BizSummary')}
+              style={styles.gapTop}
             />
             {month.pendingFixed > 0 && (
               <Note

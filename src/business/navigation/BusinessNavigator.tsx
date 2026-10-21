@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,24 +8,18 @@ import GlassTabBar, { TabDef } from '../../components/navigation/GlassTabBar';
 import { closeOpenSwipeable } from '../../components/common/SwipeableRow';
 import { businessToday, useBusinessStore } from '../store/businessStore';
 import { useBizUiStore } from '../store/uiStore';
-import { usesOrders } from '../logic/days';
-import { orderedItems } from '../logic/basics';
 import BizTodayScreen from '../screens/BizTodayScreen';
 import BizSalesScreen from '../screens/BizSalesScreen';
 import BizDayScreen from '../screens/BizDayScreen';
 import BizExpensesScreen from '../screens/BizExpensesScreen';
 import BizSummaryScreen from '../screens/BizSummaryScreen';
 import BizSettingsScreen from '../screens/BizSettingsScreen';
-import BizCatalogScreen from '../screens/BizCatalogScreen';
 import BizListScreen from '../screens/BizListScreen';
 import BizMembersScreen from '../screens/BizMembersScreen';
 import BizHistoryScreen from '../screens/BizHistoryScreen';
-import OrderSheet from '../sheets/OrderSheet';
 import EntrySheet from '../sheets/EntrySheet';
-import CloseDaySheet from '../sheets/CloseDaySheet';
 import ExpenseSheet from '../sheets/ExpenseSheet';
 import RecurringSheet from '../sheets/RecurringSheet';
-import { CategorySheet, ExtraSheet, ProductSheet } from '../sheets/CatalogSheets';
 import ItemSheet from '../sheets/ItemSheet';
 
 const Tab = createBottomTabNavigator();
@@ -55,7 +49,6 @@ const SalesNavigator = () => (
 const SettingsNavigator = () => (
   <SettingsStack.Navigator screenOptions={STACK_OPTIONS}>
     <SettingsStack.Screen name="BizSettingsMain" component={BizSettingsScreen} />
-    <SettingsStack.Screen name="BizCatalog" component={BizCatalogScreen} />
     <SettingsStack.Screen name="BizList" component={BizListScreen} />
     <SettingsStack.Screen name="BizMembers" component={BizMembersScreen} />
     <SettingsStack.Screen name="BizHistory" component={BizHistoryScreen} />
@@ -69,32 +62,9 @@ const deepestRoute = (state: any): string => {
   return route.state ? deepestRoute(route.state) : route.name;
 };
 
-/** Apuntar una venta: un pedido o lo de una caja, según cómo trabaje la empresa */
-export const openSaleEntry = (t: (key: string) => string) => {
-  const { config, days } = useBusinessStore.getState();
-  const ui = useBizUiStore.getState();
-  if (usesOrders(config)) {
-    ui.open({ kind: 'order' });
-    return;
-  }
-  const today = businessToday();
-  if ((days[today]?.status ?? 'open') !== 'open') {
-    Alert.alert(t('business.day.closedTitle'), t('business.day.closedBody'), [
-      { text: t('settings.cancel'), style: 'cancel' },
-      {
-        text: t('business.day.reopen'),
-        onPress: async () => {
-          await useBusinessStore.getState().reopenDay(today);
-          ui.open({ kind: 'entry', dayId: today });
-        },
-      },
-    ]);
-    return;
-  }
-  // En Sencillo sin turnos hay un cierre por día: si ya está, se abre ese
-  const single = config?.mode === 'simple' && orderedItems(config.shifts).length === 0;
-  const existing = single ? Object.values(days[today]?.entries ?? {})[0] : undefined;
-  ui.open({ kind: 'entry', dayId: today, entryId: existing?.id });
+/** Apuntar una venta a mano en un día (sin caja, un encargo de fuera) */
+export const openSaleEntry = (dayId = businessToday()) => {
+  useBizUiStore.getState().open({ kind: 'entry', dayId });
 };
 
 /**
@@ -117,21 +87,20 @@ const BusinessNavigator = () => {
     return () => sub.remove();
   }, []);
 
+  // Lo de las ventas llega solo de la caja: el + apunta un gasto, salvo en
+  // Ventas (una venta a mano) y en las listas de Ajustes (una más)
   const handleFab = () => {
     closeOpenSwipeable();
     const ui = useBizUiStore.getState();
     switch (ui.route) {
-      case 'BizExpenses':
-        ui.open({ kind: 'expense' });
-        return;
-      case 'BizCatalog':
-        ui.open({ kind: 'product' });
+      case 'BizSalesMain':
+        openSaleEntry();
         return;
       case 'BizList':
         if (ui.list) ui.open({ kind: 'item', list: ui.list });
         return;
       default:
-        openSaleEntry(t);
+        ui.open({ kind: 'expense' });
     }
   };
 
@@ -160,14 +129,12 @@ const BusinessNavigator = () => {
         />
       </Tab.Navigator>
 
-      <OrderSheet visible={sheet?.kind === 'order'} orderId={sheet?.kind === 'order' ? sheet.orderId : undefined} onClose={close} />
       <EntrySheet
         visible={sheet?.kind === 'entry'}
         dayId={sheet?.kind === 'entry' ? sheet.dayId : businessToday()}
         entryId={sheet?.kind === 'entry' ? sheet.entryId : undefined}
         onClose={close}
       />
-      <CloseDaySheet visible={sheet?.kind === 'close'} dayId={sheet?.kind === 'close' ? sheet.dayId : businessToday()} onClose={close} />
       <ExpenseSheet
         visible={sheet?.kind === 'expense'}
         expenseId={sheet?.kind === 'expense' ? sheet.expenseId : undefined}
@@ -175,14 +142,6 @@ const BusinessNavigator = () => {
         onClose={close}
       />
       <RecurringSheet visible={sheet?.kind === 'recurring'} recurringId={sheet?.kind === 'recurring' ? sheet.recurringId : undefined} onClose={close} />
-      <ProductSheet
-        visible={sheet?.kind === 'product'}
-        productId={sheet?.kind === 'product' ? sheet.productId : undefined}
-        categoryId={sheet?.kind === 'product' ? sheet.categoryId : undefined}
-        onClose={close}
-      />
-      <ExtraSheet visible={sheet?.kind === 'extra'} extraId={sheet?.kind === 'extra' ? sheet.extraId : undefined} onClose={close} />
-      <CategorySheet visible={sheet?.kind === 'category'} categoryId={sheet?.kind === 'category' ? sheet.categoryId : undefined} onClose={close} />
       <ItemSheet
         visible={sheet?.kind === 'item'}
         list={sheet?.kind === 'item' ? sheet.list : 'channels'}

@@ -42,7 +42,7 @@ describe('textos de la empresa', () => {
 
   it('cada plural tiene sus formas (y el polaco, las cuatro)', () => {
     const plurals = [...new Set(Object.keys(es).filter((k) => PLURAL.test(k)).map(base))];
-    expect(plurals.length).toBeGreaterThan(5);
+    expect(plurals.length).toBeGreaterThan(3);
     for (const lang of Object.keys(locales)) {
       const keys = keysOf(lang);
       const forms = lang === 'pl' ? ['one', 'few', 'many', 'other'] : ['one', 'other'];
@@ -63,7 +63,7 @@ describe('textos de la empresa', () => {
       const text = fs.readFileSync(file, 'utf8');
       for (const match of text.matchAll(/['`](business\.[A-Za-z0-9_.]+)['`]/g)) used.add(match[1]);
     }
-    expect(used.size).toBeGreaterThan(300);
+    expect(used.size).toBeGreaterThan(200);
     expect([...used].filter((key) => !esBases.has(key) && !es[key])).toEqual([]);
   });
 });

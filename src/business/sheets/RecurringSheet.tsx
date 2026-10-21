@@ -5,16 +5,18 @@ import BottomSheet, { FilledInput, SheetButton, SheetLabel } from '../../compone
 import AmountInput from '../../components/common/AmountInput';
 import { DayPicker } from '../../components/movements/SheetPickers';
 import { useTheme } from '../../hooks/useTheme';
-import { formatAmountForInput, parseAmountInput } from '../../utils/formatAmount';
 import { successHaptic, warningHaptic } from '../../utils/haptics';
 import { useBusinessStore } from '../store/businessStore';
 import { orderedItems } from '../logic/basics';
+import { recurringTypesByUse } from '../logic/usage';
 import { AddLink, Chip, ChipRow, FieldRow, SettingsSwitch, useMoney } from '../ui/kit';
+import { TypeOption, TypePicker } from '../ui/TypePicker';
+import { BaseCaption, openedVat, VatRow, vatFigures } from '../ui/VatFields';
 
 /**
  * Un fijo: alquiler, luz, gestoría, la nómina de cada empleado… Cada mes, el
  * día que toca, se convierte en un gasto (que luego se puede cambiar, si ese
- * mes la luz ha sido otra cosa).
+ * mes la luz ha sido otra cosa). Los tipos, el más usado en los fijos primero.
  */
 const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; recurringId?: string; onClose: () => void }) => {
   const { t } = useTranslation();
@@ -28,7 +30,10 @@ const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; r
   const amountRef = useRef<TextInput>(null);
 
   const [amountText, setAmountText] = useState('');
+  const [vatValue, setVatValue] = useState<number | null>(null);
   const [name, setName] = useState('');
+  // El orden de los tipos se fija al abrir: no se mueven con la ventana abierta
+  const [typeOrder, setTypeOrder] = useState<string[]>([]);
   const [typeId, setTypeId] = useState('');
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [workerId, setWorkerId] = useState<string | null>(null);
@@ -37,9 +42,13 @@ const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; r
 
   useEffect(() => {
     if (!visible) return;
-    setAmountText(editing ? formatAmountForInput(editing.amount) : '');
+    const opened = openedVat(config, editing);
+    setAmountText(opened.amountText);
+    setVatValue(opened.vat);
     setName(editing?.name ?? '');
-    setTypeId(editing?.typeId ?? (types.find((x) => x.id === 'rent') ?? types[0])?.id ?? '');
+    const sorted = recurringTypesByUse(types, Object.values(useBusinessStore.getState().recurring));
+    setTypeOrder(sorted.map((x) => x.id));
+    setTypeId(editing?.typeId ?? sorted[0]?.id ?? '');
     setSupplierId(editing?.supplierId ?? null);
     setWorkerId(editing?.workerId ?? null);
     setDay(editing?.day ?? 1);
@@ -47,7 +56,7 @@ const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; r
   // eslint-disable-next-line react-hooks/exhaustive-deps -- al abrir
   }, [visible, recurringId]);
 
-  const amount = parseAmountInput(amountText);
+  const figures = vatFigures(config, typeId, amountText, vatValue, editing);
   const isPayroll = typeId === 'payroll';
   const worker = workerId ? config?.workers[workerId] : undefined;
   const supplier = supplierId ? config?.suppliers[supplierId] : undefined;
@@ -56,14 +65,27 @@ const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; r
     || (isPayroll && worker ? t('business.recurring.payrollOf', { name: worker.name }) : '')
     || supplier?.name
     || '';
-  const valid = Number.isFinite(amount) && amount > 0 && !!typeId && !!finalName;
+  const valid = Number.isFinite(figures.typed) && figures.typed > 0 && !!typeId && !!finalName;
+
+  // Los tipos en el orden de uso. El del fijo, si ya no está en la lista
+  // (archivado), delante y atenuado, para que se vea cuál tiene
+  const typeOptions = useMemo((): TypeOption[] => {
+    const rank = new Map(typeOrder.map((id, i) => [id, i]));
+    const list: TypeOption[] = [...types].sort((a, b) => (rank.get(a.id) ?? types.length) - (rank.get(b.id) ?? types.length));
+    if (editing && !types.some((x) => x.id === editing.typeId)) {
+      const own = config?.expenseTypes[editing.typeId];
+      list.unshift({ id: editing.typeId, name: own?.name ?? editing.typeName, icon: own?.icon ?? 'pricetag', archived: true });
+    }
+    return list;
+  }, [types, typeOrder, editing, config]);
 
   const save = async () => {
     if (!valid || !config) return;
     await useBusinessStore.getState().saveRecurring({
       id: editing?.id,
       name: finalName,
-      amount,
+      amount: figures.amount,
+      vat: figures.vat,
       typeId,
       typeName: config.expenseTypes[typeId]?.name ?? typeId,
       supplierId: !isPayroll && supplier ? supplierId : null,
@@ -106,14 +128,12 @@ const RecurringSheet = ({ visible, recurringId, onClose }: { visible: boolean; r
     >
       <TouchableOpacity activeOpacity={1} onPress={() => amountRef.current?.focus()}>
         <AmountInput ref={amountRef} value={amountText} onChangeText={setAmountText} currencySymbol={symbol} large color={dc.textPrimary} />
+        {figures.split && <BaseCaption />}
       </TouchableOpacity>
+      {figures.split && <VatRow figures={figures} value={vatValue} onChange={setVatValue} />}
 
       <SheetLabel>{t('business.expense.type')}</SheetLabel>
-      <ChipRow>
-        {types.map((x) => (
-          <Chip key={x.id} label={x.name} icon={x.icon as never} selected={x.id === typeId} onPress={() => setTypeId(x.id)} />
-        ))}
-      </ChipRow>
+      <TypePicker types={typeOptions} selectedId={typeId} onSelect={setTypeId} resetKey={visible} />
 
       {isPayroll ? (
         workers.length > 0 && (

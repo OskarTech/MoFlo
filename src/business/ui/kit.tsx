@@ -80,10 +80,12 @@ export const ChipRow = ({ children, style, scroll }: { children: React.ReactNode
 
 /** Importe en un campo pequeño a la derecha de una fila. null si está vacío */
 export const AmountBox = ({
-  value, onChange, placeholder = '0', width = 104, autoFocus, accessibilityLabel, integer,
+  value, onChange, onBlur, placeholder = '0', width = 104, autoFocus, accessibilityLabel, integer,
 }: {
   value: number | null;
   onChange: (value: number | null) => void;
+  /** Al dejar de escribir */
+  onBlur?: () => void;
   placeholder?: string;
   width?: number;
   autoFocus?: boolean;
@@ -109,7 +111,7 @@ export const AmountBox = ({
         onChange(Number.isFinite(n) && n >= 0 ? n : null);
       }}
       onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onBlur={() => { setFocused(false); onBlur?.(); }}
       keyboardType={integer ? 'number-pad' : 'decimal-pad'}
       placeholder={placeholder}
       placeholderTextColor={ui.hair2}
@@ -122,6 +124,26 @@ export const AmountBox = ({
         { width, color: dc.textPrimary, backgroundColor: ui.field, borderColor: focused ? ui.accent : 'transparent' },
       ]}
     />
+  );
+};
+
+/**
+ * Un % en Ajustes (el IVA, el impuesto de sociedades…): cualquier número de 0
+ * a 100, con decimales. Se guarda al acabar de escribir, no con cada tecla
+ */
+export const PercentBox = ({ value, onChange, label }: { value: number; onChange: (value: number) => void; label: string }) => {
+  const { colors: dc } = useTheme();
+  const [draft, setDraft] = useState<number | null>(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  const commit = () => {
+    if (draft == null || draft > 100) { setDraft(value); return; }
+    if (draft !== value) onChange(draft);
+  };
+  return (
+    <View style={styles.percent}>
+      <AmountBox value={draft} onChange={setDraft} onBlur={commit} width={72} placeholder="0" accessibilityLabel={label} />
+      <Text style={[styles.percentSign, { color: dc.textSecondary }]}>%</Text>
+    </View>
   );
 };
 
@@ -150,6 +172,16 @@ export const FieldRow = ({
       </View>
       {right}
     </View>
+  );
+};
+
+/** Un importe a la derecha de una fila (FieldRow): atenuado, de color o en negrita */
+export const AmountText = ({ text, color, dim, strong }: { text: string; color?: string; dim?: boolean; strong?: boolean }) => {
+  const { colors: dc } = useTheme();
+  return (
+    <Text style={[styles.amountText, strong && styles.amountStrong, { color: color ?? (dim ? dc.textSecondary : dc.textPrimary) }]}>
+      {text}
+    </Text>
   );
 };
 
@@ -516,6 +548,10 @@ const styles = StyleSheet.create({
   fieldText: { flex: 1, minWidth: 0 },
   fieldTitle: { fontSize: 14.5, fontFamily: 'Poppins_500Medium' },
   fieldSub: { fontSize: 12, fontFamily: 'Poppins_400Regular' },
+  amountText: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  percent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  percentSign: { fontSize: 15, fontFamily: 'Poppins_600SemiBold' },
+  amountStrong: { fontSize: 17, fontFamily: 'Poppins_700Bold' },
   addLink: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 },
   addLinkText: { fontSize: 13.5, fontFamily: 'Poppins_600SemiBold' },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
