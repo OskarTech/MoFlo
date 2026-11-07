@@ -25,6 +25,8 @@ const KEY_ROWS = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 0]];
  * Sudoku en tres niveles. Se elige el nivel y Jugar genera uno nuevo;
  * Reiniciar borra lo puesto y deja el mismo sudoku. La partida se guarda en el
  * móvil (ver sudokuGame) y sigue al volver. No usa los datos de la cuenta.
+ *
+ * Es de premium: Ajustes solo deja entrar con premium.
  */
 const SudokuScreen = () => {
   const { t } = useTranslation();

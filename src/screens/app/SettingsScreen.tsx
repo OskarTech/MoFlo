@@ -1039,11 +1039,12 @@ const SettingsScreen = () => {
         subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('compound.settingsSubtitle')}
         onPress={() => requirePremium(() => navigation.navigate('CompoundInterest'))}
       />
-      {/* Sudoku: un juego, no usa los datos de la cuenta */}
+      {/* Sudoku, de premium. Un juego: no usa los datos de la cuenta */}
       <SettingsRow
         icon="grid-outline"
-        label={t('sudoku.title')} subtitle={t('sudoku.settingsSubtitle')}
-        onPress={() => navigation.navigate('Sudoku')}
+        label={t('sudoku.title')}
+        subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('sudoku.settingsSubtitle')}
+        onPress={() => requirePremium(() => navigation.navigate('Sudoku'))}
       />
       <SettingsRow
         icon="compass-outline"
