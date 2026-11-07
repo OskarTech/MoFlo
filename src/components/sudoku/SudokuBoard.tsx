@@ -71,7 +71,7 @@ Cell.displayName = 'SudokuCell';
  * las que tienen el mismo número no se marcan, y si se repite, sale en rojo
  * solo lo puesto, nunca la otra casilla (una pista no está mal). Las pistas
  * van en el color del texto y lo puesto, en el de la app. Las líneas (finas,
- * y gruesas entre cuadros) van en un Svg encima.
+ * y gruesas entre cuadros) van en un Svg encima, que deja pasar los toques.
  */
 const SudokuBoard = ({ board, givens, conflicts, selected, onSelect, locked = false }: Props) => {
   const { t } = useTranslation();
@@ -120,21 +120,28 @@ const SudokuBoard = ({ board, givens, conflicts, selected, onSelect, locked = fa
               })}
             </View>
           ))}
-          <Svg style={StyleSheet.absoluteFill} width={size} height={size} pointerEvents="none">
-            {NINE.slice(1).map((k) => {
-              const at = k * cell;
-              const boxEdge = k % 3 === 0;
-              const stroke = boxEdge ? thick : thin;
-              const strokeWidth = boxEdge ? 2 : 1;
-              return (
-                <React.Fragment key={k}>
-                  <Line x1={at} x2={at} y1={0} y2={size} stroke={stroke} strokeWidth={strokeWidth} />
-                  <Line x1={0} x2={size} y1={at} y2={at} stroke={stroke} strokeWidth={strokeWidth} />
-                </React.Fragment>
-              );
-            })}
-            <Rect x={1} y={1} width={size - 2} height={size - 2} rx={11} fill="none" stroke={thick} strokeWidth={2} />
-          </Svg>
+          {/* Las líneas no reciben toques. En iOS, un Svg se queda con todos
+              los de su recuadro aunque lleve pointerEvents="none" (react-native-svg
+              no lo mira en el Svg): encima de las casillas, no dejaba elegir
+              ninguna. Por eso va dentro de un View que no los recibe, como en
+              ColorPicker */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Svg width={size} height={size}>
+              {NINE.slice(1).map((k) => {
+                const at = k * cell;
+                const boxEdge = k % 3 === 0;
+                const stroke = boxEdge ? thick : thin;
+                const strokeWidth = boxEdge ? 2 : 1;
+                return (
+                  <React.Fragment key={k}>
+                    <Line x1={at} x2={at} y1={0} y2={size} stroke={stroke} strokeWidth={strokeWidth} />
+                    <Line x1={0} x2={size} y1={at} y2={at} stroke={stroke} strokeWidth={strokeWidth} />
+                  </React.Fragment>
+                );
+              })}
+              <Rect x={1} y={1} width={size - 2} height={size - 2} rx={11} fill="none" stroke={thick} strokeWidth={2} />
+            </Svg>
+          </View>
         </View>
       )}
     </View>
