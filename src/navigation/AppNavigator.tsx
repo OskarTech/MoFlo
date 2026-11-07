@@ -13,6 +13,8 @@ import { useSavingsStore } from '../store/savingsStore';
 import SettingsScreen from '../screens/app/SettingsScreen';
 import RemindersScreen from '../screens/app/RemindersScreen';
 import SupportScreen from '../screens/app/SupportScreen';
+import CompoundInterestScreen from '../screens/app/CompoundInterestScreen';
+import SudokuScreen from '../screens/app/SudokuScreen';
 import CategoriesScreen from '../screens/app/CategoriesScreen';
 import SharedAccountScreen from '../screens/app/SharedAccountScreen';
 import SharedCategoriesScreen from '../screens/app/SharedCategoriesScreen';
@@ -56,6 +58,8 @@ const SettingsNavigator = () => (
   <SettingsStack.Navigator screenOptions={STACK_OPTIONS}>
     <SettingsStack.Screen name="SettingsMain" component={SettingsScreen} />
     <SettingsStack.Screen name="Support" component={SupportScreen} />
+    <SettingsStack.Screen name="CompoundInterest" component={CompoundInterestScreen} />
+    <SettingsStack.Screen name="Sudoku" component={SudokuScreen} />
     <SettingsStack.Screen name="Categories" component={CategoriesScreen} />
     <SettingsStack.Screen name="SharedAccount" component={SharedAccountScreen} />
     <SettingsStack.Screen name="SharedCategories" component={SharedCategoriesScreen} />

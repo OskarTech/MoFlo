@@ -1031,6 +1031,20 @@ const SettingsScreen = () => {
           : dailyNotifEnabled ? () => askDailyTime(false) : () => handleDailyNotif(true)}
         right={<Switch {...switchProps(dailyNotifEnabled || enablingDaily)} onValueChange={handleDailyNotif} />}
       />
+      {/* Calculadora de interés compuesto, de premium. Solo calcula: no usa los
+          datos de la cuenta */}
+      <SettingsRow
+        icon="bar-chart-outline"
+        label={t('compound.title')}
+        subtitle={!isPremium ? `⭐ ${t('premium.badge')}` : t('compound.settingsSubtitle')}
+        onPress={() => requirePremium(() => navigation.navigate('CompoundInterest'))}
+      />
+      {/* Sudoku: un juego, no usa los datos de la cuenta */}
+      <SettingsRow
+        icon="grid-outline"
+        label={t('sudoku.title')} subtitle={t('sudoku.settingsSubtitle')}
+        onPress={() => navigation.navigate('Sudoku')}
+      />
       <SettingsRow
         icon="compass-outline"
         label={t('walkthrough.settingsLabel')} subtitle={t('walkthrough.settingsSubtitle')}
